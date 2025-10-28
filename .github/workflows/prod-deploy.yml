@@ -1,0 +1,15 @@
+name: PROD Trigger Webhook
+
+on:
+  push:
+    branches:
+      - prod  # Change this to your desired branch
+  workflow_dispatch:
+
+jobs:
+  call_webhook:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call Webhook
+        run: curl -X POST ${{ vars.PROD_WEBHOOK_URL }}
