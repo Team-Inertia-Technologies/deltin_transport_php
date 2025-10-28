@@ -34,8 +34,8 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-$AREA_ARR = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A'","3");
-// Function to validate vendor data and check duplicates
+$AREA_ARR = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank","3");
+
 function validateVendorData($vContactNum, $vEmail, $excludeVendorID = 0)
 {
     $conditions = [];

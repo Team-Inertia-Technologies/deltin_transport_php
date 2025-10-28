@@ -318,3 +318,5 @@ $KYC_VERIFY_TYPE_FLIP_ARR = array_flip(array_filter($KYC_VERIFY_TYPE_ARR));
 $DL_INTROMEDIA_TYPE = array("I" => "Image", "V" => "Video", "H" => "HTML Page");
 $DL_CAMPAIGN_FLOWTYPE = array("2" => "2 Step", "3" => "3 Step");
 $BENEFICIARY_STAGE_ARR = array("P" => "Pending", "N" => "Notified", "V" => "Viewed", "A" => "Availed");
+
+$SERVICE_OFFERED= array("F" => "Fleet", "B" => "Bus", "T" => "Both");
