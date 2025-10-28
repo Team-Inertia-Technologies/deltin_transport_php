@@ -51,7 +51,7 @@ foreach ($STATE_ARR_RAW as $id => $label) {
 
 $serviceOpt = [];
 foreach ($SERVICE_OFFERED as $id => $label) {
-    $serviceOpt[] = ['id' => intval($id), 'title' => $label];
+    $serviceOpt[] = ['id' => $id, 'title' => $label];
 }
 
 
@@ -135,8 +135,7 @@ switch ($mode) {
             "data" => [
                 "rowData" => $rowData,
                 "availableOpt" => $availableOpt,
-                "serviceOpt" => $serviceOpt,
-                "stateOpt" => $stateOpt
+                "serviceOpt" => $serviceOpt
             ]
         ]);
         break;
