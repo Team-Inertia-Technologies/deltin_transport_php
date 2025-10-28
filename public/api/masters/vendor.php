@@ -49,7 +49,7 @@ foreach ($STATE_ARR_RAW as $id => $label) {
     $stateOpt[] = ['id' => intval($id), 'title' => $label];
 }
 
-$serviceOpt=[];
+$serviceOpt = [];
 foreach ($SERVICE_OFFERED as $id => $label) {
     $serviceOpt[] = ['id' => intval($id), 'title' => $label];
 }
@@ -155,7 +155,7 @@ switch ($mode) {
 
     // ===================== CASE 3: VENDOR_DETAILS =====================
     case 'VENDOR_DETAILS':
-        $id = isset($_REQUEST['iVendorID']) ? intval($_REQUEST['iVendorID']) : 0;
+        $id = isset($request->iVendorID) ? intval($request->iVendorID) : (isset($_REQUEST['iVendorID']) ? intval($_REQUEST['iVendorID']) : 0);
         if ($id <= 0) {
             echo json_encode([
                 "status" => 400,
@@ -167,7 +167,7 @@ switch ($mode) {
         // Fetch vendor details
         $sql = "SELECT iVendorID, vName, cType, vPanNo, vContactPerson, vContactNum, vEmail, 
                        cTDSApplicable, fTDSperc, vGSTIN, iStateCode, vBankAcctNum, vBankIFSC, 
-                       vDetails, iRank, cStatus, vContactNum, fRate 
+                       vDetails, iRank, cStatus, vAddress
                 FROM vendor 
                 WHERE iVendorID = $id";
         $res = sql_query($sql);
@@ -182,6 +182,15 @@ switch ($mode) {
 
         $vendor = sql_fetch_assoc($res);
 
+        // Fetch availability areas for this vendor
+        $areaSql = "SELECT iAreaID FROM vendor_area_assoc WHERE iVendorID = $id";
+        $areaRes = sql_query($areaSql);
+
+        $availabilityAreas = [];
+        while ($areaRow = sql_fetch_assoc($areaRes)) {
+            $availabilityAreas[] = intval($areaRow['iAreaID']);
+        }
+
         // Fetch active vehicles for this vendor
         $vehicleSql = "SELECT iVehicleID, vRnum as vVehicleNo 
                        FROM vehicle 
@@ -194,13 +203,37 @@ switch ($mode) {
             $vehicleArr[] = $v;
         }
 
-        // Attach vehicles to vendor data
-        $vendor['vehicles'] = $vehicleArr;
+        // Map database fields to form field names
+        $vendorData = [
+            'iVendorID' => intval($vendor['iVendorID']),
+            'comName' => $vendor['vName'] ?? '',
+            'perName' => $vendor['vContactPerson'] ?? '',
+            'perConNum' => $vendor['vContactNum'] ?? '',
+            'email' => $vendor['vEmail'] ?? '',
+            'comAdd' => $vendor['vAddress'] ?? '',
+            'state' => intval($vendor['iStateCode'] ?? 0),
+            'remarks' => $vendor['vDetails'] ?? '',
+            'panNo' => $vendor['vPanNo'] ?? '',
+            'gstNo' => $vendor['vGSTIN'] ?? '',
+            'tdsApp' => $vendor['cTDSApplicable'] ?? 'N',
+            'tdsPercentage' => floatval($vendor['fTDSperc'] ?? 0),
+            'serviceOff' => $vendor['cType'] ?? '',
+            'availability' => $availabilityAreas,
+            'bankAccNo' => $vendor['vBankAcctNum'] ?? '',
+            'bankIfscCode' => $vendor['vBankIFSC'] ?? '',
+            'cStatus' => $vendor['cStatus'] ?? 'A',
+            'vehicles' => $vehicleArr
+        ];
 
         echo json_encode([
             "status" => 200,
             "message" => "Vendor details fetched successfully",
-            "data" => $vendor
+            "data" => [
+                "vendor" => $vendorData,
+                "stateOpt" => $stateOpt,
+                "serviceOpt" => $serviceOpt,
+                "availableOpt" => $availableOpt
+            ]
         ]);
         break;
 
@@ -208,23 +241,24 @@ switch ($mode) {
 
     // ===================== CASE 4: UPDATE_VENDOR =====================
     case 'UPDATE_VENDOR':
-        $id = intval($_REQUEST['iVendorID'] ?? 0);
-        $vName = db_input($_REQUEST['vName'] ?? '');
-        $cType = db_input($_REQUEST['cType'] ?? '');
-        $vPanNo = db_input($_REQUEST['vPanNo'] ?? '');
-        $vContactPerson = db_input($_REQUEST['vContactPerson'] ?? '');
-        $vContactNum = db_input($_REQUEST['vContactNum'] ?? '');
-        $vEmail = db_input($_REQUEST['vEmail'] ?? '');
-        $cTDSApplicable = db_input($_REQUEST['cTDSApplicable'] ?? 'N');
-        $fTDSperc = floatval($_REQUEST['fTDSperc'] ?? 0);
-        $vGSTIN = db_input($_REQUEST['vGSTIN'] ?? '');
-        $iStateCode = intval($_REQUEST['iStateCode'] ?? 0);
-        $vBankAcctNum = db_input($_REQUEST['vBankAcctNum'] ?? '');
-        $vBankIFSC = db_input($_REQUEST['vBankIFSC'] ?? '');
-        $vDetails = db_input($_REQUEST['vDetails'] ?? '');
-        $cStatus = db_input($_REQUEST['cStatus'] ?? 'A');
-        $vContactNum = db_input($_REQUEST['vContactNum'] ?? '');
-        $fRate = floatval($_REQUEST['fRate'] ?? 0);
+        // Map form data to database fields
+        $id = intval($request->iVendorID ?? 0);
+        $vName = db_input($request->comName ?? '');
+        $vContactPerson = db_input($request->perName ?? '');
+        $vContactNum = db_input($request->perConNum ?? '');
+        $vEmail = db_input($request->email ?? '');
+        $vAddress = db_input($request->comAdd ?? '');
+        $iStateCode = intval($request->state ?? 0);
+        $vDetails = db_input($request->remarks ?? '');
+        $vPanNo = db_input($request->panNo ?? '');
+        $vGSTIN = db_input($request->gstNo ?? '');
+        $cTDSApplicable = db_input($request->tdsApp ?? 'N');
+        $fTDSperc = floatval($request->tdsPercentage ?? 0);
+        $cType = db_input($request->serviceOff ?? '');
+        $availability = $request->availability ?? []; // Handle as array
+        $vBankAcctNum = db_input($request->bankAccNo ?? '');
+        $vBankIFSC = db_input($request->bankIfscCode ?? '');
+        $cStatus = db_input($request->cStatus ?? 'A');
 
         if ($id <= 0) {
             echo json_encode([
@@ -234,7 +268,24 @@ switch ($mode) {
             exit;
         }
 
-        // Single query to validate duplicates
+        // Basic validation
+        if (empty($vName)) {
+            echo json_encode([
+                "status" => 400,
+                "message" => "Company name is required"
+            ]);
+            exit;
+        }
+
+        if (empty($vContactPerson)) {
+            echo json_encode([
+                "status" => 400,
+                "message" => "Contact person name is required"
+            ]);
+            exit;
+        }
+
+        // Validate duplicates
         $validation = validateVendorData($vContactNum, $vEmail, $id);
         if (!$validation['valid']) {
             echo json_encode([
@@ -244,7 +295,7 @@ switch ($mode) {
             exit;
         }
 
-        // Check if vendor exists and update in single operation
+        // Update vendor details
         $sql = "UPDATE vendor SET 
                     vName = '$vName',
                     cType = '$cType',
@@ -260,13 +311,27 @@ switch ($mode) {
                     vBankIFSC = '$vBankIFSC',
                     vDetails = '$vDetails',
                     cStatus = '$cStatus',
-                    vContactNum = '$vContactNum',
-                    fRate = $fRate
+                    vAddress = '$vAddress'
                 WHERE iVendorID = $id AND cStatus != 'X'";
 
         $result = sql_query($sql);
 
         if ($result && sql_affected_rows() > 0) {
+            // Update availability areas - first delete existing associations
+            $deleteAreaSql = "DELETE FROM vendor_area_assoc WHERE iVendorID = $id";
+            sql_query($deleteAreaSql);
+
+            // Insert new area associations
+            if (is_array($availability) && !empty($availability)) {
+                foreach ($availability as $areaId) {
+                    $areaId = intval($areaId);
+                    if ($areaId > 0) {
+                        $areaSql = "INSERT INTO vendor_area_assoc (iVendorID, iAreaID) VALUES ($id, $areaId)";
+                        sql_query($areaSql);
+                    }
+                }
+            }
+
             echo json_encode([
                 "status" => 200,
                 "message" => "Vendor updated successfully"
