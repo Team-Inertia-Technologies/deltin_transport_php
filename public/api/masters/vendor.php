@@ -34,7 +34,7 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-$AREA_ARR = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank","3");
+$AREA_ARR = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank", "3");
 
 function validateVendorData($vContactNum, $vEmail, $excludeVendorID = 0)
 {
@@ -81,7 +81,7 @@ switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
     case 'LIST':
-        $sql = "SELECT iVendorID, vName, vContactPerson, vContactNum, vEmail, cType, iAreaID, cStatus 
+        $sql = "SELECT iVendorID, vName, vContactPerson, vContactNum, vEmail, cType, cStatus 
                 FROM vendor 
                 WHERE cStatus = 'A' 
                 ORDER BY iRank DESC";
@@ -89,14 +89,24 @@ switch ($mode) {
 
         $rowData = [];
         while ($row = sql_fetch_assoc($res)) {
+            // Get availability areas for this vendor from vendor_area_assoc table
+            $vendorID = intval($row['iVendorID']);
+            $areaSql = "SELECT iAreaID FROM vendor_area_assoc WHERE iVendorID = $vendorID";
+            $areaRes = sql_query($areaSql);
+
+            $availabilityAreas = [];
+            while ($areaRow = sql_fetch_assoc($areaRes)) {
+                $availabilityAreas[] = intval($areaRow['iAreaID']);
+            }
+
             $rowData[] = [
-                'id' => intval($row['iVendorID']),
+                'id' => $vendorID,
                 'companyName' => $row['vName'] ?? '',
                 'fullName' => $row['vContactPerson'] ?? '',
                 'mobileNumber' => $row['vContactNum'] ?? '',
                 'email' => $row['vEmail'] ?? '',
                 'serviceOff' => $row['cType'] ?? '',
-                'availability' => $row['iAreaID']
+                'availability' => $availabilityAreas
             ];
         }
 
