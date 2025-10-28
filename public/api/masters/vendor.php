@@ -34,7 +34,26 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-$AREA_ARR = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank", "3");
+// Define arrays for ONLOAD mode
+$AREA_ARR_RAW = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank", "3");
+$STATE_ARR_RAW = GetXArrFromYID("SELECT iStateID, vName FROM gen_state where cStatus='A' ORDER BY vName", "3");
+
+// Convert to id-label object format
+$availableOpt = [];
+foreach ($AREA_ARR_RAW as $id => $label) {
+    $availableOpt[] = ['id' => intval($id), 'label' => $label];
+}
+
+$stateOpt = [['id' => 0, 'title' => 'Choose']];
+foreach ($STATE_ARR_RAW as $id => $label) {
+    $stateOpt[] = ['id' => intval($id), 'title' => $label];
+}
+
+$serviceOpt=[];
+foreach ($SERVICE_OFFERED as $id => $label) {
+    $serviceOpt[] = ['id' => intval($id), 'title' => $label];
+}
+
 
 function validateVendorData($vContactNum, $vEmail, $excludeVendorID = 0)
 {
@@ -115,13 +134,26 @@ switch ($mode) {
             "message" => "Vendor list fetched successfully",
             "data" => [
                 "rowData" => $rowData,
-                "AREA_ARR" => $AREA_ARR
+                "availableOpt" => $availableOpt,
+                "serviceOpt" => $serviceOpt,
+                "stateOpt" => $stateOpt
             ]
         ]);
         break;
+    // ===================== CASE 2: ONLOAD =====================
+    case 'ONLOAD':
+        // Return only the required arrays for form initialization
+        echo json_encode([
+            "data" => [
+                "stateOpt" => $stateOpt,
+                "serviceOpt" => $serviceOpt,
+                "availableOpt" => $availableOpt
+            ],
+            "statusCode" => 200
+        ]);
+        break;
 
-
-    // ===================== CASE 2: VENDOR_DETAILS =====================
+    // ===================== CASE 3: VENDOR_DETAILS =====================
     case 'VENDOR_DETAILS':
         $id = isset($_REQUEST['iVendorID']) ? intval($_REQUEST['iVendorID']) : 0;
         if ($id <= 0) {
@@ -174,7 +206,7 @@ switch ($mode) {
 
 
 
-    // ===================== CASE 3: UPDATE_VENDOR =====================
+    // ===================== CASE 4: UPDATE_VENDOR =====================
     case 'UPDATE_VENDOR':
         $id = intval($_REQUEST['iVendorID'] ?? 0);
         $vName = db_input($_REQUEST['vName'] ?? '');
@@ -252,35 +284,44 @@ switch ($mode) {
         }
         break;
 
-    // ===================== CASE 4: ADD_VENDOR =====================
+    // ===================== CASE 5: ADD_VENDOR =====================
     case 'ADD_VENDOR':
-        $vName = db_input($_REQUEST['vName'] ?? '');
-        $cType = db_input($_REQUEST['cType'] ?? '');
-        $vPanNo = db_input($_REQUEST['vPanNo'] ?? '');
-        $vContactPerson = db_input($_REQUEST['vContactPerson'] ?? '');
-        $vContactNum = db_input($_REQUEST['vContactNum'] ?? '');
-        $vEmail = db_input($_REQUEST['vEmail'] ?? '');
-        $cTDSApplicable = db_input($_REQUEST['cTDSApplicable'] ?? 'N');
-        $fTDSperc = floatval($_REQUEST['fTDSperc'] ?? 0);
-        $vGSTIN = db_input($_REQUEST['vGSTIN'] ?? '');
-        $iStateCode = intval($_REQUEST['iStateCode'] ?? 0);
-        $vBankAcctNum = db_input($_REQUEST['vBankAcctNum'] ?? '');
-        $vBankIFSC = db_input($_REQUEST['vBankIFSC'] ?? '');
-        $vDetails = db_input($_REQUEST['vDetails'] ?? '');
-        $cStatus = db_input($_REQUEST['cStatus'] ?? 'A');
-        $vContactNum = db_input($_REQUEST['vContactNum'] ?? '');
-        $fRate = floatval($_REQUEST['fRate'] ?? 0);
+        // Map form data to database fields
+        $vName = db_input($request->comName ?? '');
+        $vContactPerson = db_input($request->perName ?? '');
+        $vContactNum = db_input($request->perConNum ?? '');
+        $vEmail = db_input($request->email ?? '');
+        $vAddress = db_input($request->comAdd ?? '');
+        $iStateCode = intval($request->state ?? 0);
+        $vDetails = db_input($request->remarks ?? '');
+        $vPanNo = db_input($request->panNo ?? '');
+        $vGSTIN = db_input($request->gstNo ?? '');
+        $cTDSApplicable = db_input($request->tdsApp ?? 'N');
+        $fTDSperc = floatval($request->tdsPercentage ?? 0);
+        $cType = db_input($request->serviceOff ?? '');
+        $availability = $request->availability ?? []; // Handle as array
+        $vBankAcctNum = db_input($request->bankAccNo ?? '');
+        $vBankIFSC = db_input($request->bankIfscCode ?? '');
+        $cStatus = 'A'; // Default active status
 
         // Basic validation
         if (empty($vName)) {
             echo json_encode([
                 "status" => 400,
-                "message" => "Vendor name is required"
+                "message" => "Company name is required"
             ]);
             exit;
         }
 
-        // Single query to validate duplicates
+        if (empty($vContactPerson)) {
+            echo json_encode([
+                "status" => 400,
+                "message" => "Contact person name is required"
+            ]);
+            exit;
+        }
+
+        // Validate duplicates
         $validation = validateVendorData($vContactNum, $vEmail, 0);
         if (!$validation['valid']) {
             echo json_encode([
@@ -293,12 +334,23 @@ switch ($mode) {
         $iVendorID = NextID('iVendorID', 'vendor');
         $sql = "INSERT INTO vendor (iVendorID, vName, cType, vPanNo, vContactPerson, vContactNum, vEmail,
                     cTDSApplicable, fTDSperc, vGSTIN, iStateCode, vBankAcctNum, vBankIFSC,
-                    vDetails, iRank, cStatus, vContactNum, fRate
+                    vDetails, iRank, cStatus, vAddress
                 ) VALUES ($iVendorID, '$vName', '$cType', '$vPanNo', '$vContactPerson', '$vContactNum', '$vEmail',
                     '$cTDSApplicable', $fTDSperc, '$vGSTIN', $iStateCode, '$vBankAcctNum', '$vBankIFSC',
-                    '$vDetails', $iVendorID, '$cStatus', '$vContactNum', $fRate)";
+                    '$vDetails', $iVendorID, '$cStatus', '$vAddress')";
 
         if (sql_query($sql)) {
+            // Handle availability areas array - insert multiple area associations
+            if (is_array($availability) && !empty($availability)) {
+                foreach ($availability as $areaId) {
+                    $areaId = intval($areaId);
+                    if ($areaId > 0) {
+                        $areaSql = "INSERT INTO vendor_area_assoc (iVendorID, iAreaID) VALUES ($iVendorID, $areaId)";
+                        sql_query($areaSql);
+                    }
+                }
+            }
+
             echo json_encode([
                 "status" => 200,
                 "message" => "Vendor added successfully",
