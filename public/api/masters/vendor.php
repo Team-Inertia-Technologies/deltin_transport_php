@@ -1,10 +1,18 @@
 <?php
+
+ini_set('display_errors', 1);
+
 include "../../includes/common_api.php";
+
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
+// $id=1;
+// $mode = 'LIST';
+//$Token=EncodeParam($id);
+
 $request = json_decode($postdata);
 $mode = $request->mode;
-$Token = $request->Token;
+$Token = $request->token;
 $user_id = intval(DecodeParam($Token));
 
 // Validate user_id exists in user table
@@ -26,7 +34,7 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-$AREA_ARR = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A'");
+$AREA_ARR = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A'","3");
 // Function to validate vendor data and check duplicates
 function validateVendorData($vContactNum, $vEmail, $excludeVendorID = 0)
 {
@@ -73,19 +81,19 @@ switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
     case 'LIST':
-        $sql = "SELECT iVendorID, vName, vContactPerson, vMobile, vEmail, cType, iAreaID, cStatus 
+        $sql = "SELECT iVendorID, vName, vContactPerson, vContactNum, vEmail, cType, iAreaID, cStatus 
                 FROM vendor 
                 WHERE cStatus = 'A' 
                 ORDER BY iRank DESC";
         $res = sql_query($sql);
 
-        $data = [];
+        $rowData = [];
         while ($row = sql_fetch_assoc($res)) {
-            $data[] = [
+            $rowData[] = [
                 'id' => intval($row['iVendorID']),
                 'companyName' => $row['vName'] ?? '',
                 'fullName' => $row['vContactPerson'] ?? '',
-                'mobileNumber' => $row['vMobile'] ?? '',
+                'mobileNumber' => $row['vContactNum'] ?? '',
                 'email' => $row['vEmail'] ?? '',
                 'serviceOff' => $row['cType'] ?? '',
                 'availability' => $row['iAreaID']
@@ -95,8 +103,10 @@ switch ($mode) {
         echo json_encode([
             "status" => 200,
             "message" => "Vendor list fetched successfully",
-            "data" => $data,
-            "AREA_ARR" => $AREA_ARR
+            "data" => [
+                "rowData" => $rowData,
+                "AREA_ARR" => $AREA_ARR
+            ]
         ]);
         break;
 
@@ -115,7 +125,7 @@ switch ($mode) {
         // Fetch vendor details
         $sql = "SELECT iVendorID, vName, cType, vPanNo, vContactPerson, vContactNum, vEmail, 
                        cTDSApplicable, fTDSperc, vGSTIN, iStateCode, vBankAcctNum, vBankIFSC, 
-                       vDetails, iRank, cStatus, vMobile, fRate 
+                       vDetails, iRank, cStatus, vContactNum, fRate 
                 FROM vendor 
                 WHERE iVendorID = $id";
         $res = sql_query($sql);
@@ -171,7 +181,7 @@ switch ($mode) {
         $vBankIFSC = db_input($_REQUEST['vBankIFSC'] ?? '');
         $vDetails = db_input($_REQUEST['vDetails'] ?? '');
         $cStatus = db_input($_REQUEST['cStatus'] ?? 'A');
-        $vMobile = db_input($_REQUEST['vMobile'] ?? '');
+        $vContactNum = db_input($_REQUEST['vContactNum'] ?? '');
         $fRate = floatval($_REQUEST['fRate'] ?? 0);
 
         if ($id <= 0) {
@@ -208,7 +218,7 @@ switch ($mode) {
                     vBankIFSC = '$vBankIFSC',
                     vDetails = '$vDetails',
                     cStatus = '$cStatus',
-                    vMobile = '$vMobile',
+                    vContactNum = '$vContactNum',
                     fRate = $fRate
                 WHERE iVendorID = $id AND cStatus != 'X'";
 
@@ -248,7 +258,7 @@ switch ($mode) {
         $vBankIFSC = db_input($_REQUEST['vBankIFSC'] ?? '');
         $vDetails = db_input($_REQUEST['vDetails'] ?? '');
         $cStatus = db_input($_REQUEST['cStatus'] ?? 'A');
-        $vMobile = db_input($_REQUEST['vMobile'] ?? '');
+        $vContactNum = db_input($_REQUEST['vContactNum'] ?? '');
         $fRate = floatval($_REQUEST['fRate'] ?? 0);
 
         // Basic validation
@@ -273,10 +283,10 @@ switch ($mode) {
         $iVendorID = NextID('iVendorID', 'vendor');
         $sql = "INSERT INTO vendor (iVendorID, vName, cType, vPanNo, vContactPerson, vContactNum, vEmail,
                     cTDSApplicable, fTDSperc, vGSTIN, iStateCode, vBankAcctNum, vBankIFSC,
-                    vDetails, iRank, cStatus, vMobile, fRate
+                    vDetails, iRank, cStatus, vContactNum, fRate
                 ) VALUES ($iVendorID, '$vName', '$cType', '$vPanNo', '$vContactPerson', '$vContactNum', '$vEmail',
                     '$cTDSApplicable', $fTDSperc, '$vGSTIN', $iStateCode, '$vBankAcctNum', '$vBankIFSC',
-                    '$vDetails', $iVendorID, '$cStatus', '$vMobile', $fRate)";
+                    '$vDetails', $iVendorID, '$cStatus', '$vContactNum', $fRate)";
 
         if (sql_query($sql)) {
             echo json_encode([
