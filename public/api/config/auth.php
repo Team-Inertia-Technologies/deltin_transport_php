@@ -17,7 +17,7 @@ if (true) {
 			ForceOut(5);
 
 		#########################################################################################  
-		if (isset($_POST["txtusername"]) && isset($_POST["txtpassword"])) // && isset($_POST["btnlogin"]))
+		if (isset($_POST["txtusername"]) && isset($_POST["txtpassword"]) && isset($_POST["type"])) // && isset($_POST["btnlogin"]))
 		{
 			$username = db_input($_POST["txtusername"]);
 			$txtpassword = htmlspecialchars_decode(db_input2($_POST["txtpassword"]));
@@ -137,7 +137,17 @@ if (true) {
 					// if(!empty($IS_SALE_DASHBOARD) && $IS_SALE_DASHBOARD!='-1')
 					// 	$URL = 'home2.php';
 
-					$response = array('statusCode' => 200, 'message' => "Login Successful",);
+					$response = array(
+						'statusCode' => 200, 
+						'message' => "Login Successful", 
+						'data' => array(
+							'userID' => $u_id,
+							'userName' => $u_name,
+							'userLevel' => $u_level,
+							'sessionToken' => $randomtoken,
+							//'redirectURL' => $URL,
+						)
+					);
 					http_response_code(200);
 					header('Content-Type: application/json');
 					echo json_encode($response);
