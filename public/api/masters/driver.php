@@ -1,25 +1,22 @@
 <?php
+ini_set('display_errors', 1);
+
 include "../../includes/common_api.php";
+
 header('Content-Type: application/json');
+$postdata = file_get_contents("php://input");
 
-$mode = $_REQUEST['mode'] ?? '';
+$request = json_decode($postdata);
+$mode = $request->mode;
+$Token = $request->token;
 $user_id = intval(DecodeParam($Token));
-
-// Validate user_id exists in user table
-if ($user_id <= 0) {
-    echo json_encode([
-        "status" => 401,
-        "message" => "Invalid or missing user token"
-    ]);
-    exit;
-}
 
 $userCheckSql = "SELECT iUserID FROM users WHERE iUserID = $user_id AND cStatus = 'A'";
 $userCheckRes = sql_query($userCheckSql);
 
 if (sql_num_rows($userCheckRes) == 0) {
     echo json_encode([
-        "status" => 401,
+        "statusCode" => 401,
         "message" => "User not found or inactive"
     ]);
     exit;
@@ -474,7 +471,7 @@ switch ($mode) {
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
-            "status" => 400,
+            "statusCode" => 400,
             "message" => "Invalid mode parameter"
         ]);
         break;

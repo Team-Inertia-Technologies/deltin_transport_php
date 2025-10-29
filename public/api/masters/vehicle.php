@@ -1,8 +1,16 @@
 <?php
+ini_set('display_errors', 1);
+
 include "../../includes/common_api.php";
 
-$mode = $_REQUEST['mode'] ?? '';
+header('Content-Type: application/json');
+$postdata = file_get_contents("php://input");
+
+$request = json_decode($postdata);
+$mode = $request->mode;
+$Token = $request->token;
 $user_id = intval(DecodeParam($Token));
+
 
 // Validate user_id exists in user table
 if ($user_id <= 0) {
