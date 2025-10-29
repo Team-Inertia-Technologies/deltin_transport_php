@@ -13,15 +13,19 @@ include "common.master.php";
 //include_once DOCROOT.'includes/libs/google_client/vendor/autoload.php';
 
 // Set CORS headers for all API requests
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
+
+// Allow all origins for API requests
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-header("Access-Control-Allow-Credentials: true");
+
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, X-File-Name, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform, User-Agent, Referer");
+// Note: Cannot use credentials with wildcard origin
+header("Access-Control-Max-Age: 86400"); // Cache preflight for 24 hours
 header("Referrer-Policy: strict-origin-when-cross-origin");
 
 // Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }

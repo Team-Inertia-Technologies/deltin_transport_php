@@ -5,7 +5,6 @@ ini_set('display_errors', 1);
 include "../../includes/common_api.php";
 
 header('Content-Type: application/json');
-header("Access-Control-Allow-Origin: *");
 $postdata = file_get_contents("php://input");
 // $id=1;
 // $mode = 'LIST';
