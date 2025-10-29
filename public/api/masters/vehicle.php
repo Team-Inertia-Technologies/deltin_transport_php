@@ -6,9 +6,10 @@ include "../../includes/common_api.php";
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
 
-$request = json_decode($postdata);
-$mode = $request->mode;
-$Token = $request->token;
+$request = json_decode($postdata, true); // Decode as associative array
+$_REQUEST = array_merge($_REQUEST, $request ?? []); // Merge with $_REQUEST
+$mode = $_REQUEST['mode'] ?? '';
+$Token = $_REQUEST['token'] ?? '';
 $user_id = intval(DecodeParam($Token));
 
 
@@ -285,14 +286,6 @@ switch ($mode) {
             exit;
         }
 
-        if ($vendor <= 0) {
-            echo json_encode([
-                "statusCode" => 400,
-                "message" => "Vendor is required"
-            ]);
-            exit;
-        }
-
         if ($category <= 0) {
             echo json_encode([
                 "statusCode" => 400,
@@ -384,14 +377,6 @@ switch ($mode) {
             echo json_encode([
                 "statusCode" => 400,
                 "message" => "Vehicle number is required"
-            ]);
-            exit;
-        }
-
-        if ($vendor <= 0) {
-            echo json_encode([
-                "statusCode" => 400,
-                "message" => "Vendor is required"
             ]);
             exit;
         }

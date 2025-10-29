@@ -10,9 +10,10 @@ $postdata = file_get_contents("php://input");
 // $mode = 'LIST';
 //$Token=EncodeParam($id);
 
-$request = json_decode($postdata);
-$mode = $request->mode;
-$Token = $request->token;
+$request = json_decode($postdata, true); // Decode as associative array
+$_REQUEST = array_merge($_REQUEST, $request ?? []); // Merge with $_REQUEST
+$mode = $_REQUEST['mode'] ?? '';
+$Token = $_REQUEST['token'] ?? '';
 $user_id = intval(DecodeParam($Token));
 
 // Validate user_id exists in user table
