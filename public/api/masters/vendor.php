@@ -18,7 +18,7 @@ $user_id = intval(DecodeParam($Token));
 // Validate user_id exists in user table
 if ($user_id <= 0) {
     echo json_encode([
-        "status" => 401,
+        "statusCode" => 401,
         "message" => "Invalid or missing user token"
     ]);
     exit;
@@ -29,7 +29,7 @@ $userCheckRes = sql_query($userCheckSql);
 
 if (sql_num_rows($userCheckRes) == 0) {
     echo json_encode([
-        "status" => 401,
+        "statusCode" => 401,
         "message" => "User not found or inactive"
     ]);
     exit;
@@ -130,7 +130,7 @@ switch ($mode) {
         }
 
         echo json_encode([
-            "status" => 200,
+            "statusCode" => 200,
             "message" => "Vendor list fetched successfully",
             "data" => [
                 "rowData" => $rowData,
@@ -157,7 +157,7 @@ switch ($mode) {
         $id = isset($request->iVendorID) ? intval($request->iVendorID) : (isset($_REQUEST['iVendorID']) ? intval($_REQUEST['iVendorID']) : 0);
         if ($id <= 0) {
             echo json_encode([
-                "status" => 400,
+                "statusCode" => 400,
                 "message" => "Invalid Vendor ID"
             ]);
             exit;
@@ -173,7 +173,7 @@ switch ($mode) {
 
         if (sql_num_rows($res) == 0) {
             echo json_encode([
-                "status" => 404,
+                "statusCode" => 404,
                 "message" => "Vendor not found"
             ]);
             exit;
@@ -225,7 +225,7 @@ switch ($mode) {
         ];
 
         echo json_encode([
-            "status" => 200,
+            "statusCode" => 200,
             "message" => "Vendor details fetched successfully",
             "data" => [
                 "vendor" => $vendorData,
@@ -261,7 +261,7 @@ switch ($mode) {
 
         if ($id <= 0) {
             echo json_encode([
-                "status" => 400,
+                "statusCode" => 400,
                 "message" => "Vendor ID is required for update"
             ]);
             exit;
@@ -270,7 +270,7 @@ switch ($mode) {
         // Basic validation
         if (empty($vName)) {
             echo json_encode([
-                "status" => 400,
+                "statusCode" => 400,
                 "message" => "Company name is required"
             ]);
             exit;
@@ -278,7 +278,7 @@ switch ($mode) {
 
         if (empty($vContactPerson)) {
             echo json_encode([
-                "status" => 400,
+                "statusCode" => 400,
                 "message" => "Contact person name is required"
             ]);
             exit;
@@ -288,7 +288,7 @@ switch ($mode) {
         $validation = validateVendorData($vContactNum, $vEmail, $id);
         if (!$validation['valid']) {
             echo json_encode([
-                "status" => 409,
+                "statusCode" => 409,
                 "message" => $validation['message']
             ]);
             exit;
@@ -332,17 +332,17 @@ switch ($mode) {
             }
 
             echo json_encode([
-                "status" => 200,
+                "statusCode" => 200,
                 "message" => "Vendor updated successfully"
             ]);
         } else if ($result && sql_affected_rows() == 0) {
             echo json_encode([
-                "status" => 404,
+                "statusCode" => 404,
                 "message" => "Vendor not found or no changes made"
             ]);
         } else {
             echo json_encode([
-                "status" => 500,
+                "statusCode" => 500,
                 "message" => "Failed to update vendor"
             ]);
         }
@@ -371,7 +371,7 @@ switch ($mode) {
         // Basic validation
         if (empty($vName)) {
             echo json_encode([
-                "status" => 400,
+                "statusCode" => 400,
                 "message" => "Company name is required"
             ]);
             exit;
@@ -379,7 +379,7 @@ switch ($mode) {
 
         if (empty($vContactPerson)) {
             echo json_encode([
-                "status" => 400,
+                "statusCode" => 400,
                 "message" => "Contact person name is required"
             ]);
             exit;
@@ -389,7 +389,7 @@ switch ($mode) {
         $validation = validateVendorData($vContactNum, $vEmail, 0);
         if (!$validation['valid']) {
             echo json_encode([
-                "status" => 409,
+                "statusCode" => 409,
                 "message" => $validation['message']
             ]);
             exit;
@@ -416,13 +416,13 @@ switch ($mode) {
             }
 
             echo json_encode([
-                "status" => 200,
+                "statusCode" => 200,
                 "message" => "Vendor added successfully",
                 "data" => ["iVendorID" => $iVendorID]
             ]);
         } else {
             echo json_encode([
-                "status" => 500,
+                "statusCode" => 500,
                 "message" => "Failed to add vendor"
             ]);
         }
@@ -432,7 +432,7 @@ switch ($mode) {
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
-            "status" => 400,
+            "statusCode" => 400,
             "message" => "Invalid mode parameter"
         ]);
         break;

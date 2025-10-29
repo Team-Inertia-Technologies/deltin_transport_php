@@ -7,7 +7,7 @@ $user_id = intval(DecodeParam($Token));
 // Validate user_id exists in user table
 if ($user_id <= 0) {
     echo json_encode([
-        "status" => 401,
+        "statusCode" => 401,
         "message" => "Invalid or missing user token"
     ]);
     exit;
@@ -18,7 +18,7 @@ $userCheckRes = sql_query($userCheckSql);
 
 if (sql_num_rows($userCheckRes) == 0) {
     echo json_encode([
-        "status" => 401,
+        "statusCode" => 401,
         "message" => "User not found or inactive"
     ]);
     exit;
@@ -90,7 +90,7 @@ switch ($mode) {
         }
 
         echo json_encode([
-            "status" => 200,
+            "statusCode" => 200,
             "message" => "Options loaded successfully",
             "data" => [
                 'availableOpt' => $availableOpt,
@@ -137,7 +137,7 @@ switch ($mode) {
         }
 
         echo json_encode([
-            "status" => 200,
+            "statusCode" => 200,
             "message" => "Vehicle list fetched successfully",
             "data" => $data
         ]);
@@ -148,7 +148,7 @@ switch ($mode) {
         $id = isset($_REQUEST['iVehicleID']) ? intval($_REQUEST['iVehicleID']) : 0;
         if ($id <= 0) {
             echo json_encode([
-                "status" => 400,
+                "statusCode" => 400,
                 "message" => "Invalid Vehicle ID"
             ]);
             exit;
@@ -166,7 +166,7 @@ switch ($mode) {
 
         if (sql_num_rows($res) == 0) {
             echo json_encode([
-                "status" => 404,
+                "statusCode" => 404,
                 "message" => "Vehicle not found"
             ]);
             exit;
@@ -222,7 +222,7 @@ switch ($mode) {
         }
 
         echo json_encode([
-            "status" => 200,
+            "statusCode" => 200,
             "message" => "Vehicle details fetched successfully",
             "data" => [
                 'selectedDriverType' => intval($row['iType'] ?? 0),
@@ -248,49 +248,76 @@ switch ($mode) {
         break;
     // ===================== CASE 4: UPDATE_VEHICLE =====================
     case 'UPDATE_VEHICLE':
+        // Handle form data with the new structure (matching ADD_VEHICLE)
         $id = intval($_REQUEST['iVehicleID'] ?? 0);
-        $vName = db_input($_REQUEST['vName'] ?? '');
-        $vRnum = db_input($_REQUEST['vRnum'] ?? '');
-        $iCatID = intval($_REQUEST['iCatID'] ?? 0);
-        $iVendorID = intval($_REQUEST['iVendorID'] ?? 0);
-        $iSeats = intval($_REQUEST['iSeats'] ?? 0);
-        $iAreaID = intval($_REQUEST['iAreaID'] ?? 0);
-        $availability = $_REQUEST['availability'] ?? []; // Handle as array (same as vendor.php)
-        $cStatus = db_input($_REQUEST['cStatus'] ?? 'A');
+        $type = intval($_REQUEST['type'] ?? 0); // Driver type
+        $category = intval($_REQUEST['category'] ?? 0); // Vehicle category
+        $vendor = intval($_REQUEST['vendor'] ?? 0); // Vendor ID
+        $vehiNum = db_input($_REQUEST['vehiNum'] ?? ''); // Vehicle number
+        $availability = $_REQUEST['availability'] ?? []; // Area availability array
+        $dateOfReg = db_input($_REQUEST['dateOfReg'] ?? ''); // Registration date
+        $dateOfExp = db_input($_REQUEST['dateOfExp'] ?? ''); // Expiry date
+        $touTax = db_input($_REQUEST['touTax'] ?? ''); // Tourist tax (if needed)
+        $perNum = db_input($_REQUEST['perNum'] ?? ''); // Permit number
 
         if ($id <= 0) {
             echo json_encode([
-                "status" => 400,
+                "statusCode" => 400,
                 "message" => "Vehicle ID is required for update"
             ]);
             exit;
         }
 
-        // Single query to validate registration number
-        $validation = validateVehicleData($vRnum, $id);
+        // Basic validation
+        if (empty($vehiNum)) {
+            echo json_encode([
+                "statusCode" => 400,
+                "message" => "Vehicle number is required"
+            ]);
+            exit;
+        }
+
+        if ($vendor <= 0) {
+            echo json_encode([
+                "statusCode" => 400,
+                "message" => "Vendor is required"
+            ]);
+            exit;
+        }
+
+        if ($category <= 0) {
+            echo json_encode([
+                "statusCode" => 400,
+                "message" => "Category is required"
+            ]);
+            exit;
+        }
+
+        // Validate vehicle registration number
+        $validation = validateVehicleData($vehiNum, $id);
         if (!$validation['valid']) {
             echo json_encode([
-                "status" => 409,
+                "statusCode" => 409,
                 "message" => $validation['message']
             ]);
             exit;
         }
 
-        // Check if vehicle exists and update in single operation
+        // Update vehicle with new structure
         $sql = "UPDATE vehicle SET 
-                    vName = '$vName',
-                    vRnum = '$vRnum',
-                    iCatID = $iCatID,
-                    iVendorID = $iVendorID,
-                    iSeats = $iSeats,
-                    iAreaID = $iAreaID,
-                    cStatus = '$cStatus'
+                    vRnum = '$vehiNum',
+                    iCatID = $category,
+                    iVendorID = $vendor,
+                    iType = $type,
+                    dRegistration = " . (!empty($dateOfReg) ? "'$dateOfReg'" : "NULL") . ",
+                    dExpiry = " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ",
+                    vTouristPerNo = '$perNum'
                 WHERE iVehicleID = $id AND cStatus = 'A'";
 
         $result = sql_query($sql);
 
         if ($result && sql_affected_rows() > 0) {
-            // Update availability areas - first delete existing associations (same as vendor.php)
+            // Update availability areas - first delete existing associations
             $deleteAreaSql = "DELETE FROM vehicle_area_assoc WHERE iVehicleID = $id";
             sql_query($deleteAreaSql);
 
@@ -306,18 +333,27 @@ switch ($mode) {
             }
 
             echo json_encode([
-                "status" => 200,
-                "message" => "Vehicle updated successfully"
+                "data" => [
+                    "message" => "Vehicle updated successfully"
+                ],
+                "token" => $Token,
+                "statusCode" => 200
             ]);
         } else if ($result && sql_affected_rows() == 0) {
             echo json_encode([
-                "status" => 404,
-                "message" => "Vehicle not found or no changes made"
+                "data" => [
+                    "message" => "Vehicle not found or no changes made"
+                ],
+                "token" => $Token,
+                "statusCode" => 404
             ]);
         } else {
             echo json_encode([
-                "status" => 500,
-                "message" => "Failed to update vehicle"
+                "data" => [
+                    "message" => "Failed to update vehicle"
+                ],
+                "token" => $Token,
+                "statusCode" => 500
             ]);
         }
         break;
@@ -338,7 +374,7 @@ switch ($mode) {
         // Basic validation
         if (empty($vehiNum)) {
             echo json_encode([
-                "status" => 400,
+                "statusCode" => 400,
                 "message" => "Vehicle number is required"
             ]);
             exit;
@@ -346,7 +382,7 @@ switch ($mode) {
 
         if ($vendor <= 0) {
             echo json_encode([
-                "status" => 400,
+                "statusCode" => 400,
                 "message" => "Vendor is required"
             ]);
             exit;
@@ -354,7 +390,7 @@ switch ($mode) {
 
         if ($category <= 0) {
             echo json_encode([
-                "status" => 400,
+                "statusCode" => 400,
                 "message" => "Category is required"
             ]);
             exit;
@@ -364,7 +400,7 @@ switch ($mode) {
         $validation = validateVehicleData($vehiNum, 0);
         if (!$validation['valid']) {
             echo json_encode([
-                "status" => 409,
+                "statusCode" => 409,
                 "message" => $validation['message']
             ]);
             exit;
@@ -392,13 +428,13 @@ switch ($mode) {
             }
 
             echo json_encode([
-                "status" => 200,
+                "statusCode" => 200,
                 "message" => "Vehicle added successfully",
                 "data" => ["iVehicleID" => $iVehicleID]
             ]);
         } else {
             echo json_encode([
-                "status" => 500,
+                "statusCode" => 500,
                 "message" => "Failed to add vehicle"
             ]);
         }
@@ -408,7 +444,7 @@ switch ($mode) {
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
-            "status" => 400,
+            "statusCode" => 400,
             "message" => "Invalid mode parameter"
         ]);
         break;
