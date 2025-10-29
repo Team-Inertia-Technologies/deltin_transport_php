@@ -1,7 +1,5 @@
 <?php
 include "../../includes/common_api.php";
-header('Content-Type: application/json');
-header("Access-Control-Allow-Origin: *");
 
 $mode = $_REQUEST['mode'] ?? '';
 $user_id = intval(DecodeParam($Token));
@@ -60,33 +58,33 @@ switch ($mode) {
             $availableOpt[] = ['id' => intval($id), 'label' => $label];
         }
 
-        // Driver type options
-        $driverTypeOpt = [];
+        // Driver type options with "choose" option
+        $driverTypeOpt = [['id' => 0, 'title' => 'Choose']];
         foreach ($VEHICLE_DRIVER_TYPE as $id => $title) {
             $driverTypeOpt[] = [
-                'id' => $id,
+                'id' => intval($id),
                 'title' => $title
             ];
         }
 
-        // Category options from vehicle_category table
-        $categoryOpt = [];
+        // Category options with "choose" option
+        $categoryOpt = [['id' => 0, 'title' => 'Choose']];
         $categorySql = "SELECT iCatID, vName FROM category WHERE cStatus = 'A' ORDER BY vName";
         $categoryRes = sql_query($categorySql);
         while ($categoryRow = sql_fetch_assoc($categoryRes)) {
             $categoryOpt[] = [
-                'id' => $categoryRow['iCatID'],
+                'id' => intval($categoryRow['iCatID']),
                 'title' => $categoryRow['vName']
             ];
         }
 
-        // Vendor options
-        $vendorOpt = [];
+        // Vendor options with "choose" option
+        $vendorOpt = [['id' => 0, 'name' => 'Choose']];
         $vendorSql = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
         $vendorRes = sql_query($vendorSql);
         while ($vendorRow = sql_fetch_assoc($vendorRes)) {
             $vendorOpt[] = [
-                'id' => $vendorRow['iVendorID'],
+                'id' => intval($vendorRow['iVendorID']),
                 'name' => $vendorRow['vName']
             ];
         }
@@ -125,7 +123,7 @@ switch ($mode) {
             while ($areaRow = sql_fetch_assoc($areaRes)) {
                 $availability[] = intval($areaRow['iAreaID']);
             }
-            
+
             $data[] = [
                 'id' => $row['iVehicleID'],
                 'vehicleNumber' => $row['vRnum'],
@@ -133,7 +131,7 @@ switch ($mode) {
                 'rate' => $row['fRate'],
                 'vehicleOwnerID' => $row['iVendorID'],
                 'vehicleOwner' => $row['vendor_name'] ?? '',
-        
+
                 'availability' => $availability
             ];
         }
@@ -156,9 +154,10 @@ switch ($mode) {
             exit;
         }
 
-        // Optimized query with JOINs to get vendor and vehicle_category data in single query
-        $sql = "SELECT v.iVehicleID, v.vName, v.vRnum, v.iCatID, v.iVendorID, v.iSeats, 
-                       v.iAreaID, v.cStatus, vn.vName as vendor_name, c.vName as category_name
+        // Optimized query with JOINs to get vendor and category data in single query
+        $sql = "SELECT v.iVehicleID, v.vName, v.vRnum, v.iCatID, v.iVendorID, v.iSeats, v.iType,
+                       v.iAreaID, v.dRegistration, v.dExpiry, v.vTouristPerNo, v.cStatus, 
+                       vn.vName as vendor_name, c.vName as category_name
                 FROM vehicle v
                 LEFT JOIN vendor vn ON v.iVendorID = vn.iVendorID AND vn.cStatus = 'A'
                 LEFT JOIN category c ON v.iCatID = c.iCatID AND c.cStatus = 'A'
@@ -184,28 +183,67 @@ switch ($mode) {
             $availability[] = intval($areaRow['iAreaID']);
         }
 
-        $vehicle = [
-            'iVehicleID' => $row['iVehicleID'],
-            'vName' => $row['vName'],
-            'vRnum' => $row['vRnum'],
-            'iSeats' => $row['iSeats'],
-            'iAreaID' => $row['iAreaID'],
-            'cStatus' => $row['cStatus'],
-            'availability' => $availability,
-            'vendor' => [
-                'id' => $row['iVendorID'],
-                'name' => $row['vendor_name'] ?? ''
-            ],
-            'vehicle_category' => [
-                'id' => $row['iCatID'],
-                'name' => $row['category_name'] ?? ''
-            ]
-        ];
+        // Prepare option arrays with "choose" options
+        $AREA_ARR_RAW = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank", "3");
+        $availableOpt = [];
+        foreach ($AREA_ARR_RAW as $id => $label) {
+            $availableOpt[] = ['id' => intval($id), 'label' => $label];
+        }
+
+        // Driver type options with "choose" option
+        $driverTypeOpt = [['id' => 0, 'title' => 'Choose']];
+        foreach ($VEHICLE_DRIVER_TYPE as $id => $title) {
+            $driverTypeOpt[] = [
+                'id' => intval($id),
+                'title' => $title
+            ];
+        }
+
+        // Category options with "choose" option
+        $categoryOpt = [['id' => 0, 'title' => 'Choose']];
+        $categorySql = "SELECT iCatID, vName FROM category WHERE cStatus = 'A' ORDER BY vName";
+        $categoryRes = sql_query($categorySql);
+        while ($categoryRow = sql_fetch_assoc($categoryRes)) {
+            $categoryOpt[] = [
+                'id' => intval($categoryRow['iCatID']),
+                'title' => $categoryRow['vName']
+            ];
+        }
+
+        // Vendor options with "choose" option
+        $vendorOpt = [['id' => 0, 'name' => 'Choose']];
+        $vendorSql = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
+        $vendorRes = sql_query($vendorSql);
+        while ($vendorRow = sql_fetch_assoc($vendorRes)) {
+            $vendorOpt[] = [
+                'id' => intval($vendorRow['iVendorID']),
+                'name' => $vendorRow['vName']
+            ];
+        }
 
         echo json_encode([
             "status" => 200,
             "message" => "Vehicle details fetched successfully",
-            "data" => $vehicle
+            "data" => [
+                'selectedDriverType' => intval($row['iType'] ?? 0),
+                'selectedAvailOpt' => $availability,
+                'selectedCategoryType' => intval($row['iCatID'] ?? 0),
+                'selectedVendor' => intval($row['iVendorID'] ?? 0),
+                'vehicleData' => [
+                    'iVehicleID' => intval($row['iVehicleID']),
+                    'vName' => $row['vName'] ?? '',
+                    'vRnum' => $row['vRnum'] ?? '',
+                    'iSeats' => intval($row['iSeats'] ?? 0),
+                    'dateOfReg' => $row['dRegistration'] ?? '',
+                    'dateOfExp' => $row['dExpiry'] ?? '',
+                    'perNum' => $row['vTouristPerNo'] ?? '',
+                    'cStatus' => $row['cStatus'] ?? 'A'
+                ],
+                'availableOpt' => $availableOpt,
+                'driverTypeOpt' => $driverTypeOpt,
+                'categoryOpt' => $categoryOpt,
+                'vendorOpt' => $vendorOpt
+            ]
         ]);
         break;
     // ===================== CASE 4: UPDATE_VEHICLE =====================
@@ -293,7 +331,7 @@ switch ($mode) {
         $availability = $_REQUEST['availability'] ?? []; // Area availability array
         $dateOfReg = db_input($_REQUEST['dateOfReg'] ?? ''); // Registration date
         $dateOfExp = db_input($_REQUEST['dateOfExp'] ?? ''); // Expiry date
-       
+
         $perNum = db_input($_REQUEST['perNum'] ?? ''); // Permit number
         $cStatus = 'A'; // Default active status
 
@@ -333,7 +371,7 @@ switch ($mode) {
         }
 
         $iVehicleID = NextID('iVehicleID', 'vehicle');
-        
+
         // Using the newly added database fields
         $sql = "INSERT INTO vehicle (iVehicleID, vRnum, iCatID, iVendorID, iType, dRegistration, dExpiry, vTouristPerNo, cStatus) 
                 VALUES ($iVehicleID, '$vehiNum', $category, $vendor, $type, 
@@ -366,7 +404,7 @@ switch ($mode) {
         }
         break;
 
-    
+
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
