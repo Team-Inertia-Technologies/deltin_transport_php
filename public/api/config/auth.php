@@ -154,7 +154,7 @@ if (true) {
 				}
 			}
 		} else
-			ForceOut(4);
+			session_destroy();
 			$response = array(
 				"error" => array(
 					"description" => "Login Failed",
