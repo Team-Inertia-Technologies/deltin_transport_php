@@ -32,7 +32,7 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-$VEHICLE_CATEGORY_ARR = GetXArrFromYID("SELECT iCatID, vName FROM vehicle_category WHERE cStatus='A' ORDER BY vName", "3");
+$VEHICLE_CATEGORY_ARR = GetXArrFromYID("SELECT iVCatID, vName FROM vehicle_category WHERE cStatus='A' ORDER BY vName", "3");
 // Function to validate vehicle registration number
 function validateVehicleData($vRnum, $excludeVehicleID = 0)
 {
@@ -193,12 +193,12 @@ switch ($mode) {
         }
 
         // Optimized query with JOINs to get vendor and category data in single query
-        $sql = "SELECT v.iVehicleID, v.vName, v.vRnum, v.iCatID, v.iVendorID, v.iSeats, v.iType,
+        $sql = "SELECT v.iVehicleID, v.vName, v.vRnum, v.iVCatID, v.iVendorID, v.iSeats, v.iType,
                        v.iAreaID, v.dRegistration, v.dExpiry, v.vTouristPerNo, v.cStatus, 
                        vn.vName as vendor_name, c.vName as category_name
                 FROM vehicle v
                 LEFT JOIN vendor vn ON v.iVendorID = vn.iVendorID AND vn.cStatus = 'A'
-                LEFT JOIN category c ON v.iCatID = c.iCatID AND c.cStatus = 'A'
+                LEFT JOIN category c ON v.iVCatID = c.iVCatID AND c.cStatus = 'A'
                 WHERE v.iVehicleID = $id";
         $res = sql_query($sql);
 
@@ -263,7 +263,7 @@ switch ($mode) {
             "data" => [
                 'selectedDriverType' => intval($row['iType'] ?? 0),
                 'selectedAvailOpt' => $availability,
-                'selectedCategoryType' => intval($row['iCatID'] ?? 0),
+                'selectedCategoryType' => intval($row['iVCatID'] ?? 0),
                 'selectedVendor' => intval($row['iVendorID'] ?? 0),
                 'vehicleData' => [
                     'iVehicleID' => intval($row['iVehicleID']),
@@ -336,7 +336,7 @@ switch ($mode) {
         // Update vehicle with new structure
         $sql = "UPDATE vehicle SET 
                     vRnum = '$vehiNum',
-                    iCatID = $category,
+                    iVCatID = $category,
                     iVendorID = $vendor,
                     iType = $type,
                     dRegistration = " . (!empty($dateOfReg) ? "'$dateOfReg'" : "NULL") . ",
@@ -433,7 +433,7 @@ switch ($mode) {
         $iVehicleID = NextID('iVehicleID', 'vehicle');
 
         // Using the newly added database fields
-        $sql = "INSERT INTO vehicle (iVehicleID, vRnum, iCatID, iVendorID, iType, dRegistration, dExpiry, vTouristPerNo, cStatus) 
+        $sql = "INSERT INTO vehicle (iVehicleID, vRnum, iVCatID, iVendorID, iType, dRegistration, dExpiry, vTouristPerNo, cStatus) 
                 VALUES ($iVehicleID, '$vehiNum', $category, $vendor, $type, 
                     " . (!empty($dateOfReg) ? "'$dateOfReg'" : "NULL") . ", 
                     " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ", 
