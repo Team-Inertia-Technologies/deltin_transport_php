@@ -72,53 +72,102 @@ switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
     case 'LIST':
-        // Optimized query with JOIN to get vendor data in single query
+        // Optimized query with JOINs to get vendor and vehicle data in single query
         $sql = "SELECT d.iDriverID, d.vName, d.vMobileNum, d.vEmpCode, d.iVendorID, 
-                       d.iAreaID, d.iRank, d.cStatus, v.vName as vendor_name
+                       d.iAreaID, d.iRank, d.cStatus, v.vName as vendor_name,
+                       vh.vRnum, vh.iSeats
                 FROM driver d
                 LEFT JOIN vendor v ON d.iVendorID = v.iVendorID AND v.cStatus != 'X'
+                LEFT JOIN vehicle vh ON d.iDriverID = vh.iDriverID AND vh.cStatus = 'A'
                 WHERE d.cStatus != 'X' 
                 ORDER BY d.iRank DESC";
         $res = sql_query($sql);
 
-        $data = [];
+        $rowData = [];
         while ($row = sql_fetch_assoc($res)) {
+            // Format vehicle assignment
+            $vehicleAssigned = '';
+            if (!empty($row['vRnum'])) {
+                $vehicleAssigned = $row['vRnum'];
+                if (!empty($row['iSeats'])) {
+                    $vehicleAssigned .= ' (' . $row['iSeats'] . ')';
+                }
+            }
+
             $driver = [
-                'iDriverID' => $row['iDriverID'],
-                'vName' => db_output2($row['vName']),
-                'vMobileNum' => $row['vMobileNum'],
-                'vEmpCode' => db_output2($row['vEmpCode']),
-                'iAreaID' => $row['iAreaID'],
-                'cStatus' => $row['cStatus'],
-                'vendor' => [
-                    'id' => $row['iVendorID'],
-                    'name' => $row['vendor_name'] ?? ''
-                ]
+                'id' => intval($row['iDriverID']),
+                'fullName' => db_output2($row['vName']),
+                'mobileNumber' => $row['vMobileNum'],
+                'owner' => db_output2($row['vendor_name'] ?? ''),
+                'vehicleAssigned' => $vehicleAssigned
             ];
-            $data[] = $driver;
+            $rowData[] = $driver;
         }
 
         echo json_encode([
-            "status" => 200,
-            "message" => "Driver list fetched successfully",
-            "data" => $data
+            "data" => [
+                "rowData" => $rowData
+            ],
+            "statusCode" => 200
         ]);
         break;
 
-    // ===================== CASE 2: DRIVER_DETAILS =====================
+    // ===================== CASE 2: ONLOAD =====================
+    case 'ONLOAD':
+        // Available options (areas from gen_area table)
+        $AREA_ARR_RAW = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank", "3");
+        $availableOpt = [];
+        foreach ($AREA_ARR_RAW as $id => $label) {
+            $availableOpt[] = ['id' => intval($id), 'label' => $label];
+        }
+
+        // Driver type options with "choose" option
+        $driverTypeOpt = [['id' => 0, 'title' => 'Choose']];
+        foreach ($VEHICLE_DRIVER_TYPE as $id => $title) {
+            $driverTypeOpt[] = [
+                'id' => intval($id),
+                'title' => $title
+            ];
+        }
+
+        // Vendor options with "choose" option
+        $vendorOpt = [['id' => 0, 'title' => 'Choose']];
+        $vendorSql = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
+        $vendorRes = sql_query($vendorSql);
+        while ($vendorRow = sql_fetch_assoc($vendorRes)) {
+            $vendorOpt[] = [
+                'id' => intval($vendorRow['iVendorID']),
+                'title' => $vendorRow['vName']
+            ];
+        }
+
+        echo json_encode([
+            "data" => [
+                'availableOpt' => $availableOpt,
+                'driverTypeOpt' => $driverTypeOpt,
+                'vendorOpt' => $vendorOpt
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
+    // ===================== CASE 3: DRIVER_DETAILS =====================
     case 'DRIVER_DETAILS':
-        $id = isset($_REQUEST['iDriverID']) ? intval($_REQUEST['iDriverID']) : 0;
+        $id = isset($_REQUEST['driverId']) ? intval($_REQUEST['driverId']) : 0;
         if ($id <= 0) {
             echo json_encode([
-                "status" => 400,
-                "message" => "Invalid Driver ID"
+                "data" => [
+                    "message" => "Invalid Driver ID"
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
 
-        // Optimized query with JOIN to get vendor data in single query
+        // Optimized query with JOIN to get vendor data and all new fields
         $sql = "SELECT d.iDriverID, d.vName, d.vMobileNum, d.vEmpCode, d.iVendorID, 
-                       d.iAreaID, d.iRank, d.cStatus, v.vName as vendor_name
+                       d.iType, d.vBatchNo, d.dExpiry, d.iAreaID, d.iRank, d.cStatus, 
+                       v.vName as vendor_name
                 FROM driver d
                 LEFT JOIN vendor v ON d.iVendorID = v.iVendorID AND v.cStatus != 'X'
                 WHERE d.iDriverID = $id";
@@ -126,142 +175,298 @@ switch ($mode) {
 
         if (sql_num_rows($res) == 0) {
             echo json_encode([
-                "status" => 404,
-                "message" => "Driver not found"
+                "data" => [
+                    "message" => "Driver not found"
+                ],
+                "statusCode" => 404
             ]);
             exit;
         }
 
         $row = sql_fetch_assoc($res);
 
-        $driver = [
-            'iDriverID' => $row['iDriverID'],
-            'vName' => db_output2($row['vName']),
-            'vMobileNum' => $row['vMobileNum'],
-            'vEmpCode' => $row['vEmpCode'],
-            'iAreaID' => $row['iAreaID'],
-            'cStatus' => $row['cStatus'],
-            'vendor' => [
-                'id' => $row['iVendorID'],
-                'name' => db_output2($row['vendor_name'] ?? '')
-            ]
+        // Get availability areas for this driver from driver_area_assoc table
+        $areaSql = "SELECT iAreaID FROM driver_area_assoc WHERE iDriverID = $id";
+        $areaRes = sql_query($areaSql);
+
+        $selectedAvailOpt = [];
+        while ($areaRow = sql_fetch_assoc($areaRes)) {
+            $selectedAvailOpt[] = intval($areaRow['iAreaID']);
+        }
+
+        // Prepare option arrays
+        $AREA_ARR_RAW = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank", "3");
+        $availableOpt = [];
+        foreach ($AREA_ARR_RAW as $id => $label) {
+            $availableOpt[] = ['id' => intval($id), 'label' => $label];
+        }
+
+        // Driver type options with "choose" option
+        $driverTypeOpt = [['id' => 0, 'title' => 'Choose']];
+        foreach ($VEHICLE_DRIVER_TYPE as $id => $title) {
+            $driverTypeOpt[] = [
+                'id' => intval($id),
+                'title' => $title
+            ];
+        }
+
+        // Vendor options with "choose" option
+        $vendorOpt = [['id' => 0, 'title' => 'Choose']];
+        $vendorSql = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
+        $vendorRes = sql_query($vendorSql);
+        while ($vendorRow = sql_fetch_assoc($vendorRes)) {
+            $vendorOpt[] = [
+                'id' => intval($vendorRow['iVendorID']),
+                'title' => $vendorRow['vName']
+            ];
+        }
+
+        // Driver data using the same variable names as in ADD/UPDATE
+        $driverData = [
+            'iDriverID' => intval($row['iDriverID']),
+            'name' => db_output2($row['vName']),
+            'mobNum' => $row['vMobileNum'],
+            'empCode' => db_output2($row['vEmpCode']),
+            'vendorID' => intval($row['iVendorID']),
+            'type' => intval($row['iType'] ?? 0),
+            'batchNo' => db_output2($row['vBatchNo'] ?? ''),
+            'dateOfExp' => $row['dExpiry'] ?? '',
+            'cStatus' => $row['cStatus']
         ];
 
         echo json_encode([
-            "status" => 200,
-            "message" => "Driver details fetched successfully",
-            "data" => $driver
+            "data" => [
+                'selectedDriverType' => intval($row['iType'] ?? 0),
+                'selectedVendor' => intval($row['iVendorID']),
+                'selectedAvailOpt' => $selectedAvailOpt,
+                'driverData' => $driverData,
+                'availableOpt' => $availableOpt,
+                'driverTypeOpt' => $driverTypeOpt,
+                'vendorOpt' => $vendorOpt
+            ],
+            "statusCode" => 200
         ]);
         break;
 
-    // ===================== CASE 3: UPDATE_DRIVER =====================
+    // ===================== CASE 4: UPDATE_DRIVER =====================
     case 'UPDATE_DRIVER':
+        // Handle form data with the new structure (matching ADD_DRIVER)
         $id = intval($_REQUEST['iDriverID'] ?? 0);
-        $vName = db_input($_REQUEST['vName'] ?? '');
-        $vMobileNum = db_input($_REQUEST['vMobileNum'] ?? '');
-        $vEmpCode = db_input($_REQUEST['vEmpCode'] ?? '');
-        $iVendorID = intval($_REQUEST['iVendorID'] ?? 0);
-        $iAreaID = intval($_REQUEST['iAreaID'] ?? 0);
-        $cStatus = db_input($_REQUEST['cStatus'] ?? 'A');
+        $type = intval($_REQUEST['type'] ?? 0); // Driver type
+        $vendorID = intval($_REQUEST['vendorID'] ?? 0); // Vendor ID
+        $empCode = db_input($_REQUEST['empCode'] ?? ''); // Employee code
+        $name = db_input($_REQUEST['name'] ?? ''); // Driver name
+        $mobNum = db_input($_REQUEST['mobNum'] ?? ''); // Mobile number
+        $availability = $_REQUEST['availability'] ?? []; // Area availability array
+        $batchNo = db_input($_REQUEST['batchNo'] ?? ''); // Batch number (vBatchNo)
+        $dateOfExp = db_input($_REQUEST['dateOfExp'] ?? ''); // Expiry date (dExpiry)
 
         if ($id <= 0) {
             echo json_encode([
-                "status" => 400,
-                "message" => "Driver ID is required for update"
+                "data" => [
+                    "message" => "Driver ID is required for update"
+                ],
+                "token" => $Token,
+                "statusCode" => 400
             ]);
             exit;
         }
 
-        // Single query to check driver existence and validate duplicates
-        $validation = validateDriverData($vMobileNum, $vEmpCode, $id);
+        // Basic validation
+        if (empty($name)) {
+            echo json_encode([
+                "data" => [
+                    "message" => "Driver name is required"
+                ],
+                "token" => $Token,
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if (empty($mobNum)) {
+            echo json_encode([
+                "data" => [
+                    "message" => "Mobile number is required"
+                ],
+                "token" => $Token,
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if ($vendorID <= 0) {
+            echo json_encode([
+                "data" => [
+                    "message" => "Vendor is required"
+                ],
+                "token" => $Token,
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Validate duplicates
+        $validation = validateDriverData($mobNum, $empCode, $id);
         if (!$validation['valid']) {
             echo json_encode([
-                "status" => 409,
-                "message" => $validation['message']
+                "data" => [
+                    "message" => $validation['message']
+                ],
+                "token" => $Token,
+                "statusCode" => 409
             ]);
             exit;
         }
 
-        // Check if driver exists and update in single operation
+        // Update driver with new structure
         $sql = "UPDATE driver SET 
-                    vName = '$vName',
-                    vMobileNum = '$vMobileNum',
-                    vEmpCode = '$vEmpCode',
-                    iVendorID = $iVendorID,
-                    iAreaID = $iAreaID,
-                    cStatus = '$cStatus'
+                    vName = '$name',
+                    vMobileNum = '$mobNum',
+                    vEmpCode = '$empCode',
+                    iVendorID = $vendorID,
+                    iType = $type,
+                    vBatchNo = '$batchNo',
+                    dExpiry = " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . "
                 WHERE iDriverID = $id AND cStatus != 'X'";
 
         $result = sql_query($sql);
 
         if ($result && sql_affected_rows() > 0) {
+            // Update availability areas - first delete existing associations
+            $deleteAreaSql = "DELETE FROM driver_area_assoc WHERE iDriverID = $id";
+            sql_query($deleteAreaSql);
+
+            // Insert new area associations
+            if (is_array($availability) && !empty($availability)) {
+                foreach ($availability as $areaId) {
+                    $areaId = intval($areaId);
+                    if ($areaId > 0) {
+                        $areaSql = "INSERT INTO driver_area_assoc (iDriverID, iAreaID) VALUES ($id, $areaId)";
+                        sql_query($areaSql);
+                    }
+                }
+            }
+
             echo json_encode([
-                "status" => 200,
-                "message" => "Driver updated successfully"
+                "data" => [
+                    "message" => "Driver updated successfully"
+                ],
+                "token" => $Token,
+                "statusCode" => 200
             ]);
         } else if ($result && sql_affected_rows() == 0) {
             echo json_encode([
-                "status" => 404,
-                "message" => "Driver not found or no changes made"
+                "data" => [
+                    "message" => "Driver not found or no changes made"
+                ],
+                "token" => $Token,
+                "statusCode" => 404
             ]);
         } else {
             echo json_encode([
-                "status" => 500,
-                "message" => "Failed to update driver"
+                "data" => [
+                    "message" => "Failed to update driver"
+                ],
+                "token" => $Token,
+                "statusCode" => 500
             ]);
         }
         break;
 
-    // ===================== CASE 4: ADD_DRIVER =====================
+    // ===================== CASE 5: ADD_DRIVER =====================
     case 'ADD_DRIVER':
-        $vName = db_input($_REQUEST['vName'] ?? '');
-        $vMobileNum = db_input($_REQUEST['vMobileNum'] ?? '');
-        $vEmpCode = db_input($_REQUEST['vEmpCode'] ?? '');
-        $iVendorID = intval($_REQUEST['iVendorID'] ?? 0);
-        $iAreaID = intval($_REQUEST['iAreaID'] ?? 0);
-        $cStatus = db_input($_REQUEST['cStatus'] ?? 'A');
+        // Handle form data with the new structure
+        $type = intval($_REQUEST['type'] ?? 0); // Driver type
+        $vendorID = intval($_REQUEST['vendorID'] ?? 0); // Vendor ID
+        $empCode = db_input($_REQUEST['empCode'] ?? ''); // Employee code
+        $name = db_input($_REQUEST['name'] ?? ''); // Driver name
+        $mobNum = db_input($_REQUEST['mobNum'] ?? ''); // Mobile number
+        $availability = $_REQUEST['availability'] ?? []; // Area availability array
+        $batchNo = db_input($_REQUEST['batchNo'] ?? ''); // Batch number (vBatchNo)
+        $dateOfExp = db_input($_REQUEST['dateOfExp'] ?? ''); // Expiry date (dExpiry)
+        $cStatus = 'A'; // Default active status
 
         // Basic validation
-        if (empty($vName)) {
+        if (empty($name)) {
             echo json_encode([
-                "status" => 400,
-                "message" => "Driver name is required"
+                "data" => [
+                    "message" => "Driver name is required"
+                ],
+                "token" => $Token,
+                "statusCode" => 400
             ]);
             exit;
         }
 
-        if (empty($vMobileNum)) {
+        if (empty($mobNum)) {
             echo json_encode([
-                "status" => 400,
-                "message" => "Mobile number is required"
+                "data" => [
+                    "message" => "Mobile number is required"
+                ],
+                "token" => $Token,
+                "statusCode" => 400
             ]);
             exit;
         }
 
-        // Single query to validate duplicates
-        $validation = validateDriverData($vMobileNum, $vEmpCode, 0);
+        if ($vendorID <= 0) {
+            echo json_encode([
+                "data" => [
+                    "message" => "Vendor is required"
+                ],
+                "token" => $Token,
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Validate duplicates
+        $validation = validateDriverData($mobNum, $empCode, 0);
         if (!$validation['valid']) {
             echo json_encode([
-                "status" => 409,
-                "message" => $validation['message']
+                "data" => [
+                    "message" => $validation['message']
+                ],
+                "token" => $Token,
+                "statusCode" => 409
             ]);
             exit;
         }
 
         $iDriverID = NextID('iDriverID', 'driver');
-        $sql = "INSERT INTO driver (iDriverID, vName, vMobileNum, vEmpCode, iVendorID, iAreaID, iRank, cStatus) 
-                VALUES ($iDriverID, '$vName', '$vMobileNum', '$vEmpCode', $iVendorID, $iAreaID, $iDriverID, '$cStatus')";
+
+        // Insert driver with new fields including vBatchNo and dExpiry
+        $sql = "INSERT INTO driver (iDriverID, vName, vMobileNum, vEmpCode, iVendorID, iType, vBatchNo, dExpiry, iRank, cStatus) 
+                VALUES ($iDriverID, '$name', '$mobNum', '$empCode', $vendorID, $type, '$batchNo', 
+                    " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ", $iDriverID, '$cStatus')";
 
         if (sql_query($sql)) {
+            // Handle availability areas array - insert multiple area associations
+            if (is_array($availability) && !empty($availability)) {
+                foreach ($availability as $areaId) {
+                    $areaId = intval($areaId);
+                    if ($areaId > 0) {
+                        $areaSql = "INSERT INTO driver_area_assoc (iDriverID, iAreaID) VALUES ($iDriverID, $areaId)";
+                        sql_query($areaSql);
+                    }
+                }
+            }
+
             echo json_encode([
-                "status" => 200,
-                "message" => "Driver added successfully",
-                "data" => ["iDriverID" => $iDriverID]
+                "data" => [
+                    "message" => "Driver added successfully"
+                ],
+                "token" => $Token,
+                "statusCode" => 200
             ]);
         } else {
             echo json_encode([
-                "status" => 500,
-                "message" => "Failed to add driver"
+                "data" => [
+                    "message" => "Failed to add driver"
+                ],
+                "token" => $Token,
+                "statusCode" => 500
             ]);
         }
         break;
