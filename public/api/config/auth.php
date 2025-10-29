@@ -25,9 +25,25 @@ if (true) {
 			$ret = 0; //error flag
 
 			if ($txtpassword == '')
-				ForceOut(8);
+			session_destroy();
+			$response = array(
+				"error" => array(
+					"description" => "Password cannot be empty",
+				),
+				"statusCode" => 400,
+			);
+			http_response_code(400);
+			header('Content-Type: application/json');
+			echo json_encode($response);
+			exit;
 			elseif ($username == '')
-				ForceOut(7);
+			session_destroy();
+			$response = array(
+				"error" => array(
+					"description" => "Username cannot be empty",
+				),
+				"statusCode" => 400,
+			);
 			else {
 				$u_id = $u_level = 0;
 				$q = "select iUserID, vName, vPassword, iLevel from users where vUName='" . $username . "' and cStatus='A'";
@@ -92,10 +108,30 @@ if (true) {
 
 				if($ret == 3)
 				{
-					ForceOut(3);
+					session_destroy();
+					$response = array(
+						"error" => array(
+							"description" => "Login Failed",
+						),
+						"statusCode" => 400,
+					);
+					http_response_code(400);
+					header('Content-Type: application/json');
+					echo json_encode($response);
+					exit;
 				} elseif ($ret == -1 || $ret == -2) {
 					LogAttempt($username, 'F', 'Wrong User Name');
-					ForceOut(4);
+					session_destroy();
+					$response = array(
+						"error" => array(
+							"description" => "Wrong User Name",
+						),
+						"statusCode" => 400,
+					);
+					http_response_code(400);
+					header('Content-Type: application/json');
+					echo json_encode($response);
+					exit;
 				} elseif ($ret == 1) {
 					session_destroy();
 					session_start();
