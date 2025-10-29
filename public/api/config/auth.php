@@ -122,7 +122,7 @@ if (true) {
 
 					$q = "update users set dtLastLogin='" . NOW . "', vLastLoginIP='" . $_SERVER['REMOTE_ADDR'] . "', vToken='$randomtoken', cActive='Y' where iUserID=$u_id";
 					$r = sql_query($q, 'AUTH.78');
-
+					$token = EncodeParam($u_id);
 					$browser = '';
 					$browser2 = getBrowser();
 					if (!empty($browser2) && count($browser2))
@@ -136,17 +136,16 @@ if (true) {
 					// $IS_SALE_DASHBOARD = GetXFromYID('select count(*) from module_level_assoc where iModuleID=57 and cType="BL" and iLevelD='.$u_level);
 					// if(!empty($IS_SALE_DASHBOARD) && $IS_SALE_DASHBOARD!='-1')
 					// 	$URL = 'home2.php';
-
+					
 					$response = array(
-						'statusCode' => 200, 
-						'message' => "Login Successful", 
-						'data' => array(
-							'userID' => $u_id,
-							'userName' => $u_name,
-							'userLevel' => $u_level,
-							'sessionToken' => $randomtoken,
-							//'redirectURL' => $URL,
-						)
+						"data" => array(
+							"userInfo" => array(
+								"user_id" => $u_id,
+								"userName" => $u_name,
+							),
+							"token" => $token
+						),
+						"statusCode" => 200,
 					);
 					http_response_code(200);
 					header('Content-Type: application/json');
@@ -155,7 +154,17 @@ if (true) {
 				}
 			}
 		} else
-			ForceOut(4);
+			session_destroy();
+			$response = array(
+				"error" => array(
+					"description" => "Login Failed",
+				),
+				"statusCode" => 400,
+			);
+			http_response_code(400);
+			header('Content-Type: application/json');
+			echo json_encode($response);
+			exit;
 	} else {
 		session_destroy(); // destroy all data in session
 		$response = array('statusCode' => 403, 'message' => "Forbidden - You are not authorized to view this page",);
