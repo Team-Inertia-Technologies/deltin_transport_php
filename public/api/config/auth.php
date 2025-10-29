@@ -24,26 +24,33 @@ if (true) {
 
 			$ret = 0; //error flag
 
-			if ($txtpassword == '')
+			if ($txtpassword == '') {
+				session_destroy();
+				$response = array(
+					"error" => array(
+						"description" => "password cannot be blank",
+					),
+					"statusCode" => 400,
+				);
+				http_response_code(400);
+				header('Content-Type: application/json');
+				echo json_encode($response);
+				exit;
+
+			}
+				
+			elseif ($username == ''){
 			session_destroy();
 			$response = array(
 				"error" => array(
-					"description" => "Password cannot be empty",
+					"description" => "username cannot be blank",
 				),
 				"statusCode" => 400,
 			);
 			http_response_code(400);
 			header('Content-Type: application/json');
 			echo json_encode($response);
-			exit;
-			elseif ($username == '')
-			session_destroy();
-			$response = array(
-				"error" => array(
-					"description" => "Username cannot be empty",
-				),
-				"statusCode" => 400,
-			);
+			exit;}
 			else {
 				$u_id = $u_level = 0;
 				$q = "select iUserID, vName, vPassword, iLevel from users where vUName='" . $username . "' and cStatus='A'";
