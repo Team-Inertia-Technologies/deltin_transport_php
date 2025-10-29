@@ -109,14 +109,23 @@ switch ($mode) {
 
         $rowData = [];
         while ($row = sql_fetch_assoc($res)) {
-            // Get availability areas for this vendor from vendor_area_assoc table
             $vendorID = intval($row['iVendorID']);
-            $areaSql = "SELECT iAreaID FROM vendor_area_assoc WHERE iVendorID = $vendorID";
+
+            // Get availability areas and names in one query using JOIN
+            $areaSql = "SELECT vaa.iAreaID, ga.vName 
+                        FROM vendor_area_assoc vaa 
+                        LEFT JOIN gen_area ga ON vaa.iAreaID = ga.iAreaID AND ga.cStatus = 'A'
+                        WHERE vaa.iVendorID = $vendorID 
+                        ORDER BY ga.iRank";
             $areaRes = sql_query($areaSql);
 
             $availabilityAreas = [];
+            $availabilityNames = [];
             while ($areaRow = sql_fetch_assoc($areaRes)) {
                 $availabilityAreas[] = intval($areaRow['iAreaID']);
+                if (!empty($areaRow['vName'])) {
+                    $availabilityNames[] = $areaRow['vName'];
+                }
             }
 
             $rowData[] = [
@@ -126,7 +135,8 @@ switch ($mode) {
                 'mobileNumber' => $row['vContactNum'] ?? '',
                 'email' => $row['vEmail'] ?? '',
                 'serviceOff' => $row['cType'] ?? '',
-                'availability' => $availabilityAreas
+                'availabilityID' => $availabilityAreas,
+                'availability' => $availabilityNames
             ];
         }
 

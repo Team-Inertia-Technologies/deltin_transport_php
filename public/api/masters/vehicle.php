@@ -32,7 +32,7 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-
+$VEHICLE_CATEGORY_ARR = GetXArrFromYID("SELECT iCatID, vName FROM vehicle_category WHERE cStatus='A' ORDER BY vName", "3");
 // Function to validate vehicle registration number
 function validateVehicleData($vRnum, $excludeVehicleID = 0)
 {
@@ -50,6 +50,28 @@ function validateVehicleData($vRnum, $excludeVehicleID = 0)
         return [
             'valid' => false,
             'message' => "Registration number already exists for vehicle: " . $row['vName']
+        ];
+    }
+
+    return ['valid' => true];
+}
+
+// Function to validate category ID
+function validateCategoryData($categoryID)
+{
+    global $VEHICLE_CATEGORY_ARR;
+
+    if ($categoryID <= 0) {
+        return [
+            'valid' => false,
+            'message' => "Category is required"
+        ];
+    }
+
+    if (!isset($VEHICLE_CATEGORY_ARR[$categoryID])) {
+        return [
+            'valid' => false,
+            'message' => "Invalid category selected. Please choose a valid category from the list."
         ];
     }
 
@@ -78,12 +100,10 @@ switch ($mode) {
 
         // Category options with "choose" option
         $categoryOpt = [['id' => 0, 'title' => 'Choose']];
-        $categorySql = "SELECT iCatID, vName FROM category WHERE cStatus = 'A' ORDER BY vName";
-        $categoryRes = sql_query($categorySql);
-        while ($categoryRow = sql_fetch_assoc($categoryRes)) {
+        foreach ($VEHICLE_CATEGORY_ARR as $id => $title) {
             $categoryOpt[] = [
-                'id' => intval($categoryRow['iCatID']),
-                'title' => $categoryRow['vName']
+                'id' => intval($id),
+                'title' => $title
             ];
         }
 
@@ -123,14 +143,23 @@ switch ($mode) {
 
         $data = [];
         while ($row = sql_fetch_assoc($res)) {
-            // Get availability areas for this vehicle from vehicle_area_assoc table (same as vendor.php)
             $vehicleID = intval($row['iVehicleID']);
-            $areaSql = "SELECT iAreaID FROM vehicle_area_assoc WHERE iVehicleID = $vehicleID";
+            
+            // Get availability areas and names in one query using JOIN
+            $areaSql = "SELECT vaa.iAreaID, ga.vName 
+                        FROM vehicle_area_assoc vaa 
+                        LEFT JOIN gen_area ga ON vaa.iAreaID = ga.iAreaID AND ga.cStatus = 'A'
+                        WHERE vaa.iVehicleID = $vehicleID 
+                        ORDER BY ga.iRank";
             $areaRes = sql_query($areaSql);
 
             $availability = [];
+            $availabilityNames = [];
             while ($areaRow = sql_fetch_assoc($areaRes)) {
                 $availability[] = intval($areaRow['iAreaID']);
+                if (!empty($areaRow['vName'])) {
+                    $availabilityNames[] = $areaRow['vName'];
+                }
             }
 
             $data[] = [
@@ -140,8 +169,8 @@ switch ($mode) {
                 'rate' => $row['fRate'],
                 'vehicleOwnerID' => $row['iVendorID'],
                 'vehicleOwner' => $row['vendor_name'] ?? '',
-
-                'availability' => $availability
+                'availabilityID' => $availability,
+                'availability' => $availabilityNames
             ];
         }
 
@@ -210,12 +239,10 @@ switch ($mode) {
 
         // Category options with "choose" option
         $categoryOpt = [['id' => 0, 'title' => 'Choose']];
-        $categorySql = "SELECT iCatID, vName FROM category WHERE cStatus = 'A' ORDER BY vName";
-        $categoryRes = sql_query($categorySql);
-        while ($categoryRow = sql_fetch_assoc($categoryRes)) {
+        foreach ($VEHICLE_CATEGORY_ARR as $id => $title) {
             $categoryOpt[] = [
-                'id' => intval($categoryRow['iCatID']),
-                'title' => $categoryRow['vName']
+                'id' => intval($id),
+                'title' => $title
             ];
         }
 
@@ -286,10 +313,12 @@ switch ($mode) {
             exit;
         }
 
-        if ($category <= 0) {
+        // Validate category
+        $categoryValidation = validateCategoryData($category);
+        if (!$categoryValidation['valid']) {
             echo json_encode([
                 "statusCode" => 400,
-                "message" => "Category is required"
+                "message" => $categoryValidation['message']
             ]);
             exit;
         }
@@ -381,10 +410,12 @@ switch ($mode) {
             exit;
         }
 
-        if ($category <= 0) {
+        // Validate category
+        $categoryValidation = validateCategoryData($category);
+        if (!$categoryValidation['valid']) {
             echo json_encode([
                 "statusCode" => 400,
-                "message" => "Category is required"
+                "message" => $categoryValidation['message']
             ]);
             exit;
         }
