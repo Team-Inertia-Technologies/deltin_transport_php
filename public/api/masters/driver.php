@@ -44,7 +44,7 @@ function validateDriverData($vMobileNum, $vEmpCode, $excludeDriverID = 0)
             FROM driver 
             WHERE (" . implode(' OR ', $conditions) . ") 
             AND iDriverID != $excludeDriverID 
-            AND cStatus != 'X'";
+            AND cStatus = 'A'";
 
     $res = sql_query($sql);
 
@@ -72,12 +72,12 @@ switch ($mode) {
     case 'LIST':
         // Optimized query with JOINs to get vendor and vehicle data in single query
         $sql = "SELECT d.iDriverID, d.vName, d.vMobileNum, d.vEmpCode, d.iVendorID, 
-                       d.iAreaID, d.iRank, d.cStatus, v.vName as vendor_name,
+                       d.iAreaID, d.iRank, d.cStatus, v.vName as vendor_name, d.iVehicleID,
                        vh.vRnum, vh.iSeats
                 FROM driver d
-                LEFT JOIN vendor v ON d.iVendorID = v.iVendorID AND v.cStatus != 'X'
-                LEFT JOIN vehicle vh ON d.iDriverID = vh.iDriverID AND vh.cStatus = 'A'
-                WHERE d.cStatus != 'X' 
+                LEFT JOIN vendor v ON d.iVendorID = v.iVendorID AND v.cStatus = 'A'
+                LEFT JOIN vehicle vh ON d.iVehicleID  = vh.iVehicleID AND vh.cStatus = 'A'
+                WHERE d.cStatus = 'A' 
                 ORDER BY d.iRank DESC";
         $res = sql_query($sql);
 
@@ -167,7 +167,7 @@ switch ($mode) {
                        d.iType, d.vBatchNo, d.dExpiry, d.iAreaID, d.iRank, d.cStatus, 
                        v.vName as vendor_name
                 FROM driver d
-                LEFT JOIN vendor v ON d.iVendorID = v.iVendorID AND v.cStatus != 'X'
+                LEFT JOIN vendor v ON d.iVendorID = v.iVendorID AND v.cStatus = 'A'
                 WHERE d.iDriverID = $id";
         $res = sql_query($sql);
 
@@ -257,6 +257,7 @@ switch ($mode) {
         $mobNum = db_input($_REQUEST['mobNum'] ?? ''); // Mobile number
         $availability = $_REQUEST['availability'] ?? []; // Area availability array
         $batchNo = db_input($_REQUEST['batchNo'] ?? ''); // Batch number (vBatchNo)
+           $vehicleID = db_input($_REQUEST['vehicleID'] ?? '');
         $dateOfExp = db_input($_REQUEST['dateOfExp'] ?? ''); // Expiry date (dExpiry)
 
         if ($id <= 0) {
@@ -293,17 +294,6 @@ switch ($mode) {
             exit;
         }
 
-        if ($vendorID <= 0) {
-            echo json_encode([
-                "data" => [
-                    "message" => "Vendor is required"
-                ],
-                "token" => $Token,
-                "statusCode" => 400
-            ]);
-            exit;
-        }
-
         // Validate duplicates
         $validation = validateDriverData($mobNum, $empCode, $id);
         if (!$validation['valid']) {
@@ -325,8 +315,9 @@ switch ($mode) {
                     iVendorID = $vendorID,
                     iType = $type,
                     vBatchNo = '$batchNo',
+                    vehicleID= $iVehicleID,
                     dExpiry = " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . "
-                WHERE iDriverID = $id AND cStatus != 'X'";
+                WHERE iDriverID = $id AND cStatus = 'A'";
 
         $result = sql_query($sql);
 
