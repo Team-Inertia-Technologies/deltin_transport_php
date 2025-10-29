@@ -193,12 +193,12 @@ switch ($mode) {
         }
 
         // Optimized query with JOINs to get vendor and category data in single query
-        $sql = "SELECT v.iVehicleID, v.vName, v.vRnum, v.iVCatID, v.iVendorID, v.iSeats, v.iType,
+        $sql = "SELECT v.iVehicleID, v.vName, v.vRnum, v.iCatID, v.iVendorID, v.iSeats, v.iType,
                        v.iAreaID, v.dRegistration, v.dExpiry, v.vTouristPerNo, v.cStatus, 
                        vn.vName as vendor_name, c.vName as category_name
                 FROM vehicle v
                 LEFT JOIN vendor vn ON v.iVendorID = vn.iVendorID AND vn.cStatus = 'A'
-                LEFT JOIN category c ON v.iVCatID = c.iVCatID AND c.cStatus = 'A'
+                LEFT JOIN vehicle_category c ON v.iCatID = c.iVCatID AND c.cStatus = 'A'
                 WHERE v.iVehicleID = $id";
         $res = sql_query($sql);
 
@@ -263,7 +263,7 @@ switch ($mode) {
             "data" => [
                 'selectedDriverType' => intval($row['iType'] ?? 0),
                 'selectedAvailOpt' => $availability,
-                'selectedCategoryType' => intval($row['iVCatID'] ?? 0),
+                'selectedCategoryType' => intval($row['iCatID'] ?? 0),
                 'selectedVendor' => intval($row['iVendorID'] ?? 0),
                 'vehicleData' => [
                     'iVehicleID' => intval($row['iVehicleID']),
@@ -336,7 +336,7 @@ switch ($mode) {
         // Update vehicle with new structure
         $sql = "UPDATE vehicle SET 
                     vRnum = '$vehiNum',
-                    iVCatID = $category,
+                    iCatID = $category,
                     iVendorID = $vendor,
                     iType = $type,
                     dRegistration = " . (!empty($dateOfReg) ? "'$dateOfReg'" : "NULL") . ",

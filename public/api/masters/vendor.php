@@ -90,7 +90,7 @@ function validateVendorData($vContactNum, $vEmail, $excludeVendorID = 0)
         if (!empty($vEmail) && $row['vEmail'] === $vEmail) {
             return [
                 'valid' => false,
-                'message' => "Email already exists for vendor: " . $row['vName']
+                'message' => "Email already exists for vendor: " . $row['vName'] 
             ];
         }
     }
@@ -165,7 +165,7 @@ switch ($mode) {
 
     // ===================== CASE 3: VENDOR_DETAILS =====================
     case 'VENDOR_DETAILS':
-        $id = isset($request->iVendorID) ? intval($request->iVendorID) : (isset($_REQUEST['iVendorID']) ? intval($_REQUEST['iVendorID']) : 0);
+        $id = isset($request['iVendorID']) ? intval($request['iVendorID']) : (isset($_REQUEST['iVendorID']) ? intval($_REQUEST['iVendorID']) : 0);
         if ($id <= 0) {
             echo json_encode([
                 "statusCode" => 400,
@@ -252,24 +252,25 @@ switch ($mode) {
     // ===================== CASE 4: UPDATE_VENDOR =====================
     case 'UPDATE_VENDOR':
         // Map form data to database fields
-        $id = intval($request->iVendorID ?? 0);
-        $vName = db_input($request->comName ?? '');
-        $vContactPerson = db_input($request->perName ?? '');
-        $vContactNum = db_input($request->perConNum ?? '');
-        $vEmail = db_input($request->email ?? '');
-        $vAddress = db_input($request->comAdd ?? '');
-        $iStateCode = intval($request->state ?? 0);
-        $vDetails = db_input($request->remarks ?? '');
-        $vPanNo = db_input($request->panNo ?? '');
-        $vGSTIN = db_input($request->gstNo ?? '');
-        $cTDSApplicable = db_input($request->tdsApp ?? 'N');
-        $fTDSperc = floatval($request->tdsPercentage ?? 0);
-        $cType = db_input($request->serviceOff ?? '');
-        $availability = $request->availability ?? []; // Handle as array
-        $vBankAcctNum = db_input($request->bankAccNo ?? '');
-        $vBankIFSC = db_input($request->bankIfscCode ?? '');
-        $cStatus = db_input($request->cStatus ?? 'A');
-
+       
+        
+        $id = intval($request['iVendorID'] ?? 0);
+        $vName = db_input($request['comName'] ?? '');
+        $vContactPerson = db_input($request['perName'] ?? '');
+        $vContactNum = db_input($request['perConNum'] ?? '');
+        $vEmail = db_input($request['email'] ?? '');
+        $vAddress = db_input($request['comAdd'] ?? '');
+        $iStateCode = intval($request['state'] ?? 0);
+        $vDetails = db_input($request['remarks'] ?? '');
+        $vPanNo = db_input($request['panNo'] ?? '');
+        $vGSTIN = db_input($request['gstNo'] ?? '');
+        $cTDSApplicable = db_input($request['tdsApp'] ?? 'N');
+        $fTDSperc = floatval($request['tdsPercentage'] ?? 0);
+        $cType = db_input($request['serviceOff'] ?? '');
+        $availability = $request['availability'] ?? []; // Handle as array
+        $vBankAcctNum = db_input($request['bankAccNo'] ?? '');
+        $vBankIFSC = db_input($request['bankIfscCode'] ?? '');
+        $cStatus = db_input($request['cStatus'] ?? 'A');
         if ($id <= 0) {
             echo json_encode([
                 "statusCode" => 400,
@@ -362,21 +363,21 @@ switch ($mode) {
     // ===================== CASE 5: ADD_VENDOR =====================
     case 'ADD_VENDOR':
         // Map form data to database fields
-        $vName = db_input($request->comName ?? '');
-        $vContactPerson = db_input($request->perName ?? '');
-        $vContactNum = db_input($request->perConNum ?? '');
-        $vEmail = db_input($request->email ?? '');
-        $vAddress = db_input($request->comAdd ?? '');
-        $iStateCode = intval($request->state ?? 0);
-        $vDetails = db_input($request->remarks ?? '');
-        $vPanNo = db_input($request->panNo ?? '');
-        $vGSTIN = db_input($request->gstNo ?? '');
-        $cTDSApplicable = db_input($request->tdsApp ?? 'N');
-        $fTDSperc = floatval($request->tdsPercentage ?? 0);
-        $cType = db_input($request->serviceOff ?? '');
-        $availability = $request->availability ?? []; // Handle as array
-        $vBankAcctNum = db_input($request->bankAccNo ?? '');
-        $vBankIFSC = db_input($request->bankIfscCode ?? '');
+        $vName = db_input($request['comName'] ?? '');
+        $vContactPerson = db_input($request['perName'] ?? '');
+        $vContactNum = db_input($request['perConNum'] ?? '');
+        $vEmail = db_input($request['email'] ?? '');
+        $vAddress = db_input($request['comAdd'] ?? '');
+        $iStateCode = intval($request['state'] ?? 0);
+        $vDetails = db_input($request['remarks'] ?? '');
+        $vPanNo = db_input($request['panNo'] ?? '');
+        $vGSTIN = db_input($request['gstNo'] ?? '');
+        $cTDSApplicable = db_input($request['tdsApp'] ?? 'N');
+        $fTDSperc = floatval($request['tdsPercentage'] ?? 0);
+        $cType = db_input($request['serviceOff'] ?? '');
+        $availability = $request['availability'] ?? []; // Handle as array
+        $vBankAcctNum = db_input($request['bankAccNo'] ?? '');
+        $vBankIFSC = db_input($request['bankIfscCode'] ?? '');
         $cStatus = 'A'; // Default active status
 
         // Basic validation
