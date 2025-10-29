@@ -1,6 +1,7 @@
 <?php
 include "../../includes/common_api.php";
 header('Content-Type: application/json');
+header("Access-Control-Allow-Origin: *");
 
 $mode = $_REQUEST['mode'] ?? '';
 $user_id = intval(DecodeParam($Token));
@@ -52,13 +53,11 @@ switch ($mode) {
 
     // ===================== CASE 1: ONLOAD =====================
     case 'ONLOAD':
-        // Available options (days of week)
+        // Available options (areas from gen_area table - same as vendor.php)
+        $AREA_ARR_RAW = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank", "3");
         $availableOpt = [];
-        foreach ($WEEKDAY_ARR as $id => $label) {
-            $availableOpt[] = [
-                'id' => $id,
-                'label' => $label
-            ];
+        foreach ($AREA_ARR_RAW as $id => $label) {
+            $availableOpt[] = ['id' => intval($id), 'label' => $label];
         }
 
         // Driver type options
@@ -106,9 +105,9 @@ switch ($mode) {
 
     // ===================== CASE 2: LIST =====================
     case 'LIST':
-        // Optimized query with JOINs to get vendor and vehicle_category data in single query
-        $sql = "SELECT v.iVehicleID, v.vName, v.vRnum, v.iVendorID, v.iSeats, v.vDays,
-                       v.fRate, v.cStatus, vn.vName as vendor_name
+        // Optimized query with JOINs to get vendor data
+        $sql = "SELECT v.iVehicleID, v.vName, v.vRnum, v.iVendorID, v.iSeats, v.iType,
+                       v.fRate, v.dRegistration, v.dExpiry, v.vTouristPerNo, v.cStatus, vn.vName as vendor_name
                 FROM vehicle v
                 LEFT JOIN vendor vn ON v.iVendorID = vn.iVendorID AND vn.cStatus = 'A'
                 WHERE v.cStatus = 'A' 
@@ -117,22 +116,14 @@ switch ($mode) {
 
         $data = [];
         while ($row = sql_fetch_assoc($res)) {
-            // Transform vDays (e.g., "0,5,6") into availability array
-            $availableDays = [];
-            if (!empty($row['vDays'])) {
-                $availableDays = explode(',', $row['vDays']);
-                $availableDays = array_map('trim', $availableDays);
-            }
-            
-            // Create availability array for all 7 days
+            // Get availability areas for this vehicle from vehicle_area_assoc table (same as vendor.php)
+            $vehicleID = intval($row['iVehicleID']);
+            $areaSql = "SELECT iAreaID FROM vehicle_area_assoc WHERE iVehicleID = $vehicleID";
+            $areaRes = sql_query($areaSql);
+
             $availability = [];
-            for ($i = 0; $i <= 6; $i++) {
-                $dayName = $WEEKDAY_ARR3[$i] ?? 'S'; // Get short name (SUN, MON, etc.)
-                $availability[] = [
-                    'id' => $i,
-                    'name' => $dayName,
-                    'available' => in_array((string)$i, $availableDays)
-                ];
+            while ($areaRow = sql_fetch_assoc($areaRes)) {
+                $availability[] = intval($areaRow['iAreaID']);
             }
             
             $data[] = [
@@ -142,6 +133,7 @@ switch ($mode) {
                 'rate' => $row['fRate'],
                 'vehicleOwnerID' => $row['iVendorID'],
                 'vehicleOwner' => $row['vendor_name'] ?? '',
+        
                 'availability' => $availability
             ];
         }
@@ -183,6 +175,15 @@ switch ($mode) {
 
         $row = sql_fetch_assoc($res);
 
+        // Get availability areas for this vehicle from vehicle_area_assoc table (same as vendor.php)
+        $areaSql = "SELECT iAreaID FROM vehicle_area_assoc WHERE iVehicleID = $id";
+        $areaRes = sql_query($areaSql);
+
+        $availability = [];
+        while ($areaRow = sql_fetch_assoc($areaRes)) {
+            $availability[] = intval($areaRow['iAreaID']);
+        }
+
         $vehicle = [
             'iVehicleID' => $row['iVehicleID'],
             'vName' => $row['vName'],
@@ -190,6 +191,7 @@ switch ($mode) {
             'iSeats' => $row['iSeats'],
             'iAreaID' => $row['iAreaID'],
             'cStatus' => $row['cStatus'],
+            'availability' => $availability,
             'vendor' => [
                 'id' => $row['iVendorID'],
                 'name' => $row['vendor_name'] ?? ''
@@ -215,6 +217,7 @@ switch ($mode) {
         $iVendorID = intval($_REQUEST['iVendorID'] ?? 0);
         $iSeats = intval($_REQUEST['iSeats'] ?? 0);
         $iAreaID = intval($_REQUEST['iAreaID'] ?? 0);
+        $availability = $_REQUEST['availability'] ?? []; // Handle as array (same as vendor.php)
         $cStatus = db_input($_REQUEST['cStatus'] ?? 'A');
 
         if ($id <= 0) {
@@ -249,6 +252,21 @@ switch ($mode) {
         $result = sql_query($sql);
 
         if ($result && sql_affected_rows() > 0) {
+            // Update availability areas - first delete existing associations (same as vendor.php)
+            $deleteAreaSql = "DELETE FROM vehicle_area_assoc WHERE iVehicleID = $id";
+            sql_query($deleteAreaSql);
+
+            // Insert new area associations
+            if (is_array($availability) && !empty($availability)) {
+                foreach ($availability as $areaId) {
+                    $areaId = intval($areaId);
+                    if ($areaId > 0) {
+                        $areaSql = "INSERT INTO vehicle_area_assoc (iVehicleID, iAreaID) VALUES ($id, $areaId)";
+                        sql_query($areaSql);
+                    }
+                }
+            }
+
             echo json_encode([
                 "status" => 200,
                 "message" => "Vehicle updated successfully"
@@ -265,35 +283,47 @@ switch ($mode) {
             ]);
         }
         break;
-    // ===================== CASE 5: ADD_VEHICLE =====================
+    // ===================== CASE 5: ADD =====================
     case 'ADD_VEHICLE':
-        $vName = db_input($_REQUEST['vName'] ?? '');
-        $vRnum = db_input($_REQUEST['vRnum'] ?? '');
-        $iCatID = intval($_REQUEST['iCatID'] ?? 0);
-        $iVendorID = intval($_REQUEST['iVendorID'] ?? 0);
-        $iSeats = intval($_REQUEST['iSeats'] ?? 0);
-        $iAreaID = intval($_REQUEST['iAreaID'] ?? 0);
-        $cStatus = db_input($_REQUEST['cStatus'] ?? 'A');
+        // Handle form data with the new structure
+        $type = intval($_REQUEST['type'] ?? 0); // Driver type
+        $category = intval($_REQUEST['category'] ?? 0); // Vehicle category
+        $vendor = intval($_REQUEST['vendor'] ?? 0); // Vendor ID
+        $vehiNum = db_input($_REQUEST['vehiNum'] ?? ''); // Vehicle number
+        $availability = $_REQUEST['availability'] ?? []; // Area availability array
+        $dateOfReg = db_input($_REQUEST['dateOfReg'] ?? ''); // Registration date
+        $dateOfExp = db_input($_REQUEST['dateOfExp'] ?? ''); // Expiry date
+       
+        $perNum = db_input($_REQUEST['perNum'] ?? ''); // Permit number
+        $cStatus = 'A'; // Default active status
 
         // Basic validation
-        if (empty($vName)) {
+        if (empty($vehiNum)) {
             echo json_encode([
                 "status" => 400,
-                "message" => "Vehicle name is required"
+                "message" => "Vehicle number is required"
             ]);
             exit;
         }
 
-        if (empty($vRnum)) {
+        if ($vendor <= 0) {
             echo json_encode([
                 "status" => 400,
-                "message" => "Registration number is required"
+                "message" => "Vendor is required"
             ]);
             exit;
         }
 
-        // Single query to validate registration number
-        $validation = validateVehicleData($vRnum, 0);
+        if ($category <= 0) {
+            echo json_encode([
+                "status" => 400,
+                "message" => "Category is required"
+            ]);
+            exit;
+        }
+
+        // Validate vehicle registration number
+        $validation = validateVehicleData($vehiNum, 0);
         if (!$validation['valid']) {
             echo json_encode([
                 "status" => 409,
@@ -303,10 +333,26 @@ switch ($mode) {
         }
 
         $iVehicleID = NextID('iVehicleID', 'vehicle');
-        $sql = "INSERT INTO vehicle (iVehicleID, vName, vRnum, iCatID, iVendorID, iSeats, iAreaID, cStatus) 
-                VALUES ($iVehicleID, '$vName', '$vRnum', $iCatID, $iVendorID, $iSeats, $iAreaID, '$cStatus')";
+        
+        // Using the newly added database fields
+        $sql = "INSERT INTO vehicle (iVehicleID, vRnum, iCatID, iVendorID, iType, dRegistration, dExpiry, vTouristPerNo, cStatus) 
+                VALUES ($iVehicleID, '$vehiNum', $category, $vendor, $type, 
+                    " . (!empty($dateOfReg) ? "'$dateOfReg'" : "NULL") . ", 
+                    " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ", 
+                    '$perNum', '$cStatus')";
 
         if (sql_query($sql)) {
+            // Handle availability areas array - insert multiple area associations
+            if (is_array($availability) && !empty($availability)) {
+                foreach ($availability as $areaId) {
+                    $areaId = intval($areaId);
+                    if ($areaId > 0) {
+                        $areaSql = "INSERT INTO vehicle_area_assoc (iVehicleID, iAreaID) VALUES ($iVehicleID, $areaId)";
+                        sql_query($areaSql);
+                    }
+                }
+            }
+
             echo json_encode([
                 "status" => 200,
                 "message" => "Vehicle added successfully",
@@ -320,6 +366,7 @@ switch ($mode) {
         }
         break;
 
+    
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
