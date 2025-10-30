@@ -162,7 +162,7 @@ switch ($mode) {
                 }
             }
 
-            $data[] = [
+            $vehicle[] = [
                 'id' => $row['iVehicleID'],
                 'vehicleNumber' => $row['vRnum'],
                 'vehicleCapacity' => $row['iSeats'],
@@ -172,12 +172,15 @@ switch ($mode) {
                 'availabilityID' => $availability,
                 'availability' => $availabilityNames
             ];
+             $rowData[] = $vehicle;
         }
 
         echo json_encode([
             "statusCode" => 200,
             "message" => "Vehicle list fetched successfully",
-            "data" => $data
+           "data" => [
+                "rowData" => $rowData
+            ]
         ]);
         break;
 
