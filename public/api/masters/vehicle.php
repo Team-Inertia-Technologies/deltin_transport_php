@@ -261,10 +261,7 @@ switch ($mode) {
             "statusCode" => 200,
             "message" => "Vehicle details fetched successfully",
             "data" => [
-                'selectedDriverType' => intval($row['iType'] ?? 0),
-                'selectedAvailOpt' => $availability,
-                'selectedCategoryType' => intval($row['iCatID'] ?? 0),
-                'selectedVendor' => intval($row['iVendorID'] ?? 0),
+               
                 'vehicleData' => [
                     'iVehicleID' => intval($row['iVehicleID']),
                     'vName' => $row['vName'] ?? '',
@@ -273,6 +270,10 @@ switch ($mode) {
                     'dateOfReg' => $row['dRegistration'] ?? '',
                     'dateOfExp' => $row['dExpiry'] ?? '',
                     'perNum' => $row['vTouristPerNo'] ?? '',
+                     'selectedDriverType' => intval($row['iType'] ?? 0),
+                'selectedAvailOpt' => $availability,
+                'selectedCategoryType' => intval($row['iCatID'] ?? 0),
+                'selectedVendor' => intval($row['iVendorID'] ?? 0),
                     'cStatus' => $row['cStatus'] ?? 'A'
                 ],
                 'availableOpt' => $availableOpt,
