@@ -362,6 +362,9 @@ switch ($mode) {
                 }
             }
 
+            // Log the update operation
+            LogMasterEdit($id, 'VHC', 'U', $vehiNum);
+
             echo json_encode([
                 "data" => [
                     "message" => "Vehicle updated successfully"
@@ -451,6 +454,9 @@ switch ($mode) {
                 }
             }
 
+            // Log the add operation
+            LogMasterEdit($iVehicleID, 'VHC', 'I', $vehiNum);
+
             echo json_encode([
                 "statusCode" => 200,
                 "message" => "Vehicle added successfully",
@@ -482,6 +488,9 @@ switch ($mode) {
         $result = sql_query($sql);
 
         if ($result && sql_affected_rows() > 0) {
+            // Log the delete operation
+            LogMasterEdit($id, 'VHC', 'D');
+
             echo json_encode([
                 "statusCode" => 200,
                 "message" => "Vehicle deleted successfully"

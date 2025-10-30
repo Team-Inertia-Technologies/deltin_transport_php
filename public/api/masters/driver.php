@@ -337,6 +337,9 @@ switch ($mode) {
                 }
             }
 
+            // Log the update operation
+            LogMasterEdit($id, 'DRV', 'U', $name);
+
             echo json_encode([
                 "data" => [
                     "message" => "Driver updated successfully"
@@ -442,6 +445,9 @@ switch ($mode) {
                 }
             }
 
+            // Log the add operation
+            LogMasterEdit($iDriverID, 'DRV', 'I', $name);
+
             echo json_encode([
                 "data" => [
                     "message" => "Driver added successfully"
@@ -480,6 +486,9 @@ switch ($mode) {
         $result = sql_query($sql);
 
         if ($result && sql_affected_rows() > 0) {
+            // Log the delete operation
+            LogMasterEdit($id, 'DRV', 'D');
+
             echo json_encode([
                 "data" => [
                     "message" => "Driver deleted successfully"

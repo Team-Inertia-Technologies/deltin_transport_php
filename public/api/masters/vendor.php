@@ -343,6 +343,9 @@ switch ($mode) {
                 }
             }
 
+            // Log the update operation
+            LogMasterEdit($id, 'VND', 'U', $vName);
+
             echo json_encode([
                 "statusCode" => 200,
                 "message" => "Vendor updated successfully"
@@ -427,6 +430,9 @@ switch ($mode) {
                 }
             }
 
+            // Log the add operation
+            LogMasterEdit($iVendorID, 'VND', 'I', $vName);
+
             echo json_encode([
                 "statusCode" => 200,
                 "message" => "Vendor added successfully",
@@ -458,6 +464,9 @@ switch ($mode) {
         $result = sql_query($sql);
 
         if ($result && sql_affected_rows() > 0) {
+            // Log the delete operation
+            LogMasterEdit($id, 'VND', 'D');
+
             echo json_encode([
                 "statusCode" => 200,
                 "message" => "Vendor deleted successfully"
