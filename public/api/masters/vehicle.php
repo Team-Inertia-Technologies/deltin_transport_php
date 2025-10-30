@@ -465,6 +465,40 @@ switch ($mode) {
         break;
 
 
+    // ===================== CASE 6: DELETE =====================
+    case 'DELETE':
+        $id = intval($_REQUEST['iVehicleID'] ?? 0);
+        
+        if ($id <= 0) {
+            echo json_encode([
+                "statusCode" => 400,
+                "message" => "Vehicle ID is required for deletion"
+            ]);
+            exit;
+        }
+
+        // Update cStatus to 'X' instead of actual deletion
+        $sql = "UPDATE vehicle SET cStatus = 'X' WHERE iVehicleID = $id AND cStatus != 'X'";
+        $result = sql_query($sql);
+
+        if ($result && sql_affected_rows() > 0) {
+            echo json_encode([
+                "statusCode" => 200,
+                "message" => "Vehicle deleted successfully"
+            ]);
+        } else if ($result && sql_affected_rows() == 0) {
+            echo json_encode([
+                "statusCode" => 404,
+                "message" => "Vehicle not found or already deleted"
+            ]);
+        } else {
+            echo json_encode([
+                "statusCode" => 500,
+                "message" => "Failed to delete vehicle"
+            ]);
+        }
+        break;
+
     // ===================== DEFAULT =====================
     default:
         echo json_encode([

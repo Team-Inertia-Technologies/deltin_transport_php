@@ -460,6 +460,52 @@ switch ($mode) {
         }
         break;
 
+    // ===================== CASE 6: DELETE =====================
+    case 'DELETE':
+        $id = intval($_REQUEST['iDriverID'] ?? 0);
+        
+        if ($id <= 0) {
+            echo json_encode([
+                "data" => [
+                    "message" => "Driver ID is required for deletion"
+                ],
+                "token" => $Token,
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Update cStatus to 'X' instead of actual deletion
+        $sql = "UPDATE driver SET cStatus = 'X' WHERE iDriverID = $id AND cStatus != 'X'";
+        $result = sql_query($sql);
+
+        if ($result && sql_affected_rows() > 0) {
+            echo json_encode([
+                "data" => [
+                    "message" => "Driver deleted successfully"
+                ],
+                "token" => $Token,
+                "statusCode" => 200
+            ]);
+        } else if ($result && sql_affected_rows() == 0) {
+            echo json_encode([
+                "data" => [
+                    "message" => "Driver not found or already deleted"
+                ],
+                "token" => $Token,
+                "statusCode" => 404
+            ]);
+        } else {
+            echo json_encode([
+                "data" => [
+                    "message" => "Failed to delete driver"
+                ],
+                "token" => $Token,
+                "statusCode" => 500
+            ]);
+        }
+        break;
+
     // ===================== DEFAULT =====================
     default:
         echo json_encode([

@@ -201,17 +201,17 @@ switch ($mode) {
             $availabilityAreas[] = intval($areaRow['iAreaID']);
         }
 
-        // Fetch active vehicles for this vendor
-        $vehicleSql = "SELECT iVehicleID, vRnum as vVehicleNo 
-                       FROM vehicle 
-                       WHERE iVendorID = $id AND cStatus = 'A'
-                       ORDER BY iVehicleID DESC";
-        $vehicleRes = sql_query($vehicleSql);
+        // // Fetch active vehicles for this vendor
+        // $vehicleSql = "SELECT iVehicleID, vRnum as vVehicleNo 
+        //                FROM vehicle 
+        //                WHERE iVendorID = $id AND cStatus = 'A'
+        //                ORDER BY iVehicleID DESC";
+        // $vehicleRes = sql_query($vehicleSql);
 
-        $vehicleArr = [];
-        while ($v = sql_fetch_assoc($vehicleRes)) {
-            $vehicleArr[] = $v;
-        }
+        // $vehicleArr = [];
+        // while ($v = sql_fetch_assoc($vehicleRes)) {
+        //     $vehicleArr[] = $v;
+        // }
 
         // Map database fields to form field names
         $vendorData = [
@@ -231,8 +231,8 @@ switch ($mode) {
             'availability' => $availabilityAreas,
             'bankAccNo' => $vendor['vBankAcctNum'] ?? '',
             'bankIfscCode' => $vendor['vBankIFSC'] ?? '',
-            'cStatus' => $vendor['cStatus'] ?? 'A',
-            'vehicles' => $vehicleArr
+            'cStatus' => $vendor['cStatus'] ?? 'A'
+            //'vehicles' => $vehicleArr
         ];
 
         echo json_encode([
@@ -440,6 +440,40 @@ switch ($mode) {
         }
         break;
 
+
+    // ===================== CASE 6: DELETE =====================
+    case 'DELETE':
+        $id = intval($request['iVendorID'] ?? 0);
+        
+        if ($id <= 0) {
+            echo json_encode([
+                "statusCode" => 400,
+                "message" => "Vendor ID is required for deletion"
+            ]);
+            exit;
+        }
+
+        // Update cStatus to 'X' instead of actual deletion
+        $sql = "UPDATE vendor SET cStatus = 'X' WHERE iVendorID = $id AND cStatus != 'X'";
+        $result = sql_query($sql);
+
+        if ($result && sql_affected_rows() > 0) {
+            echo json_encode([
+                "statusCode" => 200,
+                "message" => "Vendor deleted successfully"
+            ]);
+        } else if ($result && sql_affected_rows() == 0) {
+            echo json_encode([
+                "statusCode" => 404,
+                "message" => "Vendor not found or already deleted"
+            ]);
+        } else {
+            echo json_encode([
+                "statusCode" => 500,
+                "message" => "Failed to delete vendor"
+            ]);
+        }
+        break;
 
     // ===================== DEFAULT =====================
     default:
