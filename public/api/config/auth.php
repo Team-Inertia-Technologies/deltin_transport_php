@@ -3,7 +3,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '1');
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../../includes/common_api.php";
-require_once('../../includes/ti-salt.php');
+//require_once('../../includes/ti-salt.php');
 
 if (true) {
 	if ($_SERVER['REQUEST_METHOD'] == "POST") {
@@ -22,11 +22,11 @@ if (true) {
 		{
 			$username = db_input($_POST["txtusername"]);
 			$txtpassword = htmlspecialchars_decode(db_input2($_POST["txtpassword"]));
-
-			$salt_obj = new SaltIT;
-			$txtpassword = $salt_obj->EnCode($txtpassword);
-
-			$ret = 0; //error flag
+			//echo $txtpassword;
+			// $salt_obj = new SaltIT;
+			// $txtpassword = $salt_obj->EnCode($txtpassword);
+			// echo $txtpassword;
+			// $ret = 0; //error flag
 
 			if ($txtpassword == '') {
 				session_destroy();
