@@ -90,7 +90,7 @@ function validateVendorData($vContactNum, $vEmail, $excludeVendorID = 0)
         if (!empty($vEmail) && $row['vEmail'] === $vEmail) {
             return [
                 'valid' => false,
-                'message' => "Email already exists for vendor: " . $row['vName'] 
+                'message' => "Email already exists for vendor: " . $row['vName']
             ];
         }
     }
@@ -252,8 +252,8 @@ switch ($mode) {
     // ===================== CASE 4: UPDATE_VENDOR =====================
     case 'UPDATE_VENDOR':
         // Map form data to database fields
-       
-        
+
+
         $id = intval($request['iVendorID'] ?? 0);
         $vName = db_input($request['comName'] ?? '');
         $vContactPerson = db_input($request['perName'] ?? '');
@@ -344,16 +344,19 @@ switch ($mode) {
             }
 
             // Log the update operation
-            LogMasterEdit($id, 'VND', 'U', $vName);
+            LogMasterEdit($id, 'VND', 'U', $vName, '', $user_id);
 
             echo json_encode([
                 "statusCode" => 200,
                 "message" => "Vendor updated successfully"
             ]);
         } else if ($result && sql_affected_rows() == 0) {
+            // Log the update operation even if no changes were made
+            LogMasterEdit($id, 'VND', 'U', $vName, '', $user_id);
+
             echo json_encode([
-                "statusCode" => 404,
-                "message" => "Vendor not found or no changes made"
+                "statusCode" => 200,
+                "message" => "No changes were made to vendor"
             ]);
         } else {
             echo json_encode([
@@ -431,7 +434,7 @@ switch ($mode) {
             }
 
             // Log the add operation
-            LogMasterEdit($iVendorID, 'VND', 'I', $vName);
+            LogMasterEdit($iVendorID, 'VND', 'I', $vName, '', $user_id);
 
             echo json_encode([
                 "statusCode" => 200,
@@ -447,10 +450,10 @@ switch ($mode) {
         break;
 
 
-    // ===================== CASE 6: DELETE =====================
-    case 'DELETE':
+    // ===================== CASE 6: DELETE_VENDOR =====================
+    case 'DELETE_VENDOR':
         $id = intval($request['iVendorID'] ?? 0);
-        
+
         if ($id <= 0) {
             echo json_encode([
                 "statusCode" => 400,
@@ -465,7 +468,7 @@ switch ($mode) {
 
         if ($result && sql_affected_rows() > 0) {
             // Log the delete operation
-            LogMasterEdit($id, 'VND', 'D');
+            LogMasterEdit($id, 'VND', 'D', '', '', $user_id);
 
             echo json_encode([
                 "statusCode" => 200,
@@ -473,7 +476,7 @@ switch ($mode) {
             ]);
         } else if ($result && sql_affected_rows() == 0) {
             echo json_encode([
-                "statusCode" => 404,
+                "statusCode" => 200,
                 "message" => "Vendor not found or already deleted"
             ]);
         } else {

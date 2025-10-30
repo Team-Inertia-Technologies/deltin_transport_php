@@ -229,14 +229,13 @@ switch ($mode) {
             'type' => intval($row['iType'] ?? 0),
             'batchNo' => db_output2($row['vBatchNo'] ?? ''),
             'dateOfExp' => $row['dExpiry'] ?? '',
-            'cStatus' => $row['cStatus']
+            'cStatus' => $row['cStatus'],
+                 'selectedAvailOpt' => $selectedAvailOpt
         ];
 
         echo json_encode([
             "data" => [
-                'selectedDriverType' => intval($row['iType'] ?? 0),
-                'selectedVendor' => intval($row['iVendorID']),
-                'selectedAvailOpt' => $selectedAvailOpt,
+           
                 'driverData' => $driverData,
                 'availableOpt' => $availableOpt,
                 'driverTypeOpt' => $driverTypeOpt,
@@ -338,7 +337,7 @@ switch ($mode) {
             }
 
             // Log the update operation
-            LogMasterEdit($id, 'DRV', 'U', $name);
+            LogMasterEdit($id, 'DRV', 'U', $name, '', $user_id);
 
             echo json_encode([
                 "data" => [
@@ -348,12 +347,15 @@ switch ($mode) {
                 "statusCode" => 200
             ]);
         } else if ($result && sql_affected_rows() == 0) {
+            // Log the update operation even if no changes were made
+            LogMasterEdit($id, 'DRV', 'U', $name, '', $user_id);
+            
             echo json_encode([
                 "data" => [
-                    "message" => "Driver not found or no changes made"
+                    "message" => "No changes were made to driver"
                 ],
                 "token" => $Token,
-                "statusCode" => 404
+                "statusCode" => 200
             ]);
         } else {
             echo json_encode([
@@ -446,7 +448,7 @@ switch ($mode) {
             }
 
             // Log the add operation
-            LogMasterEdit($iDriverID, 'DRV', 'I', $name);
+            LogMasterEdit($iDriverID, 'DRV', 'I', $name, '', $user_id);
 
             echo json_encode([
                 "data" => [
@@ -466,8 +468,8 @@ switch ($mode) {
         }
         break;
 
-    // ===================== CASE 6: DELETE =====================
-    case 'DELETE':
+    // ===================== CASE 6: DELETE_DRIVER =====================
+    case 'DELETE_DRIVER':
         $id = intval($_REQUEST['iDriverID'] ?? 0);
         
         if ($id <= 0) {
@@ -487,7 +489,7 @@ switch ($mode) {
 
         if ($result && sql_affected_rows() > 0) {
             // Log the delete operation
-            LogMasterEdit($id, 'DRV', 'D');
+            LogMasterEdit($id, 'DRV', 'D', '', '', $user_id);
 
             echo json_encode([
                 "data" => [
@@ -502,7 +504,7 @@ switch ($mode) {
                     "message" => "Driver not found or already deleted"
                 ],
                 "token" => $Token,
-                "statusCode" => 404
+                "statusCode" => 200
             ]);
         } else {
             echo json_encode([

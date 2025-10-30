@@ -363,7 +363,7 @@ switch ($mode) {
             }
 
             // Log the update operation
-            LogMasterEdit($id, 'VHC', 'U', $vehiNum);
+            LogMasterEdit($id, 'VHC', 'U', $vehiNum, '', $user_id);
 
             echo json_encode([
                 "data" => [
@@ -373,12 +373,15 @@ switch ($mode) {
                 "statusCode" => 200
             ]);
         } else if ($result && sql_affected_rows() == 0) {
+            // Log the update operation even if no changes were made
+            LogMasterEdit($id, 'VHC', 'U', $vehiNum, '', $user_id);
+            
             echo json_encode([
                 "data" => [
-                    "message" => "Vehicle not found or no changes made"
+                    "message" => "No changes were made to vehicle"
                 ],
                 "token" => $Token,
-                "statusCode" => 404
+                "statusCode" => 200
             ]);
         } else {
             echo json_encode([
@@ -455,7 +458,7 @@ switch ($mode) {
             }
 
             // Log the add operation
-            LogMasterEdit($iVehicleID, 'VHC', 'I', $vehiNum);
+            LogMasterEdit($iVehicleID, 'VHC', 'I', $vehiNum, '', $user_id);
 
             echo json_encode([
                 "statusCode" => 200,
@@ -471,8 +474,8 @@ switch ($mode) {
         break;
 
 
-    // ===================== CASE 6: DELETE =====================
-    case 'DELETE':
+    // ===================== CASE 6: DELETE_VEHICLE =====================
+    case 'DELETE_VEHICLE':
         $id = intval($_REQUEST['iVehicleID'] ?? 0);
         
         if ($id <= 0) {
@@ -489,7 +492,7 @@ switch ($mode) {
 
         if ($result && sql_affected_rows() > 0) {
             // Log the delete operation
-            LogMasterEdit($id, 'VHC', 'D');
+            LogMasterEdit($id, 'VHC', 'D', '', '', $user_id);
 
             echo json_encode([
                 "statusCode" => 200,
@@ -497,7 +500,7 @@ switch ($mode) {
             ]);
         } else if ($result && sql_affected_rows() == 0) {
             echo json_encode([
-                "statusCode" => 404,
+                "statusCode" => 200,
                 "message" => "Vehicle not found or already deleted"
             ]);
         } else {

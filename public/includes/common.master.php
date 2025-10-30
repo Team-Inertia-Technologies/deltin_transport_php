@@ -18,37 +18,35 @@ function LogMasterEdit($id, $flag, $mode, $name='', $desc_str='', $user_id=false
 	if(empty($desc_str))
 	{
 		if($mode=='I') $desc_str = 'Newly Created';
-		else if($mode=='U') $desc_str = PrepareEditedDesc();
+		else if($mode=='U') $desc_str = 'Updated';
 		else if($mode=='D') $desc_str = 'Deleted';
 	}
 	
-	if($desc_str!='')
+	// Always log the operation
+	$u_id = $u_loc_id = 0;
+	$u_name = 'API User';
+	
+	if(isset($sess_user_id) && is_numeric($sess_user_id))
 	{
-		$u_id = $u_loc_id = 0;
-		$u_name = 'guest';
-		
-		if(isset($sess_user_id) && is_numeric($sess_user_id))
-		{
-			$u_id = $sess_user_id;
-			$u_loc_id = 0; //$sess_user_locid;
-			$u_name = $sess_user_name;
-		}
-		
-		if(!empty($user_id))
-		{
-			$q = "select iUserID, vName from users where iUserID=$user_id";
-			$r = sql_query($q, 'COM.1410');
-			if(sql_num_rows($r))
-				list($u_id, $u_name) = sql_fetch_row($r);
-		}
-		
-		if(empty($u_loc_id)) $u_loc_id = 0;
-		if(empty($u_id)) $u_id = 0;
-		
-		$lmid = NextID('iLMID', 'log_masters');
-		$q = "insert into log_masters values ($lmid, $u_loc_id, $u_id, '".db_input($u_name)."', '".NOW."', $id, '$flag', '".db_input($name)."', '".db_input($desc_str)."', '$mode', '$ip', 'A')";
-		$r = sql_query($q, 'COM.1421');
+		$u_id = $sess_user_id;
+		$u_loc_id = 0; //$sess_user_locid;
+		$u_name = $sess_user_name;
 	}
+	
+	if(!empty($user_id))
+	{
+		$q = "select iUserID, vName from users where iUserID=$user_id";
+		$r = sql_query($q, 'COM.1410');
+		if(sql_num_rows($r))
+			list($u_id, $u_name) = sql_fetch_row($r);
+	}
+	
+	if(empty($u_loc_id)) $u_loc_id = 0;
+	if(empty($u_id)) $u_id = 0;
+	
+	$lmid = NextID('iLMID', 'log_masters');
+	$q = "insert into log_masters values ($lmid, $u_loc_id, $u_id, '".db_input($u_name)."', '".NOW."', $id, '$flag', '".db_input($name)."', '".db_input($desc_str)."', '$mode', '$ip', 'A')";
+	$r = sql_query($q, 'COM.1421');
 }
 
 function showOldVal($label, $curr, $old) {
