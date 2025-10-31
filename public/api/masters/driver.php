@@ -230,7 +230,7 @@ switch ($mode) {
             'batchNo' => db_output2($row['vBatchNo'] ?? ''),
             'dateOfExp' => $row['dExpiry'] ?? '',
             'cStatus' => $row['cStatus'],
-                 'selectedAvailOpt' => $selectedAvailOpt
+            'availability' => $selectedAvailOpt
         ];
 
         echo json_encode([
@@ -256,7 +256,7 @@ switch ($mode) {
         $mobNum = db_input($_REQUEST['mobNum'] ?? ''); // Mobile number
         $availability = $_REQUEST['availability'] ?? []; // Area availability array
         $batchNo = db_input($_REQUEST['batchNo'] ?? ''); // Batch number (vBatchNo)
-           $vehicleID = db_input($_REQUEST['vehicleID'] ?? '');
+          
         $dateOfExp = db_input($_REQUEST['dateOfExp'] ?? ''); // Expiry date (dExpiry)
 
         if ($id <= 0) {
@@ -314,7 +314,6 @@ switch ($mode) {
                     iVendorID = $vendorID,
                     iType = $type,
                     vBatchNo = '$batchNo',
-                    vehicleID= $iVehicleID,
                     dExpiry = " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . "
                 WHERE iDriverID = $id AND cStatus = 'A'";
 

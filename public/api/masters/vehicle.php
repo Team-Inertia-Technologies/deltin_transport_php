@@ -162,7 +162,7 @@ switch ($mode) {
                 }
             }
 
-            $vehicle[] = [
+            $vehicle = [
                 'id' => $row['iVehicleID'],
                 'vehicleNumber' => $row['vRnum'],
                 'vehicleCapacity' => $row['iSeats'],
@@ -443,7 +443,7 @@ switch ($mode) {
         $iVehicleID = NextID('iVehicleID', 'vehicle');
 
         // Using the newly added database fields
-        $sql = "INSERT INTO vehicle (iVehicleID, vRnum, iVCatID, iVendorID, iType, dRegistration, dExpiry, vTouristPerNo, cStatus) 
+        $sql = "INSERT INTO vehicle (iVehicleID, vRnum, iCatID, iVendorID, iType, dRegistration, dExpiry, vTouristPerNo, cStatus) 
                 VALUES ($iVehicleID, '$vehiNum', $category, $vendor, $type, 
                     " . (!empty($dateOfReg) ? "'$dateOfReg'" : "NULL") . ", 
                     " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ", 
