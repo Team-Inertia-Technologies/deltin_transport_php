@@ -7,11 +7,18 @@ include "../../includes/common_api.php";
 $txtpassword = isset($_POST['txtpassword']) ? trim($_POST['txtpassword']) : '';
 $txtnewpassword = isset($_POST['txtnewpassword']) ? trim($_POST['txtnewpassword']) : '';
 $txtnewpassword2 = isset($_POST['txtnewpassword2']) ? trim($_POST['txtnewpassword2']) : '';
+$token = isset($_POST['token']) ? db_input($_POST['token']) : '';
+$user_id = DecodeParam($token);
 
 if ($txtnewpassword !=$txtnewpassword2) 
 {
-	$response = array('statusCode' => 400, 'message' => "New password and confirm password do not match", 'data' => array());
-	http_response_code(200);
+	$response = array(
+		"error" => array(
+			"message" => "New password and Confirm password do not match",
+		),
+		"statusCode" => 400,
+	);
+	http_response_code(400);
 	header('Content-Type: application/json');
 	echo json_encode($response);
 	exit;
@@ -20,15 +27,25 @@ if ($txtnewpassword !=$txtnewpassword2)
 $currentPassword = GetXFromYID('select vPassword from users where iUserID=' . $sess_user_id);
 if (htmlspecialchars_decode($currentPassword) != $txtpassword) 
 {
-	$response = array('statusCode' => 400, 'message' => "Current password is incorrect", 'data' => array());
-	http_response_code(200);
+	$response = array(
+		"error" => array(
+			"message" => "Current password is incorrect",
+		),
+		"statusCode" => 400,
+	);
+	http_response_code(400);
 	header('Content-Type: application/json');
 	echo json_encode($response);
 	exit;
 } else {
 	$values = " vPassword='$txtnewpassword'";
-	$QUERY = UpdataData('users', $values, "iUserID=$sess_user_id");
-	$response = array('statusCode' => 200, 'message' => "Password changed successfully", 'data' => array());
+	sql_query("UPDATE users SET $values WHERE iUserID=$user_id");
+	$response = array(
+		"data" => array(
+			"message" => "Password changed successfully",
+		),
+		"statusCode" => 200,
+	);
 	http_response_code(200);
 	header('Content-Type: application/json');
 	echo json_encode($response);
