@@ -14,11 +14,25 @@ if (sql_num_rows($setting_result)) {
 		$OTHER_SETTINGS[$setting_data['CODE']] = $setting_data;
 	}
 
-	$response = array('statusCode' => 200, 'message' => "Successfully fetched the settings", 'data' => $OTHER_SETTINGS);
-} else {
-	$response = array('statusCode' => 400, 'message' => 'No data', 'data' => array());
-}
-http_response_code(200);
+	$response = array(
+		"data" => array(
+			"OTHER_SETTINGS" => $OTHER_SETTINGS,
+		),
+		'statusCode' => 200,
+	);
+	http_response_code(200);
 header('Content-Type: application/json');
 echo json_encode($response);
 exit;
+} else {
+	$response = array(
+		"error" => array(
+			"message" => "No settings found",
+		),
+		"statusCode" => 400,
+	);
+http_response_code(400);
+header('Content-Type: application/json');
+echo json_encode($response);
+exit;
+}
