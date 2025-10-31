@@ -30,22 +30,31 @@ try {
     while ($row = sql_fetch_assoc($result)) {
         $users[] = $row;
     }
+    $response = array (
+        "data" => array (
+            "message" => "Users Fetched Successfully",
+            "users" => $users,
+            "properties" => $PROPERTY_ARR
+        ),
+        "statuscode" => 200
+    );
 
-    echo json_encode([
-        'statusCode' => 200,
-        'message' => 'Users fetched successfully',
-        'data' => $users,
-        'properties' => $PROPERTY_ARR
-    ]);
+    http_response_code(200);
+    header('Content-Type: application/json');
+    echo json_encode($response);
     exit;
 
 } catch (Exception $e) {
+    $response = array (
+        "error" => array(
+            "message" => "Internal Server Error",
+        ),
+        "statuscode" => 500
+    );
+
     http_response_code(500);
-    echo json_encode([
-        'statusCode' => 500,
-        'message' => 'Internal Server Error',
-        'error' => $e->getMessage()
-    ]);
+    header('Content-Type: application/json');
+    echo json_encode($response);
     exit;
 }
 ?>
