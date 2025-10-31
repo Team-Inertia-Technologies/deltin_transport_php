@@ -121,8 +121,8 @@ if (true) {
 				{
 					session_destroy();
 					$response = array(
-						"data" => array(
-							"message" => "Login Failed",
+						"error" => array(
+							"description" => "Login Failed",
 						),
 						"statusCode" => 400,
 					);
