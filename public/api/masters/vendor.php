@@ -19,8 +19,10 @@ $user_id = intval(DecodeParam($Token));
 // Validate user_id exists in user table
 if ($user_id <= 0) {
     echo json_encode([
-        "statusCode" => 401,
-        "message" => "Invalid or missing user token"
+        "error" => [
+            "message" => "Invalid or missing user token"
+        ],
+        "statusCode" => 401
     ]);
     exit;
 }
@@ -30,8 +32,10 @@ $userCheckRes = sql_query($userCheckSql);
 
 if (sql_num_rows($userCheckRes) == 0) {
     echo json_encode([
-        "statusCode" => 401,
-        "message" => "User not found or inactive"
+        "error" => [
+            "message" => "User not found or inactive"
+        ],
+        "statusCode" => 401
     ]);
     exit;
 }
@@ -168,8 +172,10 @@ switch ($mode) {
         $id = isset($request['iVendorID']) ? intval($request['iVendorID']) : (isset($_REQUEST['iVendorID']) ? intval($_REQUEST['iVendorID']) : 0);
         if ($id <= 0) {
             echo json_encode([
-                "statusCode" => 400,
-                "message" => "Invalid Vendor ID"
+                "error" => [
+                    "message" => "Invalid Vendor ID"
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
@@ -184,8 +190,10 @@ switch ($mode) {
 
         if (sql_num_rows($res) == 0) {
             echo json_encode([
-                "statusCode" => 404,
-                "message" => "Vendor not found"
+                "error" => [
+                    "message" => "Vendor not found"
+                ],
+                "statusCode" => 404
             ]);
             exit;
         }
@@ -273,8 +281,10 @@ switch ($mode) {
         $cStatus = db_input($request['cStatus'] ?? 'A');
         if ($id <= 0) {
             echo json_encode([
-                "statusCode" => 400,
-                "message" => "Vendor ID is required for update"
+                "error" => [
+                    "message" => "Vendor ID is required for update"
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
@@ -282,16 +292,20 @@ switch ($mode) {
         // Basic validation
         if (empty($vName)) {
             echo json_encode([
-                "statusCode" => 400,
-                "message" => "Company name is required"
+                "error" => [
+                    "message" => "Company name is required"
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
 
         if (empty($vContactPerson)) {
             echo json_encode([
-                "statusCode" => 400,
-                "message" => "Contact person name is required"
+                "error" => [
+                    "message" => "Contact person name is required"
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
@@ -300,8 +314,10 @@ switch ($mode) {
         $validation = validateVendorData($vContactNum, $vEmail, $id);
         if (!$validation['valid']) {
             echo json_encode([
-                "statusCode" => 409,
-                "message" => $validation['message']
+                "error" => [
+                    "message" => $validation['message']
+                ],
+                "statusCode" => 409
             ]);
             exit;
         }
@@ -360,8 +376,10 @@ switch ($mode) {
             ]);
         } else {
             echo json_encode([
-                "statusCode" => 500,
-                "message" => "Failed to update vendor"
+                "error" => [
+                    "message" => "Failed to update vendor"
+                ],
+                "statusCode" => 500
             ]);
         }
         break;
@@ -389,16 +407,20 @@ switch ($mode) {
         // Basic validation
         if (empty($vName)) {
             echo json_encode([
-                "statusCode" => 400,
-                "message" => "Company name is required"
+                "error" => [
+                    "message" => "Company name is required"
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
 
         if (empty($vContactPerson)) {
             echo json_encode([
-                "statusCode" => 400,
-                "message" => "Contact person name is required"
+                "error" => [
+                    "message" => "Contact person name is required"
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
@@ -407,8 +429,10 @@ switch ($mode) {
         $validation = validateVendorData($vContactNum, $vEmail, 0);
         if (!$validation['valid']) {
             echo json_encode([
-                "statusCode" => 409,
-                "message" => $validation['message']
+                "error" => [
+                    "message" => $validation['message']
+                ],
+                "statusCode" => 409
             ]);
             exit;
         }
@@ -443,8 +467,10 @@ switch ($mode) {
             ]);
         } else {
             echo json_encode([
-                "statusCode" => 500,
-                "message" => "Failed to add vendor"
+                "error" => [
+                    "message" => "Failed to add vendor"
+                ],
+                "statusCode" => 500
             ]);
         }
         break;
@@ -456,8 +482,10 @@ switch ($mode) {
 
         if ($id <= 0) {
             echo json_encode([
-                "statusCode" => 400,
-                "message" => "Vendor ID is required for deletion"
+                "error" => [
+                    "message" => "Vendor ID is required for deletion"
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
@@ -481,8 +509,10 @@ switch ($mode) {
             ]);
         } else {
             echo json_encode([
-                "statusCode" => 500,
-                "message" => "Failed to delete vendor"
+                "error" => [
+                    "message" => "Failed to delete vendor"
+                ],
+                "statusCode" => 500
             ]);
         }
         break;
@@ -490,8 +520,10 @@ switch ($mode) {
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
-            "statusCode" => 400,
-            "message" => "Invalid mode parameter"
+            "error" => [
+                "message" => "Invalid mode parameter"
+            ],
+            "statusCode" => 400
         ]);
         break;
 }
