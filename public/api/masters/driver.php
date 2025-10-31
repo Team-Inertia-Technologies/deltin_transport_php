@@ -17,8 +17,10 @@ $userCheckRes = sql_query($userCheckSql);
 
 if (sql_num_rows($userCheckRes) == 0) {
     echo json_encode([
-        "statusCode" => 401,
-        "message" => "User not found or inactive"
+        "error" => [
+            "message" => "User not found or inactive"
+        ],
+        "statusCode" => 401
     ]);
     exit;
 }
@@ -154,7 +156,7 @@ switch ($mode) {
         $id = isset($_REQUEST['driverId']) ? intval($_REQUEST['driverId']) : 0;
         if ($id <= 0) {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => "Invalid Driver ID"
                 ],
                 "statusCode" => 400
@@ -173,7 +175,7 @@ switch ($mode) {
 
         if (sql_num_rows($res) == 0) {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => "Driver not found"
                 ],
                 "statusCode" => 404
@@ -261,10 +263,9 @@ switch ($mode) {
 
         if ($id <= 0) {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => "Driver ID is required for update"
                 ],
-                "token" => $Token,
                 "statusCode" => 400
             ]);
             exit;
@@ -273,10 +274,9 @@ switch ($mode) {
         // Basic validation
         if (empty($name)) {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => "Driver name is required"
                 ],
-                "token" => $Token,
                 "statusCode" => 400
             ]);
             exit;
@@ -284,10 +284,9 @@ switch ($mode) {
 
         if (empty($mobNum)) {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => "Mobile number is required"
                 ],
-                "token" => $Token,
                 "statusCode" => 400
             ]);
             exit;
@@ -297,10 +296,9 @@ switch ($mode) {
         $validation = validateDriverData($mobNum, $empCode, $id);
         if (!$validation['valid']) {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => $validation['message']
                 ],
-                "token" => $Token,
                 "statusCode" => 409
             ]);
             exit;
@@ -358,10 +356,9 @@ switch ($mode) {
             ]);
         } else {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => "Failed to update driver"
                 ],
-                "token" => $Token,
                 "statusCode" => 500
             ]);
         }
@@ -383,10 +380,9 @@ switch ($mode) {
         // Basic validation
         if (empty($name)) {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => "Driver name is required"
                 ],
-                "token" => $Token,
                 "statusCode" => 400
             ]);
             exit;
@@ -394,10 +390,9 @@ switch ($mode) {
 
         if (empty($mobNum)) {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => "Mobile number is required"
                 ],
-                "token" => $Token,
                 "statusCode" => 400
             ]);
             exit;
@@ -405,10 +400,9 @@ switch ($mode) {
 
         if ($vendorID <= 0) {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => "Vendor is required"
                 ],
-                "token" => $Token,
                 "statusCode" => 400
             ]);
             exit;
@@ -418,10 +412,9 @@ switch ($mode) {
         $validation = validateDriverData($mobNum, $empCode, 0);
         if (!$validation['valid']) {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => $validation['message']
                 ],
-                "token" => $Token,
                 "statusCode" => 409
             ]);
             exit;
@@ -458,10 +451,9 @@ switch ($mode) {
             ]);
         } else {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => "Failed to add driver"
                 ],
-                "token" => $Token,
                 "statusCode" => 500
             ]);
         }
@@ -473,10 +465,9 @@ switch ($mode) {
         
         if ($id <= 0) {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => "Driver ID is required for deletion"
                 ],
-                "token" => $Token,
                 "statusCode" => 400
             ]);
             exit;
@@ -507,10 +498,9 @@ switch ($mode) {
             ]);
         } else {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => "Failed to delete driver"
                 ],
-                "token" => $Token,
                 "statusCode" => 500
             ]);
         }
@@ -519,8 +509,10 @@ switch ($mode) {
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
-            "statusCode" => 400,
-            "message" => "Invalid mode parameter"
+            "error" => [
+                "message" => "Invalid mode parameter"
+            ],
+            "statusCode" => 400
         ]);
         break;
 }

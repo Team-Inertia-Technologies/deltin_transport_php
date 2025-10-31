@@ -16,8 +16,10 @@ $user_id = intval(DecodeParam($Token));
 // Validate user_id exists in user table
 if ($user_id <= 0) {
     echo json_encode([
-        "statusCode" => 401,
-        "message" => "Invalid or missing user token"
+        "error" => [
+            "message" => "Invalid or missing user token"
+        ],
+        "statusCode" => 401
     ]);
     exit;
 }
@@ -27,8 +29,10 @@ $userCheckRes = sql_query($userCheckSql);
 
 if (sql_num_rows($userCheckRes) == 0) {
     echo json_encode([
-        "statusCode" => 401,
-        "message" => "User not found or inactive"
+        "error" => [
+            "message" => "User not found or inactive"
+        ],
+        "statusCode" => 401
     ]);
     exit;
 }
@@ -189,8 +193,10 @@ switch ($mode) {
         $id = isset($_REQUEST['iVehicleID']) ? intval($_REQUEST['iVehicleID']) : 0;
         if ($id <= 0) {
             echo json_encode([
-                "statusCode" => 400,
-                "message" => "Invalid Vehicle ID"
+                "error" => [
+                    "message" => "Invalid Vehicle ID"
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
@@ -207,8 +213,10 @@ switch ($mode) {
 
         if (sql_num_rows($res) == 0) {
             echo json_encode([
-                "statusCode" => 404,
-                "message" => "Vehicle not found"
+                "error" => [
+                    "message" => "Vehicle not found"
+                ],
+                "statusCode" => 404
             ]);
             exit;
         }
@@ -302,8 +310,10 @@ switch ($mode) {
 
         if ($id <= 0) {
             echo json_encode([
-                "statusCode" => 400,
-                "message" => "Vehicle ID is required for update"
+                "error" => [
+                    "message" => "Vehicle ID is required for update"
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
@@ -311,8 +321,10 @@ switch ($mode) {
         // Basic validation
         if (empty($vehiNum)) {
             echo json_encode([
-                "statusCode" => 400,
-                "message" => "Vehicle number is required"
+                "error" => [
+                    "message" => "Vehicle number is required"
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
@@ -321,8 +333,10 @@ switch ($mode) {
         $categoryValidation = validateCategoryData($category);
         if (!$categoryValidation['valid']) {
             echo json_encode([
-                "statusCode" => 400,
-                "message" => $categoryValidation['message']
+                "error" => [
+                    "message" => $categoryValidation['message']
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
@@ -331,8 +345,10 @@ switch ($mode) {
         $validation = validateVehicleData($vehiNum, $id);
         if (!$validation['valid']) {
             echo json_encode([
-                "statusCode" => 409,
-                "message" => $validation['message']
+                "error" => [
+                    "message" => $validation['message']
+                ],
+                "statusCode" => 409
             ]);
             exit;
         }
@@ -389,10 +405,9 @@ switch ($mode) {
             ]);
         } else {
             echo json_encode([
-                "data" => [
+                "error" => [
                     "message" => "Failed to update vehicle"
                 ],
-                "token" => $Token,
                 "statusCode" => 500
             ]);
         }
@@ -414,8 +429,10 @@ switch ($mode) {
         // Basic validation
         if (empty($vehiNum)) {
             echo json_encode([
-                "statusCode" => 400,
-                "message" => "Vehicle number is required"
+                "error" => [
+                    "message" => "Vehicle number is required"
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
@@ -424,8 +441,10 @@ switch ($mode) {
         $categoryValidation = validateCategoryData($category);
         if (!$categoryValidation['valid']) {
             echo json_encode([
-                "statusCode" => 400,
-                "message" => $categoryValidation['message']
+                "error" => [
+                    "message" => $categoryValidation['message']
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
@@ -434,8 +453,10 @@ switch ($mode) {
         $validation = validateVehicleData($vehiNum, 0);
         if (!$validation['valid']) {
             echo json_encode([
-                "statusCode" => 409,
-                "message" => $validation['message']
+                "error" => [
+                    "message" => $validation['message']
+                ],
+                "statusCode" => 409
             ]);
             exit;
         }
@@ -471,8 +492,10 @@ switch ($mode) {
             ]);
         } else {
             echo json_encode([
-                "statusCode" => 500,
-                "message" => "Failed to add vehicle"
+                "error" => [
+                    "message" => "Failed to add vehicle"
+                ],
+                "statusCode" => 500
             ]);
         }
         break;
@@ -484,8 +507,10 @@ switch ($mode) {
         
         if ($id <= 0) {
             echo json_encode([
-                "statusCode" => 400,
-                "message" => "Vehicle ID is required for deletion"
+                "error" => [
+                    "message" => "Vehicle ID is required for deletion"
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
@@ -509,8 +534,10 @@ switch ($mode) {
             ]);
         } else {
             echo json_encode([
-                "statusCode" => 500,
-                "message" => "Failed to delete vehicle"
+                "error" => [
+                    "message" => "Failed to delete vehicle"
+                ],
+                "statusCode" => 500
             ]);
         }
         break;
@@ -518,8 +545,10 @@ switch ($mode) {
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
-            "statusCode" => 400,
-            "message" => "Invalid mode parameter"
+            "error" => [
+                "message" => "Invalid mode parameter"
+            ],
+            "statusCode" => 400
         ]);
         break;
 }
