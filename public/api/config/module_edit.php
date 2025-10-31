@@ -7,11 +7,15 @@ header('Content-Type: application/json');
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $response = array(
+            "error" =>array(
+                "message" => "Method not Allowed",
+            ),
+            "statusCode" => 405,
+        );
         http_response_code(405);
-        echo json_encode([
-            'statusCode' => 405,
-            'message' => 'Method Not Allowed'
-        ]);
+        header('Content-Type: application/json');
+        echo json_encode($response);
         exit;
     }
 
@@ -31,11 +35,15 @@ try {
     }
 
     if ($levelId <= 0) {
+        $response = array(
+            "error" => array(
+                "message" => "Invalid or missing Level ID",
+            ),
+            "statusCode" => 400,
+        );
         http_response_code(400);
-        echo json_encode([
-            'statusCode' => 400,
-            'message' => 'Invalid or missing Level ID'
-        ]);
+        header('Content-Type: application/json');
+        echo json_encode($response);
         exit;
     }
 
@@ -60,14 +68,18 @@ try {
             $assignedArr[] = $row['iModuleID'];
         }
 
-        echo json_encode([
-            'statusCode' => 200,
-            'message' => 'Modules fetched successfully',
-            'data' => [
-                'modules' => $modulesArr,
-                'assigned' => $assignedArr
-            ]
-        ]);
+        $response = array(
+            "data" => array(
+                "message" => "Modules fetched successfully",
+                "modules" => $modulesArr,
+                "assigned" => $assignedArr
+            ),
+            "statusCode" => 200,
+        );
+
+        http_response_code(200);
+        header('Content-Type: application/json');
+        echo json_encode($response);
         exit;
     }
 
@@ -89,32 +101,43 @@ try {
             }
         }
 
-        echo json_encode([
-            'statusCode' => 200,
-            'message' => 'Modules successfully updated',
-            'data' => [
-                'level_id' => $levelId,
-                'modules_updated' => $countInserted
-            ]
-        ]);
+        $response = array (
+            "data" => array(
+                "message" => "Modules successfully updated",
+                "level_id" => $levelId,
+                "modules_updated" => $countInserted
+            ),
+            "statusCode" => 200,
+        );
+
+        http_response_code(200);
+        header('Content-Type: application/json');
+        echo json_encode($response);
         exit;
     }
 
+    $response = array(
+        "error" => array(
+            "message" => "Invalid or missing action"
+        ),
+        "statusCode" => 400,
+    );
     // Invalid action
     http_response_code(400);
-    echo json_encode([
-        'statusCode' => 400,
-        'message' => 'Invalid or missing action'
-    ]);
+    header('Content-Type: application/json');
+    echo json_encode($response);
     exit;
 
 } catch (Exception $e) {
+    $response = array (
+        "error" => array (
+            "message" => "Internal Server Error",
+        ),
+        "statusCode" => 500,
+    );
     http_response_code(500);
-    echo json_encode([
-        'statusCode' => 500,
-        'message' => 'Internal Server Error',
-        'error' => $e->getMessage()
-    ]);
+    header('Content-Type: application/json');
+    echo json_encode($response);
     exit;
 }
 ?>

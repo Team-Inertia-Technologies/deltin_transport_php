@@ -14,15 +14,27 @@ if (sql_num_rows($result)) {
 		$levels[$data['iLevelD']] = $data['vName'];
 	}
 
-	$response = array('statusCode' => 200, 'message' => "Successfully fetched the levels", 'data' => $levels);
+	$response = array(
+		"data" => array(
+			"message" => "Successfully fetched the levels",
+			"levels" => $levels,
+		),
+		"statusCode" => 200,
+	);
+	http_response_code(200);
+	header('Content-Type: application/json');
+	echo json_encode($response);
+	exit;
 } else {
-	$response = array('statusCode' => 400, 'message' => 'No data', 'data' => array());
+	$response = array(
+		"error" => array(
+			"message" => "No Levels Found",
+		),
+		"statusCode" => 400,
+	);
+	http_response_code(400);
+	header('Content-Type: application/json');
+	echo json_encode($response);
+	exit;
 }
-
-http_response_code(200);
-header('Content-Type: application/json');
-echo json_encode($response);
-exit;
 ?>
-
-
