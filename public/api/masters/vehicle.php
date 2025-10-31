@@ -282,7 +282,7 @@ switch ($mode) {
                     'dateOfExp' => $row['dExpiry'] ?? '',
                     'perNum' => $row['vTouristPerNo'] ?? '',
                      'selectedDriverType' => intval($row['iType'] ?? 0),
-                'selectedAvailOpt' => $availability,
+                'availability' => $availability,
                 'selectedCategoryType' => intval($row['iCatID'] ?? 0),
                 'selectedVendor' => intval($row['iVendorID'] ?? 0),
                     'cStatus' => $row['cStatus'] ?? 'A'
