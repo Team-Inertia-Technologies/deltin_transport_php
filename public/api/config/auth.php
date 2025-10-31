@@ -32,7 +32,7 @@ if (true) {
 				session_destroy();
 				$response = array(
 					"error" => array(
-						"description" => "password cannot be blank",
+						"message" => "password cannot be blank",
 					),
 					"statusCode" => 400,
 				);
@@ -47,7 +47,7 @@ if (true) {
 			session_destroy();
 			$response = array(
 				"error" => array(
-					"description" => "username cannot be blank",
+					"message" => "username cannot be blank",
 				),
 				"statusCode" => 400,
 			);
@@ -122,7 +122,7 @@ if (true) {
 					session_destroy();
 					$response = array(
 						"error" => array(
-							"description" => "Login Failed",
+							"message" => "Login Failed",
 						),
 						"statusCode" => 400,
 					);
@@ -132,17 +132,17 @@ if (true) {
 					exit;
 				} elseif ($ret == -1 || $ret == -2) {
 					LogAttempt($username, 'F', 'Wrong User Name');
-					// session_destroy();
-					// $response = array(
-					// 	"error" => array(
-					// 		"description" => "Wrong User Name",
-					// 	),
-					// 	"statusCode" => 400,
-					// );
-					// http_response_code(400);
-					// header('Content-Type: application/json');
-					// echo json_encode($response);
-					// exit;
+					session_destroy();
+					$response = array(
+						"error" => array(
+							"message" => "Wrong User Name",
+						),
+						"statusCode" => 400,
+					);
+					http_response_code(400);
+					header('Content-Type: application/json');
+					echo json_encode($response);
+					exit;
 				} elseif ($ret == 1) {
 					session_destroy();
 					session_start();
@@ -204,7 +204,7 @@ if (true) {
 			session_destroy();
 			$response = array(
 				"error" => array(
-					"description" => "Login Failed",
+					"message" => "Login Failed",
 				),
 				"statusCode" => 400,
 			);
