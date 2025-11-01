@@ -124,11 +124,11 @@ case 'ADD_ROUTE':
         LogMasterEdit($iRouteID, 'RTE', 'I', $route, '', $user_id);
 
         echo json_encode([
-            "statusCode" => 200,
-            "message" => "Route added successfully",
             "data" => [
+                "message" => "Route added successfully",
                 "iRouteID" => $iRouteID
-            ]
+            ],
+            "statusCode" => 200
         ]);
     } else {
         echo json_encode([
@@ -305,11 +305,11 @@ case 'UPDATE_ROUTE':
         LogMasterEdit($id, 'RTE', 'U', $route, '', $user_id);
 
         echo json_encode([
-            "statusCode" => 200,
-            "message" => "Route updated successfully",
             "data" => [
+                "message" => "Route updated successfully",
                 "iRouteID" => $id
-            ]
+            ],
+            "statusCode" => 200
         ]);
     } else {
         echo json_encode([
