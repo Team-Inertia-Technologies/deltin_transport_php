@@ -281,7 +281,7 @@ case 'UPDATE_ROUTE':
                     } else {
                         // Insert new stop
                         $newStopID = NextID('iStopID', 'st_route_stops');
-                        $iRank = GetMaxRank('st_route_stops', "WHERE iRouteID=$id", 'iRank');
+                        $iRank = GetMaxRank('st_route_stops', "iRouteID=$id and cStatus='A'", 'iRank');
 
                         $stopSql = "INSERT INTO st_route_stops 
                             (iStopID, iRouteID, vName, tOffsetFromStart, iRank, cStatus)
