@@ -96,11 +96,13 @@ case 'ADD_ROUTE':
                 $durationRaw = trim($rdp['duration'] ?? '');
 
                 if (!empty($pickupPt) && !empty($durationRaw)) {
-                    // Convert duration like "00.05" → 5 (minutes) or handle direct minutes
+                    // Convert duration like "00:05" → 5 minutes, "01:00" → 60 minutes
                     $minutes = 0;
-                    if (strpos($durationRaw, '.') !== false) {
-                        $durationParts = explode('.', $durationRaw);
-                        $minutes = isset($durationParts[1]) ? intval(ltrim($durationParts[1], '0')) : 0;
+                    if (strpos($durationRaw, ':') !== false) {
+                        $durationParts = explode(':', $durationRaw);
+                        $hours = isset($durationParts[0]) ? intval($durationParts[0]) : 0;
+                        $mins = isset($durationParts[1]) ? intval($durationParts[1]) : 0;
+                        $minutes = ($hours * 60) + $mins;
                     } else {
                         $minutes = intval($durationRaw);
                     }
@@ -174,10 +176,15 @@ case 'ROUTE_DETAILS':
 
     $rdpList = [];
     while ($stopRow = sql_fetch_assoc($stopsRes)) {
+        $totalMinutes = intval($stopRow['tOffsetFromStart']);
+        $hours = intval($totalMinutes / 60);
+        $mins = $totalMinutes % 60;
+        $durationFormatted = sprintf("%02d:%02d", $hours, $mins);
+        
         $rdpList[] = [
             'iStopID' => intval($stopRow['iStopID']),
             'pickupPt' => $stopRow['vName'],
-            'duration' => sprintf("%02d", intval($stopRow['tOffsetFromStart'])), // Convert back to format
+            'duration' => $durationFormatted, // Convert back to HH:MM format
             'iRank' => intval($stopRow['iRank'])
         ];
     }
@@ -252,11 +259,13 @@ case 'UPDATE_ROUTE':
                 $iStopID = intval($rdp['iStopID'] ?? 0);
 
                 if (!empty($pickupPt) && !empty($durationRaw)) {
-                    // Convert duration like "00.05" → 5 (minutes) or handle direct minutes
+                    // Convert duration like "00:05" → 5 minutes, "01:00" → 60 minutes
                     $minutes = 0;
-                    if (strpos($durationRaw, '.') !== false) {
-                        $durationParts = explode('.', $durationRaw);
-                        $minutes = isset($durationParts[1]) ? intval(ltrim($durationParts[1], '0')) : 0;
+                    if (strpos($durationRaw, ':') !== false) {
+                        $durationParts = explode(':', $durationRaw);
+                        $hours = isset($durationParts[0]) ? intval($durationParts[0]) : 0;
+                        $mins = isset($durationParts[1]) ? intval($durationParts[1]) : 0;
+                        $minutes = ($hours * 60) + $mins;
                     } else {
                         $minutes = intval($durationRaw);
                     }
