@@ -11,7 +11,18 @@ $_REQUEST = array_merge($_REQUEST, $request ?? []); // Merge with $_REQUEST
 $mode = $_REQUEST['mode'] ?? '';
 $Token = $_REQUEST['token'] ?? '';
 $user_id = intval(DecodeParam($Token));
+$userCheckSql = "SELECT iUserID FROM users WHERE iUserID = $user_id AND cStatus = 'A'";
+$userCheckRes = sql_query($userCheckSql);
 
+if (sql_num_rows($userCheckRes) == 0) {
+    echo json_encode([
+        "error" => [
+            "message" => "User not found or inactive"
+        ],
+        "statusCode" => 401
+    ]);
+    exit;
+}
 
 switch ($mode) {
 
@@ -48,8 +59,303 @@ switch ($mode) {
     ]);
     break;
 
+// ===================== CASE: ADD_ROUTE =====================
+case 'ADD_ROUTE':
+    $routeInfo = $_REQUEST['routeInfo'] ?? [];
 
-   
+    $route = db_input($routeInfo['route'] ?? '');
+    $dest = db_input($routeInfo['dest'] ?? '');
+    $rdpList = $routeInfo['rdp'] ?? [];
+    $cStatus = 'A'; // default active
+
+    // Basic validation
+    if (empty($route) || empty($dest)) {
+        echo json_encode([
+            "error" => [
+                "message" => "Route name and destination are required"
+            ],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
+    // Generate next route ID
+    $iRouteID = NextID('iRouteID', 'st_route');
+
+    // Insert main route
+    $sql = "INSERT INTO st_route (iRouteID, vName, vDestination, cStatus)
+            VALUES ($iRouteID, '$route', '$dest', '$cStatus')";
+
+    if (sql_query($sql)) {
+
+        // Insert stops if provided
+        if (is_array($rdpList) && !empty($rdpList)) {
+            
+            foreach ($rdpList as $rdp) {
+                $pickupPt = db_input($rdp['pickupPt'] ?? '');
+                $durationRaw = trim($rdp['duration'] ?? '');
+
+                if (!empty($pickupPt) && !empty($durationRaw)) {
+                    // Convert duration like "00.05" → 5 (minutes) or handle direct minutes
+                    $minutes = 0;
+                    if (strpos($durationRaw, '.') !== false) {
+                        $durationParts = explode('.', $durationRaw);
+                        $minutes = isset($durationParts[1]) ? intval(ltrim($durationParts[1], '0')) : 0;
+                    } else {
+                        $minutes = intval($durationRaw);
+                    }
+
+                    $iStopID = NextID('iStopID', 'st_route_stops');
+                    $iRank = GetMaxRank('st_route_stops', "WHERE iRouteID=$iRouteID", 'iRank');
+
+                    $stopSql = "INSERT INTO st_route_stops 
+                        (iStopID, iRouteID, vName, tOffsetFromStart, iRank, cStatus)
+                        VALUES ($iStopID, $iRouteID, '$pickupPt', $minutes, $iRank, 'A')";
+                    sql_query($stopSql);
+
+                    
+                }
+            }
+        }
+
+        // Log the add operation (similar to vehicle.php)
+        LogMasterEdit($iRouteID, 'RTE', 'I', $route, '', $user_id);
+
+        echo json_encode([
+            "statusCode" => 200,
+            "message" => "Route added successfully",
+            "data" => [
+                "iRouteID" => $iRouteID
+            ]
+        ]);
+    } else {
+        echo json_encode([
+            "error" => [
+                "message" => "Failed to add route"
+            ],
+            "statusCode" => 500
+        ]);
+    }
+    break;
+
+// ===================== CASE: ROUTE_DETAILS =====================
+case 'ROUTE_DETAILS':
+    $id = isset($_REQUEST['iRouteID']) ? intval($_REQUEST['iRouteID']) : 0;
+    if ($id <= 0) {
+        echo json_encode([
+            "error" => [
+                "message" => "Invalid Route ID"
+            ],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
+    // Get route details
+    $sql = "SELECT iRouteID, vName, vDestination, cStatus FROM st_route WHERE iRouteID = $id";
+    $res = sql_query($sql);
+
+    if (sql_num_rows($res) == 0) {
+        echo json_encode([
+            "error" => [
+                "message" => "Route not found"
+            ],
+            "statusCode" => 404
+        ]);
+        exit;
+    }
+
+    $row = sql_fetch_assoc($res);
+
+    // Get route stops
+    $stopsSql = "SELECT iStopID, vName, tOffsetFromStart, iRank FROM st_route_stops 
+                 WHERE iRouteID = $id AND cStatus = 'A' ORDER BY iRank";
+    $stopsRes = sql_query($stopsSql);
+
+    $rdpList = [];
+    while ($stopRow = sql_fetch_assoc($stopsRes)) {
+        $rdpList[] = [
+            'iStopID' => intval($stopRow['iStopID']),
+            'pickupPt' => $stopRow['vName'],
+            'duration' => sprintf("%02d", intval($stopRow['tOffsetFromStart'])), // Convert back to format
+            'iRank' => intval($stopRow['iRank'])
+        ];
+    }
+
+    echo json_encode([
+        "statusCode" => 200,
+        "message" => "Route details fetched successfully",
+        "data" => [
+            'routeData' => [
+                'iRouteID' => intval($row['iRouteID']),
+                'route' => $row['vName'] ?? '',
+                'dest' => $row['vDestination'] ?? '',
+                'rdp' => $rdpList,
+                'cStatus' => $row['cStatus'] ?? 'A'
+            ]
+        ]
+    ]);
+    break;
+
+// ===================== CASE: UPDATE_ROUTE =====================
+case 'UPDATE_ROUTE':
+    $id = intval($_REQUEST['iRouteID'] ?? 0);
+    $routeInfo = $_REQUEST['routeInfo'] ?? [];
+
+    $route = db_input($routeInfo['route'] ?? '');
+    $dest = db_input($routeInfo['dest'] ?? '');
+    $rdpList = $routeInfo['rdp'] ?? [];
+
+    if ($id <= 0) {
+        echo json_encode([
+            "error" => [
+                "message" => "Route ID is required for update"
+            ],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
+    // Basic validation
+    if (empty($route) || empty($dest)) {
+        echo json_encode([
+            "error" => [
+                "message" => "Route name and destination are required"
+            ],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
+    // Update main route
+    $sql = "UPDATE st_route SET vName = '$route', vDestination = '$dest' 
+            WHERE iRouteID = $id AND cStatus = 'A'";
+
+    $result = sql_query($sql);
+
+    if ($result) {
+        // Get existing stops for this route
+        $existingStopsSql = "SELECT iStopID FROM st_route_stops WHERE iRouteID = $id AND cStatus = 'A'";
+        $existingStopsRes = sql_query($existingStopsSql);
+        $existingStopIDs = [];
+        while ($existingRow = sql_fetch_assoc($existingStopsRes)) {
+            $existingStopIDs[] = intval($existingRow['iStopID']);
+        }
+
+        $processedStopIDs = [];
+
+        // Process stops if provided
+        if (is_array($rdpList) && !empty($rdpList)) {
+            foreach ($rdpList as $rdp) {
+                $pickupPt = db_input($rdp['pickupPt'] ?? '');
+                $durationRaw = trim($rdp['duration'] ?? '');
+                $iStopID = intval($rdp['iStopID'] ?? 0);
+
+                if (!empty($pickupPt) && !empty($durationRaw)) {
+                    // Convert duration like "00.05" → 5 (minutes) or handle direct minutes
+                    $minutes = 0;
+                    if (strpos($durationRaw, '.') !== false) {
+                        $durationParts = explode('.', $durationRaw);
+                        $minutes = isset($durationParts[1]) ? intval(ltrim($durationParts[1], '0')) : 0;
+                    } else {
+                        $minutes = intval($durationRaw);
+                    }
+
+                    if ($iStopID > 0 && in_array($iStopID, $existingStopIDs)) {
+                        // Update existing stop
+                        $stopSql = "UPDATE st_route_stops SET 
+                                    vName = '$pickupPt', 
+                                    tOffsetFromStart = $minutes 
+                                    WHERE iStopID = $iStopID AND iRouteID = $id";
+                        sql_query($stopSql);
+                        $processedStopIDs[] = $iStopID;
+                    } else {
+                        // Insert new stop
+                        $newStopID = NextID('iStopID', 'st_route_stops');
+                        $iRank = GetMaxRank('st_route_stops', "WHERE iRouteID=$id", 'iRank');
+
+                        $stopSql = "INSERT INTO st_route_stops 
+                            (iStopID, iRouteID, vName, tOffsetFromStart, iRank, cStatus)
+                            VALUES ($newStopID, $id, '$pickupPt', $minutes, $iRank, 'A')";
+                        sql_query($stopSql);
+                        $processedStopIDs[] = $newStopID;
+                    }
+                }
+            }
+        }
+
+        // Soft delete stops that were not processed (removed from the list)
+        $stopsToDelete = array_diff($existingStopIDs, $processedStopIDs);
+        if (!empty($stopsToDelete)) {
+            $deleteStopIDs = implode(',', $stopsToDelete);
+            $deleteStopsSql = "UPDATE st_route_stops SET cStatus = 'X' WHERE iStopID IN ($deleteStopIDs)";
+            sql_query($deleteStopsSql);
+        }
+
+        // Log the update operation (similar to vehicle.php)
+        LogMasterEdit($id, 'RTE', 'U', $route, '', $user_id);
+
+        echo json_encode([
+            "statusCode" => 200,
+            "message" => "Route updated successfully",
+            "data" => [
+                "iRouteID" => $id
+            ]
+        ]);
+    } else {
+        echo json_encode([
+            "error" => [
+                "message" => "Failed to update route"
+            ],
+            "statusCode" => 500
+        ]);
+    }
+    break;
+
+// ===================== CASE: DELETE_ROUTE =====================
+case 'DELETE_ROUTE':
+    $id = intval($_REQUEST['iRouteID'] ?? 0);
+    
+    if ($id <= 0) {
+        echo json_encode([
+            "error" => [
+                "message" => "Route ID is required for deletion"
+            ],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
+    // Update cStatus to 'X' instead of actual deletion
+    $sql = "UPDATE st_route SET cStatus = 'X' WHERE iRouteID = $id AND cStatus != 'X'";
+    $result = sql_query($sql);
+
+    if ($result && sql_affected_rows() > 0) {
+        // Also mark route stops as deleted
+        $stopsSql = "UPDATE st_route_stops SET cStatus = 'X' WHERE iRouteID = $id";
+        sql_query($stopsSql);
+
+        // Log the delete operation
+        LogMasterEdit($id, 'RTE', 'D', '', '', $user_id);
+
+        echo json_encode([
+            "statusCode" => 200,
+            "message" => "Route deleted successfully"
+        ]);
+    } else if ($result && sql_affected_rows() == 0) {
+        echo json_encode([
+            "statusCode" => 200,
+            "message" => "Route not found or already deleted"
+        ]);
+    } else {
+        echo json_encode([
+            "error" => [
+                "message" => "Failed to delete route"
+            ],
+            "statusCode" => 500
+        ]);
+    }
+    break;
 
     // ===================== DEFAULT =====================
     default:

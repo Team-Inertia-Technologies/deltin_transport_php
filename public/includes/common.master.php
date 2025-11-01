@@ -10,6 +10,7 @@ function LogMasterEdit($id, $flag, $mode, $name='', $desc_str='', $user_id=false
 		else if($flag=='VND') $name = GetXFromYID("select vName from vendor where iVendorID=$id");
 		else if($flag=='VHC') $name = GetXFromYID("select vRnum from vehicle where iVehicleID=$id");
 		else if($flag=='DRV') $name = GetXFromYID("select vName from driver where iDriverID=$id");
+		else if($flag=='RTE') $name = GetXFromYID("select vName from st_route where iRouteID=$id");
 
 	}
 	
@@ -96,6 +97,8 @@ function PrepareEditedDesc()
 					$ref_arr = GetXArrFromYID("select iVehicleID, vRnum from vehicle where iVehicleID in ($old, $new)", '3');
 				else if($ref_flag=='driver')
 					$ref_arr = GetXArrFromYID("select iDriverID, vName from driver where iDriverID in ($old, $new)", '3');
+				else if($ref_flag=='route')
+					$ref_arr = GetXArrFromYID("select iRouteID, vName from st_route where iRouteID in ($old, $new)", '3');
 
 				if(count($ref_arr))
 				{
