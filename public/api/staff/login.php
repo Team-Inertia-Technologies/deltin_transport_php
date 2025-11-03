@@ -54,7 +54,7 @@ if ($mode == 'LOGIN') {
         }
 
         // Insert OTP into otp table for staff
-        $code = 'LOGIN_STAFF';
+        $code = '+91';
         sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','A','0','$otp','$mob','$TIME','$dtTo','N')", "Insert OTP for staff login");
 
         // Send SMS (commented out for now)
@@ -106,7 +106,7 @@ if ($mode == 'LOGIN') {
         sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='$iOTPID'");
 
         // Check if user exists in staff table
-        $staff_query = "SELECT iStaffID, vFirstName, vLastName, vMobile FROM staff WHERE vMobile='$mobile' AND cStatus='A'";
+        $staff_query = "SELECT iStaffID, vName, vMobile FROM staff WHERE vMobile='$mobile' AND cStatus='A'";
         $staff_result = sql_query($staff_query, "Get staff details");
 
         if (sql_num_rows($staff_result)) {
