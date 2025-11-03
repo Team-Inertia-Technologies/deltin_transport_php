@@ -17,10 +17,12 @@ if ($mode == 'LOGIN') {
     $mob = db_input($_REQUEST['mob'] ?? '');
 
     if (empty($mob)) {
+
         echo json_encode([
-            "data" => null,
-            "statusCode" => 400,
-            "message" => "Mobile number is required"
+            "error" => [
+                "message" => "Mobile number is required"
+            ],
+            "statusCode" => 400
         ]);
         exit;
     }
@@ -34,7 +36,7 @@ if ($mode == 'LOGIN') {
         $OtpID = NextID('iOTPID', 'otp');
         $dtTo = date('Y-m-d H:i:s', strtotime('+5 minutes'));
         //$otp = GenerateRandomCode('4', 'vOTP', 'otp');
-           $otp ="1234";
+        $otp = "1234";
 
         // Deactivate previous OTPs for this mobile
         sql_query("UPDATE otp SET cUsed='X' WHERE vPhone='$mob'");
@@ -42,13 +44,16 @@ if ($mode == 'LOGIN') {
         // Check OTP limit
         $otpCount = checkOTPLimit($mob, $RESTRICT_TIME_HOURS);
 
-    
+
 
         if ($otpCount >= $NUMBER_OF_ATTEMPTS) {
+
+
             echo json_encode([
-                "data" => null,
-                "statusCode" => 403,
-                "message" => "You have exceeded the maximum number of OTP attempts. Please try again after some time."
+                "error" => [
+                    "message" => "You have exceeded the maximum number of OTP attempts. Please try again after some time."
+                ],
+                "statusCode" => 400
             ]);
             exit;
         }
@@ -87,10 +92,12 @@ if ($mode == 'LOGIN') {
     $OTP = db_input($_REQUEST['otp'] ?? '');
 
     if (empty($mobile) || empty($OTP)) {
+
         echo json_encode([
-            "data" => null,
-            "statusCode" => 400,
-            "message" => "Mobile number and OTP are required"
+            "error" => [
+                "message" => "Mobile number and OTP are required"
+            ],
+            "statusCode" => 400
         ]);
         exit;
     }
@@ -110,11 +117,9 @@ if ($mode == 'LOGIN') {
         $staff_result = sql_query($staff_query, "Get staff details");
 
         if (sql_num_rows($staff_result)) {
-            [$staffId, $firstName, $lastName, $staffMobile] = sql_fetch_row($staff_result);
+            [$staffId, $firstName, $staffMobile] = sql_fetch_row($staff_result);
 
             $staffName = $firstName;
-            if (!empty($lastName))
-                $staffName .= ' ' . $lastName;
 
             $USER_DATA = [
                 'id' => $staffId,
@@ -133,16 +138,22 @@ if ($mode == 'LOGIN') {
             ]);
             exit;
         } else {
+
             echo json_encode([
-                'statusCode' => 404,
-                'message' => 'Staff member not found or inactive.'
+                "error" => [
+                    "message" => "Staff member not found or inactive."
+                ],
+                "statusCode" => 404
             ]);
             exit;
         }
     } else {
+
         echo json_encode([
-            'statusCode' => 400,
-            'message' => 'Invalid or expired OTP. Please request a new OTP.'
+            "error" => [
+                "message" => "Invalid or expired OTP. Please request a new OTP."
+            ],
+            "statusCode" => 400
         ]);
         exit;
     }
@@ -150,10 +161,12 @@ if ($mode == 'LOGIN') {
     $mobile = db_input($_REQUEST['mobile'] ?? '');
 
     if (empty($mobile)) {
+
         echo json_encode([
-            "data" => null,
-            "statusCode" => 400,
-            "message" => "Mobile number is required"
+            "error" => [
+                "message" => "Mobile number is required"
+            ],
+            "statusCode" => 400
         ]);
         exit;
     }
@@ -166,8 +179,8 @@ if ($mode == 'LOGIN') {
         // Generate new OTP
         $OtpID = NextID('iOTPID', 'otp');
         $dtTo = date('Y-m-d H:i:s', strtotime('+5 minutes'));
-       // $otp = GenerateRandomCode('4', 'vOTP', 'otp');
-         $otp ="1234";
+        // $otp = GenerateRandomCode('4', 'vOTP', 'otp');
+        $otp = "1234";
 
         // Deactivate previous OTPs
         sql_query("UPDATE otp SET cUsed='X' WHERE vPhone='$mobile'");
@@ -182,15 +195,18 @@ if ($mode == 'LOGIN') {
         }
 
         if ($otpCount >= $NUMBER_OF_ATTEMPTS) {
+
             echo json_encode([
-                'statusCode' => 403,
-                'message' => 'You have exceeded the maximum number of OTP attempts. Please try again after some time.'
+                "error" => [
+                    "message" => "You have exceeded the maximum number of OTP attempts. Please try again after some time."
+                ],
+                "statusCode" => 403
             ]);
             exit;
         }
 
         // Insert new OTP for staff
-        $code = 'RESEND_STAFF';
+        $code = '+91';
         sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','A','0','$otp','$mobile','$TIME','$dtTo','N')", "Resend OTP for staff");
 
         // Send SMS (commented out for now)
@@ -206,9 +222,12 @@ if ($mode == 'LOGIN') {
         ]);
         exit;
     } else {
+
         echo json_encode([
-            'statusCode' => 404,
-            'message' => 'Staff member not found'
+            "error" => [
+                "message" => "Staff member not found"
+            ],
+            "statusCode" => 404
         ]);
         exit;
     }
