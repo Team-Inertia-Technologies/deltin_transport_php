@@ -148,7 +148,7 @@ else if ($mode == 'ADD_STAFF') {
 
     // Insert new staff record
     $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile,iRouteID,iStopID, dtRegistered, cStatus) 
-            VALUES ($iStaffID, '$vCode', '$vName', '$vMobile',$iStopID, '$dtRegistered', '$cStatus')";
+            VALUES ($iStaffID, '$vCode', '$vName', '$vMobile',$iRouteID, $iStopID, '$dtRegistered', '$cStatus')";
 
     if (sql_query($sql)) {
         echo json_encode([
