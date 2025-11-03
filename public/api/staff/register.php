@@ -35,9 +35,9 @@ if ($mode == 'REGISTER_ONLOAD') {
 // ===================== CASE: ADD_STAFF =====================
 if ($mode == 'ADD_STAFF') {
     // Get form data from request
-    $vCode = db_input($request['vCode'] ?? '');
-    $vName = db_input($request['vName'] ?? '');
-    $vMobile = db_input($request['vMobile'] ?? '');
+    $vCode = db_input($request['code'] ?? '');
+    $vName = db_input($request['name'] ?? '');
+    $vMobile = db_input($request['mobile'] ?? '');
     $cStatus = 'A'; // Default status 
     $dtRegistered = NOW; 
     // Basic validation
@@ -109,12 +109,10 @@ if ($mode == 'ADD_STAFF') {
             "statusCode" => 200,
             "message" => "Staff registered successfully",
             "data" => [
-                "iStaffID" => $iStaffID,
-                "vCode" => $vCode,
-                "vName" => $vName,
-                "vMobile" => $vMobile,
-                "dtRegistered" => $dtRegistered,
-                "cStatus" => $cStatus
+                "id" => $iStaffID,
+                "code" => $vCode,
+                "name" => $vName,
+                "mobile" => $vMobile
             ]
         ]);
     } else {
