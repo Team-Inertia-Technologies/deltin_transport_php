@@ -15,7 +15,7 @@ if ($mode == 'REGISTER_ONLOAD') {
 
     // Get routes with their stops
     $routeStopsQuery = "SELECT r.iRouteID, r.vName as routeName, s.iStopID, s.vName as stopName 
-                        FROM route r 
+                        FROM st_route r 
                         LEFT JOIN st_route_stops s ON r.iRouteID = s.iRouteID 
                         WHERE r.cStatus = 'A' AND s.cStatus ='A'
                         ORDER BY r.iRouteID, s.iStopID";
