@@ -13,18 +13,62 @@ $TIME = NOW;
 if ($mode == 'REGISTER_ONLOAD') {
     $staff = sql_query("SELECT vMobile, vCode FROM staff WHERE cStatus = 'A'");
 
+    // Get routes with their stops
+    $routeStopsQuery = "SELECT r.iRouteID, r.vName as routeName, s.iStopID, s.vName as stopName 
+                        FROM route r 
+                        LEFT JOIN st_route_stops s ON r.iRouteID = s.iRouteID 
+                        WHERE r.cStatus = 'A' AND s.cStatus ='A'
+                        ORDER BY r.iRouteID, s.iStopID";
+    $routeStopsResult = sql_query($routeStopsQuery);
+
     $PHONE_ARR = [];
     $CODE_ARR = [];
+    $routes = [];
+    $currentRouteId = null;
+    $currentRoute = null;
 
+    // Process staff data
     while ($row = sql_fetch_assoc($staff)) {
         $PHONE_ARR[] = $row['vMobile'];
         $CODE_ARR[] = $row['vCode'];
+    }
+
+    // Process routes and stops data
+    while ($row = sql_fetch_assoc($routeStopsResult)) {
+        if ($currentRouteId !== $row['iRouteID']) {
+            // Save previous route if exists
+            if ($currentRoute !== null) {
+                $routes[] = $currentRoute;
+            }
+
+            // Start new route
+            $currentRouteId = $row['iRouteID'];
+            $currentRoute = [
+                "id" => (int) $row['iRouteID'],
+                "name" => $row['routeName'],
+                "pickups" => []
+            ];
+        }
+
+        // Add stop to current route if stop exists
+        if ($row['iStopID'] !== null) {
+            $currentRoute["pickups"][] = [
+                "id" => (int) $row['iStopID'],
+                "name" => $row['stopName']
+            ];
+        }
+    }
+
+    // Add the last route if exists
+    if ($currentRoute !== null) {
+        $routes[] = $currentRoute;
     }
 
     echo json_encode([
         "data" => [
             "mobileArr" => $PHONE_ARR,
             "codeArr" => $CODE_ARR,
+            "routes" => $routes
         ],
         "statusCode" => 200
     ]);
@@ -33,13 +77,15 @@ if ($mode == 'REGISTER_ONLOAD') {
 }
 
 // ===================== CASE: ADD_STAFF =====================
-if ($mode == 'ADD_STAFF') {
+else if ($mode == 'ADD_STAFF') {
     // Get form data from request
     $vCode = db_input($request['code'] ?? '');
     $vName = db_input($request['name'] ?? '');
     $vMobile = db_input($request['mobile'] ?? '');
-    $cStatus = 'A'; // Default status 
-    $dtRegistered = NOW; 
+    $iRouteID= db_input($request['routeid'] ?? 0);
+   $iStopID = db_input($request['stopid'] ?? 0);
+    $cStatus = 'A'; 
+    $dtRegistered = NOW;
     // Basic validation
     if (empty($vCode)) {
         echo json_encode([
@@ -101,8 +147,8 @@ if ($mode == 'ADD_STAFF') {
     $iStaffID = NextID('iStaffID', 'staff');
 
     // Insert new staff record
-    $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile, dtRegistered, cStatus) 
-            VALUES ($iStaffID, '$vCode', '$vName', '$vMobile', '$dtRegistered', '$cStatus')";
+    $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile,iRouteID,iStopID, dtRegistered, cStatus) 
+            VALUES ($iStaffID, '$vCode', '$vName', '$vMobile',$iStopID, '$dtRegistered', '$cStatus')";
 
     if (sql_query($sql)) {
         echo json_encode([
@@ -124,5 +170,13 @@ if ($mode == 'ADD_STAFF') {
         ]);
     }
 
+    exit;
+} else {
+    echo json_encode([
+        "error" => [
+            "message" => "Invalid mode parameter"
+        ],
+        "statusCode" => 400
+    ]);
     exit;
 }
