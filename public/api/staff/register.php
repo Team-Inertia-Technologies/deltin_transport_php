@@ -21,7 +21,7 @@ if ($mode == 'REGISTER_ONLOAD') {
                         ORDER BY r.iRouteID, s.iStopID";
     $routeStopsResult = sql_query($routeStopsQuery);
 
-    $PHONE_ARR = [];
+   // $PHONE_ARR = [];
     $CODE_ARR = [];
     $routes = [];
     $currentRouteId = null;
@@ -29,7 +29,7 @@ if ($mode == 'REGISTER_ONLOAD') {
 
     // Process staff data
     while ($row = sql_fetch_assoc($staff)) {
-        $PHONE_ARR[] = $row['vMobile'];
+      //  $PHONE_ARR[] = $row['vMobile'];
         $CODE_ARR[] = $row['vCode'];
     }
 
@@ -66,7 +66,7 @@ if ($mode == 'REGISTER_ONLOAD') {
 
     echo json_encode([
         "data" => [
-            "mobileArr" => $PHONE_ARR,
+          //  "mobileArr" => $PHONE_ARR,
             "codeArr" => $CODE_ARR,
             "routes" => $routes
         ],

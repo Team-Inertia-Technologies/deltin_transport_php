@@ -137,10 +137,11 @@ switch ($mode) {
     // ===================== CASE 2: LIST =====================
     case 'LIST':
         // Optimized query with JOINs to get vendor data
-        $sql = "SELECT v.iVehicleID, v.vName, v.vRnum, v.iVendorID, v.iSeats, v.iType,
-                       v.fRate, v.dRegistration, v.dExpiry, v.vTouristPerNo, v.cStatus, vn.vName as vendor_name
+        $sql = "SELECT v.iVehicleID, v.iVendorID, v.iSeats,
+                       v.fRate, vn.vName as vendor_name, c.iCapacity as capacity
                 FROM vehicle v
                 LEFT JOIN vendor vn ON v.iVendorID = vn.iVendorID AND vn.cStatus = 'A'
+                LEFT JOIN vehicle_category c ON v.iCatID = c.iVCatID AND c.cStatus = 'A'
                 WHERE v.cStatus = 'A' 
                 ORDER BY v.iVehicleID DESC";
         $res = sql_query($sql);
@@ -169,8 +170,8 @@ switch ($mode) {
             $vehicle = [
                 'id' => $row['iVehicleID'],
                 'vehicleNumber' => $row['vRnum'],
-                'vehicleCapacity' => $row['iSeats'],
-                'rate' => $row['fRate'],
+                'vehicleCapacity' => $row['capacity'],
+               // 'rate' => $row['fRate'],
                 'vehicleOwnerID' => $row['iVendorID'],
                 'vehicleOwner' => $row['vendor_name'] ?? '',
                 'availabilityID' => $availability,
@@ -277,7 +278,7 @@ switch ($mode) {
                     'iVehicleID' => intval($row['iVehicleID']),
                     'vName' => $row['vName'] ?? '',
                     'vRnum' => $row['vRnum'] ?? '',
-                    'iSeats' => intval($row['iSeats'] ?? 0),
+              //      'iSeats' => intval($row['iSeats'] ?? 0),
                     'dateOfReg' => $row['dRegistration'] ?? '',
                     'dateOfExp' => $row['dExpiry'] ?? '',
                     'perNum' => $row['vTouristPerNo'] ?? '',

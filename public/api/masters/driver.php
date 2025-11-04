@@ -86,20 +86,20 @@ switch ($mode) {
         $rowData = [];
         while ($row = sql_fetch_assoc($res)) {
             // Format vehicle assignment
-            $vehicleAssigned = '';
-            if (!empty($row['vRnum'])) {
-                $vehicleAssigned = $row['vRnum'];
-                if (!empty($row['iSeats'])) {
-                    $vehicleAssigned .= ' (' . $row['iSeats'] . ')';
-                }
-            }
+            // $vehicleAssigned = '';
+            // if (!empty($row['vRnum'])) {
+            //     $vehicleAssigned = $row['vRnum'];
+            //     if (!empty($row['iSeats'])) {
+            //         $vehicleAssigned .= ' (' . $row['iSeats'] . ')';
+            //     }
+            // }
 
             $driver = [
                 'id' => intval($row['iDriverID']),
                 'fullName' => db_output2($row['vName']),
                 'mobileNumber' => $row['vMobileNum'],
-                'owner' => db_output2($row['vendor_name'] ?? ''),
-                'vehicleAssigned' => $vehicleAssigned
+                'owner' => db_output2($row['vendor_name'] ?? '')
+               // 'vehicleAssigned' => $vehicleAssigned
             ];
             $rowData[] = $driver;
         }
