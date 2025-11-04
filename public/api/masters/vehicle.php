@@ -137,7 +137,7 @@ switch ($mode) {
     // ===================== CASE 2: LIST =====================
     case 'LIST':
         // Optimized query with JOINs to get vendor data
-        $sql = "SELECT v.iVehicleID, v.iVendorID, v.iSeats,
+        $sql = "SELECT v.iVehicleID, v.iVendorID, v.iSeats,vRnum
                        v.fRate, vn.vName as vendor_name, c.iCapacity as capacity
                 FROM vehicle v
                 LEFT JOIN vendor vn ON v.iVendorID = vn.iVendorID AND vn.cStatus = 'A'
