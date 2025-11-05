@@ -195,6 +195,20 @@ switch ($mode) {
             ];
         }
 
+        // Get routes for rdOpt 
+        $routesSql = "SELECT iRouteID, vName, vDestination FROM st_route WHERE cStatus = 'A' ORDER BY iRank";
+        $routesRes = sql_query($routesSql);
+        
+        $rdOpt  = [];
+        
+        while ($routeRow = sql_fetch_assoc($routesRes)) {
+            $rdOpt [] = [
+                "id" => (int) $routeRow['iRouteID'],
+                "route" => $routeRow['vName'] ?? '',
+                "dest" => $routeRow['vDestination'] ?? ''
+            ];
+        }
+
         // Get table array with vehicle details
         $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, ven.vName as vOwner
                        FROM vehicle v
@@ -218,10 +232,11 @@ switch ($mode) {
 
         echo json_encode([
             "data" => [
+                "rdOpt " => $rdOpt,
                 "vehiOpt" => $vehiOpt,
                 "modeOpt" => $modeOpt,
                 "vendorOpt" => $vendorOpt,
-                "tableArr" => $tableArr
+                "tableArr" => $tableArr                
             ],
             "statusCode" => 200
         ]);
