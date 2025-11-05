@@ -232,7 +232,7 @@ switch ($mode) {
 
         echo json_encode([
             "data" => [
-                "rdOpt " => $rdOpt,
+                "rdOpt" => $rdOpt,
                 "vehiOpt" => $vehiOpt,
                 "modeOpt" => $modeOpt,
                 "vendorOpt" => $vendorOpt,
@@ -358,10 +358,10 @@ switch ($mode) {
         // Prepare response
         $response = [
             "data" => [
-                "message" => "Trip creation completed",
-                "insertedCount" => $insertedCount,
-                "dateRange" => count($dateRange),
-                "tripCount" => count($tripInfo)
+                 "message" => "Trip creation completed",
+                // "insertedCount" => $insertedCount,
+                // "dateRange" => count($dateRange),
+                // "tripCount" => count($tripInfo)
             ],
             "statusCode" => 200
         ];
