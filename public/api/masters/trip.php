@@ -242,6 +242,137 @@ switch ($mode) {
         ]);
         break;
 
+    // ===================== CASE ADD_TRIP =====================
+    case 'ADD_TRIP':
+        $fromDate = $_REQUEST['fromDate'] ?? '';
+        $toDate = $_REQUEST['toDate'] ?? '';
+        $routeID = intval($_REQUEST['routeID'] ?? 0);
+        $tripInfo = $_REQUEST['tripInfo'] ?? [];
+
+        // Validate required parameters
+        if (empty($fromDate) || empty($toDate) || $routeID <= 0 || empty($tripInfo)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing required parameters: fromDate, toDate, routeID, or tripInfo"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Validate date format and range
+        $fromDateTime = DateTime::createFromFormat('Y-m-d', $fromDate);
+        $toDateTime = DateTime::createFromFormat('Y-m-d', $toDate);
+        
+        if (!$fromDateTime || !$toDateTime || $fromDateTime > $toDateTime) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Invalid date range"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $errors = [];
+        $insertValues = [];
+
+        // Generate date range
+        $dateRange = [];
+        $currentDate = clone $fromDateTime;
+        while ($currentDate <= $toDateTime) {
+            $dateRange[] = $currentDate->format('Y-m-d');
+            $currentDate->add(new DateInterval('P1D'));
+        }
+
+        // Get starting iTripID using NextID function
+        $startingTripID = NextID('iTripID', 'st_trips');
+        $currentTripID = $startingTripID;
+
+        // Process each trip in tripInfo array
+        foreach ($tripInfo as $tripIndex => $trip) {
+            $time = $trip['time'] ?? '';
+            $vehicles = $trip['vehicle'] ?? [];
+
+            if (empty($time) || empty($vehicles)) {
+                $errors[] = "Trip at index $tripIndex missing time or vehicles";
+                continue;
+            }
+
+            // Calculate total capacity for this trip
+            $totalCapacity = 0;
+            foreach ($vehicles as $vehicle) {
+                $capacity = intval($vehicle['capacity'] ?? 0);
+                $totalCapacity += $capacity;
+            }
+
+            // Process each date in the range
+            foreach ($dateRange as $date) {
+                $tripDateTime = $date . ' ' . $time;
+                
+                // Process each vehicle for this trip and date
+                foreach ($vehicles as $vehicleIndex => $vehicle) {
+                    $vehID = intval($vehicle['vehID'] ?? 0);
+                    $driverID = intval($vehicle['driverID'] ?? 0);
+
+                    if ($vehID <= 0) {
+                        $errors[] = "Invalid vehicle ID in trip $tripIndex, vehicle $vehicleIndex";
+                        continue;
+                    }
+
+                    // Add to bulk insert values with incremented iTripID
+                    $insertValues[] = "($currentTripID, $routeID, '$tripDateTime', $vehID, $driverID, $totalCapacity, 1, 'A')";
+                    $currentTripID++; // Increment for next record
+                }
+            }
+        }
+
+        $insertedCount = 0;
+        
+        // Execute bulk insert if we have values to insert
+        if (!empty($insertValues)) {
+            // Lock table for better performance during bulk insert
+            sql_query("LOCK TABLES st_trips WRITE");
+            
+            $insertSql = "INSERT INTO st_trips (
+                iTripID,
+                iRouteID, 
+                dtTrip, 
+                iVehicleID, 
+                iDriverID, 
+                iCapacity, 
+                iRank, 
+                cStatus
+            ) VALUES " . implode(', ', $insertValues);
+
+            if (sql_query($insertSql)) {
+                $insertedCount = count($insertValues);
+            } else {
+                $errors[] = "Failed to insert: ";
+            }
+            
+            // Unlock tables
+            sql_query("UNLOCK TABLES");
+        }
+
+        // Prepare response
+        $response = [
+            "data" => [
+                "message" => "Trip creation completed",
+                "insertedCount" => $insertedCount,
+                "dateRange" => count($dateRange),
+                "tripCount" => count($tripInfo)
+            ],
+            "statusCode" => 200
+        ];
+
+        if (!empty($errors)) {
+            $response["warnings"] = $errors;
+        }
+
+        echo json_encode($response);
+        break;
+
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
