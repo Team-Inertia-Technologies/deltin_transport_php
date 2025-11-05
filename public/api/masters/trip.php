@@ -161,25 +161,45 @@ switch ($mode) {
         ];
 
         // Get vendor options (vehicle owners/drivers)
-        $vendorSql = "SELECT DISTINCT vOwner FROM vehicle WHERE cStatus = 'A' AND vOwner IS NOT NULL AND vOwner != ''";
+        $vendorSql = "SELECT DISTINCT ven.iVendorID, ven.vName 
+                     FROM vendor ven 
+                     INNER JOIN vehicle v ON v.iVendorID = ven.iVendorID 
+                     WHERE v.cStatus = 'A' AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
+                     ORDER BY ven.vName";
         $vendorRes = sql_query($vendorSql);
         
         $vendorOpt = [
             ["id" => 0, "name" => "Choose"]
         ];
         
-        $vendorId = 1;
         while ($vendorRow = sql_fetch_assoc($vendorRes)) {
             $vendorOpt[] = [
-                "id" => $vendorId++,
-                "name" => $vendorRow['vOwner']
+                "id" => (int) $vendorRow['iVendorID'],
+                "name" => $vendorRow['vName']
             ];
         }
 
-        // Get table array with vehicle details and drivers
-        $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, v.vOwner
+        // Get all drivers independently from driver table
+        $allDriversSql = "SELECT d.iDriverID, d.vName as drName, d.cStatus
+                         FROM driver d
+                         WHERE d.cStatus IN ('A')
+                         ORDER BY d.vName";
+        $allDriversRes = sql_query($allDriversSql);
+        
+        $vhDriver = [];
+        while ($driverRow = sql_fetch_assoc($allDriversRes)) {
+            $vhDriver[] = [
+                "id" => (int) $driverRow['iDriverID'],
+                "drName" => $driverRow['drName'],
+                "active" => $driverRow['cStatus']
+            ];
+        }
+
+        // Get table array with vehicle details
+        $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, ven.vName as vOwner
                        FROM vehicle v
                        LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+                       LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' and ven.cType IN ('B','T') 
                        WHERE v.cStatus = 'A'
                        ORDER BY v.vRnum";
         $tableArrRes = sql_query($tableArrSql);
@@ -187,37 +207,12 @@ switch ($mode) {
         $tableArr = [];
         
         while ($tableRow = sql_fetch_assoc($tableArrRes)) {
-            // Get drivers for this vehicle (assuming there's a driver table or field)
-            $driversSql = "SELECT vOwner as drName FROM vehicle WHERE iVehicleID = " . $tableRow['iVehicleID'];
-            $driversRes = sql_query($driversSql);
-            
-            $vhDriver = [];
-            $driverId = 1;
-            while ($driverRow = sql_fetch_assoc($driversRes)) {
-                if (!empty($driverRow['drName'])) {
-                    $vhDriver[] = [
-                        "id" => $driverId++,
-                        "drName" => $driverRow['drName'],
-                        "active" => "A"
-                    ];
-                }
-            }
-            
-            // If no drivers found, add a default one
-            if (empty($vhDriver) && !empty($tableRow['vOwner'])) {
-                $vhDriver[] = [
-                    "id" => 1,
-                    "drName" => $tableRow['vOwner'],
-                    "active" => "A"
-                ];
-            }
-
             $tableArr[] = [
                 "id" => (int) $tableRow['iVehicleID'],
                 "vhNum" => $tableRow['vRnum'] ?? '',
                 "vhCap" => (int) ($tableRow['iCapacity'] ?? 0),
                 "vhOwner" => $tableRow['vOwner'] ?? '',
-                "vhDriver" => $vhDriver
+                "vhDriver" => $vhDriver  // Same driver list for all vehicles
             ];
         }
 
