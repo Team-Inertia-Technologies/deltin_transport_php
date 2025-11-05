@@ -6,8 +6,8 @@ include "../../includes/common_api.php";
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
 
-$request = json_decode($postdata, true); // Decode as associative array
-$_REQUEST = array_merge($_REQUEST, $request ?? []); // Merge with $_REQUEST
+$request = json_decode($postdata, true);
+$_REQUEST = array_merge($_REQUEST, $request ?? []);
 $mode = $_REQUEST['mode'] ?? '';
 $Token = $_REQUEST['token'] ?? '';
 $user_id = intval(DecodeParam($Token));
@@ -127,6 +127,106 @@ switch ($mode) {
                 "fromDate" => $fromDate,
                 "toDate" => $toDate,
                 "routeID" => $routeID
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+        
+    // ===================== CASE ADD_ONLOAD =====================
+    case 'ADD_ONLOAD':
+        // Get vehicle options
+        $vehicleSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity 
+                      FROM vehicle v
+                      LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+                      WHERE v.cStatus = 'A'
+                      ORDER BY v.vRnum";
+        $vehicleRes = sql_query($vehicleSql);
+        
+        $vehiOpt = [
+            ["id" => 0, "name" => "Choose"]
+        ];
+        
+        while ($vehicleRow = sql_fetch_assoc($vehicleRes)) {
+            $capacity = $vehicleRow['iCapacity'] ?? 0;
+            $vehiOpt[] = [
+                "id" => (int) $vehicleRow['iVehicleID'],
+                "name" => $vehicleRow['vRnum'] . ' (' . $capacity . ')'
+            ];
+        }
+
+        // Get mode options (transportation modes)
+        $modeOpt = [
+            ["id" => 0, "name" => "Choose"],
+            ["id" => 1, "name" => "Bus"]
+        ];
+
+        // Get vendor options (vehicle owners/drivers)
+        $vendorSql = "SELECT DISTINCT vOwner FROM vehicle WHERE cStatus = 'A' AND vOwner IS NOT NULL AND vOwner != ''";
+        $vendorRes = sql_query($vendorSql);
+        
+        $vendorOpt = [
+            ["id" => 0, "name" => "Choose"]
+        ];
+        
+        $vendorId = 1;
+        while ($vendorRow = sql_fetch_assoc($vendorRes)) {
+            $vendorOpt[] = [
+                "id" => $vendorId++,
+                "name" => $vendorRow['vOwner']
+            ];
+        }
+
+        // Get table array with vehicle details and drivers
+        $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, v.vOwner
+                       FROM vehicle v
+                       LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+                       WHERE v.cStatus = 'A'
+                       ORDER BY v.vRnum";
+        $tableArrRes = sql_query($tableArrSql);
+        
+        $tableArr = [];
+        
+        while ($tableRow = sql_fetch_assoc($tableArrRes)) {
+            // Get drivers for this vehicle (assuming there's a driver table or field)
+            $driversSql = "SELECT vOwner as drName FROM vehicle WHERE iVehicleID = " . $tableRow['iVehicleID'];
+            $driversRes = sql_query($driversSql);
+            
+            $vhDriver = [];
+            $driverId = 1;
+            while ($driverRow = sql_fetch_assoc($driversRes)) {
+                if (!empty($driverRow['drName'])) {
+                    $vhDriver[] = [
+                        "id" => $driverId++,
+                        "drName" => $driverRow['drName'],
+                        "active" => "A"
+                    ];
+                }
+            }
+            
+            // If no drivers found, add a default one
+            if (empty($vhDriver) && !empty($tableRow['vOwner'])) {
+                $vhDriver[] = [
+                    "id" => 1,
+                    "drName" => $tableRow['vOwner'],
+                    "active" => "A"
+                ];
+            }
+
+            $tableArr[] = [
+                "id" => (int) $tableRow['iVehicleID'],
+                "vhNum" => $tableRow['vRnum'] ?? '',
+                "vhCap" => (int) ($tableRow['iCapacity'] ?? 0),
+                "vhOwner" => $tableRow['vOwner'] ?? '',
+                "vhDriver" => $vhDriver
+            ];
+        }
+
+        echo json_encode([
+            "data" => [
+                "vehiOpt" => $vehiOpt,
+                "modeOpt" => $modeOpt,
+                "vendorOpt" => $vendorOpt,
+                "tableArr" => $tableArr
             ],
             "statusCode" => 200
         ]);
