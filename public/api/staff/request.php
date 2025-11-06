@@ -27,7 +27,7 @@ switch ($mode) {
 
     // ===================== CASE: ADD_ONLOAD =====================
     case 'ADD_ONLOAD':
-        $staffSql = "SELECT iRouteID, iStopID FROM staff WHERE iUserID = $user_id AND cStatus = 'A'";
+        $staffSql = "SELECT iRouteID, iStopID FROM staff WHERE iStaffID = $user_id AND cStatus = 'A'";
         $staffRes = sql_query($staffSql);
         $staffData = sql_fetch_assoc($staffRes);
         
