@@ -49,7 +49,6 @@ switch ($mode) {
 
         $whereClause = implode(' AND ', $whereConditions);
 
-        // Main query to get trip data
         $sql = "SELECT 
                     t.iTripID as id,
                     t.dtTrip,
@@ -316,11 +315,11 @@ switch ($mode) {
                     $driverID = intval($vehicle['driverId'] ?? 0);
 
                     if ($vehID <= 0) {
+
                         $errors[] = "Invalid vehicle ID in trip $tripIndex, vehicle $vehicleIndex";
                         continue;
                     }
 
-                    // Add to bulk insert values with incremented iTripID
                     $insertValues[] = "($currentTripID, $routeID, '$tripDateTime', $vehID, $driverID, $totalCapacity, 1, 'A')";
                     $currentTripID++; // Increment for next record
                 }

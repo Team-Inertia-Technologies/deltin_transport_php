@@ -11,10 +11,10 @@ $_REQUEST = array_merge($_REQUEST, $request ?? []);
 $mode = $_REQUEST['mode'] ?? '';
 $Token = $_REQUEST['token'] ?? '';
 $user_id = intval(DecodeParam($Token));
-$userCheckSql = "SELECT iUserID FROM users WHERE iUserID = $user_id AND cStatus = 'A'";
-$userCheckRes = sql_query($userCheckSql);
+$staffCheckSql = "SELECT iStaffID FROM staff WHERE iStaffID = $user_id AND cStatus = 'A'";
+$staffCheckRes = sql_query($staffCheckSql);
 
-if (sql_num_rows($userCheckRes) == 0) {
+if (sql_num_rows($staffCheckRes) == 0) {
     echo json_encode([
         "error" => [
             "message" => "User not found or inactive"
