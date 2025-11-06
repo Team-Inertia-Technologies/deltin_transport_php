@@ -131,7 +131,7 @@ if ($mode == 'LOGIN') {
             // Log the signin
             sql_query("INSERT INTO st_log_signin (dDate, cRefType, iRefID, dtEntry, vIPAddress, vBrowser, cStatus) VALUES ('" . TODAY . "', 'S', '$staffId', '" . NOW . "', '" . ($_SERVER['REMOTE_ADDR'] ?? '') . "', '" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "', 'A')", "Log staff signin");
 
-			$q = "update users set STAFF='" . NOW . "', cActive='Y' where iStaffID=$staffId";
+			$q = "update staff set dtLastLogin='" . NOW . "', cActive='Y' where iStaffID=$staffId";
 			$r = sql_query($q, 'AUTH.78');
             echo json_encode([
                 'statusCode' => 200,
