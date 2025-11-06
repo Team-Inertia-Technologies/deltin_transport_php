@@ -302,7 +302,7 @@ switch ($mode) {
             // Calculate total capacity for this trip
             $totalCapacity = 0;
             foreach ($vehicles as $vehicle) {
-                $capacity = intval($vehicle['capacity'] ?? 0);
+                $capacity = intval($vehicle['vhCaps'] ?? 0);
                 $totalCapacity += $capacity;
             }
 
@@ -312,8 +312,8 @@ switch ($mode) {
                 
                 // Process each vehicle for this trip and date
                 foreach ($vehicles as $vehicleIndex => $vehicle) {
-                    $vehID = intval($vehicle['vehID'] ?? 0);
-                    $driverID = intval($vehicle['driverID'] ?? 0);
+                    $vehID = intval($vehicle['vhId'] ?? 0);
+                    $driverID = intval($vehicle['driverId'] ?? 0);
 
                     if ($vehID <= 0) {
                         $errors[] = "Invalid vehicle ID in trip $tripIndex, vehicle $vehicleIndex";
