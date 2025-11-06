@@ -27,7 +27,6 @@ switch ($mode) {
 
     // ===================== CASE: ADD_ONLOAD =====================
     case 'ADD_ONLOAD':
-        // Get staff route and stop information
         $staffSql = "SELECT iRouteID, iStopID FROM staff WHERE iUserID = $user_id AND cStatus = 'A'";
         $staffRes = sql_query($staffSql);
         $staffData = sql_fetch_assoc($staffRes);
