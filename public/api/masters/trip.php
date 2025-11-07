@@ -246,7 +246,6 @@ switch ($mode) {
     case 'VIEW_TRIP':
         $iGrpID = intval($_REQUEST['iGrpID'] ?? 0);
 
-        // Validate required parameters
         if ($iGrpID <= 0) {
             echo json_encode([
                 "error" => [
@@ -269,10 +268,10 @@ switch ($mode) {
                     vc.iCapacity as vehicleCapacity,
                     ven.iVendorID,
                     ven.vName as vehicleOwner,
-                    ven.vMobile as vendorMobile,
+                    ven.vContactNum as vendorMobile,
                     d.iDriverID,
                     d.vName as driverName,
-                    d.vMobile as driverMobile,
+                    d.vMobileNum as driverMobile,
                     t.iCapacity as totalCapacity
                 FROM st_trips t
                 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
@@ -355,6 +354,76 @@ switch ($mode) {
             ];
         }
 
+        // Get stops information for this route and trip group
+        $stops = [];
+        if (!empty($routeInfo)) {
+            // Get the route ID from the first trip
+            $routeIDSql = "SELECT iRouteID FROM st_trips WHERE iGrpID = $iGrpID AND cStatus = 'A' LIMIT 1";
+            $routeIDRes = sql_query($routeIDSql);
+            
+            if ($routeIDRow = sql_fetch_assoc($routeIDRes)) {
+                $routeID = (int) $routeIDRow['iRouteID'];
+                
+                // Get all stops for this route with their timings
+                $stopsSql = "SELECT 
+                                s.iStopID,
+                                s.vName as stopName,
+                                s.tOffsetFromStart,
+                                s.iRank
+                            FROM st_route_stops s
+                            WHERE s.iRouteID = $routeID AND s.cStatus = 'A'
+                            ORDER BY s.iRank";
+                $stopsRes = sql_query($stopsSql);
+                
+                while ($stopRow = sql_fetch_assoc($stopsRes)) {
+                    $stopID = (int) $stopRow['iStopID'];
+                    $offsetMinutes = intval($stopRow['tOffsetFromStart']);
+                    
+                    // Calculate pickup time for this stop
+                    // Get trip start time from any trip in this group
+                    $tripTimeSql = "SELECT dtTrip FROM st_trips WHERE iGrpID = $iGrpID AND cStatus = 'A' LIMIT 1";
+                    $tripTimeRes = sql_query($tripTimeSql);
+                    $tripTimeRow = sql_fetch_assoc($tripTimeRes);
+                    
+                    $tripStartTime = date('H:i:s', strtotime($tripTimeRow['dtTrip']));
+                    $pickupTime = date('H:i', strtotime($tripStartTime) + ($offsetMinutes * 60));
+                    
+                    // Get staff who will board at this stop for any trip in this group
+                    $staffSql = "SELECT DISTINCT
+                                    st.iStaffID,
+                                    st.vName as staffName,
+                                    st.vMobile as staffMobile
+                                FROM st_request req
+                                INNER JOIN staff st ON req.iStaffID = st.iStaffID AND st.cStatus = 'A'
+                                INNER JOIN st_trips t ON req.iTripID = t.iTripID
+                                WHERE t.iGrpID = $iGrpID 
+                                AND req.iStopID = $stopID 
+                                AND req.cStatus = 'A'
+                                ORDER BY st.vName";
+                    $staffRes = sql_query($staffSql);
+                    
+                    $staffList = [];
+                    while ($staffRow = sql_fetch_assoc($staffRes)) {
+                        $staffList[] = [
+                            "staffID" => (int) $staffRow['iStaffID'],
+                            "staffName" => $staffRow['staffName'] ?? '',
+                            "staffMobile" => $staffRow['staffMobile'] ?? ''
+                        ];
+                    }
+                    
+                    $stops[] = [
+                        "stopID" => $stopID,
+                        "stopName" => $stopRow['stopName'] ?? '',
+                        "pickupTime" => $pickupTime,
+                        "offsetMinutes" => $offsetMinutes,
+                        "rank" => (int) $stopRow['iRank'],
+                        "staff" => $staffList,
+                        "staffCount" => count($staffList)
+                    ];
+                }
+            }
+        }
+
         // Convert maps to arrays
         $vendors = array_values($vendorsMap);
         $drivers = array_values($driversMap);
@@ -366,7 +435,8 @@ switch ($mode) {
                 "vehicles" => $vehicles,
                 "vehicleCount" => count($vehicles),
                 "vendors" => $vendors,
-                "drivers" => $drivers
+                "drivers" => $drivers,
+                "stops" => $stops
             ],
             "statusCode" => 200
         ]);
