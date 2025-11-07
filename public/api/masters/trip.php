@@ -394,10 +394,14 @@ switch ($mode) {
                     $staffSql = "SELECT DISTINCT
                                     st.iStaffID,
                                     st.vName as staffName,
-                                    st.vMobile as staffMobile
+                                    st.vMobile as staffMobile,
+                                    req.iVehicleID,
+                                    v.vRnum as vehicleNumber,
+                                    req.dtIn
                                 FROM st_request req
                                 INNER JOIN staff st ON req.iStaffID = st.iStaffID AND st.cStatus = 'A'
                                 INNER JOIN st_trips t ON req.iTripID = t.iTripID
+                                LEFT JOIN vehicle v ON req.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                                 WHERE t.iGrpID = $iGrpID 
                                 AND req.iStopID = $stopID 
                                 AND req.cStatus = 'A'
@@ -409,7 +413,9 @@ switch ($mode) {
                         $staffList[] = [
                             "staffID" => (int) $staffRow['iStaffID'],
                             "staffName" => $staffRow['staffName'] ?? '',
-                            "staffMobile" => $staffRow['staffMobile'] ?? ''
+                            "staffMobile" => $staffRow['staffMobile'] ?? '',
+                            "vehicleNumber" => $staffRow['vehicleNumber'] ?? '',
+                            "entered" => !empty($staffRow['dtIn'])
                         ];
                     }
                     
