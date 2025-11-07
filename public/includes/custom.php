@@ -393,4 +393,29 @@ function updateSymptoms($POST = array(), $patid = "", $date = "")
         }
     }
 }
+function SendSmsCurl2($template_id, $contact_no, $sms, $apikey = "KKc069f7ec7b7036bae817e3bac83020ae")
+{
+    $curl = curl_init();
+
+    curl_setopt_array($curl, array(
+        CURLOPT_URL => 'https://smsapi1.ozonetel.com/OzonetelSMS/api.php?action=sendSMS',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'POST',
+        CURLOPT_POSTFIELDS => 'userName=delta_corp&entityId=1301158323835363610&templateId=' . $template_id . '&destinationNumber=' . $contact_no . '&smsText=' . $sms . '&apiKey=' . $apikey . '&smsType=SMS_TRANS&senderId=DELTIN',
+        CURLOPT_HTTPHEADER => array(
+            'Content-Type: application/x-www-form-urlencoded',
+        ),
+    ));
+
+    $response = curl_exec($curl);
+
+    curl_close($curl);
+    return $response;
+}
+
 ?>
