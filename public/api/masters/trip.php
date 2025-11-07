@@ -154,7 +154,7 @@ switch ($mode) {
             ];
         }
 
-        // Get mode options (transportation modes)
+        // Get mode options (transportation modes)    
         $modeOpt = [
             ["id" => 0, "name" => "Choose"],
             ["id" => 1, "name" => "Bus"]
@@ -267,7 +267,9 @@ switch ($mode) {
                     v.iVehicleID,
                     v.vRnum as vehicleNumber,
                     vc.iCapacity as vehicleCapacity,
+                    ven.iVendorID,
                     ven.vName as vehicleOwner,
+                    ven.vMobile as vendorMobile,
                     d.iDriverID,
                     d.vName as driverName,
                     d.vMobile as driverMobile,
@@ -293,9 +295,10 @@ switch ($mode) {
             exit;
         }
 
-        $tripData = [];
         $routeInfo = [];
         $vehicles = [];
+        $vendorsMap = [];
+        $driversMap = [];
         
         while ($row = sql_fetch_assoc($res)) {
             // Set route info (same for all trips in group)
@@ -308,26 +311,62 @@ switch ($mode) {
                 ];
             }
             
-            // Add vehicle details
+            // Collect unique vendors and their vehicles
+            $vendorID = (int) $row['iVendorID'];
+            if ($vendorID > 0) {
+                if (!isset($vendorsMap[$vendorID])) {
+                    $vendorsMap[$vendorID] = [
+                        "vendorID" => $vendorID,
+                        "vendorName" => $row['vehicleOwner'] ?? '',
+                        "vendorMobile" => $row['vendorMobile'] ?? '',
+                        "vehicles" => []
+                    ];
+                }
+                
+                // Add vehicle to this vendor
+                $vendorsMap[$vendorID]['vehicles'][] = [
+                    "vehicleID" => (int) $row['iVehicleID'],
+                    "vehicleNumber" => $row['vehicleNumber'] ?? '',
+                    "vehicleCapacity" => (int) ($row['vehicleCapacity'] ?? 0)
+                ];
+            }
+            
+            // Collect unique drivers
+            $driverID = (int) ($row['iDriverID'] ?? 0);
+            if ($driverID > 0 && !isset($driversMap[$driverID])) {
+                $driversMap[$driverID] = [
+                    "driverID" => $driverID,
+                    "driverName" => $row['driverName'] ?? '',
+                    "driverMobile" => $row['driverMobile'] ?? ''
+                ];
+            }
+            
+            // Add vehicle details for main vehicles array
             $vehicles[] = [
                 "vehicleID" => (int) $row['iVehicleID'],
                 "vehicleNumber" => $row['vehicleNumber'] ?? '',
                 "vehicleCapacity" => (int) ($row['vehicleCapacity'] ?? 0),
                 "vehicleOwner" => $row['vehicleOwner'] ?? '',
                 "driver" => [
-                    "driverID" => (int) ($row['iDriverID'] ?? 0),
+                    "driverID" => $driverID,
                     "driverName" => $row['driverName'] ?? '',
                     "driverMobile" => $row['driverMobile'] ?? ''
                 ]
             ];
         }
 
+        // Convert maps to arrays
+        $vendors = array_values($vendorsMap);
+        $drivers = array_values($driversMap);
+
         echo json_encode([
             "data" => [
                 "iGrpID" => $iGrpID,
                 "routeInfo" => $routeInfo,
                 "vehicles" => $vehicles,
-                "vehicleCount" => count($vehicles)
+                "vehicleCount" => count($vehicles),
+                "vendors" => $vendors,
+                "drivers" => $drivers
             ],
             "statusCode" => 200
         ]);
