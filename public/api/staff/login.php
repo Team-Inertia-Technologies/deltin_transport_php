@@ -182,8 +182,8 @@ if ($mode == 'LOGIN') {
         // Generate new OTP
         $OtpID = NextID('iOTPID', 'otp');
         $dtTo = date('Y-m-d H:i:s', strtotime('+5 minutes'));
-        // $otp = GenerateRandomCode('4', 'vOTP', 'otp');
-        $otp = "1234";
+         $otp = GenerateRandomCode('4', 'vOTP', 'otp');
+       // $otp = "1234";
 
         // Deactivate previous OTPs
         sql_query("UPDATE otp SET cUsed='X' WHERE vPhone='$mobile'");
@@ -213,11 +213,12 @@ if ($mode == 'LOGIN') {
         sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','A','0','$otp','$mobile','$TIME','$dtTo','N')", "Resend OTP for staff");
 
         // Send SMS (commented out for now)
-        // $message = urlencode('Your new OTP for staff login is: ' . $otp);
-        // $templateid = '1307175128414225156';
-        // $to = $mobile;
-        // if (strlen($to) == 10) $to = '91' . $to;
-        // SendSmsCurl2($templateid, $to, $message);
+     $message = urlencode('Your OTP for staff login is: ' . $otp); 
+           $message = urlencode('Use code ' . $otp . ' to verify your login for Deltin Transport. This OTP is valid for 5 minutes.');
+            $templateid = '1707176249288519068';
+        $to = $mob;
+        if (strlen($to) == 10) $to = '91' . $to;
+        SendSmsCurl2($templateid, $to, $message);
 
         echo json_encode([
             'statusCode' => 200,
