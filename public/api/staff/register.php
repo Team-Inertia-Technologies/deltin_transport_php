@@ -6,14 +6,13 @@ include "../../includes/common_api.php";
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
 
-$request = json_decode($postdata, true); // Decode as associative array
-$_REQUEST = array_merge($_REQUEST, $request ?? []); // Merge with $_REQUEST
+$request = json_decode($postdata, true); 
+$_REQUEST = array_merge($_REQUEST, $request ?? []); 
 $mode = $_REQUEST['mode'] ?? '';
 $TIME = NOW;
 if ($mode == 'REGISTER_ONLOAD') {
     $staff = sql_query("SELECT vMobile, vCode FROM staff WHERE cStatus = 'A'");
 
-    // Get routes with their stops
     $routeStopsQuery = "SELECT r.iRouteID, r.vName as routeName, s.iStopID, s.vName as stopName 
                         FROM st_route r 
                         LEFT JOIN st_route_stops s ON r.iRouteID = s.iRouteID 
@@ -78,7 +77,7 @@ if ($mode == 'REGISTER_ONLOAD') {
 
 // ===================== CASE: ADD_STAFF =====================
 else if ($mode == 'ADD_STAFF') {
-    // Get form data from request
+
     $vCode = db_input($request['code'] ?? '');
     $vName = db_input($request['name'] ?? '');
     $vMobile = db_input($request['mobile'] ?? '');
@@ -86,7 +85,7 @@ else if ($mode == 'ADD_STAFF') {
    $iStopID = db_input($request['stopid'] ?? 0);
     $cStatus = 'A'; 
     $dtRegistered = NOW;
-    // Basic validation
+
     if (empty($vCode)) {
         echo json_encode([
             "error" => [
@@ -143,10 +142,8 @@ else if ($mode == 'ADD_STAFF') {
         }
     }
 
-    // Get next staff ID
     $iStaffID = NextID('iStaffID', 'staff');
 
-    // Insert new staff record
     $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile,iRouteID,iStopID, dtRegistered, cStatus) 
             VALUES ($iStaffID, '$vCode', '$vName', '$vMobile',$iRouteID, $iStopID, '$dtRegistered', '$cStatus')";
 
