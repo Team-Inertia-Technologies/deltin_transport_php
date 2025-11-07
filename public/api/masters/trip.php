@@ -340,12 +340,14 @@ switch ($mode) {
                 ];
             }
             
-            // Add vehicle details for main vehicles array
+            // Add trip details for main trip_details array
             $vehicles[] = [
+                "tripID" => (int) $row['iTripID'],
                 "vehicleID" => (int) $row['iVehicleID'],
                 "vehicleNumber" => $row['vehicleNumber'] ?? '',
                 "vehicleCapacity" => (int) ($row['vehicleCapacity'] ?? 0),
                 "vehicleOwner" => $row['vehicleOwner'] ?? '',
+                "vehicleOwnerID" => $vendorID,
                 "driver" => [
                     "driverID" => $driverID,
                     "driverName" => $row['driverName'] ?? '',
@@ -432,8 +434,8 @@ switch ($mode) {
             "data" => [
                 "iGrpID" => $iGrpID,
                 "routeInfo" => $routeInfo,
-                "vehicles" => $vehicles,
-                "vehicleCount" => count($vehicles),
+                "trip_details" => $vehicles,
+                "tripCount" => count($vehicles),
                 "vendors" => $vendors,
                 "drivers" => $drivers,
                 "stops" => $stops
