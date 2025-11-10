@@ -337,7 +337,7 @@ switch ($mode) {
                 ];
             }
 
-            // Collect unique vendors and their vehicles
+            // Collect vendors and their vehicles directly without validation
             $vendorID = (int) $row['iVendorID'];
             if ($vendorID > 0) {
                 if (!isset($vendorsMap[$vendorID])) {
@@ -349,24 +349,12 @@ switch ($mode) {
                     ];
                 }
 
-                // Check if vehicle is already added to this vendor to prevent duplicates
-                $vehicleID = (int) $row['iVehicleID'];
-                $vehicleExists = false;
-                foreach ($vendorsMap[$vendorID]['vehicles'] as $existingVehicle) {
-                    if ($existingVehicle['vehicleID'] === $vehicleID) {
-                        $vehicleExists = true;
-                        break;
-                    }
-                }
-
-                // Add vehicle to this vendor only if it doesn't already exist
-                if (!$vehicleExists) {
-                    $vendorsMap[$vendorID]['vehicles'][] = [
-                        "vehicleID" => $vehicleID,
-                        "vehicleNumber" => $row['vehicleNumber'] ?? '',
-                        "vehicleCapacity" => (int) ($row['vehicleCapacity'] ?? 0)
-                    ];
-                }
+                // Add vehicle to this vendor directly
+                $vendorsMap[$vendorID]['vehicles'][] = [
+                    "vehicleID" => (int) $row['iVehicleID'],
+                    "vehicleNumber" => $row['vehicleNumber'] ?? '',
+                    "vehicleCapacity" => (int) ($row['vehicleCapacity'] ?? 0)
+                ];
             }
 
             // Collect unique drivers
@@ -470,8 +458,47 @@ switch ($mode) {
             }
         }
 
+        // Get ALL vendors and their vehicles with cStatus='A'
+        $vendorsSql = "SELECT 
+                        ven.iVendorID,
+                        ven.vName as vendorName,
+                        ven.vContactNum as vendorMobile,
+                        v.iVehicleID,
+                        v.vRnum as vehicleNumber,
+                        vc.iCapacity as vehicleCapacity
+                      FROM vendor ven
+                      LEFT JOIN vehicle v ON ven.iVendorID = v.iVendorID AND v.cStatus = 'A'
+                      LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+                      WHERE ven.cStatus = 'A' AND ven.cType IN ('B','T')
+                      ORDER BY ven.vName, v.vRnum";
+        
+        $vendorsRes = sql_query($vendorsSql);
+        $allVendorsMap = [];
+        
+        while ($vendorRow = sql_fetch_assoc($vendorsRes)) {
+            $vendorID = (int) $vendorRow['iVendorID'];
+            
+            if (!isset($allVendorsMap[$vendorID])) {
+                $allVendorsMap[$vendorID] = [
+                    "vendorID" => $vendorID,
+                    "vendorName" => $vendorRow['vendorName'] ?? '',
+                    "vendorMobile" => $vendorRow['vendorMobile'] ?? '',
+                    "vehicles" => []
+                ];
+            }
+            
+            // Add vehicle if it exists
+            if (!empty($vendorRow['iVehicleID'])) {
+                $allVendorsMap[$vendorID]['vehicles'][] = [
+                    "vehicleID" => (int) $vendorRow['iVehicleID'],
+                    "vehicleNumber" => $vendorRow['vehicleNumber'] ?? '',
+                    "vehicleCapacity" => (int) ($vendorRow['vehicleCapacity'] ?? 0)
+                ];
+            }
+        }
+
         // Convert maps to arrays
-        $vendors = array_values($vendorsMap);
+        $vendors = array_values($allVendorsMap);
         $drivers = array_values($driversMap);
 
         echo json_encode([
