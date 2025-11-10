@@ -819,6 +819,72 @@ switch ($mode) {
         }
         break;
 
+    // ===================== CASE DELETE_TRIP =====================
+    case 'DELETE_TRIP':
+        $iTripID = intval($_REQUEST['iTripID'] ?? 0);
+
+        // Validate required parameter
+        if ($iTripID <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing or invalid iTripID parameter"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Check if trip exists and is active
+        $checkSql = "SELECT iTripID, iGrpID FROM st_trips WHERE iTripID = $iTripID AND cStatus = 'A'";
+        $checkRes = sql_query($checkSql);
+
+        if (sql_num_rows($checkRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Trip not found or already deleted"
+                ],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $tripRow = sql_fetch_assoc($checkRes);
+        $iGrpID = $tripRow['iGrpID'];
+
+        // Mark trip as deleted (status = 'X')
+        $deleteSql = "UPDATE st_trips SET 
+                        cStatus = 'X',
+                        dtUpdated = NOW()
+                      WHERE iTripID = $iTripID";
+
+        if (sql_query($deleteSql)) {
+            if (sql_affected_rows() > 0) {
+                echo json_encode([
+                    "data" => [
+                        "message" => "Trip deleted successfully",
+                        "iTripID" => $iTripID,
+                        "iGrpID" => $iGrpID
+                    ],
+                    "statusCode" => 200
+                ]);
+            } else {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Failed to delete trip"
+                    ],
+                    "statusCode" => 500
+                ]);
+            }
+        } else {
+            echo json_encode([
+                "error" => [
+                    "message" => "Database error occurred while deleting trip"
+                ],
+                "statusCode" => 500
+            ]);
+        }
+        break;
+
     // ===================== DEFAULT =====================
     default:
         echo json_encode([

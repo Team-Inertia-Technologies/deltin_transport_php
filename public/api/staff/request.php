@@ -350,65 +350,6 @@ switch ($mode) {
         }
         break;
 
-    // // ===================== CASE: LIST_REQUESTS =====================
-    // case 'LIST_REQUESTS':
-    //     $fromDate = $_REQUEST['fromDate'] ?? date('Y-m-d');
-    //     $toDate = $_REQUEST['toDate'] ?? date('Y-m-d', strtotime('+30 days'));
-        
-    //     $requestsSql = "SELECT 
-    //                        r.iTrReqID,
-    //                        r.dPickup,
-    //                        r.tPickup,
-    //                        r.dtReq,
-    //                        rt.vName as routeName,
-    //                        rt.vDestination as destination,
-    //                        s.vName as stopName,
-    //                        t.iTripID,
-    //                        t.iGrpID,
-    //                        t.iCapacity,
-    //                        t.iRequested,
-    //                        v.vRnum as vehicleNumber
-    //                    FROM st_request r
-    //                    INNER JOIN st_route rt ON r.iRouteID = rt.iRouteID
-    //                    INNER JOIN st_route_stops s ON r.iStopID = s.iStopID
-    //                    INNER JOIN st_trips t ON r.iTripID = t.iTripID
-    //                    LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID
-    //                    WHERE r.iStaffID = $user_id 
-    //                    AND r.cStatus = 'A'
-    //                    AND r.dPickup >= '$fromDate'
-    //                    AND r.dPickup <= '$toDate'
-    //                    ORDER BY r.dPickup DESC, r.tPickup DESC";
-        
-    //     $requestsRes = sql_query($requestsSql);
-    //     $requests = [];
-        
-    //     while ($row = sql_fetch_assoc($requestsRes)) {
-    //         $requests[] = [
-    //             "requestID" => (int) $row['iTrReqID'],
-    //             "pickupDate" => $row['dPickup'],
-    //             "pickupTime" => date('H:i', strtotime($row['tPickup'])),
-    //             "requestDate" => date('d/m/Y H:i', strtotime($row['dtReq'])),
-    //             "routeName" => $row['routeName'],
-    //             "destination" => $row['destination'],
-    //             "stopName" => $row['stopName'],
-    //             "tripID" => (int) $row['iTripID'],
-    //             "grpID" => (int) $row['iGrpID'],
-    //             "vehicleNumber" => $row['vehicleNumber'] ?? 'Not Assigned',
-    //             "capacity" => (int) $row['iCapacity'],
-    //             "requested" => (int) $row['iRequested'],
-    //             "isOverbooked" => (int) $row['iRequested'] > (int) $row['iCapacity']
-    //         ];
-    //     }
-        
-    //     echo json_encode([
-    //         "data" => [
-    //             "requests" => $requests,
-    //             "fromDate" => $fromDate,
-    //             "toDate" => $toDate,
-    //             "totalRequests" => count($requests)
-    //         ],
-    //         "statusCode" => 200
-    //     ]);   //     break;
 
     // ===================== CASE: DELETE_REQUEST =====================
     case 'DELETE_REQUEST':
