@@ -618,6 +618,207 @@ switch ($mode) {
         echo json_encode($response);
         break;
 
+    // ===================== CASE UPDATE_TRIP =====================
+    case 'UPDATE_TRIP':
+        $iGrpID = intval($_REQUEST['iGrpID'] ?? 0);
+        $trip_details = $_REQUEST['trip_details'] ?? [];
+
+        // Validate required parameters
+        if ($iGrpID <= 0 || empty($trip_details)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing required parameters: iGrpID or trip_details"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $errors = [];
+        $updatedCount = 0;
+        $insertedCount = 0;
+
+        // Check for duplicate vehicle IDs in the request
+        $vehicleIDs = [];
+        $duplicateVehicles = [];
+        
+        foreach ($trip_details as $index => $trip) {
+            $vehicleID = intval($trip['vehicleID'] ?? 0);
+            if ($vehicleID > 0) {
+                if (in_array($vehicleID, $vehicleIDs)) {
+                    $duplicateVehicles[] = $vehicleID;
+                } else {
+                    $vehicleIDs[] = $vehicleID;
+                }
+            }
+        }
+
+        if (!empty($duplicateVehicles)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Duplicate vehicle IDs found in request: " . implode(', ', array_unique($duplicateVehicles))
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Check if any of these vehicles are already assigned to other trips in the same group
+        if (!empty($vehicleIDs)) {
+            $vehicleIDsStr = implode(',', $vehicleIDs);
+            $existingVehiclesSql = "SELECT DISTINCT iVehicleID, iTripID 
+                                   FROM st_trips 
+                                   WHERE iGrpID = $iGrpID 
+                                   AND iVehicleID IN ($vehicleIDsStr) 
+                                   AND cStatus = 'A'";
+            $existingVehiclesRes = sql_query($existingVehiclesSql);
+            
+            $conflictingVehicles = [];
+            $existingTripVehicles = [];
+            
+            while ($row = sql_fetch_assoc($existingVehiclesRes)) {
+                $existingTripVehicles[intval($row['iTripID'])] = intval($row['iVehicleID']);
+            }
+            
+            // Check for conflicts (vehicle assigned to different trip in same group)
+            foreach ($trip_details as $index => $trip) {
+                $tripID = intval($trip['tripID'] ?? 0);
+                $vehicleID = intval($trip['vehicleID'] ?? 0);
+                
+                foreach ($existingTripVehicles as $existingTripID => $existingVehicleID) {
+                    if ($vehicleID == $existingVehicleID && $tripID != $existingTripID) {
+                        $conflictingVehicles[] = $vehicleID;
+                    }
+                }
+            }
+            
+            if (!empty($conflictingVehicles)) {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Vehicle(s) already assigned to other trips in this group: " . implode(', ', array_unique($conflictingVehicles))
+                    ],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+        }
+
+        // Start transaction
+        sql_query("START TRANSACTION");
+
+        try {
+            foreach ($trip_details as $index => $trip) {
+                $tripID = intval($trip['tripID'] ?? 0);
+                $vehicleID = intval($trip['vehicleID'] ?? 0);
+                $vehicleCapacity = intval($trip['vehicleCapacity'] ?? 0);
+                $vehicleOwnerID = intval($trip['vehicleOwnerID'] ?? 0);
+                $driverID = intval($trip['driverID'] ?? 0);
+
+                // Validate required fields
+                if ($vehicleID <= 0) {
+                    $errors[] = "Invalid vehicleID in trip detail at index $index";
+                    continue;
+                }
+
+                if ($tripID > 0) {
+                    // UPDATE existing trip
+                    $updateSql = "UPDATE st_trips SET 
+                                    iVehicleID = $vehicleID,
+                                    iDriverID = $driverID,
+                                    iCapacity = $vehicleCapacity,
+                                    dtUpdated = NOW()
+                                  WHERE iTripID = $tripID AND iGrpID = $iGrpID AND cStatus = 'A'";
+
+                    if (sql_query($updateSql)) {
+                        if (sql_affected_rows() > 0) {
+                            $updatedCount++;
+                        } else {
+                            $errors[] = "Trip with ID $tripID not found or no changes made";
+                        }
+                    } else {
+                        $errors[] = "Failed to update trip with ID $tripID";
+                    }
+                } else {
+                    // INSERT new trip (tripID = 0)
+                    // Get the trip details from existing trips in the same group for route and datetime
+                    $groupInfoSql = "SELECT iRouteID, dtTrip FROM st_trips WHERE iGrpID = $iGrpID AND cStatus = 'A' LIMIT 1";
+                    $groupInfoRes = sql_query($groupInfoSql);
+
+                    if ($groupInfoRow = sql_fetch_assoc($groupInfoRes)) {
+                        $routeID = intval($groupInfoRow['iRouteID']);
+                        $tripDateTime = $groupInfoRow['dtTrip'];
+
+                        // Get next trip ID
+                        $newTripID = NextID('iTripID', 'st_trips');
+
+                        $insertSql = "INSERT INTO st_trips (
+                                        iTripID,
+                                        iGrpID,
+                                        iRouteID,
+                                        dtTrip,
+                                        iVehicleID,
+                                        iDriverID,
+                                        iCapacity,
+                                        iRank,
+                                        cStatus,
+                                        dtCreated
+                                      ) VALUES (
+                                        $newTripID,
+                                        $iGrpID,
+                                        $routeID,
+                                        '$tripDateTime',
+                                        $vehicleID,
+                                        $driverID,
+                                        $vehicleCapacity,
+                                        1,
+                                        'A',
+                                        NOW()
+                                      )";
+
+                        if (sql_query($insertSql)) {
+                            $insertedCount++;
+                        } else {
+                            $errors[] = "Failed to insert new trip at index $index";
+                        }
+                    } else {
+                        $errors[] = "Could not find group information for iGrpID $iGrpID";
+                    }
+                }
+            }
+
+            // Commit transaction if no critical errors
+            sql_query("COMMIT");
+
+            // Prepare response
+            $response = [
+                "data" => [
+                    "message" => "Trip update completed",
+                    "updatedCount" => $updatedCount,
+                    "insertedCount" => $insertedCount,
+                    "iGrpID" => $iGrpID
+                ],
+                "statusCode" => 200
+            ];
+
+            if (!empty($errors)) {
+                $response["warnings"] = $errors;
+            }
+
+            echo json_encode($response);
+
+        } catch (Exception $e) {
+            // Rollback transaction on error
+            sql_query("ROLLBACK");
+            
+            echo json_encode([
+                "error" => [
+                    "message" => "Transaction failed: " . $e->getMessage()
+                ],
+                "statusCode" => 500
+            ]);
+        }
+        break;
+
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
