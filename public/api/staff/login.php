@@ -125,8 +125,8 @@ if ($mode == 'LOGIN') {
 
             $USER_DATA = [
                 'id' => $staffId,
-                'name' => $staffName,
-                'mobile' => $staffMobile,
+                'name' => db_output2($staffName),
+                'mobile' => db_output2($staffMobile),
                 'token' => EncodeParam($staffId)
             ];
 

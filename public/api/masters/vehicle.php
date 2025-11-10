@@ -169,11 +169,11 @@ switch ($mode) {
 
             $vehicle = [
                 'id' => $row['iVehicleID'],
-                'vehicleNumber' => $row['vRnum'],
+                'vehicleNumber' => db_output2($row['vRnum']),
                 'vehicleCapacity' => $row['capacity'],
                // 'rate' => $row['fRate'],
                 'vehicleOwnerID' => $row['iVendorID'],
-                'vehicleOwner' => $row['vendor_name'] ?? '',
+                'vehicleOwner' => db_output2($row['vendor_name'] ?? ''),
                 'availabilityID' => $availability,
                 'availability' => $availabilityNames
             ];
@@ -276,12 +276,12 @@ switch ($mode) {
                
                 'vehicleData' => [
                     'iVehicleID' => intval($row['iVehicleID']),
-                    'vName' => $row['vName'] ?? '',
-                    'vRnum' => $row['vRnum'] ?? '',
+                    'vName' => db_output2($row['vName'] ?? ''),
+                    'vRnum' => db_output2($row['vRnum'] ?? ''),
               //      'iSeats' => intval($row['iSeats'] ?? 0),
                     'dateOfReg' => $row['dRegistration'] ?? '',
                     'dateOfExp' => $row['dExpiry'] ?? '',
-                    'perNum' => $row['vTouristPerNo'] ?? '',
+                    'perNum' => db_output2($row['vTouristPerNo'] ?? ''),
                      'selectedDriverType' => intval($row['iType'] ?? 0),
                 'availability' => $availability,
                 'selectedCategoryType' => intval($row['iCatID'] ?? 0),

@@ -134,10 +134,10 @@ switch ($mode) {
 
             $rowData[] = [
                 'id' => $vendorID,
-                'companyName' => $row['vName'] ?? '',
-                'fullName' => $row['vContactPerson'] ?? '',
-                'mobileNumber' => $row['vContactNum'] ?? '',
-                'email' => $row['vEmail'] ?? '',
+                'companyName' => db_output2($row['vName'] ?? ''),
+                'fullName' => db_output2($row['vContactPerson'] ?? ''),
+                'mobileNumber' => db_output2($row['vContactNum'] ?? ''),
+                'email' => db_output2($row['vEmail'] ?? ''),
                 'serviceOff' => $row['cType'] ?? '',
                 'availabilityID' => $availabilityAreas,
                 'availability' => $availabilityNames
@@ -224,21 +224,21 @@ switch ($mode) {
         // Map database fields to form field names
         $vendorData = [
             'iVendorID' => intval($vendor['iVendorID']),
-            'comName' => $vendor['vName'] ?? '',
-            'perName' => $vendor['vContactPerson'] ?? '',
-            'perConNum' => $vendor['vContactNum'] ?? '',
-            'email' => $vendor['vEmail'] ?? '',
-            'comAdd' => $vendor['vAddress'] ?? '',
+            'comName' => db_output2($vendor['vName'] ?? ''),
+            'perName' => db_output2($vendor['vContactPerson'] ?? ''),
+            'perConNum' => db_output2($vendor['vContactNum'] ?? ''),
+            'email' => db_output2($vendor['vEmail'] ?? ''),
+            'comAdd' => db_output2($vendor['vAddress'] ?? ''),
             'state' => intval($vendor['iStateCode'] ?? 0),
-            'remarks' => $vendor['vDetails'] ?? '',
-            'panNo' => $vendor['vPanNo'] ?? '',
-            'gstNo' => $vendor['vGSTIN'] ?? '',
+            'remarks' => db_output2($vendor['vDetails'] ?? ''),
+            'panNo' => db_output2($vendor['vPanNo'] ?? ''),
+            'gstNo' => db_output2($vendor['vGSTIN'] ?? ''),
             'tdsApp' => $vendor['cTDSApplicable'] ?? 'N',
             'tdsPercentage' => floatval($vendor['fTDSperc'] ?? 0),
             'serviceOff' => $vendor['cType'] ?? '',
             'availability' => $availabilityAreas,
-            'bankAccNo' => $vendor['vBankAcctNum'] ?? '',
-            'bankIfscCode' => $vendor['vBankIFSC'] ?? '',
+            'bankAccNo' => db_output2($vendor['vBankAcctNum'] ?? ''),
+            'bankIfscCode' => db_output2($vendor['vBankIFSC'] ?? ''),
             'cStatus' => $vendor['cStatus'] ?? 'A'
             //'vehicles' => $vehicleArr
         ];

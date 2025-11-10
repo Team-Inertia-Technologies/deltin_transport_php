@@ -54,7 +54,7 @@ switch ($mode) {
             while ($stopRow = sql_fetch_assoc($stopsRes)) {
                 $pickUpOpt[] = [
                     "id" => (int) $stopRow['iStopID'],
-                    "name" => $stopRow['vName']
+                    "name" => db_output2($stopRow['vName'])
                 ];
             }
             
@@ -76,7 +76,7 @@ switch ($mode) {
             
             $routes[] = [
                 "id" => $routeID,
-                "name" => $routeName,
+                "name" => db_output2($routeName),
                 "pickUpOpt" => $pickUpOpt,
                 "timeOpt" => $timeOpt
             ];
@@ -332,8 +332,8 @@ switch ($mode) {
                 "data" => [
                     "message" => $message,
                     "successCount" => $successCount,
-                    "routeName" => $routeName,
-                    "destination" => $destination,
+                    "routeName" => db_output2($routeName),
+                    "destination" => db_output2($destination),
                     "timing" => $timing,
                     "selectedDays" => $selectedDays,
                     "errors" => $errors

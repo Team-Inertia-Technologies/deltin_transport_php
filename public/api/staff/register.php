@@ -29,7 +29,7 @@ if ($mode == 'REGISTER_ONLOAD') {
     // Process staff data
     while ($row = sql_fetch_assoc($staff)) {
       //  $PHONE_ARR[] = $row['vMobile'];
-        $CODE_ARR[] = $row['vCode'];
+        $CODE_ARR[] = db_output2($row['vCode']);
     }
 
     // Process routes and stops data
@@ -44,7 +44,7 @@ if ($mode == 'REGISTER_ONLOAD') {
             $currentRouteId = $row['iRouteID'];
             $currentRoute = [
                 "id" => (int) $row['iRouteID'],
-                "name" => $row['routeName'],
+                "name" => db_output2($row['routeName']),
                 "pickups" => []
             ];
         }
@@ -53,7 +53,7 @@ if ($mode == 'REGISTER_ONLOAD') {
         if ($row['iStopID'] !== null) {
             $currentRoute["pickups"][] = [
                 "id" => (int) $row['iStopID'],
-                "name" => $row['stopName']
+                "name" => db_output2($row['stopName'])
             ];
         }
     }
@@ -153,9 +153,9 @@ else if ($mode == 'ADD_STAFF') {
             "message" => "Staff registered successfully",
             "data" => [
                 "id" => $iStaffID,
-                "code" => $vCode,
-                "name" => $vName,
-                "mobile" => $vMobile
+                "code" => db_output2($vCode),
+                "name" => db_output2($vName),
+                "mobile" => db_output2($vMobile)
             ]
         ]);
     } else {

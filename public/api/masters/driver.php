@@ -97,7 +97,7 @@ switch ($mode) {
             $driver = [
                 'id' => intval($row['iDriverID']),
                 'fullName' => db_output2($row['vName']),
-                'mobileNumber' => $row['vMobileNum'],
+                'mobileNumber' => db_output2($row['vMobileNum']),
                 'owner' => db_output2($row['vendor_name'] ?? '')
                // 'vehicleAssigned' => $vehicleAssigned
             ];
@@ -225,7 +225,7 @@ switch ($mode) {
         $driverData = [
             'iDriverID' => intval($row['iDriverID']),
             'name' => db_output2($row['vName']),
-            'mobNum' => $row['vMobileNum'],
+            'mobNum' => db_output2($row['vMobileNum']),
             'empCode' => db_output2($row['vEmpCode']),
             'vendorID' => intval($row['iVendorID']),
             'type' => intval($row['iType'] ?? 0),

@@ -38,14 +38,14 @@ switch ($mode) {
         // For the main route list
         $rowData[] = [
             "id" => (int)$row['iRouteID'],
-            "route" => $row['vName'],
-            "destination" => $row['vDestination']
+            "route" => db_output2($row['vName']),
+            "destination" => db_output2($row['vDestination'])
         ];
 
         // For dropdown options
         $routesOpt[] = [
             "id" => (int)$row['iRouteID'],
-            "name" => $row['vName']
+            "name" => db_output2($row['vName'])
         ];
     }
 
@@ -183,7 +183,7 @@ case 'ROUTE_DETAILS':
         
         $rdpList[] = [
             'iStopID' => intval($stopRow['iStopID']),
-            'pickupPt' => $stopRow['vName'],
+            'pickupPt' => db_output2($stopRow['vName']),
             'duration' => $durationFormatted, // Convert back to HH:MM format
             'iRank' => intval($stopRow['iRank'])
         ];
@@ -195,8 +195,8 @@ case 'ROUTE_DETAILS':
         "data" => [
             'routeData' => [
                 'iRouteID' => intval($row['iRouteID']),
-                'route' => $row['vName'] ?? '',
-                'dest' => $row['vDestination'] ?? '',
+                'route' => db_output2($row['vName'] ?? ''),
+                'dest' => db_output2($row['vDestination'] ?? ''),
                 'rdp' => $rdpList,
                 'cStatus' => $row['cStatus'] ?? 'A'
             ]

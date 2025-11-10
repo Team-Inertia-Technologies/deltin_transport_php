@@ -54,8 +54,8 @@ switch ($mode) {
             $pickupTime = date('H:i', strtotime($row['pickup_time']));
             
             $requestedPickups[] = [
-                "route" => $row['route_name'],
-                "place" => $row['stop_name'],
+                "route" => db_output2($row['route_name']),
+                "place" => db_output2($row['stop_name']),
                 "date" => $tripDate . " | " . $pickupTime
             ];
         }
@@ -93,8 +93,8 @@ switch ($mode) {
             }
             
             $previousPickups[] = [
-                "route" => $row['route_name'],
-                "place" => $row['stop_name'],
+                "route" => db_output2($row['route_name']),
+                "place" => db_output2($row['stop_name']),
                 "date" => $tripDate . " | " . $pickupTime,
                 "status" => $status
             ];

@@ -81,8 +81,8 @@ switch ($mode) {
                 $groupedTrips[$grpID] = [
                     "grpID" => $grpID,
                     "dateTime" => date('d/m/Y H:i', strtotime($row['dtTrip'])),
-                    "route" => $row['route'] ?? '',
-                    "destination" => $row['destination'] ?? '',
+                    "route" => db_output2($row['route'] ?? ''),
+                    "destination" => db_output2($row['destination'] ?? ''),
                     "totalCapacity" => 0,
                     "totalPax" => 0,
                     "totalAvailed" => 0,
@@ -144,7 +144,7 @@ switch ($mode) {
         while ($routeRow = sql_fetch_assoc($routesRes)) {
             $routesOpt[] = [
                 "id" => (int) $routeRow['iRouteID'],
-                "name" => $routeRow['vName']
+                "name" => db_output2($routeRow['vName'])
             ];
         }
 
@@ -217,7 +217,7 @@ switch ($mode) {
         while ($driverRow = sql_fetch_assoc($allDriversRes)) {
             $vhDriver[] = [
                 "id" => (int) $driverRow['iDriverID'],
-                "drName" => $driverRow['drName'],
+                "drName" => db_output2($driverRow['drName']),
                 "active" => $driverRow['cStatus']
             ];
         }
@@ -231,8 +231,8 @@ switch ($mode) {
         while ($routeRow = sql_fetch_assoc($routesRes)) {
             $rdOpt[] = [
                 "id" => (int) $routeRow['iRouteID'],
-                "route" => $routeRow['vName'] ?? '',
-                "dest" => $routeRow['vDestination'] ?? ''
+                "route" => db_output2($routeRow['vName'] ?? ''),
+                "dest" => db_output2($routeRow['vDestination'] ?? '')
             ];
         }
 
@@ -250,9 +250,9 @@ switch ($mode) {
         while ($tableRow = sql_fetch_assoc($tableArrRes)) {
             $tableArr[] = [
                 "id" => (int) $tableRow['iVehicleID'],
-                "vhNum" => $tableRow['vRnum'] ?? '',
+                "vhNum" => db_output2($tableRow['vRnum'] ?? ''),
                 "vhCap" => (int) ($tableRow['iCapacity'] ?? 0),
-                "vhOwner" => $tableRow['vOwner'] ?? '',
+                "vhOwner" => db_output2($tableRow['vOwner'] ?? ''),
                 "vhDriver" => $vhDriver  // Same driver list for all vehicles
             ];
         }
