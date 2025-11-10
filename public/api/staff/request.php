@@ -142,6 +142,24 @@ switch ($mode) {
             $days = [$days];
         }
         
+        // Get route details
+        $routeSql = "SELECT vName, vDestination FROM st_route WHERE iRouteID = $route AND cStatus = 'A'";
+        $routeRes = sql_query($routeSql);
+        
+        if (sql_num_rows($routeRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Route not found"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+        
+        $routeData = sql_fetch_assoc($routeRes);
+        $routeName = $routeData['vName'];
+        $destination = $routeData['vDestination'];
+        
         // Get the trip time from the selected time (trip ID)
         $timeTripSql = "SELECT TIME(dtTrip) as trip_time FROM st_trips WHERE iTripID = $time AND cStatus = 'A'";
         $timeTripRes = sql_query($timeTripSql);
@@ -158,10 +176,11 @@ switch ($mode) {
         
         $timeTripData = sql_fetch_assoc($timeTripRes);
         $selectedTime = $timeTripData['trip_time'];
+        $timing = date('H:i', strtotime($selectedTime));
         
         $successCount = 0;
         $errors = [];
-        $requestIds = [];
+        $selectedDays = [];
         
         // Process each day (tripID)
         foreach ($days as $tripID) {
@@ -242,7 +261,7 @@ switch ($mode) {
             
             if (sql_query($insertSql)) {
                 $successCount++;
-                $requestIds[] = $iTrReqID;
+                $selectedDays[] = date('l, j F', strtotime($tripDate));
             } else {
                 $errors[] = "Failed to save request for trip on " . $tripDate;
             }
@@ -259,7 +278,10 @@ switch ($mode) {
                 "data" => [
                     "message" => $message,
                     "successCount" => $successCount,
-                    "requestIds" => $requestIds,
+                    "routeName" => $routeName,
+                    "destination" => $destination,
+                    "timing" => $timing,
+                    "selectedDays" => $selectedDays,
                     "errors" => $errors
                 ],
                 "statusCode" => 200
