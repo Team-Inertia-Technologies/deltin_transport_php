@@ -49,6 +49,7 @@ switch ($mode) {
 
         $whereClause = implode(' AND ', $whereConditions);
 
+        // Modified query to get trips with vehicle details
         $sql = "SELECT 
                     t.iTripID as id,
                     t.dtTrip,
@@ -58,52 +59,75 @@ switch ($mode) {
                     t.iCapacity,
                     t.iAvaialed as availed,
                     t.iRequested as pax,
-                    t.iVehicleID
+                    t.iVehicleID,
+                    v.vRnum as vehicleNumber,
+                    vc.iCapacity as vehicleCapacity
                 FROM st_trips t
                 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
+                LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
+                LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                 WHERE $whereClause
-                ORDER BY t.dtTrip DESC";
+                ORDER BY t.dtTrip DESC, t.iGrpID, t.iTripID";
 
         $res = sql_query($sql);
-        $rowData = [];
+        $groupedTrips = [];
+        $processedGroups = [];
 
+        // Group trips by iGrpID and collect vehicle information
         while ($row = sql_fetch_assoc($res)) {
-            // Format date and time
-            $dateTime = date('d/m/Y H:i', strtotime($row['dtTrip']));
-
-            // Build vehicle details string
-            $vehicleDetail = '';
-            if (!empty($row['iVehicleID'])) {
-                $vehicleIDs = explode(',', $row['iVehicleID']);
-                $vehicleDetails = [];
-
-                foreach ($vehicleIDs as $vehicleID) {
-                    $vehicleID = trim($vehicleID);
-                    if (!empty($vehicleID)) {
-                        $vehicleSql = "SELECT v.vRnum, vc.iCapacity 
-                                      FROM vehicle v
-                                      LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                                      WHERE v.iVehicleID = $vehicleID AND v.cStatus = 'A'";
-                        $vehicleRes = sql_query($vehicleSql);
-                        if ($vehicleRow = sql_fetch_assoc($vehicleRes)) {
-                            $capacity = $vehicleRow['iCapacity'] ?? 0;
-                            $vehicleDetails[] = $vehicleRow['vRnum'] . ' (' . $capacity . ')';
-                        }
-                    }
-                }
-                $vehicleDetail = implode(' , ', $vehicleDetails);
+            $grpID = (int) $row['grpID'];
+            
+            if (!isset($groupedTrips[$grpID])) {
+                $groupedTrips[$grpID] = [
+                    "grpID" => $grpID,
+                    "dateTime" => date('d/m/Y H:i', strtotime($row['dtTrip'])),
+                    "route" => $row['route'] ?? '',
+                    "destination" => $row['destination'] ?? '',
+                    "totalCapacity" => 0,
+                    "totalPax" => 0,
+                    "totalAvailed" => 0,
+                    "vehicles" => []
+                ];
             }
+            
+            // Add vehicle details for this trip
+            if (!empty($row['iVehicleID'])) {
+                $vehicleCapacity = (int) ($row['vehicleCapacity'] ?? 0);
+                $vehicleDetail = ($row['vehicleNumber'] ?? '') . ' (' . $vehicleCapacity . ')';
+                
+                $groupedTrips[$grpID]['vehicles'][] = [
+                    "tripID" => (int) $row['id'],
+                    "vehicleID" => (int) $row['iVehicleID'],
+                    "vehicleDetail" => $vehicleDetail,
+                    "capacity" => $vehicleCapacity
+                ];
+                
+                // Accumulate totals
+                $groupedTrips[$grpID]['totalCapacity'] += $vehicleCapacity;
+                $groupedTrips[$grpID]['totalPax'] += (int) ($row['pax'] ?? 0);
+                $groupedTrips[$grpID]['totalAvailed'] += (int) ($row['availed'] ?? 0);
+            }
+        }
 
-            $rowData[] = [
-                "id" => (int) $row['id'],
-                "grpID" => (int) $row['grpID'],
-                "dateTime" => $dateTime,
-                "route" => $row['route'] ?? '',
-                "destination" => $row['destination'] ?? '',
-                "vehicleDetail" => $vehicleDetail,
-                "pax" => (int) ($row['pax'] ?? 0),
-                "availed" => (int) ($row['availed'] ?? 0)
-            ];
+        // Convert grouped trips to final row data format
+        $rowData = [];
+        foreach ($groupedTrips as $grpID => $tripGroup) {
+            // Create separate entries for each vehicle in the group
+            foreach ($tripGroup['vehicles'] as $vehicle) {
+                $rowData[] = [
+                    "id" => $vehicle['tripID'],
+                    "grpID" => $grpID,
+                    "dateTime" => $tripGroup['dateTime'],
+                    "route" => $tripGroup['route'],
+                    "destination" => $tripGroup['destination'],
+                    "vehicleDetail" => $vehicle['vehicleDetail'],
+                    "vehicleCapacity" => $vehicle['capacity'],
+                    "pax" => $tripGroup['totalPax'],
+                    "availed" => $tripGroup['totalAvailed'],
+                    "totalVehicles" => count($tripGroup['vehicles']),
+                    "isGrouped" => count($tripGroup['vehicles']) > 1
+                ];
+            }
         }
 
         // Get routes for dropdown
