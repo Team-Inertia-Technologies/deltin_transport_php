@@ -3,10 +3,15 @@ error_reporting(E_ALL);
 ini_set('display_errors', '1');
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../../includes/common_api.php";
+$postdata = file_get_contents("php://input");
 
-$token = isset($_POST['token']) ? db_input($_POST['token']) : '';
+$request = json_decode($postdata, true); 
+$_REQUEST = array_merge($_REQUEST, $request ?? []); 
+
+$token = isset($_REQUEST['token']) ? db_input($_REQUEST['token']) : '';
 $user_id = DecodeParam($token);
-
+// echo "user" . $user_id;
+// exit;
 // Validate user_id before using in SQL query
 if (empty($user_id) || !is_numeric($user_id)) {
     $response = ['statusCode' => 400, 'message' => "Invalid token"];
