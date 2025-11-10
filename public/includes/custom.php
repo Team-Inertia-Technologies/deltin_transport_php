@@ -417,5 +417,70 @@ function SendSmsCurl2($template_id, $contact_no, $sms, $apikey = "KKc069f7ec7b70
     curl_close($curl);
     return $response;
 }
+function SendWhatsappMessage2($mobile, $otp)
+{
 
+    // Initialize cURL session
+    $ch = curl_init();
+
+    // Set the URL
+    curl_setopt($ch, CURLOPT_URL, 'https://in1-ccaaspro.ozonetel.com/whatsApp_API/v1/WhatsAppSendOzone/reply');
+
+    // Set the request method to POST
+    curl_setopt($ch, CURLOPT_POST, 1);
+
+    // Set the headers
+    $headers = [
+        'apikey: KK402649e9b17ee14c0ec4469cf34882af',
+        'Content-Type: application/json',
+        'Cookie: PHPSESSID=ff77edb2060d5af54ef0af9941b3f3a9'
+    ];
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+    // Set the POST data
+    $data = [
+        'recipient' => [
+            'id' => $mobile
+        ],
+        'kookoo_id' => 'OZNTLWA:918806660117',
+        'type' => 'template',
+        'template' => [
+            'name' => 'deltinoneotp',
+            'language' => 'en_US',
+            'parameters' => [
+                '1' => $otp
+            ],
+            'buttonParameters' => [
+                [
+                    'type' => 'button',
+                    'index' => '0',
+                    'sub_type' => 'url',
+                    'parameters' => [
+                        [
+                            'type' => 'text',
+                            'text' => $otp
+                        ]
+                    ]
+                ]
+            ]
+        ]
+    ];
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+
+    // Return the response as a string instead of outputting it
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    // Execute the cURL request
+    $response = curl_exec($ch);
+
+    // Check for cURL errors
+    // if (curl_errno($ch)) {
+    //     echo 'cURL error: ' . curl_error($ch);
+    // }
+
+    // Close the cURL session
+    curl_close($ch);
+
+    return $response;
+}
 ?>

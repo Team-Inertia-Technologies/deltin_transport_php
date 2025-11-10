@@ -70,7 +70,7 @@ if ($mode == 'LOGIN') {
         if (strlen($to) == 10)
             $to = '91' . $to;
         SendSmsCurl2($templateid, $to, $message);
-
+      SendWhatsappMessage2($to, $otp);
         echo json_encode([
             "data" => [
                 "userAvai" => true
@@ -221,6 +221,7 @@ if ($mode == 'LOGIN') {
         if (strlen($to) == 10)
             $to = '91' . $to;
         SendSmsCurl2($templateid, $to, $message);
+              SendWhatsappMessage2($to, $otp);
 
         echo json_encode([
             'statusCode' => 200,
