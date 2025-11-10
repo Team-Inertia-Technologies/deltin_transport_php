@@ -304,7 +304,7 @@ switch ($mode) {
                 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
                 LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID
                 LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A'
+                LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
                 LEFT JOIN driver d ON t.iDriverID = d.iDriverID
                 WHERE t.iGrpID = $iGrpID AND t.cStatus = 'A'
                 ORDER BY t.iTripID";
@@ -349,12 +349,24 @@ switch ($mode) {
                     ];
                 }
 
-                // Add vehicle to this vendor
-                $vendorsMap[$vendorID]['vehicles'][] = [
-                    "vehicleID" => (int) $row['iVehicleID'],
-                    "vehicleNumber" => $row['vehicleNumber'] ?? '',
-                    "vehicleCapacity" => (int) ($row['vehicleCapacity'] ?? 0)
-                ];
+                // Check if vehicle is already added to this vendor to prevent duplicates
+                $vehicleID = (int) $row['iVehicleID'];
+                $vehicleExists = false;
+                foreach ($vendorsMap[$vendorID]['vehicles'] as $existingVehicle) {
+                    if ($existingVehicle['vehicleID'] === $vehicleID) {
+                        $vehicleExists = true;
+                        break;
+                    }
+                }
+
+                // Add vehicle to this vendor only if it doesn't already exist
+                if (!$vehicleExists) {
+                    $vendorsMap[$vendorID]['vehicles'][] = [
+                        "vehicleID" => $vehicleID,
+                        "vehicleNumber" => $row['vehicleNumber'] ?? '',
+                        "vehicleCapacity" => (int) ($row['vehicleCapacity'] ?? 0)
+                    ];
+                }
             }
 
             // Collect unique drivers
