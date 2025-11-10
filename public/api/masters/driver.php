@@ -317,12 +317,12 @@ switch ($mode) {
 
         $result = sql_query($sql);
 
-        if ($result && sql_affected_rows() > 0) {
-            // Update availability areas - first delete existing associations
+        if ($result) {
+            // Update availability areas - delete all existing associations first
             $deleteAreaSql = "DELETE FROM driver_area_assoc WHERE iDriverID = $id";
-            sql_query($deleteAreaSql);
-
-            // Insert new area associations
+            $deleteResult = sql_query($deleteAreaSql);
+            
+            // Insert new area associations - select all and add again
             if (is_array($availability) && !empty($availability)) {
                 foreach ($availability as $areaId) {
                     $areaId = intval($areaId);
@@ -344,12 +344,27 @@ switch ($mode) {
                 "statusCode" => 200
             ]);
         } else if ($result && sql_affected_rows() == 0) {
+            // Update availability areas even if no driver changes were made
+            $deleteAreaSql = "DELETE FROM driver_area_assoc WHERE iDriverID = $id";
+            sql_query($deleteAreaSql);
+            
+            // Insert new area associations
+            if (is_array($availability) && !empty($availability)) {
+                foreach ($availability as $areaId) {
+                    $areaId = intval($areaId);
+                    if ($areaId > 0) {
+                        $areaSql = "INSERT INTO driver_area_assoc (iDriverID, iAreaID) VALUES ($id, $areaId)";
+                        sql_query($areaSql);
+                    }
+                }
+            }
+            
             // Log the update operation even if no changes were made
             LogMasterEdit($id, 'DRV', 'U', $name, '', $user_id);
             
             echo json_encode([
                 "data" => [
-                    "message" => "No changes were made to driver"
+                    "message" => "Driver availability updated successfully"
                 ],
                 "token" => $Token,
                 "statusCode" => 200

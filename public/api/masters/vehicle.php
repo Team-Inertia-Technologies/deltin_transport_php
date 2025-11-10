@@ -367,12 +367,12 @@ switch ($mode) {
 
         $result = sql_query($sql);
 
-        if ($result && sql_affected_rows() > 0) {
-            // Update availability areas - first delete existing associations
+        if ($result) {
+            // Update availability areas - delete all existing associations first
             $deleteAreaSql = "DELETE FROM vehicle_area_assoc WHERE iVehicleID = $id";
-            sql_query($deleteAreaSql);
-
-            // Insert new area associations
+            $deleteResult = sql_query($deleteAreaSql);
+            
+            // Insert new area associations - select all and add again
             if (is_array($availability) && !empty($availability)) {
                 foreach ($availability as $areaId) {
                     $areaId = intval($areaId);
@@ -394,12 +394,27 @@ switch ($mode) {
                 "statusCode" => 200
             ]);
         } else if ($result && sql_affected_rows() == 0) {
+            // Update availability areas even if no vehicle changes were made
+            $deleteAreaSql = "DELETE FROM vehicle_area_assoc WHERE iVehicleID = $id";
+            sql_query($deleteAreaSql);
+            
+            // Insert new area associations
+            if (is_array($availability) && !empty($availability)) {
+                foreach ($availability as $areaId) {
+                    $areaId = intval($areaId);
+                    if ($areaId > 0) {
+                        $areaSql = "INSERT INTO vehicle_area_assoc (iVehicleID, iAreaID) VALUES ($id, $areaId)";
+                        sql_query($areaSql);
+                    }
+                }
+            }
+            
             // Log the update operation even if no changes were made
             LogMasterEdit($id, 'VHC', 'U', $vehiNum, '', $user_id);
             
             echo json_encode([
                 "data" => [
-                    "message" => "No changes were made to vehicle"
+                    "message" => "Vehicle availability updated successfully"
                 ],
                 "token" => $Token,
                 "statusCode" => 200

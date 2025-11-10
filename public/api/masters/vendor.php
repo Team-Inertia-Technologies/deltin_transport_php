@@ -343,12 +343,12 @@ switch ($mode) {
 
         $result = sql_query($sql);
 
-        if ($result && sql_affected_rows() > 0) {
-            // Update availability areas - first delete existing associations
+        if ($result) {
+            // Update availability areas - delete all existing associations first
             $deleteAreaSql = "DELETE FROM vendor_area_assoc WHERE iVendorID = $id";
-            sql_query($deleteAreaSql);
-
-            // Insert new area associations
+            $deleteResult = sql_query($deleteAreaSql);
+            
+            // Insert new area associations - select all and add again
             if (is_array($availability) && !empty($availability)) {
                 foreach ($availability as $areaId) {
                     $areaId = intval($areaId);
@@ -367,12 +367,27 @@ switch ($mode) {
                 "message" => "Vendor updated successfully"
             ]);
         } else if ($result && sql_affected_rows() == 0) {
+            // Update availability areas even if no vendor changes were made
+            $deleteAreaSql = "DELETE FROM vendor_area_assoc WHERE iVendorID = $id";
+            sql_query($deleteAreaSql);
+            
+            // Insert new area associations
+            if (is_array($availability) && !empty($availability)) {
+                foreach ($availability as $areaId) {
+                    $areaId = intval($areaId);
+                    if ($areaId > 0) {
+                        $areaSql = "INSERT INTO vendor_area_assoc (iVendorID, iAreaID) VALUES ($id, $areaId)";
+                        sql_query($areaSql);
+                    }
+                }
+            }
+            
             // Log the update operation even if no changes were made
             LogMasterEdit($id, 'VND', 'U', $vName, '', $user_id);
 
             echo json_encode([
                 "statusCode" => 200,
-                "message" => "No changes were made to vendor"
+                "message" => "Vendor availability updated successfully"
             ]);
         } else {
             echo json_encode([
