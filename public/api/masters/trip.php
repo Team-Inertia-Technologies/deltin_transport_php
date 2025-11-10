@@ -356,7 +356,8 @@ switch ($mode) {
                 ];
             }
 
-            // Driver info will be fetched separately for all active drivers
+            // Get driver ID from current row
+            $driverID = (int) ($row['iDriverID'] ?? 0);
 
             // Add trip details for main trip_details array
             $vehicles[] = [
