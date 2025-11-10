@@ -109,25 +109,28 @@ switch ($mode) {
             }
         }
 
-        // Convert grouped trips to final row data format
+        // Convert grouped trips to final row data format - grouped by IGrpID
         $rowData = [];
         foreach ($groupedTrips as $grpID => $tripGroup) {
-            // Create separate entries for each vehicle in the group
+            // Create vehicle details string (comma separated)
+            $vehicleDetails = [];
+            
             foreach ($tripGroup['vehicles'] as $vehicle) {
-                $rowData[] = [
-                    "id" => $vehicle['tripID'],
-                    "grpID" => $grpID,
-                    "dateTime" => $tripGroup['dateTime'],
-                    "route" => $tripGroup['route'],
-                    "destination" => $tripGroup['destination'],
-                    "vehicleDetail" => $vehicle['vehicleDetail'],
-                    "vehicleCapacity" => $vehicle['capacity'],
-                    "pax" => $tripGroup['totalPax'],
-                    "availed" => $tripGroup['totalAvailed'],
-                    "totalVehicles" => count($tripGroup['vehicles']),
-                    "isGrouped" => count($tripGroup['vehicles']) > 1
-                ];
+                $vehicleDetails[] = $vehicle['vehicleDetail'];
             }
+            
+            // Single row per group with all vehicles listed
+            $rowData[] = [
+                "grpID" => $grpID,
+                "dateTime" => $tripGroup['dateTime'],
+                "route" => $tripGroup['route'],
+                "destination" => $tripGroup['destination'],
+                "vehicleDetails" => implode(', ', $vehicleDetails), // Comma separated vehicle details
+                "totalCapacity" => $tripGroup['totalCapacity'],
+                "pax" => $tripGroup['totalPax'], // Sum of iRequested for the group
+                "availed" => $tripGroup['totalAvailed'], // Sum of iAvailed for the group
+                "vehicleCount" => count($tripGroup['vehicles'])
+            ];
         }
 
         // Get routes for dropdown
