@@ -59,17 +59,17 @@ switch ($mode) {
             }
             
             // Get time options from existing trips for this route
-            $timeSql = "SELECT DISTINCT TIME(dtTrip) as trip_time 
+            $timeSql = "SELECT iTripID, TIME(dtTrip) as trip_time 
                        FROM st_trips 
                        WHERE iRouteID = $routeID AND cStatus = 'A' 
+                       GROUP BY TIME(dtTrip)
                        ORDER BY trip_time";
             $timeRes = sql_query($timeSql);
             
             $timeOpt = [];
-            $timeId = 1;
             while ($timeRow = sql_fetch_assoc($timeRes)) {
                 $timeOpt[] = [
-                    "id" => $timeId++,
+                    "id" => (int) $timeRow['iTripID'],
                     "name" => date('H:i', strtotime($timeRow['trip_time']))
                 ];
             }
@@ -124,11 +124,11 @@ switch ($mode) {
     case 'ADD_REQUEST':
         $route = intval($_REQUEST['route'] ?? 0);
         $pickUp = intval($_REQUEST['pickUp'] ?? 0);
-        $time = $_REQUEST['time'] ?? '';
+        $time = intval($_REQUEST['time'] ?? 0);
         $days = $_REQUEST['days'] ?? [];
         
         // Validate required fields
-        if ($route == 0 || $pickUp == 0 || empty($time) || empty($days)) {
+        if ($route == 0 || $pickUp == 0 || $time == 0 || empty($days)) {
             echo json_encode([
                 "error" => [
                     "message" => "Missing required fields: route, pickUp, time, or days"
@@ -142,8 +142,26 @@ switch ($mode) {
             $days = [$days];
         }
         
+        // Get the trip time from the selected time (trip ID)
+        $timeTripSql = "SELECT TIME(dtTrip) as trip_time FROM st_trips WHERE iTripID = $time AND cStatus = 'A'";
+        $timeTripRes = sql_query($timeTripSql);
+        
+        if (sql_num_rows($timeTripRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Selected time trip not found"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+        
+        $timeTripData = sql_fetch_assoc($timeTripRes);
+        $selectedTime = $timeTripData['trip_time'];
+        
         $successCount = 0;
         $errors = [];
+        $requestIds = [];
         
         // Process each day (tripID)
         foreach ($days as $tripID) {
@@ -162,7 +180,8 @@ switch ($mode) {
             }
             
             $tripData = sql_fetch_assoc($tripRes);
-            $tripDateTime = $tripData['dtTrip'];
+            $tripDate = date('Y-m-d', strtotime($tripData['dtTrip']));
+            $tripDateTime = $tripDate . ' ' . $selectedTime;
             
             // Check if request already exists for this staff, route, and trip
             $existingSql = "SELECT iTrReqID FROM st_request 
@@ -170,7 +189,7 @@ switch ($mode) {
             $existingRes = sql_query($existingSql);
             
             if (sql_num_rows($existingRes) > 0) {
-                $errors[] = "Request already exists for trip on " . date('Y-m-d', strtotime($tripDateTime));
+                $errors[] = "Request already exists for trip on " . $tripDate;
                 continue;
             }
 
@@ -188,8 +207,7 @@ switch ($mode) {
             $offsetMinutes = intval($stopData['tOffsetFromStart']);
             
             // Calculate pickup time: trip start time + stop offset
-            $tripStartTime = date('H:i:s', strtotime($tripDateTime));
-            $pickupTime = date('H:i:s', strtotime($tripStartTime) + ($offsetMinutes * 60));
+            $pickupTime = date('H:i:s', strtotime($selectedTime) + $offsetMinutes * 60);
             
             // Get next ID and rank
             $iTrReqID = NextID('iTrReqID', 'st_request');
@@ -213,7 +231,7 @@ switch ($mode) {
                 $iTrReqID,
                 $user_id,
                 $route,
-                DATE('$tripDateTime'),
+                '$tripDate',
                 '$pickupTime',
                 $pickUp,
                 $tripID,
@@ -224,8 +242,9 @@ switch ($mode) {
             
             if (sql_query($insertSql)) {
                 $successCount++;
+                $requestIds[] = $iTrReqID;
             } else {
-                $errors[] = "Failed to save request for trip on " . date('Y-m-d', strtotime($tripDateTime));
+                $errors[] = "Failed to save request for trip on " . $tripDate;
             }
         }
         
@@ -240,6 +259,7 @@ switch ($mode) {
                 "data" => [
                     "message" => $message,
                     "successCount" => $successCount,
+                    "requestIds" => $requestIds,
                     "errors" => $errors
                 ],
                 "statusCode" => 200
