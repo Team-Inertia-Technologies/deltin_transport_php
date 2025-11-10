@@ -813,8 +813,7 @@ switch ($mode) {
                                         iDriverID,
                                         iCapacity,
                                         iRank,
-                                        cStatus,
-                                        dtCreated
+                                        cStatus
                                       ) VALUES (
                                         $newTripID,
                                         $iGrpID,
@@ -824,8 +823,7 @@ switch ($mode) {
                                         $driverID,
                                         $vehicleCapacity,
                                         1,
-                                        'A',
-                                        NOW()
+                                        'A'
                                       )";
 
                         if (sql_query($insertSql)) {
