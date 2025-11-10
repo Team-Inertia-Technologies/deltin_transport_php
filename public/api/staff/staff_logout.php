@@ -5,7 +5,7 @@ $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../../includes/common_api.php";
 $token = isset($_POST['token']) ? db_input($_POST['token']) : '';
 $user_id = DecodeParam($token);
-sql_query("UPDATE users SET cActive='N' WHERE iUserID=$user_id");
+sql_query("UPDATE staff SET cActive='N' WHERE iStaffID=$user_id");
 
 $response = array('statusCode' => 200, 'message' => "Logged out successfully");
 http_response_code(200);

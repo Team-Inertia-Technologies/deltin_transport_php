@@ -76,7 +76,7 @@ switch ($mode) {
         // Group trips by iGrpID and collect vehicle information
         while ($row = sql_fetch_assoc($res)) {
             $grpID = (int) $row['grpID'];
-            
+
             if (!isset($groupedTrips[$grpID])) {
                 $groupedTrips[$grpID] = [
                     "grpID" => $grpID,
@@ -89,19 +89,19 @@ switch ($mode) {
                     "vehicles" => []
                 ];
             }
-            
+
             // Add vehicle details for this trip
             if (!empty($row['iVehicleID'])) {
                 $vehicleCapacity = (int) ($row['vehicleCapacity'] ?? 0);
                 $vehicleDetail = ($row['vehicleNumber'] ?? '') . ' (' . $vehicleCapacity . ')';
-                
+
                 $groupedTrips[$grpID]['vehicles'][] = [
                     "tripID" => (int) $row['id'],
                     "vehicleID" => (int) $row['iVehicleID'],
                     "vehicleDetail" => $vehicleDetail,
                     "capacity" => $vehicleCapacity
                 ];
-                
+
                 // Accumulate totals
                 $groupedTrips[$grpID]['totalCapacity'] += $vehicleCapacity;
                 $groupedTrips[$grpID]['totalPax'] += (int) ($row['pax'] ?? 0);
@@ -156,7 +156,7 @@ switch ($mode) {
             "statusCode" => 200
         ]);
         break;
-        
+
     // ===================== CASE ADD_ONLOAD =====================
     case 'ADD_ONLOAD':
         $vehicleSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity 
@@ -165,11 +165,11 @@ switch ($mode) {
                       WHERE v.cStatus = 'A'
                       ORDER BY v.vRnum";
         $vehicleRes = sql_query($vehicleSql);
-        
+
         $vehiOpt = [
             ["id" => 0, "name" => "Choose"]
         ];
-        
+
         while ($vehicleRow = sql_fetch_assoc($vehicleRes)) {
             $capacity = $vehicleRow['iCapacity'] ?? 0;
             $vehiOpt[] = [
@@ -191,11 +191,11 @@ switch ($mode) {
                      WHERE v.cStatus = 'A' AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
                      ORDER BY ven.vName";
         $vendorRes = sql_query($vendorSql);
-        
+
         $vendorOpt = [
             ["id" => 0, "name" => "Choose"]
         ];
-        
+
         while ($vendorRow = sql_fetch_assoc($vendorRes)) {
             $vendorOpt[] = [
                 "id" => (int) $vendorRow['iVendorID'],
@@ -209,7 +209,7 @@ switch ($mode) {
                          WHERE d.cStatus IN ('A')
                          ORDER BY d.vName";
         $allDriversRes = sql_query($allDriversSql);
-        
+
         $vhDriver = [];
         while ($driverRow = sql_fetch_assoc($allDriversRes)) {
             $vhDriver[] = [
@@ -222,11 +222,11 @@ switch ($mode) {
         // Get routes for rdOpt 
         $routesSql = "SELECT iRouteID, vName, vDestination FROM st_route WHERE cStatus = 'A' ORDER BY iRank";
         $routesRes = sql_query($routesSql);
-        
-        $rdOpt  = [];
-        
+
+        $rdOpt = [];
+
         while ($routeRow = sql_fetch_assoc($routesRes)) {
-            $rdOpt [] = [
+            $rdOpt[] = [
                 "id" => (int) $routeRow['iRouteID'],
                 "route" => $routeRow['vName'] ?? '',
                 "dest" => $routeRow['vDestination'] ?? ''
@@ -241,9 +241,9 @@ switch ($mode) {
                        WHERE v.cStatus = 'A'
                        ORDER BY v.vRnum";
         $tableArrRes = sql_query($tableArrSql);
-        
+
         $tableArr = [];
-        
+
         while ($tableRow = sql_fetch_assoc($tableArrRes)) {
             $tableArr[] = [
                 "id" => (int) $tableRow['iVehicleID'],
@@ -260,7 +260,7 @@ switch ($mode) {
                 "vehiOpt" => $vehiOpt,
                 "modeOpt" => $modeOpt,
                 "vendorOpt" => $vendorOpt,
-                "tableArr" => $tableArr                
+                "tableArr" => $tableArr
             ],
             "statusCode" => 200
         ]);
@@ -307,7 +307,7 @@ switch ($mode) {
                 ORDER BY t.iTripID";
 
         $res = sql_query($sql);
-        
+
         if (sql_num_rows($res) == 0) {
             echo json_encode([
                 "error" => [
@@ -322,7 +322,7 @@ switch ($mode) {
         $vehicles = [];
         $vendorsMap = [];
         $driversMap = [];
-        
+
         while ($row = sql_fetch_assoc($res)) {
             // Set route info (same for all trips in group)
             if (empty($routeInfo)) {
@@ -333,7 +333,7 @@ switch ($mode) {
                     "totalCapacity" => (int) ($row['totalCapacity'] ?? 0)
                 ];
             }
-            
+
             // Collect unique vendors and their vehicles
             $vendorID = (int) $row['iVendorID'];
             if ($vendorID > 0) {
@@ -345,7 +345,7 @@ switch ($mode) {
                         "vehicles" => []
                     ];
                 }
-                
+
                 // Add vehicle to this vendor
                 $vendorsMap[$vendorID]['vehicles'][] = [
                     "vehicleID" => (int) $row['iVehicleID'],
@@ -353,7 +353,7 @@ switch ($mode) {
                     "vehicleCapacity" => (int) ($row['vehicleCapacity'] ?? 0)
                 ];
             }
-            
+
             // Collect unique drivers
             $driverID = (int) ($row['iDriverID'] ?? 0);
             if ($driverID > 0 && !isset($driversMap[$driverID])) {
@@ -363,7 +363,7 @@ switch ($mode) {
                     "driverMobile" => $row['driverMobile'] ?? ''
                 ];
             }
-            
+
             // Add trip details for main trip_details array
             $vehicles[] = [
                 "tripID" => (int) $row['iTripID'],
@@ -372,11 +372,10 @@ switch ($mode) {
                 "vehicleCapacity" => (int) ($row['vehicleCapacity'] ?? 0),
                 "vehicleOwner" => $row['vehicleOwner'] ?? '',
                 "vehicleOwnerID" => $vendorID,
-                "driver" => [
-                    "driverID" => $driverID,
-                    "driverName" => $row['driverName'] ?? '',
-                    "driverMobile" => $row['driverMobile'] ?? ''
-                ]
+                "driverID" => $driverID,
+                "driverName" => $row['driverName'] ?? '',
+                "driverMobile" => $row['driverMobile'] ?? ''
+
             ];
         }
 
@@ -386,10 +385,10 @@ switch ($mode) {
             // Get the route ID from the first trip
             $routeIDSql = "SELECT iRouteID FROM st_trips WHERE iGrpID = $iGrpID AND cStatus = 'A' LIMIT 1";
             $routeIDRes = sql_query($routeIDSql);
-            
+
             if ($routeIDRow = sql_fetch_assoc($routeIDRes)) {
                 $routeID = (int) $routeIDRow['iRouteID'];
-                
+
                 // Get all stops for this route with their timings
                 $stopsSql = "SELECT 
                                 s.iStopID,
@@ -400,20 +399,20 @@ switch ($mode) {
                             WHERE s.iRouteID = $routeID AND s.cStatus = 'A'
                             ORDER BY s.iRank";
                 $stopsRes = sql_query($stopsSql);
-                
+
                 while ($stopRow = sql_fetch_assoc($stopsRes)) {
                     $stopID = (int) $stopRow['iStopID'];
                     $offsetMinutes = intval($stopRow['tOffsetFromStart']);
-                    
+
                     // Calculate pickup time for this stop
                     // Get trip start time from any trip in this group
                     $tripTimeSql = "SELECT dtTrip FROM st_trips WHERE iGrpID = $iGrpID AND cStatus = 'A' LIMIT 1";
                     $tripTimeRes = sql_query($tripTimeSql);
                     $tripTimeRow = sql_fetch_assoc($tripTimeRes);
-                    
+
                     $tripStartTime = date('H:i:s', strtotime($tripTimeRow['dtTrip']));
                     $pickupTime = date('H:i', strtotime($tripStartTime) + ($offsetMinutes * 60));
-                    
+
                     // Get staff who will board at this stop for any trip in this group
                     $staffSql = "SELECT DISTINCT
                                     st.iStaffID,
@@ -431,7 +430,7 @@ switch ($mode) {
                                 AND req.cStatus = 'A'
                                 ORDER BY st.vName";
                     $staffRes = sql_query($staffSql);
-                    
+
                     $staffList = [];
                     while ($staffRow = sql_fetch_assoc($staffRes)) {
                         $staffList[] = [
@@ -442,7 +441,7 @@ switch ($mode) {
                             "entered" => !empty($staffRow['dtIn'])
                         ];
                     }
-                    
+
                     $stops[] = [
                         "stopID" => $stopID,
                         "stopName" => $stopRow['stopName'] ?? '',
@@ -495,7 +494,7 @@ switch ($mode) {
         // Validate date format and range
         $fromDateTime = DateTime::createFromFormat('Y-m-d', $fromDate);
         $toDateTime = DateTime::createFromFormat('Y-m-d', $toDate);
-        
+
         if (!$fromDateTime || !$toDateTime || $fromDateTime > $toDateTime) {
             echo json_encode([
                 "error" => [
@@ -524,7 +523,7 @@ switch ($mode) {
         // Get starting iGrpID using NextID function
         $startingGrpID = NextID('iGrpID', 'st_trips');
         $currentGrpID = $startingGrpID;
-        
+
         // Track group IDs for same date/time combinations
         $dateTimeGroupMap = [];
 
@@ -543,15 +542,15 @@ switch ($mode) {
             // Process each date in the range
             foreach ($dateRange as $date) {
                 $tripDateTime = $date . ' ' . $time;
-                
+
                 // Check if we already have a group ID for this date/time combination
                 if (!isset($dateTimeGroupMap[$tripDateTime])) {
                     $dateTimeGroupMap[$tripDateTime] = $currentGrpID;
                     $currentGrpID++; // Increment for next unique date/time combination
                 }
-                
+
                 $groupID = $dateTimeGroupMap[$tripDateTime];
-                
+
                 // Process each vehicle for this trip and date
                 foreach ($vehicles as $vehicleIndex => $vehicle) {
                     // Support multiple field name variations for vehicle ID
@@ -573,12 +572,12 @@ switch ($mode) {
         }
 
         $insertedCount = 0;
-        
+
         // Execute bulk insert if we have values to insert
         if (!empty($insertValues)) {
             // Lock table for better performance during bulk insert
             sql_query("LOCK TABLES st_trips WRITE");
-            
+
             $insertSql = "INSERT INTO st_trips (
                 iTripID,
                 iGrpID,
@@ -596,7 +595,7 @@ switch ($mode) {
             } else {
                 $errors[] = "Failed to insert: ";
             }
-            
+
             // Unlock tables
             sql_query("UNLOCK TABLES");
         }
@@ -604,7 +603,7 @@ switch ($mode) {
         // Prepare response
         $response = [
             "data" => [
-                 "message" => "Trip creation completed",
+                "message" => "Trip creation completed",
                 // "insertedCount" => $insertedCount,
                 // "dateRange" => count($dateRange),
                 // "tripCount" => count($tripInfo)
