@@ -324,7 +324,6 @@ switch ($mode) {
         $routeInfo = [];
         $vehicles = [];
         $vendorsMap = [];
-        $driversMap = [];
 
         while ($row = sql_fetch_assoc($res)) {
             // Set route info (same for all trips in group)
@@ -357,15 +356,7 @@ switch ($mode) {
                 ];
             }
 
-            // Collect unique drivers
-            $driverID = (int) ($row['iDriverID'] ?? 0);
-            if ($driverID > 0 && !isset($driversMap[$driverID])) {
-                $driversMap[$driverID] = [
-                    "driverID" => $driverID,
-                    "driverName" => $row['driverName'] ?? '',
-                    "driverMobile" => $row['driverMobile'] ?? ''
-                ];
-            }
+            // Driver info will be fetched separately for all active drivers
 
             // Add trip details for main trip_details array
             $vehicles[] = [
@@ -497,9 +488,29 @@ switch ($mode) {
             }
         }
 
+        // Get ALL drivers with cStatus='A'
+        $driversSql = "SELECT 
+                        iDriverID,
+                        vName as driverName,
+                        vMobileNum as driverMobile
+                      FROM driver
+                      WHERE cStatus = 'A'
+                      ORDER BY vName";
+        
+        $driversRes = sql_query($driversSql);
+        $allDrivers = [];
+        
+        while ($driverRow = sql_fetch_assoc($driversRes)) {
+            $allDrivers[] = [
+                "driverID" => (int) $driverRow['iDriverID'],
+                "driverName" => $driverRow['driverName'] ?? '',
+                "driverMobile" => $driverRow['driverMobile'] ?? ''
+            ];
+        }
+
         // Convert maps to arrays
         $vendors = array_values($allVendorsMap);
-        $drivers = array_values($driversMap);
+        $drivers = $allDrivers;
 
         echo json_encode([
             "data" => [
