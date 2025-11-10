@@ -538,13 +538,7 @@ switch ($mode) {
                 continue;
             }
 
-            // Calculate total capacity for this trip
-            $totalCapacity = 0;
-            foreach ($vehicles as $vehicle) {
-                // Support multiple field name variations for capacity
-                $capacity = intval($vehicle['vhCap'] ?? $vehicle['vhCaps'] ?? $vehicle['capacity'] ?? 0);
-                $totalCapacity += $capacity;
-            }
+            // No need to calculate total capacity since each vehicle is a separate trip record
 
             // Process each date in the range
             foreach ($dateRange as $date) {
@@ -564,13 +558,15 @@ switch ($mode) {
                     $vehID = intval($vehicle['vhId'] ?? $vehicle['vehID'] ?? 0);
                     // Support multiple field name variations for driver ID
                     $driverID = intval($vehicle['driverId'] ?? $vehicle['driverID'] ?? 0);
+                    // Get individual vehicle capacity
+                    $vehicleCapacity = intval($vehicle['vhCap'] ?? $vehicle['vhCaps'] ?? $vehicle['capacity'] ?? 0);
 
                     if ($vehID <= 0) {
                         $errors[] = "Invalid vehicle ID in trip $tripIndex, vehicle $vehicleIndex";
                         continue;
                     }
 
-                    $insertValues[] = "($currentTripID, $groupID, $routeID, '$tripDateTime', $vehID, $driverID, $totalCapacity, 1, 'A')";
+                    $insertValues[] = "($currentTripID, $groupID, $routeID, '$tripDateTime', $vehID, $driverID, $vehicleCapacity, 1, 'A')";
                     $currentTripID++; // Increment for next record
                 }
             }

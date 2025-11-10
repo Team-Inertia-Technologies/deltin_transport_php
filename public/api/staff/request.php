@@ -121,6 +121,9 @@ switch ($mode) {
         break;
 
     // ===================== CASE: ADD_REQUEST =====================
+    // Logic: When adding a new request, increase iRequested in st_trips table.
+    // If trip capacity is exceeded, check for other trips with same grpID.
+    // If all trips in group are full, add to the last trip anyway.
     case 'ADD_REQUEST':
         $route = intval($_REQUEST['route'] ?? 0);
         $pickUp = intval($_REQUEST['pickUp'] ?? 0);
@@ -232,6 +235,45 @@ switch ($mode) {
             $iTrReqID = NextID('iTrReqID', 'st_request');
             $nextRank = GetMaxRank('st_request', "iStaffID=$user_id and cStatus='A'", 'iRank');
             
+            // Find the best available trip for this request
+            $finalTripID = $tripID;
+            
+            // Get the group ID for this trip
+            $grpSql = "SELECT iGrpID FROM st_trips WHERE iTripID = $tripID AND cStatus = 'A'";
+            $grpRes = sql_query($grpSql);
+            
+            if (sql_num_rows($grpRes) > 0) {
+                $grpData = sql_fetch_assoc($grpRes);
+                $grpID = (int) $grpData['iGrpID'];
+                
+                // Get all trips in this group with their current capacity status
+                $groupTripsSql = "SELECT iTripID, iCapacity, iRequested 
+                                 FROM st_trips 
+                                 WHERE iGrpID = $grpID AND cStatus = 'A' 
+                                 ORDER BY iTripID";
+                $groupTripsRes = sql_query($groupTripsSql);
+                
+                $availableTrip = null;
+                $lastTrip = null;
+                
+                while ($groupTripRow = sql_fetch_assoc($groupTripsRes)) {
+                    $currentTripID = (int) $groupTripRow['iTripID'];
+                    $capacity = (int) $groupTripRow['iCapacity'];
+                    $requested = (int) $groupTripRow['iRequested'];
+                    
+                    $lastTrip = $currentTripID; // Keep track of last trip
+                    
+                    // Check if this trip has available capacity
+                    if ($requested < $capacity) {
+                        $availableTrip = $currentTripID;
+                        break; // Found available trip, use it
+                    }
+                }
+                
+                // Use available trip if found, otherwise use the last trip in group
+                $finalTripID = $availableTrip ?? $lastTrip ?? $tripID;
+            }
+            
             // Insert request
             $currentDateTime = date('Y-m-d H:i:s');
             
@@ -253,15 +295,27 @@ switch ($mode) {
                 '$tripDate',
                 '$pickupTime',
                 $pickUp,
-                $tripID,
+                $finalTripID,
                 '$currentDateTime',
                 $nextRank,
                 'A'
             )";
             
             if (sql_query($insertSql)) {
-                $successCount++;
-                $selectedDays[] = date('l, j F', strtotime($tripDate));
+                // Update iRequested count in st_trips table
+                $updateTripSql = "UPDATE st_trips 
+                                 SET iRequested = iRequested + 1 
+                                 WHERE iTripID = $finalTripID AND cStatus = 'A'";
+                
+                if (sql_query($updateTripSql)) {
+                    $successCount++;
+                    $selectedDays[] = date('l, j F', strtotime($tripDate));
+                } else {
+                    // If trip update fails, rollback the request insert
+                    $deleteSql = "DELETE FROM st_request WHERE iTrReqID = $iTrReqID";
+                    sql_query($deleteSql);
+                    $errors[] = "Failed to update trip capacity for trip on " . $tripDate;
+                }
             } else {
                 $errors[] = "Failed to save request for trip on " . $tripDate;
             }
@@ -292,6 +346,140 @@ switch ($mode) {
                     "message" => "No requests were saved. " . implode(", ", $errors)
                 ],
                 "statusCode" => 400
+            ]);
+        }
+        break;
+
+    // // ===================== CASE: LIST_REQUESTS =====================
+    // case 'LIST_REQUESTS':
+    //     $fromDate = $_REQUEST['fromDate'] ?? date('Y-m-d');
+    //     $toDate = $_REQUEST['toDate'] ?? date('Y-m-d', strtotime('+30 days'));
+        
+    //     $requestsSql = "SELECT 
+    //                        r.iTrReqID,
+    //                        r.dPickup,
+    //                        r.tPickup,
+    //                        r.dtReq,
+    //                        rt.vName as routeName,
+    //                        rt.vDestination as destination,
+    //                        s.vName as stopName,
+    //                        t.iTripID,
+    //                        t.iGrpID,
+    //                        t.iCapacity,
+    //                        t.iRequested,
+    //                        v.vRnum as vehicleNumber
+    //                    FROM st_request r
+    //                    INNER JOIN st_route rt ON r.iRouteID = rt.iRouteID
+    //                    INNER JOIN st_route_stops s ON r.iStopID = s.iStopID
+    //                    INNER JOIN st_trips t ON r.iTripID = t.iTripID
+    //                    LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID
+    //                    WHERE r.iStaffID = $user_id 
+    //                    AND r.cStatus = 'A'
+    //                    AND r.dPickup >= '$fromDate'
+    //                    AND r.dPickup <= '$toDate'
+    //                    ORDER BY r.dPickup DESC, r.tPickup DESC";
+        
+    //     $requestsRes = sql_query($requestsSql);
+    //     $requests = [];
+        
+    //     while ($row = sql_fetch_assoc($requestsRes)) {
+    //         $requests[] = [
+    //             "requestID" => (int) $row['iTrReqID'],
+    //             "pickupDate" => $row['dPickup'],
+    //             "pickupTime" => date('H:i', strtotime($row['tPickup'])),
+    //             "requestDate" => date('d/m/Y H:i', strtotime($row['dtReq'])),
+    //             "routeName" => $row['routeName'],
+    //             "destination" => $row['destination'],
+    //             "stopName" => $row['stopName'],
+    //             "tripID" => (int) $row['iTripID'],
+    //             "grpID" => (int) $row['iGrpID'],
+    //             "vehicleNumber" => $row['vehicleNumber'] ?? 'Not Assigned',
+    //             "capacity" => (int) $row['iCapacity'],
+    //             "requested" => (int) $row['iRequested'],
+    //             "isOverbooked" => (int) $row['iRequested'] > (int) $row['iCapacity']
+    //         ];
+    //     }
+        
+    //     echo json_encode([
+    //         "data" => [
+    //             "requests" => $requests,
+    //             "fromDate" => $fromDate,
+    //             "toDate" => $toDate,
+    //             "totalRequests" => count($requests)
+    //         ],
+    //         "statusCode" => 200
+    //     ]);   //     break;
+
+    // ===================== CASE: DELETE_REQUEST =====================
+    case 'DELETE_REQUEST':
+        $requestID = intval($_REQUEST['requestID'] ?? 0);
+        
+        if ($requestID <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing or invalid requestID parameter"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+        
+        // Get request details before deletion to update trip count
+        $requestSql = "SELECT iTripID FROM st_request 
+                      WHERE iTrReqID = $requestID AND iStaffID = $user_id AND cStatus = 'A'";
+        $requestRes = sql_query($requestSql);
+        
+        if (sql_num_rows($requestRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Request not found or access denied"
+                ],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+        
+        $requestData = sql_fetch_assoc($requestRes);
+        $tripID = (int) $requestData['iTripID'];
+        
+        // Delete the request (set status to 'C')
+        $deleteSql = "UPDATE st_request 
+                     SET cStatus = 'C' 
+                     WHERE iTrReqID = $requestID AND iStaffID = $user_id AND cStatus = 'A'";
+        
+        if (sql_query($deleteSql)) {
+            // Decrease iRequested count in st_trips table
+            $updateTripSql = "UPDATE st_trips 
+                             SET iRequested = GREATEST(0, iRequested - 1) 
+                             WHERE iTripID = $tripID AND cStatus = 'A'";
+            
+            if (sql_query($updateTripSql)) {
+                echo json_encode([
+                    "data" => [
+                        "message" => "Request cancelled successfully"
+                    ],
+                    "statusCode" => 200
+                ]);
+            } else {
+                // If trip update fails, rollback the request deletion
+                $rollbackSql = "UPDATE st_request 
+                               SET cStatus = 'A' 
+                               WHERE iTrReqID = $requestID";
+                sql_query($rollbackSql);
+                
+                echo json_encode([
+                    "error" => [
+                        "message" => "Failed to update trip capacity"
+                    ],
+                    "statusCode" => 500
+                ]);
+            }
+        } else {
+            echo json_encode([
+                "error" => [
+                    "message" => "Failed to cancel request"
+                ],
+                "statusCode" => 500
             ]);
         }
         break;
