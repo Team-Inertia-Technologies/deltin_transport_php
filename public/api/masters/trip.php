@@ -853,8 +853,7 @@ switch ($mode) {
 
         // Mark trip as deleted (status = 'X')
         $deleteSql = "UPDATE st_trips SET 
-                        cStatus = 'X',
-                        dtUpdated = NOW()
+                        cStatus = 'X'
                       WHERE iTripID = $iTripID";
 
         if (sql_query($deleteSql)) {
