@@ -728,8 +728,7 @@ switch ($mode) {
                     $updateSql = "UPDATE st_trips SET 
                                     iVehicleID = $vehicleID,
                                     iDriverID = $driverID,
-                                    iCapacity = $vehicleCapacity,
-                                    dtUpdated = NOW()
+                                    iCapacity = $vehicleCapacity
                                   WHERE iTripID = $tripID AND iGrpID = $iGrpID AND cStatus = 'A'";
 
                     if (sql_query($updateSql)) {
