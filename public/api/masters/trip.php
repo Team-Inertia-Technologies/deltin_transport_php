@@ -450,68 +450,87 @@ switch ($mode) {
             }
         }
 
-        // Get ALL vendors and their vehicles with cStatus='A'
-        $vendorsSql = "SELECT 
-                        ven.iVendorID,
-                        ven.vName as vendorName,
-                        ven.vContactNum as vendorMobile,
-                        v.iVehicleID,
-                        v.vRnum as vehicleNumber,
-                        vc.iCapacity as vehicleCapacity
-                      FROM vendor ven
-                      LEFT JOIN vehicle v ON ven.iVendorID = v.iVendorID AND v.cStatus = 'A'
+        // Get vehicle options (same as ADD_ONLOAD)
+        $vehicleSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity 
+                      FROM vehicle v
                       LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                      WHERE ven.cStatus = 'A' AND ven.cType IN ('B','T')
-                      ORDER BY ven.vName, v.vRnum";
-        
-        $vendorsRes = sql_query($vendorsSql);
-        $allVendorsMap = [];
-        
-        while ($vendorRow = sql_fetch_assoc($vendorsRes)) {
-            $vendorID = (int) $vendorRow['iVendorID'];
-            
-            if (!isset($allVendorsMap[$vendorID])) {
-                $allVendorsMap[$vendorID] = [
-                    "vendorID" => $vendorID,
-                    "vendorName" => $vendorRow['vendorName'] ?? '',
-                    "vendorMobile" => $vendorRow['vendorMobile'] ?? '',
-                    "vehicles" => []
-                ];
-            }
-            
-            // Add vehicle if it exists
-            if (!empty($vendorRow['iVehicleID'])) {
-                $allVendorsMap[$vendorID]['vehicles'][] = [
-                    "vehicleID" => (int) $vendorRow['iVehicleID'],
-                    "vehicleNumber" => $vendorRow['vehicleNumber'] ?? '',
-                    "vehicleCapacity" => (int) ($vendorRow['vehicleCapacity'] ?? 0)
-                ];
-            }
-        }
+                      WHERE v.cStatus = 'A'
+                      ORDER BY v.vRnum";
+        $vehicleRes = sql_query($vehicleSql);
 
-        // Get ALL drivers with cStatus='A'
-        $driversSql = "SELECT 
-                        iDriverID,
-                        vName as driverName,
-                        vMobileNum as driverMobile
-                      FROM driver
-                      WHERE cStatus = 'A'
-                      ORDER BY vName";
-        
-        $driversRes = sql_query($driversSql);
-        $allDrivers = [];
-        
-        while ($driverRow = sql_fetch_assoc($driversRes)) {
-            $allDrivers[] = [
-                "driverID" => (int) $driverRow['iDriverID'],
-                "driverName" => $driverRow['driverName'] ?? '',
-                "driverMobile" => $driverRow['driverMobile'] ?? ''
+        $vehiOpt = [
+            ["id" => 0, "name" => "Choose"]
+        ];
+
+        while ($vehicleRow = sql_fetch_assoc($vehicleRes)) {
+            $capacity = $vehicleRow['iCapacity'] ?? 0;
+            $vehiOpt[] = [
+                "id" => (int) $vehicleRow['iVehicleID'],
+                "name" => $vehicleRow['vRnum'] . ' (' . $capacity . ')'
             ];
         }
 
-        // Convert maps to arrays
-        $vendors = array_values($allVendorsMap);
-        $drivers = $allDrivers;
+        // Get mode options (same as ADD_ONLOAD)    
+        $modeOpt = [
+            ["id" => 0, "name" => "Choose"],
+            ["id" => 1, "name" => "Bus"]
+        ];
+
+        // Get vendor options (same as ADD_ONLOAD)
+        $vendorSql = "SELECT DISTINCT ven.iVendorID, ven.vName 
+                     FROM vendor ven 
+                     INNER JOIN vehicle v ON v.iVendorID = ven.iVendorID 
+                     WHERE v.cStatus = 'A' AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
+                     ORDER BY ven.vName";
+        $vendorRes = sql_query($vendorSql);
+
+        $vendorOpt = [
+            ["id" => 0, "name" => "Choose"]
+        ];
+
+        while ($vendorRow = sql_fetch_assoc($vendorRes)) {
+            $vendorOpt[] = [
+                "id" => (int) $vendorRow['iVendorID'],
+                "name" => $vendorRow['vName']
+            ];
+        }
+
+        // Get all drivers independently from driver table (same as ADD_ONLOAD)
+        $allDriversSql = "SELECT d.iDriverID, d.vName as drName, d.cStatus
+                         FROM driver d
+                         WHERE d.cStatus IN ('A')
+                         ORDER BY d.vName";
+        $allDriversRes = sql_query($allDriversSql);
+
+        $vhDriver = [];
+        while ($driverRow = sql_fetch_assoc($allDriversRes)) {
+            $vhDriver[] = [
+                "id" => (int) $driverRow['iDriverID'],
+                "drName" => db_output2($driverRow['drName']),
+                "active" => $driverRow['cStatus']
+            ];
+        }
+
+        // Get table array with vehicle details (same as ADD_ONLOAD)
+        $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, ven.vName as vOwner
+                       FROM vehicle v
+                       LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+                       LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' and ven.cType IN ('B','T') 
+                       WHERE v.cStatus = 'A'
+                       ORDER BY v.vRnum";
+        $tableArrRes = sql_query($tableArrSql);
+
+        $tableArr = [];
+
+        while ($tableRow = sql_fetch_assoc($tableArrRes)) {
+            $tableArr[] = [
+                "id" => (int) $tableRow['iVehicleID'],
+                "vhNum" => db_output2($tableRow['vRnum'] ?? ''),
+                "vhCap" => (int) ($tableRow['iCapacity'] ?? 0),
+                "vhOwner" => db_output2($tableRow['vOwner'] ?? ''),
+                "vhDriver" => $vhDriver  // Same driver list for all vehicles
+            ];
+        }
 
         echo json_encode([
             "data" => [
@@ -519,8 +538,10 @@ switch ($mode) {
                 "routeInfo" => $routeInfo,
                 "trip_details" => $vehicles,
                 "tripCount" => count($vehicles),
-                "vendors" => $vendors,
-                "drivers" => $drivers,
+                "tableArr" => $tableArr,
+                "vehiOpt" => $vehiOpt,
+                "modeOpt" => $modeOpt,
+                "vendorOpt" => $vendorOpt,
                 "stops" => $stops
             ],
             "statusCode" => 200
