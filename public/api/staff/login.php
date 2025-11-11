@@ -106,19 +106,18 @@ if ($mode == 'LOGIN') {
     }
 
     // Check if OTP exists and is valid in otp table for staff (both login 'A' and registration 'R' types)
-    $otp_query = "SELECT iOTPID, vRemarks FROM otp WHERE vOTP='$OTP' AND vPhone='$mobile' AND cAdded_RefType='S' AND cUsed!='X' AND '$TIME' < dtTo";
+    $otp_query = "SELECT iOTPID FROM otp WHERE vOTP='$OTP' AND vPhone='$mobile' AND cAdded_RefType='S' AND cUsed!='X' AND '$TIME' < dtTo";
     $otp_result = sql_query($otp_query, "Check if OTP exists for staff");
 
     if (sql_num_rows($otp_result)) {
-        [$iOTPID, $vRemarks] = sql_fetch_row($otp_result);
+        [$iOTPID] = sql_fetch_row($otp_result);
 
         // Deactivate the OTP
         sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='$iOTPID'");
-
-        // If this is a registration OTP (cType='R') and newUser is true, create the staff record
         if ($newUser) {
-            // Parse registration data from vRemarks
-            $registrationData = json_decode($vRemarks, true);
+            // Get registration data from session
+            session_start();
+            $registrationData = $_SESSION['staff_registration_' . $mobile] ?? null;
             
             if ($registrationData) {
                 $vCode = db_input($registrationData['code']);
@@ -162,6 +161,9 @@ if ($mode == 'LOGIN') {
                     $q = "update staff set dtLastLogin='" . NOW . "', cActive='Y' where iStaffID=$iStaffID";
                     $r = sql_query($q, 'AUTH.78');
 
+                    // Clear the session data after successful registration
+                    unset($_SESSION['staff_registration_' . $mobile]);
+
                     echo json_encode([
                         'statusCode' => 200,
                         'data' => $USER_DATA,
@@ -180,7 +182,7 @@ if ($mode == 'LOGIN') {
             } else {
                 echo json_encode([
                     "error" => [
-                        "message" => "Invalid registration data"
+                        "message" => "Registration session expired. Please register again."
                     ],
                     "statusCode" => 400
                 ]);

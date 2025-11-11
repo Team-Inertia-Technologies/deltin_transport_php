@@ -164,19 +164,20 @@ else if ($mode == 'ADD_STAFF') {
         exit;
     }
 
-    // Store registration data temporarily in OTP table's additional fields or create a temp table
-    // For now, we'll store it in a JSON format in a custom field or use session
-    $registrationData = json_encode([
+    // Store registration data temporarily in session
+    session_start();
+    $_SESSION['staff_registration_' . $vMobile] = [
         'code' => $vCode,
         'name' => $vName,
         'mobile' => $vMobile,
         'routeid' => $iRouteID,
-        'stopid' => $iStopID
-    ]);
+        'stopid' => $iStopID,
+        'timestamp' => time()
+    ];
 
     // Insert OTP for registration
     $code = '+91';
-    sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed,vRemarks) VALUES ('$OtpID','$TIME','$code','S','0','R','0','$otp','$vMobile','$TIME','$dtTo','N','$registrationData')", "Insert OTP for staff registration");
+    sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','R','0','$otp','$vMobile','$TIME','$dtTo','N')", "Insert OTP for staff registration");
 
     // Send SMS
     $message = urlencode('Use code ' . $otp . ' to complete your registration for Deltin Transport. This OTP is valid for 5 minutes.');
