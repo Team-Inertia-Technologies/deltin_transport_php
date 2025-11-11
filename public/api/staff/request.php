@@ -103,9 +103,12 @@ switch ($mode) {
                        LIMIT 7";
             $daysRes = sql_query($daysSql);
             
-            $daysArr = [
-                ["id" => 0, "name" => "Select All"]
-            ];
+            $daysArr = [];
+            
+            // Only add "Select All" if there are actual days available
+            if (sql_num_rows($daysRes) > 0) {
+                $daysArr[] = ["id" => 0, "name" => "Select All"];
+            }
             
             while ($dayRow = sql_fetch_assoc($daysRes)) {
                 $tripDate = $dayRow['trip_date'];

@@ -92,6 +92,7 @@ if ($mode == 'LOGIN') {
 } elseif ($mode == 'VERIFY_OTP') {
     $mobile = db_input($_REQUEST['mobile'] ?? '');
     $OTP = db_input($_REQUEST['otp'] ?? '');
+    $newUser = $_REQUEST['newUser'] ?? false;
 
     if (empty($mobile) || empty($OTP)) {
 
@@ -104,52 +105,125 @@ if ($mode == 'LOGIN') {
         exit;
     }
 
-    // Check if OTP exists and is valid in otp table for staff
-    $otp_query = "SELECT iOTPID FROM otp WHERE vOTP='$OTP' AND vPhone='$mobile' AND cAdded_RefType='S' AND cUsed!='X' AND '$TIME' < dtTo";
+    // Check if OTP exists and is valid in otp table for staff (both login 'A' and registration 'R' types)
+    $otp_query = "SELECT iOTPID, vRemarks FROM otp WHERE vOTP='$OTP' AND vPhone='$mobile' AND cAdded_RefType='S' AND cUsed!='X' AND '$TIME' < dtTo";
     $otp_result = sql_query($otp_query, "Check if OTP exists for staff");
 
     if (sql_num_rows($otp_result)) {
-        [$iOTPID] = sql_fetch_row($otp_result);
+        [$iOTPID, $vRemarks] = sql_fetch_row($otp_result);
 
         // Deactivate the OTP
         sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='$iOTPID'");
 
-        // Check if user exists in staff table
-        $staff_query = "SELECT iStaffID, vName, vMobile FROM staff WHERE vMobile='$mobile' AND cStatus='A'";
-        $staff_result = sql_query($staff_query, "Get staff details");
+        // If this is a registration OTP (cType='R') and newUser is true, create the staff record
+        if ($newUser) {
+            // Parse registration data from vRemarks
+            $registrationData = json_decode($vRemarks, true);
+            
+            if ($registrationData) {
+                $vCode = db_input($registrationData['code']);
+                $vName = db_input($registrationData['name']);
+                $vMobile = db_input($registrationData['mobile']);
+                $iRouteID = db_input($registrationData['routeid']);
+                $iStopID = db_input($registrationData['stopid']);
+                $cStatus = 'A';
+                $dtRegistered = NOW;
 
-        if (sql_num_rows($staff_result)) {
-            [$staffId, $firstName, $staffMobile] = sql_fetch_row($staff_result);
+                // Double-check for duplicates before inserting
+                $checkSql = "SELECT iStaffID, vCode, vMobile FROM staff WHERE (vCode = '$vCode' OR vMobile = '$vMobile') AND cStatus != 'X'";
+                $checkRes = sql_query($checkSql);
 
-            $staffName = $firstName;
+                if (sql_num_rows($checkRes) > 0) {
+                    echo json_encode([
+                        "error" => [
+                            "message" => "Staff code or mobile number already exists"
+                        ],
+                        "statusCode" => 409
+                    ]);
+                    exit;
+                }
 
-            $USER_DATA = [
-                'id' => $staffId,
-                'name' => db_output2($staffName),
-                'mobile' => db_output2($staffMobile),
-                'token' => EncodeParam($staffId)
-            ];
+                $iStaffID = NextID('iStaffID', 'staff');
 
-            // Log the signin
-            sql_query("INSERT INTO st_log_signin (dDate, cRefType, iRefID, dtEntry, vIPAddress, vBrowser, cStatus) VALUES ('" . TODAY . "', 'S', '$staffId', '" . NOW . "', '" . ($_SERVER['REMOTE_ADDR'] ?? '') . "', '" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "', 'A')", "Log staff signin");
+                $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile, iRouteID, iStopID, dtRegistered, cStatus) 
+                        VALUES ($iStaffID, '$vCode', '$vName', '$vMobile', $iRouteID, $iStopID, '$dtRegistered', '$cStatus')";
 
-            $q = "update staff set dtLastLogin='" . NOW . "', cActive='Y' where iStaffID=$staffId";
-            $r = sql_query($q, 'AUTH.78');
-            echo json_encode([
-                'statusCode' => 200,
-                'data' => $USER_DATA,
-                'message' => 'Login successful'
-            ]);
-            exit;
+                if (sql_query($sql)) {
+                    $USER_DATA = [
+                        'id' => $iStaffID,
+                        'name' => db_output2($vName),
+                        'mobile' => db_output2($vMobile),
+                        'token' => EncodeParam($iStaffID)
+                    ];
+
+                    // Log the signin
+                    sql_query("INSERT INTO st_log_signin (dDate, cRefType, iRefID, dtEntry, vIPAddress, vBrowser, cStatus) VALUES ('" . TODAY . "', 'S', '$iStaffID', '" . NOW . "', '" . ($_SERVER['REMOTE_ADDR'] ?? '') . "', '" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "', 'A')", "Log staff signin");
+
+                    $q = "update staff set dtLastLogin='" . NOW . "', cActive='Y' where iStaffID=$iStaffID";
+                    $r = sql_query($q, 'AUTH.78');
+
+                    echo json_encode([
+                        'statusCode' => 200,
+                        'data' => $USER_DATA,
+                        'message' => 'Registration completed and login successful'
+                    ]);
+                    exit;
+                } else {
+                    echo json_encode([
+                        "error" => [
+                            "message" => "Failed to complete registration"
+                        ],
+                        "statusCode" => 500
+                    ]);
+                    exit;
+                }
+            } else {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Invalid registration data"
+                    ],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
         } else {
+            // This is a login OTP or existing user verification
+            // Check if user exists in staff table
+            $staff_query = "SELECT iStaffID, vName, vMobile FROM staff WHERE vMobile='$mobile' AND cStatus='A'";
+            $staff_result = sql_query($staff_query, "Get staff details");
 
-            echo json_encode([
-                "error" => [
-                    "message" => "Staff member not found or inactive."
-                ],
-                "statusCode" => 404
-            ]);
-            exit;
+            if (sql_num_rows($staff_result)) {
+                [$staffId, $firstName, $staffMobile] = sql_fetch_row($staff_result);
+
+                $staffName = $firstName;
+
+                $USER_DATA = [
+                    'id' => $staffId,
+                    'name' => db_output2($staffName),
+                    'mobile' => db_output2($staffMobile),
+                    'token' => EncodeParam($staffId)
+                ];
+
+                // Log the signin
+                sql_query("INSERT INTO st_log_signin (dDate, cRefType, iRefID, dtEntry, vIPAddress, vBrowser, cStatus) VALUES ('" . TODAY . "', 'S', '$staffId', '" . NOW . "', '" . ($_SERVER['REMOTE_ADDR'] ?? '') . "', '" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "', 'A')", "Log staff signin");
+
+                $q = "update staff set dtLastLogin='" . NOW . "', cActive='Y' where iStaffID=$staffId";
+                $r = sql_query($q, 'AUTH.78');
+                echo json_encode([
+                    'statusCode' => 200,
+                    'data' => $USER_DATA,
+                    'message' => 'Login successful'
+                ]);
+                exit;
+            } else {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Staff member not found or inactive."
+                    ],
+                    "statusCode" => 404
+                ]);
+                exit;
+            }
         }
     } else {
 

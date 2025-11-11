@@ -82,9 +82,7 @@ else if ($mode == 'ADD_STAFF') {
     $vName = db_input($request['name'] ?? '');
     $vMobile = db_input($request['mobile'] ?? '');
     $iRouteID= db_input($request['routeid'] ?? 0);
-   $iStopID = db_input($request['stopid'] ?? 0);
-    $cStatus = 'A'; 
-    $dtRegistered = NOW;
+    $iStopID = db_input($request['stopid'] ?? 0);
 
     if (empty($vCode)) {
         echo json_encode([
@@ -142,30 +140,59 @@ else if ($mode == 'ADD_STAFF') {
         }
     }
 
-    $iStaffID = NextID('iStaffID', 'staff');
+    // Store registration data in session/temp table and send OTP instead of direct insert
+    $OtpID = NextID('iOTPID', 'otp');
+    $dtTo = date('Y-m-d H:i:s', strtotime('+5 minutes'));
+    $otp = GenerateRandomCode('4', 'vOTP', 'otp');
+    
+    // Deactivate previous OTPs for this mobile
+    sql_query("UPDATE otp SET cUsed='X' WHERE vPhone='$vMobile'");
 
-    $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile,iRouteID,iStopID, dtRegistered, cStatus) 
-            VALUES ($iStaffID, '$vCode', '$vName', '$vMobile',$iRouteID, $iStopID, '$dtRegistered', '$cStatus')";
+    // Check OTP limit
+    $NUMBER_OF_ATTEMPTS = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode='OTP_ATTEMPTS'");
+    $RESTRICT_TIME_HOURS = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode='OTP_RESTRICT_TIME_HOURS'");
+    
+    $otpCount = checkOTPLimit($vMobile, $RESTRICT_TIME_HOURS);
 
-    if (sql_query($sql)) {
-        echo json_encode([
-            "statusCode" => 200,
-            "message" => "Staff registered successfully",
-            "data" => [
-                "id" => $iStaffID,
-                "code" => db_output2($vCode),
-                "name" => db_output2($vName),
-                "mobile" => db_output2($vMobile)
-            ]
-        ]);
-    } else {
+    if ($otpCount >= $NUMBER_OF_ATTEMPTS) {
         echo json_encode([
             "error" => [
-                "message" => "Failed to register staff"
+                "message" => "You have exceeded the maximum number of OTP attempts. Please try again after some time."
             ],
-            "statusCode" => 500
+            "statusCode" => 400
         ]);
+        exit;
     }
+
+    // Store registration data temporarily in OTP table's additional fields or create a temp table
+    // For now, we'll store it in a JSON format in a custom field or use session
+    $registrationData = json_encode([
+        'code' => $vCode,
+        'name' => $vName,
+        'mobile' => $vMobile,
+        'routeid' => $iRouteID,
+        'stopid' => $iStopID
+    ]);
+
+    // Insert OTP for registration
+    $code = '+91';
+    sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed,vRemarks) VALUES ('$OtpID','$TIME','$code','S','0','R','0','$otp','$vMobile','$TIME','$dtTo','N','$registrationData')", "Insert OTP for staff registration");
+
+    // Send SMS
+    $message = urlencode('Use code ' . $otp . ' to complete your registration for Deltin Transport. This OTP is valid for 5 minutes.');
+    $templateid = '1707176249288519068';
+    $to = $vMobile;
+    if (strlen($to) == 10)
+        $to = '91' . $to;
+    SendSmsCurl2($templateid, $to, $message);
+
+    echo json_encode([
+        "statusCode" => 200,
+        "message" => "OTP sent to your mobile number for registration verification",
+        "data" => [
+            "mobile" => db_output2($vMobile)
+        ]
+    ]);
 
     exit;
 } else {
@@ -176,4 +203,12 @@ else if ($mode == 'ADD_STAFF') {
         "statusCode" => 400
     ]);
     exit;
+}
+
+function checkOTPLimit($mobile, $HOURS)
+{
+    date_default_timezone_set('Asia/Calcutta');
+    $HoursAgo = date('Y-m-d H:i:s', strtotime('-' . $HOURS . ' hours'));
+    $OTP_COUNT = GetXFromYID("SELECT COUNT(*) as otp_count FROM otp WHERE vPhone ='$mobile' AND dtAdded >'$HoursAgo' ");
+    return $OTP_COUNT;
 }
