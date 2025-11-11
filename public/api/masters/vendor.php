@@ -39,7 +39,6 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-// Define arrays for ONLOAD mode
 $AREA_ARR_RAW = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank", "3");
 $STATE_ARR_RAW = GetXArrFromYID("SELECT iStateID, vName FROM gen_state where cStatus='A' ORDER BY vName", "3");
 
@@ -115,7 +114,6 @@ switch ($mode) {
         while ($row = sql_fetch_assoc($res)) {
             $vendorID = intval($row['iVendorID']);
 
-            // Get availability areas and names in one query using JOIN
             $areaSql = "SELECT vaa.iAreaID, ga.vName 
                         FROM vendor_area_assoc vaa 
                         LEFT JOIN gen_area ga ON vaa.iAreaID = ga.iAreaID AND ga.cStatus = 'A'
@@ -399,7 +397,6 @@ switch ($mode) {
 
     // ===================== CASE 5: ADD_VENDOR =====================
     case 'ADD_VENDOR':
-        // Map form data to database fields
         $vName = db_input($request['comName'] ?? '');
         $vContactPerson = db_input($request['perName'] ?? '');
         $vContactNum = db_input($request['perConNum'] ?? '');

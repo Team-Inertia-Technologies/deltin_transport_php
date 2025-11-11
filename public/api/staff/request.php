@@ -74,45 +74,45 @@ switch ($mode) {
                 ];
             }
             
+            // Get days array for this specific route
+            $today = date('Y-m-d');
+            $maxDate = date('Y-m-d', strtotime('+7 days'));
+            
+            $daysSql = "SELECT iTripID, DATE(dtTrip) as trip_date 
+                       FROM st_trips 
+                       WHERE iRouteID = $routeID AND cStatus = 'A' AND DATE(dtTrip) >= '$today' AND DATE(dtTrip) <= '$maxDate'
+                       GROUP BY DATE(dtTrip)
+                       ORDER BY trip_date 
+                       LIMIT 7";
+            $daysRes = sql_query($daysSql);
+            
+            $daysArr = [
+                ["id" => 0, "name" => "Select All"]
+            ];
+            
+            while ($dayRow = sql_fetch_assoc($daysRes)) {
+                $tripDate = $dayRow['trip_date'];
+                $tripID = (int) $dayRow['iTripID'];
+                $dayName = date('l, j F', strtotime($tripDate)); // Format: "Monday, 26 August"
+                
+                $daysArr[] = [
+                    "id" => $tripID,
+                    "name" => $dayName
+                ];
+            }
+            
             $routes[] = [
                 "id" => $routeID,
                 "name" => db_output2($routeName),
                 "pickUpOpt" => $pickUpOpt,
-                "timeOpt" => $timeOpt
-            ];
-        }
-        
-        // Get days array from trips - max 7 days from today or however many days exist
-        $today = date('Y-m-d');
-        $maxDate = date('Y-m-d', strtotime('+7 days'));
-        
-        $daysSql = "SELECT iTripID, DATE(dtTrip) as trip_date 
-                   FROM st_trips 
-                   WHERE cStatus = 'A' AND DATE(dtTrip) >= '$today' AND DATE(dtTrip) <= '$maxDate'
-                   GROUP BY DATE(dtTrip)
-                   ORDER BY trip_date 
-                   LIMIT 7";
-        $daysRes = sql_query($daysSql);
-        
-        $daysArr = [
-            ["id" => 0, "name" => "Select All"]
-        ];
-        
-        while ($dayRow = sql_fetch_assoc($daysRes)) {
-            $tripDate = $dayRow['trip_date'];
-            $tripID = (int) $dayRow['iTripID'];
-            $dayName = date('l, j F', strtotime($tripDate)); // Format: "Monday, 26 August"
-            
-            $daysArr[] = [
-                "id" => $tripID,
-                "name" => $dayName
+                "timeOpt" => $timeOpt,
+                "daysArr" => $daysArr
             ];
         }
         
         echo json_encode([
             "data" => [
                 "routes" => $routes,
-                "daysArr" => $daysArr,
                 "staffRouteID" => $staffRouteID,
                 "staffStopID" => $staffStopID
             ],

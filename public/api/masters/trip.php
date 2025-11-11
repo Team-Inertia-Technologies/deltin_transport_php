@@ -299,7 +299,8 @@ switch ($mode) {
                     d.iDriverID,
                     d.vName as driverName,
                     d.vMobileNum as driverMobile,
-                    t.iCapacity as totalCapacity
+                    t.iRequested as requestedPax,
+                    t.iAvaialed as availedPax
                 FROM st_trips t
                 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
                 LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID
@@ -324,6 +325,9 @@ switch ($mode) {
         $routeInfo = [];
         $vehicles = [];
         $vendorsMap = [];
+        $totalCapacity = 0;
+        $totalRequestedPax = 0;
+        $totalAvailedPax = 0;
 
         while ($row = sql_fetch_assoc($res)) {
             // Set route info (same for all trips in group)
@@ -331,10 +335,14 @@ switch ($mode) {
                 $routeInfo = [
                     "routeName" => $row['routeName'] ?? '',
                     "destination" => $row['destination'] ?? '',
-                    "tripDateTime" => date('d/m/Y H:i', strtotime($row['dtTrip'])),
-                    "totalCapacity" => (int) ($row['totalCapacity'] ?? 0)
+                    "tripDateTime" => date('d/m/Y H:i', strtotime($row['dtTrip']))
                 ];
             }
+
+            // Calculate totals by summing vehicle capacities and passenger counts
+            $totalCapacity += (int) ($row['vehicleCapacity'] ?? 0);
+            $totalRequestedPax += (int) ($row['requestedPax'] ?? 0);
+            $totalAvailedPax += (int) ($row['availedPax'] ?? 0);
 
             // Collect vendors and their vehicles directly without validation
             $vendorID = (int) $row['iVendorID'];
@@ -369,10 +377,16 @@ switch ($mode) {
                 "vehicleOwnerID" => $vendorID,
                 "driverID" => $driverID,
                 "driverName" => $row['driverName'] ?? '',
-                "driverMobile" => $row['driverMobile'] ?? ''
-
+                "driverMobile" => $row['driverMobile'] ?? '',
+                "requestedPax" => (int) ($row['requestedPax'] ?? 0),
+                "availedPax" => (int) ($row['availedPax'] ?? 0)
             ];
         }
+
+        // Add totals to route info
+        $routeInfo["totalCapacity"] = $totalCapacity;
+        $routeInfo["totalRequestedPax"] = $totalRequestedPax;
+        $routeInfo["totalAvailedPax"] = $totalAvailedPax;
 
         // Get stops information for this route and trip group
         $stops = [];
@@ -413,13 +427,13 @@ switch ($mode) {
                                     st.iStaffID,
                                     st.vName as staffName,
                                     st.vMobile as staffMobile,
-                                    req.iVehicleID,
+                                    req.iTripID,
                                     v.vRnum as vehicleNumber,
                                     req.dtIn
                                 FROM st_request req
                                 INNER JOIN staff st ON req.iStaffID = st.iStaffID AND st.cStatus = 'A'
                                 INNER JOIN st_trips t ON req.iTripID = t.iTripID
-                                LEFT JOIN vehicle v ON req.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
+                                LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                                 WHERE t.iGrpID = $iGrpID 
                                 AND req.iStopID = $stopID 
                                 AND req.cStatus = 'A'
@@ -432,8 +446,10 @@ switch ($mode) {
                             "staffID" => (int) $staffRow['iStaffID'],
                             "staffName" => $staffRow['staffName'] ?? '',
                             "staffMobile" => $staffRow['staffMobile'] ?? '',
+                            "tripID" => (int) $staffRow['iTripID'],
                             "vehicleNumber" => $staffRow['vehicleNumber'] ?? '',
-                            "entered" => !empty($staffRow['dtIn'])
+                            "entered" => !empty($staffRow['dtIn']),
+                            "enteredTime" => $staffRow['dtIn'] ? date('H:i', strtotime($staffRow['dtIn'])) : null
                         ];
                     }
 

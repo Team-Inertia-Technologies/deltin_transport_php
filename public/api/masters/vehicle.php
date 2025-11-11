@@ -86,7 +86,6 @@ switch ($mode) {
 
     // ===================== CASE 1: ONLOAD =====================
     case 'ONLOAD':
-        // Available options (areas from gen_area table - same as vendor.php)
         $AREA_ARR_RAW = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank", "3");
         $availableOpt = [];
         foreach ($AREA_ARR_RAW as $id => $label) {
@@ -136,9 +135,9 @@ switch ($mode) {
 
     // ===================== CASE 2: LIST =====================
     case 'LIST':
-        // Optimized query with JOINs to get vendor data
+
         $sql = "SELECT v.iVehicleID, v.iVendorID, v.iSeats,vRnum,
-                       v.fRate, vn.vName as vendor_name, c.iCapacity as capacity
+                       v.fRate, vn.vName as vendor_name, c.iCapacity as capacity,c.vName as catName 
                 FROM vehicle v
                 LEFT JOIN vendor vn ON v.iVendorID = vn.iVendorID AND vn.cStatus = 'A'
                 LEFT JOIN vehicle_category c ON v.iCatID = c.iVCatID AND c.cStatus = 'A'
@@ -149,8 +148,7 @@ switch ($mode) {
         $data = [];
         while ($row = sql_fetch_assoc($res)) {
             $vehicleID = intval($row['iVehicleID']);
-            
-            // Get availability areas and names in one query using JOIN
+
             $areaSql = "SELECT vaa.iAreaID, ga.vName 
                         FROM vehicle_area_assoc vaa 
                         LEFT JOIN gen_area ga ON vaa.iAreaID = ga.iAreaID AND ga.cStatus = 'A'
@@ -171,6 +169,7 @@ switch ($mode) {
                 'id' => $row['iVehicleID'],
                 'vehicleNumber' => db_output2($row['vRnum']),
                 'vehicleCapacity' => $row['capacity'],
+                 'vehicleCategory' => $row['catName'],
                // 'rate' => $row['fRate'],
                 'vehicleOwnerID' => $row['iVendorID'],
                 'vehicleOwner' => db_output2($row['vendor_name'] ?? ''),
@@ -224,7 +223,6 @@ switch ($mode) {
 
         $row = sql_fetch_assoc($res);
 
-        // Get availability areas for this vehicle from vehicle_area_assoc table (same as vendor.php)
         $areaSql = "SELECT iAreaID FROM vehicle_area_assoc WHERE iVehicleID = $id";
         $areaRes = sql_query($areaSql);
 
@@ -233,7 +231,6 @@ switch ($mode) {
             $availability[] = intval($areaRow['iAreaID']);
         }
 
-        // Prepare option arrays with "choose" options
         $AREA_ARR_RAW = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank", "3");
         $availableOpt = [];
         foreach ($AREA_ARR_RAW as $id => $label) {
@@ -430,7 +427,7 @@ switch ($mode) {
         break;
     // ===================== CASE 5: ADD =====================
     case 'ADD_VEHICLE':
-        // Handle form data with the new structure
+
         $type = intval($_REQUEST['type'] ?? 0); // Driver type
         $category = intval($_REQUEST['category'] ?? 0); // Vehicle category
         $vendor = intval($_REQUEST['vendor'] ?? 0); // Vendor ID
@@ -487,7 +484,6 @@ switch ($mode) {
                     '$perNum', '$cStatus')";
 
         if (sql_query($sql)) {
-            // Handle availability areas array - insert multiple area associations
             if (is_array($availability) && !empty($availability)) {
                 foreach ($availability as $areaId) {
                     $areaId = intval($areaId);
