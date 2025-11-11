@@ -115,79 +115,13 @@ if ($mode == 'LOGIN') {
         // Deactivate the OTP
         sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='$iOTPID'");
         if ($newUser) {
-            // Get registration data from session
-            session_start();
-            $registrationData = $_SESSION['staff_registration_' . $mobile] ?? null;
-            
-            if ($registrationData) {
-                $vCode = db_input($registrationData['code']);
-                $vName = db_input($registrationData['name']);
-                $vMobile = db_input($registrationData['mobile']);
-                $iRouteID = db_input($registrationData['routeid']);
-                $iStopID = db_input($registrationData['stopid']);
-                $cStatus = 'A';
-                $dtRegistered = NOW;
-
-                // Double-check for duplicates before inserting
-                $checkSql = "SELECT iStaffID, vCode, vMobile FROM staff WHERE (vCode = '$vCode' OR vMobile = '$vMobile') AND cStatus != 'X'";
-                $checkRes = sql_query($checkSql);
-
-                if (sql_num_rows($checkRes) > 0) {
-                    echo json_encode([
-                        "error" => [
-                            "message" => "Staff code or mobile number already exists"
-                        ],
-                        "statusCode" => 409
-                    ]);
-                    exit;
-                }
-
-                $iStaffID = NextID('iStaffID', 'staff');
-
-                $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile, iRouteID, iStopID, dtRegistered, cStatus) 
-                        VALUES ($iStaffID, '$vCode', '$vName', '$vMobile', $iRouteID, $iStopID, '$dtRegistered', '$cStatus')";
-
-                if (sql_query($sql)) {
-                    $USER_DATA = [
-                        'id' => $iStaffID,
-                        'name' => db_output2($vName),
-                        'mobile' => db_output2($vMobile),
-                        'token' => EncodeParam($iStaffID)
-                    ];
-
-                    // Log the signin
-                    sql_query("INSERT INTO st_log_signin (dDate, cRefType, iRefID, dtEntry, vIPAddress, vBrowser, cStatus) VALUES ('" . TODAY . "', 'S', '$iStaffID', '" . NOW . "', '" . ($_SERVER['REMOTE_ADDR'] ?? '') . "', '" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "', 'A')", "Log staff signin");
-
-                    $q = "update staff set dtLastLogin='" . NOW . "', cActive='Y' where iStaffID=$iStaffID";
-                    $r = sql_query($q, 'AUTH.78');
-
-                    // Clear the session data after successful registration
-                    unset($_SESSION['staff_registration_' . $mobile]);
-
-                    echo json_encode([
-                        'statusCode' => 200,
-                        'data' => $USER_DATA,
-                        'message' => 'Registration completed and login successful'
-                    ]);
-                    exit;
-                } else {
-                    echo json_encode([
-                        "error" => [
-                            "message" => "Failed to complete registration"
-                        ],
-                        "statusCode" => 500
-                    ]);
-                    exit;
-                }
-            } else {
-                echo json_encode([
-                    "error" => [
-                        "message" => "Registration session expired. Please register again."
-                    ],
-                    "statusCode" => 400
-                ]);
-                exit;
-            }
+            echo json_encode([
+                "error" => [
+                    "message" => "New user registration through OTP verification is not supported without additional registration data."
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
         } else {
             // This is a login OTP or existing user verification
             // Check if user exists in staff table

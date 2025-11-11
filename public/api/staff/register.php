@@ -164,17 +164,6 @@ else if ($mode == 'ADD_STAFF') {
         exit;
     }
 
-    // Store registration data temporarily in session
-    session_start();
-    $_SESSION['staff_registration_' . $vMobile] = [
-        'code' => $vCode,
-        'name' => $vName,
-        'mobile' => $vMobile,
-        'routeid' => $iRouteID,
-        'stopid' => $iStopID,
-        'timestamp' => time()
-    ];
-
     // Insert OTP for registration
     $code = '+91';
     sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','R','0','$otp','$vMobile','$TIME','$dtTo','N')", "Insert OTP for staff registration");
