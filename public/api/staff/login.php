@@ -115,13 +115,97 @@ if ($mode == 'LOGIN') {
         // Deactivate the OTP
         sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='$iOTPID'");
         if ($newUser) {
-            echo json_encode([
-                "error" => [
-                    "message" => "New user registration through OTP verification is not supported without additional registration data."
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
+            // Get registration data from request
+            $vCode = db_input($_REQUEST['code'] ?? '');
+            $vName = db_input($_REQUEST['name'] ?? '');
+            $vMobile = db_input($_REQUEST['mobile'] ?? '');
+            $iRouteID = db_input($_REQUEST['routeid'] ?? 0);
+            $iStopID = db_input($_REQUEST['stopid'] ?? 0);
+
+            // Validate required fields
+            if (empty($vCode)) {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Staff code is required for registration"
+                    ],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+
+            if (empty($vName)) {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Staff name is required for registration"
+                    ],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+
+            // Check for duplicate vCode or vMobile
+            $checkSql = "SELECT iStaffID, vCode, vMobile FROM staff WHERE (vCode = '$vCode' OR vMobile = '$vMobile') AND cStatus != 'X'";
+            $checkRes = sql_query($checkSql);
+
+            if (sql_num_rows($checkRes) > 0) {
+                $existingRow = sql_fetch_assoc($checkRes);
+                if ($existingRow['vCode'] === $vCode) {
+                    echo json_encode([
+                        "error" => [
+                            "message" => "Staff code already exists"
+                        ],
+                        "statusCode" => 409
+                    ]);
+                    exit;
+                }
+                if ($existingRow['vMobile'] === $vMobile) {
+                    echo json_encode([
+                        "error" => [
+                            "message" => "Mobile number already exists"
+                        ],
+                        "statusCode" => 409
+                    ]);
+                    exit;
+                }
+            }
+
+            // Create new staff record
+            $iStaffID = NextID('iStaffID', 'staff');
+            $cStatus = 'A';
+            $dtRegistered = NOW;
+
+            $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile, iRouteID, iStopID, dtRegistered, cStatus) 
+                    VALUES ($iStaffID, '$vCode', '$vName', '$vMobile', $iRouteID, $iStopID, '$dtRegistered', '$cStatus')";
+
+            if (sql_query($sql)) {
+                $USER_DATA = [
+                    'id' => $iStaffID,
+                    'name' => db_output2($vName),
+                    'mobile' => db_output2($vMobile),
+                    'token' => EncodeParam($iStaffID)
+                ];
+
+                // Log the signin
+                sql_query("INSERT INTO st_log_signin (dDate, cRefType, iRefID, dtEntry, vIPAddress, vBrowser, cStatus) VALUES ('" . TODAY . "', 'S', '$iStaffID', '" . NOW . "', '" . ($_SERVER['REMOTE_ADDR'] ?? '') . "', '" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "', 'A')", "Log staff signin");
+
+                $q = "update staff set dtLastLogin='" . NOW . "', cActive='Y' where iStaffID=$iStaffID";
+                $r = sql_query($q, 'AUTH.78');
+
+                echo json_encode([
+                    'statusCode' => 200,
+                    'data' => $USER_DATA,
+                    'message' => 'Registration completed and login successful'
+                ]);
+                exit;
+            } else {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Failed to complete registration"
+                    ],
+                    "statusCode" => 500
+                ]);
+                exit;
+            }
         } else {
             // This is a login OTP or existing user verification
             // Check if user exists in staff table
