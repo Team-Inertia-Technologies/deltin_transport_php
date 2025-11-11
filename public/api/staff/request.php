@@ -44,17 +44,34 @@ switch ($mode) {
             $routeID = (int) $routeRow['iRouteID'];
             $routeName = $routeRow['vName'];
             
-            // Get pickup options (stops) for this route
-            $stopsSql = "SELECT iStopID, vName FROM st_route_stops 
+            // Get pickup options (stops) for this route with timing calculations
+            $stopsSql = "SELECT iStopID, vName, tOffsetFromStart FROM st_route_stops 
                         WHERE iRouteID = $routeID AND cStatus = 'A' 
                         ORDER BY iRank";
             $stopsRes = sql_query($stopsSql);
             
+            // Get the earliest trip time for this route to calculate stop timings
+            $earliestTripSql = "SELECT TIME(dtTrip) as trip_time 
+                               FROM st_trips 
+                               WHERE iRouteID = $routeID AND cStatus = 'A' 
+                               ORDER BY TIME(dtTrip) 
+                               LIMIT 1";
+            $earliestTripRes = sql_query($earliestTripSql);
+            $baseTime = '00:00:00'; // Default base time
+            
+            if (sql_num_rows($earliestTripRes) > 0) {
+                $earliestTripData = sql_fetch_assoc($earliestTripRes);
+                $baseTime = $earliestTripData['trip_time'];
+            }
+            
             $pickUpOpt = [];
             while ($stopRow = sql_fetch_assoc($stopsRes)) {
+                $offsetMinutes = intval($stopRow['tOffsetFromStart']);
+                $stopTime = date('H:i', strtotime($baseTime) + $offsetMinutes * 60);
+                
                 $pickUpOpt[] = [
                     "id" => (int) $stopRow['iStopID'],
-                    "name" => db_output2($stopRow['vName'])
+                    "name" => db_output2($stopRow['vName']) . " | " . $stopTime
                 ];
             }
             

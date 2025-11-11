@@ -217,7 +217,7 @@ if ($mode == 'LOGIN') {
         $message = urlencode('Your OTP for staff login is: ' . $otp);
         $message = urlencode('Use code ' . $otp . ' to verify your login for Deltin Transport. This OTP is valid for 5 minutes.');
         $templateid = '1707176249288519068';
-        $to = $mob;
+        $to = $mobile;
         if (strlen($to) == 10)
             $to = '91' . $to;
         SendSmsCurl2($templateid, $to, $message);
