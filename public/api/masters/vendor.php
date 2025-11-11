@@ -259,9 +259,7 @@ switch ($mode) {
 
     // ===================== CASE 4: UPDATE_VENDOR =====================
     case 'UPDATE_VENDOR':
-        // Map form data to database fields
-
-
+    
         $id = intval($request['iVendorID'] ?? 0);
         $vName = db_input($request['comName'] ?? '');
         $vContactPerson = db_input($request['perName'] ?? '');

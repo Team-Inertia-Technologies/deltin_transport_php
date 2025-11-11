@@ -758,7 +758,7 @@ switch ($mode) {
             // Check for conflicts (vehicle assigned to different trip in same group)
             foreach ($trip_details as $index => $trip) {
                 $tripID = intval($trip['tripID'] ?? 0);
-                $vehicleID = intval($trip['vehicleID'] ?? 0);
+                $vehicleID = intval($trip['vhId'] ?? 0);
                 
                 foreach ($existingTripVehicles as $existingTripID => $existingVehicleID) {
                     if ($vehicleID == $existingVehicleID && $tripID != $existingTripID) {
@@ -784,10 +784,10 @@ switch ($mode) {
         try {
             foreach ($trip_details as $index => $trip) {
                 $tripID = intval($trip['tripID'] ?? 0);
-                $vehicleID = intval($trip['vehicleID'] ?? 0);
-                $vehicleCapacity = intval($trip['vehicleCapacity'] ?? 0);
-                $vehicleOwnerID = intval($trip['vehicleOwnerID'] ?? 0);
-                $driverID = intval($trip['driverID'] ?? 0);
+                $vehicleID = intval($trip['vhId'] ?? 0);
+                $vehicleCapacity = intval($trip['vhCap'] ?? 0);
+                //$vehicleOwnerID = intval($trip['vehicleOwnerID'] ?? 0);
+                $driverID = intval($trip['driverId'] ?? 0);
 
                 // Validate required fields
                 if ($vehicleID <= 0) {
