@@ -201,6 +201,16 @@ switch ($mode) {
         $selectedTime = $timeTripData['trip_time'];
         $timing = date('H:i', strtotime($selectedTime));
         
+        // Get pickup point name
+        $pickupPointSql = "SELECT vName FROM st_route_stops WHERE iStopID = $pickUp AND cStatus = 'A'";
+        $pickupPointRes = sql_query($pickupPointSql);
+        $pickupPointName = '';
+        
+        if (sql_num_rows($pickupPointRes) > 0) {
+            $pickupPointData = sql_fetch_assoc($pickupPointRes);
+            $pickupPointName = db_output2($pickupPointData['vName']);
+        }
+        
         $successCount = 0;
         $errors = [];
         $selectedDays = [];
@@ -354,6 +364,7 @@ switch ($mode) {
                     "successCount" => $successCount,
                     "routeName" => db_output2($routeName),
                     "destination" => db_output2($destination),
+                    "pickupPoint" => $pickupPointName,
                     "timing" => $timing,
                     "selectedDays" => $selectedDays,
                     "errors" => $errors

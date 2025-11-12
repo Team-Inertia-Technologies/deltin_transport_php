@@ -6,8 +6,8 @@ include "../../includes/common_api.php";
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
 
-$request = json_decode($postdata, true); // Decode as associative array
-$_REQUEST = array_merge($_REQUEST, $request ?? []); // Merge with $_REQUEST
+$request = json_decode($postdata, true);
+$_REQUEST = array_merge($_REQUEST, $request ?? []); 
 $mode = $_REQUEST['mode'] ?? '';
 $NUMBER_OF_ATTEMPTS = GetXFromYID("SELECT  vValue FROM sys_settings WHERE vCode='OTP_ATTEMPTS'");
 $RESTRICT_TIME_HOURS = GetXFromYID("SELECT  vValue FROM sys_settings WHERE vCode='OTP_RESTRICT_TIME_HOURS'");
@@ -27,7 +27,6 @@ if ($mode == 'LOGIN') {
         exit;
     }
 
-    // Check if user exists in staff table with vMobile and cStatus
     $sql = "SELECT vMobile, cStatus FROM staff WHERE vMobile = '$mob' AND cStatus = 'A'";
     $res = sql_query($sql);
 
@@ -58,7 +57,6 @@ if ($mode == 'LOGIN') {
             exit;
         }
 
-        // Insert OTP into otp table for staff
         $code = '+91';
         sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','A','0','$otp','$mob','$TIME','$dtTo','N')", "Insert OTP for staff login");
 

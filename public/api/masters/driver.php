@@ -6,8 +6,8 @@ include "../../includes/common_api.php";
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
 
-$request = json_decode($postdata, true); // Decode as associative array
-$_REQUEST = array_merge($_REQUEST, $request ?? []); // Merge with $_REQUEST
+$request = json_decode($postdata, true); 
+$_REQUEST = array_merge($_REQUEST, $request ?? []);
 $mode = $_REQUEST['mode'] ?? '';
 $Token = $_REQUEST['token'] ?? '';
 $user_id = intval(DecodeParam($Token));
@@ -194,14 +194,12 @@ switch ($mode) {
             $selectedAvailOpt[] = intval($areaRow['iAreaID']);
         }
 
-        // Prepare option arrays
         $AREA_ARR_RAW = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank", "3");
         $availableOpt = [];
         foreach ($AREA_ARR_RAW as $id => $label) {
             $availableOpt[] = ['id' => intval($id), 'label' => $label];
         }
 
-        // Driver type options with "choose" option
         $driverTypeOpt = [['id' => 0, 'title' => 'Choose']];
         foreach ($VEHICLE_DRIVER_TYPE as $id => $title) {
             $driverTypeOpt[] = [
@@ -210,7 +208,6 @@ switch ($mode) {
             ];
         }
 
-        // Vendor options with "choose" option
         $vendorOpt = [['id' => 0, 'title' => 'Choose']];
         $vendorSql = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
         $vendorRes = sql_query($vendorSql);
@@ -271,7 +268,6 @@ switch ($mode) {
             exit;
         }
 
-        // Basic validation
         if (empty($name)) {
             echo json_encode([
                 "error" => [
@@ -291,8 +287,6 @@ switch ($mode) {
             ]);
             exit;
         }
-
-        // Validate duplicates
         $validation = validateDriverData($mobNum, $empCode, $id);
         if (!$validation['valid']) {
             echo json_encode([
@@ -304,7 +298,6 @@ switch ($mode) {
             exit;
         }
 
-        // Update driver with new structure
         $sql = "UPDATE driver SET 
                     vName = '$name',
                     vMobileNum = '$mobNum',
@@ -333,7 +326,6 @@ switch ($mode) {
                 }
             }
 
-            // Log the update operation
             LogMasterEdit($id, 'DRV', 'U', $name, '', $user_id);
 
             echo json_encode([
@@ -348,7 +340,6 @@ switch ($mode) {
             $deleteAreaSql = "DELETE FROM driver_area_assoc WHERE iDriverID = $id";
             sql_query($deleteAreaSql);
             
-            // Insert new area associations
             if (is_array($availability) && !empty($availability)) {
                 foreach ($availability as $areaId) {
                     $areaId = intval($areaId);
@@ -359,7 +350,6 @@ switch ($mode) {
                 }
             }
             
-            // Log the update operation even if no changes were made
             LogMasterEdit($id, 'DRV', 'U', $name, '', $user_id);
             
             echo json_encode([

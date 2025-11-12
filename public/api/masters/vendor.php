@@ -378,7 +378,6 @@ switch ($mode) {
                 }
             }
             
-            // Log the update operation even if no changes were made
             LogMasterEdit($id, 'VND', 'U', $vName, '', $user_id);
 
             echo json_encode([

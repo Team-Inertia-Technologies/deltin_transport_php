@@ -6,7 +6,7 @@ include "../../includes/common_api.php";
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
 
-$request = json_decode($postdata, true); 
+$request = json_decode($postdata, true);
 $_REQUEST = array_merge($_REQUEST, $request ?? []);
 $mode = $_REQUEST['mode'] ?? '';
 $Token = $_REQUEST['token'] ?? '';
@@ -169,20 +169,20 @@ switch ($mode) {
                 'id' => $row['iVehicleID'],
                 'vehicleNumber' => db_output2($row['vRnum']),
                 'vehicleCapacity' => $row['capacity'],
-                 'vehicleCategory' => $row['catName'],
-               // 'rate' => $row['fRate'],
+                'vehicleCategory' => $row['catName'],
+                // 'rate' => $row['fRate'],
                 'vehicleOwnerID' => $row['iVendorID'],
                 'vehicleOwner' => db_output2($row['vendor_name'] ?? ''),
                 'availabilityID' => $availability,
                 'availability' => $availabilityNames
             ];
-             $rowData[] = $vehicle;
+            $rowData[] = $vehicle;
         }
 
         echo json_encode([
             "statusCode" => 200,
             "message" => "Vehicle list fetched successfully",
-           "data" => [
+            "data" => [
                 "rowData" => $rowData
             ]
         ]);
@@ -270,20 +270,20 @@ switch ($mode) {
             "statusCode" => 200,
             "message" => "Vehicle details fetched successfully",
             "data" => [
-               
+
                 'vehicleData' => [
                     'iVehicleID' => intval($row['iVehicleID']),
                     'vName' => db_output2($row['vName'] ?? ''),
                     'vRnum' => db_output2($row['vRnum'] ?? ''),
-              //      'iSeats' => intval($row['iSeats'] ?? 0),
+                    //      'iSeats' => intval($row['iSeats'] ?? 0),
                     'dateOfReg' => $row['dRegistration'] ?? '',
                     'dateOfExp' => $row['dExpiry'] ?? '',
                     'perNum' => db_output2($row['vTouristPerNo'] ?? ''),
                     'perNumExpiry' => $row['dTouristPerNoExpiry'] ?? '',
-                     'selectedDriverType' => intval($row['iType'] ?? 0),
-                'availability' => $availability,
-                'selectedCategoryType' => intval($row['iCatID'] ?? 0),
-                'selectedVendor' => intval($row['iVendorID'] ?? 0),
+                    'selectedDriverType' => intval($row['iType'] ?? 0),
+                    'availability' => $availability,
+                    'selectedCategoryType' => intval($row['iCatID'] ?? 0),
+                    'selectedVendor' => intval($row['iVendorID'] ?? 0),
                     'cStatus' => $row['cStatus'] ?? 'A'
                 ],
                 'availableOpt' => $availableOpt,
@@ -353,7 +353,6 @@ switch ($mode) {
             exit;
         }
 
-        // Update vehicle with new structure
         $sql = "UPDATE vehicle SET 
                     vRnum = '$vehiNum',
                     iCatID = $category,
@@ -371,8 +370,7 @@ switch ($mode) {
             // Update availability areas - delete all existing associations first
             $deleteAreaSql = "DELETE FROM vehicle_area_assoc WHERE iVehicleID = $id";
             $deleteResult = sql_query($deleteAreaSql);
-            
-            // Insert new area associations - select all and add again
+
             if (is_array($availability) && !empty($availability)) {
                 foreach ($availability as $areaId) {
                     $areaId = intval($areaId);
@@ -383,7 +381,6 @@ switch ($mode) {
                 }
             }
 
-            // Log the update operation
             LogMasterEdit($id, 'VHC', 'U', $vehiNum, '', $user_id);
 
             echo json_encode([
@@ -397,8 +394,8 @@ switch ($mode) {
             // Update availability areas even if no vehicle changes were made
             $deleteAreaSql = "DELETE FROM vehicle_area_assoc WHERE iVehicleID = $id";
             sql_query($deleteAreaSql);
-            
-            // Insert new area associations
+
+    
             if (is_array($availability) && !empty($availability)) {
                 foreach ($availability as $areaId) {
                     $areaId = intval($areaId);
@@ -408,10 +405,8 @@ switch ($mode) {
                     }
                 }
             }
-            
-            // Log the update operation even if no changes were made
             LogMasterEdit($id, 'VHC', 'U', $vehiNum, '', $user_id);
-            
+
             echo json_encode([
                 "data" => [
                     "message" => "Vehicle availability updated successfully"
@@ -522,7 +517,7 @@ switch ($mode) {
     // ===================== CASE 6: DELETE_VEHICLE =====================
     case 'DELETE_VEHICLE':
         $id = intval($_REQUEST['iVehicleID'] ?? 0);
-        
+
         if ($id <= 0) {
             echo json_encode([
                 "error" => [
