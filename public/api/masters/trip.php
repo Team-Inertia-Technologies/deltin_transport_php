@@ -80,7 +80,8 @@ switch ($mode) {
             if (!isset($groupedTrips[$grpID])) {
                 $groupedTrips[$grpID] = [
                     "grpID" => $grpID,
-                    "dateTime" => date('d/m/Y H:i', strtotime($row['dtTrip'])),
+                    "date" => date('d/m/Y', strtotime($row['dtTrip'])),
+                    "time" => date('g:i A', strtotime($row['dtTrip'])),
                     "route" => db_output2($row['route'] ?? ''),
                     "destination" => db_output2($row['destination'] ?? ''),
                     "totalCapacity" => 0,
@@ -122,7 +123,8 @@ switch ($mode) {
             // Single row per group with all vehicles listed
             $rowData[] = [
                 "grpID" => $grpID,
-                "dateTime" => $tripGroup['dateTime'],
+                "date" => $tripGroup['date'],
+                "time" => $tripGroup['time'],
                 "route" => $tripGroup['route'],
                 "destination" => $tripGroup['destination'],
                 "vehicleDetails" => implode(', ', $vehicleDetails), // Comma separated vehicle details
@@ -179,13 +181,23 @@ switch ($mode) {
                 "id" => (int) $vehicleRow['iVehicleID'],
                 "name" => $vehicleRow['vRnum'] . ' (' . $capacity . ')'
             ];
+
         }
 
-        // Get mode options (transportation modes)    
+        // Get mode options from vehicle category table
+        $modeSql = "SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
+        $modeRes = sql_query($modeSql);
+
         $modeOpt = [
-            ["id" => 0, "name" => "Choose"],
-            ["id" => 1, "name" => "Bus"]
+            ["id" => 0, "name" => "Choose"]
         ];
+
+        while ($modeRow = sql_fetch_assoc($modeRes)) {
+            $modeOpt[] = [
+                "id" => (int) $modeRow['iVCatID'],
+                "name" => db_output2($modeRow['vName'])
+            ];
+        }
 
         // Get vendor options (vehicle owners/drivers)
         $vendorSql = "SELECT DISTINCT ven.iVendorID, ven.vName 
@@ -486,11 +498,20 @@ switch ($mode) {
             ];
         }
 
-        // Get mode options (same as ADD_ONLOAD)    
+        // Get mode options from vehicle category table (same as ADD_ONLOAD)
+        $modeSql = "SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
+        $modeRes = sql_query($modeSql);
+
         $modeOpt = [
-            ["id" => 0, "name" => "Choose"],
-            ["id" => 1, "name" => "Bus"]
+            ["id" => 0, "name" => "Choose"]
         ];
+
+        while ($modeRow = sql_fetch_assoc($modeRes)) {
+            $modeOpt[] = [
+                "id" => (int) $modeRow['iVCatID'],
+                "name" => db_output2($modeRow['vName'])
+            ];
+        }
 
         // Get vendor options (same as ADD_ONLOAD)
         $vendorSql = "SELECT DISTINCT ven.iVendorID, ven.vName 

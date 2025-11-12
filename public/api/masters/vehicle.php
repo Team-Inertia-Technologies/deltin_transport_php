@@ -6,8 +6,8 @@ include "../../includes/common_api.php";
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
 
-$request = json_decode($postdata, true); // Decode as associative array
-$_REQUEST = array_merge($_REQUEST, $request ?? []); // Merge with $_REQUEST
+$request = json_decode($postdata, true); 
+$_REQUEST = array_merge($_REQUEST, $request ?? []);
 $mode = $_REQUEST['mode'] ?? '';
 $Token = $_REQUEST['token'] ?? '';
 $user_id = intval(DecodeParam($Token));
@@ -203,7 +203,7 @@ switch ($mode) {
 
         // Optimized query with JOINs to get vendor and category data in single query
         $sql = "SELECT v.iVehicleID, v.vName, v.vRnum, v.iCatID, v.iVendorID, v.iSeats, v.iType,
-                       v.iAreaID, v.dRegistration, v.dExpiry, v.vTouristPerNo, v.cStatus, 
+                       v.iAreaID, v.dRegistration, v.dExpiry, v.vTouristPerNo, v.dTouristPerNoExpiry, v.cStatus, 
                        vn.vName as vendor_name, c.vName as category_name
                 FROM vehicle v
                 LEFT JOIN vendor vn ON v.iVendorID = vn.iVendorID AND vn.cStatus = 'A'
@@ -279,6 +279,7 @@ switch ($mode) {
                     'dateOfReg' => $row['dRegistration'] ?? '',
                     'dateOfExp' => $row['dExpiry'] ?? '',
                     'perNum' => db_output2($row['vTouristPerNo'] ?? ''),
+                    'perNumExpiry' => $row['dTouristPerNoExpiry'] ?? '',
                      'selectedDriverType' => intval($row['iType'] ?? 0),
                 'availability' => $availability,
                 'selectedCategoryType' => intval($row['iCatID'] ?? 0),
@@ -305,6 +306,7 @@ switch ($mode) {
         $dateOfExp = db_input($_REQUEST['dateOfExp'] ?? ''); // Expiry date
         $touTax = db_input($_REQUEST['touTax'] ?? ''); // Tourist tax (if needed)
         $perNum = db_input($_REQUEST['perNum'] ?? ''); // Permit number
+        $perNumExpiry = db_input($_REQUEST['perNumExpiry'] ?? ''); // Tourist permit expiry date
 
         if ($id <= 0) {
             echo json_encode([
@@ -359,7 +361,8 @@ switch ($mode) {
                     iType = $type,
                     dRegistration = " . (!empty($dateOfReg) ? "'$dateOfReg'" : "NULL") . ",
                     dExpiry = " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ",
-                    vTouristPerNo = '$perNum'
+                    vTouristPerNo = '$perNum',
+                    dTouristPerNoExpiry = " . (!empty($perNumExpiry) ? "'$perNumExpiry'" : "NULL") . "
                 WHERE iVehicleID = $id AND cStatus = 'A'";
 
         $result = sql_query($sql);
@@ -437,6 +440,7 @@ switch ($mode) {
         $dateOfExp = db_input($_REQUEST['dateOfExp'] ?? ''); // Expiry date
 
         $perNum = db_input($_REQUEST['perNum'] ?? ''); // Permit number
+        $perNumExpiry = db_input($_REQUEST['perNumExpiry'] ?? ''); // Tourist permit expiry date
         $cStatus = 'A'; // Default active status
 
         // Basic validation
@@ -477,11 +481,13 @@ switch ($mode) {
         $iVehicleID = NextID('iVehicleID', 'vehicle');
 
         // Using the newly added database fields
-        $sql = "INSERT INTO vehicle (iVehicleID, vRnum, iCatID, iVendorID, iType, dRegistration, dExpiry, vTouristPerNo, cStatus) 
+        $sql = "INSERT INTO vehicle (iVehicleID, vRnum, iCatID, iVendorID, iType, dRegistration, dExpiry, vTouristPerNo, dTouristPerNoExpiry, cStatus) 
                 VALUES ($iVehicleID, '$vehiNum', $category, $vendor, $type, 
                     " . (!empty($dateOfReg) ? "'$dateOfReg'" : "NULL") . ", 
                     " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ", 
-                    '$perNum', '$cStatus')";
+                    '$perNum', 
+                    " . (!empty($perNumExpiry) ? "'$perNumExpiry'" : "NULL") . ", 
+                    '$cStatus')";
 
         if (sql_query($sql)) {
             if (is_array($availability) && !empty($availability)) {
