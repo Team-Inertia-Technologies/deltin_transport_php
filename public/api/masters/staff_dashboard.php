@@ -75,17 +75,20 @@ switch ($mode) {
         $res = sql_query($sql);
         $groupedTrips = [];
 
-        // Group trips by iGrpID (trip groups)
+        // Group trips by route (same from and to)
         while ($row = sql_fetch_assoc($res)) {
-            $grpID = (int) $row['iGrpID'];
+            $routeName = db_output2($row['routeName'] ?? '');
+            $destination = db_output2($row['destination'] ?? '');
+            $routeKey = $routeName . '|' . $destination; // Create unique key for same route
+            
             $tripTime = date('H:i', strtotime($row['dtTrip']));
             $currentTime = date('H:i');
             $currentDate = date('Y-m-d');
             
-            if (!isset($groupedTrips[$grpID])) {
-                $groupedTrips[$grpID] = [
-                    "from" => db_output2($row['routeName'] ?? ''),
-                    "to" => db_output2($row['destination'] ?? ''),
+            if (!isset($groupedTrips[$routeKey])) {
+                $groupedTrips[$routeKey] = [
+                    "from" => $routeName,
+                    "to" => $destination,
                     "vehicleInfo" => []
                 ];
             }
@@ -110,7 +113,7 @@ switch ($mode) {
 
             // Find existing vehicleInfo entry for this time or create new one
             $timeExists = false;
-            foreach ($groupedTrips[$grpID]['vehicleInfo'] as &$vehicleInfo) {
+            foreach ($groupedTrips[$routeKey]['vehicleInfo'] as &$vehicleInfo) {
                 if ($vehicleInfo['time'] === $tripTime) {
                     // Add vehicle to existing time slot
                     $vehicleInfo['vehiNum'][] = [
@@ -125,7 +128,7 @@ switch ($mode) {
 
             if (!$timeExists) {
                 // Create new time slot
-                $groupedTrips[$grpID]['vehicleInfo'][] = [
+                $groupedTrips[$routeKey]['vehicleInfo'][] = [
                     "time" => $tripTime,
                     "pax" => $totalRequestedPax,
                     "status" => $status,
@@ -141,7 +144,7 @@ switch ($mode) {
 
         // Convert grouped trips to the required format
         $trips = [];
-        foreach ($groupedTrips as $grpID => $tripData) {
+        foreach ($groupedTrips as $routeKey => $tripData) {
             $trips[] = $tripData;
         }
 
