@@ -28,9 +28,9 @@ switch ($mode) {
 
     // ===================== CASE : VIEW =====================
     case 'VIEW':
-        $date = $_REQUEST['date'] ?? NOW;
+        $NOW= NOW;
+        $date = !empty($_REQUEST['date']) ? $_REQUEST['date'] : $NOW;
         
-        // Validate date parameter
         if (empty($date)) {
             echo json_encode([
                 "error" => [
@@ -41,7 +41,6 @@ switch ($mode) {
             exit;
         }
 
-        // Validate date format
         $dateObj = DateTime::createFromFormat('Y-m-d', $date);
         if (!$dateObj || $dateObj->format('Y-m-d') !== $date) {
             echo json_encode([
@@ -53,7 +52,6 @@ switch ($mode) {
             exit;
         }
 
-        // Get all trips for the specified date
         $sql = "SELECT 
                     t.iTripID,
                     t.iGrpID,
@@ -127,7 +125,6 @@ switch ($mode) {
             }
 
             if (!$timeExists) {
-                // Create new time slot
                 $groupedTrips[$routeKey]['vehicleInfo'][] = [
                     "time" => $tripTime,
                     "pax" => $totalRequestedPax,

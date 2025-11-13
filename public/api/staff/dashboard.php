@@ -83,7 +83,7 @@ switch ($mode) {
         $previousPickups = [];
         
         while ($row = sql_fetch_assoc($previousRes)) {
-            $tripDate = date('D, j F', strtotime($row['trip_date']));
+          $tripDate = date('j M Y', strtotime($row['trip_date']));
             $pickupTime = date('H:i', strtotime($row['pickup_time']));
             
             // Determine status based on dtIn and dtOut

@@ -18,7 +18,7 @@ if (true) {
 			ForceOut(5);
 
 		#########################################################################################  
-		if (isset($_POST["txtusername"]) && isset($_POST["txtpassword"]) && isset($_POST["type"])) // && isset($_POST["btnlogin"]))
+		if (isset($_POST["txtusername"]) && isset($_POST["txtpassword"])) //  && isset($_POST["type"]) && isset($_POST["btnlogin"]))
 		{
 			$username = db_input($_POST["txtusername"]);
 			$txtpassword = htmlspecialchars_decode(db_input2($_POST["txtpassword"]));
@@ -183,12 +183,14 @@ if (true) {
 					// $IS_SALE_DASHBOARD = GetXFromYID('select count(*) from module_level_assoc where iModuleID=57 and cType="BL" and iLevelD='.$u_level);
 					// if(!empty($IS_SALE_DASHBOARD) && $IS_SALE_DASHBOARD!='-1')
 					// 	$URL = 'home2.php';
-					
+					$TODAY= TODAY;
 					$response = array(
 						"data" => array(
 							"userInfo" => array(
 								"user_id" => $u_id,
 								"userName" => $u_name,
+								"userLevel" => isset($USER_LEVEL_ARR[$u_level]) ? $USER_LEVEL_ARR[$u_level] :'User',
+								"date" => date('d m y', strtotime($TODAY))
 							),
 							"token" => $token
 						),
