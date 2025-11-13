@@ -353,7 +353,7 @@ switch ($mode) {
 
             // Calculate totals by summing vehicle capacities and passenger counts
             $totalCapacity += (int) ($row['vehicleCapacity'] ?? 0);
-            $totalRequestedPax += (int) ($row['requestedPax'] ?? 0);
+            // Note: totalRequestedPax will be calculated separately by counting actual staff requests
             $totalAvailedPax += (int) ($row['availedPax'] ?? 0);
 
             // Collect vendors and their vehicles directly without validation
@@ -394,6 +394,17 @@ switch ($mode) {
                 "availedPax" => (int) ($row['availedPax'] ?? 0)
             ];
         }
+
+        // Calculate correct totalRequestedPax by counting actual staff requests
+        $staffCountSql = "SELECT COUNT(DISTINCT req.iStaffID) as totalStaff
+                         FROM st_request req
+                         INNER JOIN st_trips t ON req.iTripID = t.iTripID
+                         WHERE t.iGrpID = $iGrpID 
+                         AND req.cStatus = 'A'
+                         AND t.cStatus = 'A'";
+        $staffCountRes = sql_query($staffCountSql);
+        $staffCountRow = sql_fetch_assoc($staffCountRes);
+        $totalRequestedPax = (int) ($staffCountRow['totalStaff'] ?? 0);
 
         // Add totals to route info
         $routeInfo["totalCapacity"] = $totalCapacity;
