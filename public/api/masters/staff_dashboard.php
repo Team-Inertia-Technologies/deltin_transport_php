@@ -118,7 +118,7 @@ switch ($mode) {
                     // Add vehicle to existing time slot
                     $vehicleInfo['vehiNum'][] = [
                         "num" => $row['vehicleNumber'] ?? '',
-                        "count" => $totalRequestedPax
+                        "count" => $vehicleCapacity
                     ];
                     $vehicleInfo['pax'] += $totalRequestedPax;
                     $timeExists = true;
@@ -135,7 +135,7 @@ switch ($mode) {
                     "vehiNum" => [
                         [
                             "num" => $row['vehicleNumber'] ?? '',
-                            "count" => $totalRequestedPax
+                            "count" => $vehicleCapacity
                         ]
                     ]
                 ];
