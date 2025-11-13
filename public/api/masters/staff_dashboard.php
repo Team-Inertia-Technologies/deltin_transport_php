@@ -28,8 +28,8 @@ switch ($mode) {
 
     // ===================== CASE : VIEW =====================
     case 'VIEW':
-        $NOW= NOW;
-        $date = !empty($_REQUEST['date']) ? $_REQUEST['date'] : $NOW;
+        $TODAY= TODAY;
+        $date = !empty($_REQUEST['date']) ? $_REQUEST['date'] : $TODAY;
         
         if (empty($date)) {
             echo json_encode([
