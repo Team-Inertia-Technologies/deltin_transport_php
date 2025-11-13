@@ -190,7 +190,8 @@ if (true) {
 								"user_id" => $u_id,
 								"userName" => $u_name,
 								"userLevel" => isset($USER_LEVEL_ARR[$u_level]) ? $USER_LEVEL_ARR[$u_level] :'User',
-								"date" => date('d m y', strtotime($TODAY))
+							"date" => date('d/m/Y', strtotime($TODAY))
+
 							),
 							"token" => $token
 						),
