@@ -105,9 +105,22 @@ switch ($mode) {
 
                 // Accumulate totals
                 $groupedTrips[$grpID]['totalCapacity'] += $vehicleCapacity;
-                $groupedTrips[$grpID]['totalPax'] += (int) ($row['pax'] ?? 0);
+                // Note: totalPax will be calculated separately by counting actual staff requests
                 $groupedTrips[$grpID]['totalAvailed'] += (int) ($row['availed'] ?? 0);
             }
+        }
+
+        // Calculate correct totalPax for each group by counting actual staff requests
+        foreach ($groupedTrips as $grpID => $tripGroup) {
+            $staffCountSql = "SELECT COUNT(DISTINCT req.iStaffID) as totalStaff
+                             FROM st_request req
+                             INNER JOIN st_trips t ON req.iTripID = t.iTripID
+                             WHERE t.iGrpID = $grpID 
+                             AND req.cStatus = 'A'
+                             AND t.cStatus = 'A'";
+            $staffCountRes = sql_query($staffCountSql);
+            $staffCountRow = sql_fetch_assoc($staffCountRes);
+            $groupedTrips[$grpID]['totalPax'] = (int) ($staffCountRow['totalStaff'] ?? 0);
         }
 
         // Convert grouped trips to final row data format - grouped by IGrpID
