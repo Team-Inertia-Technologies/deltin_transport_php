@@ -175,9 +175,6 @@ else if ($mode == 'ADD_STAFF') {
     if (strlen($to) == 10)
         $to = '91' . $to;
     $sms_response = SendSmsCurl2($templateid, $to, $message);
-    
-    // Log SMS response for debugging
-    error_log("SMS Response for registration: " . $sms_response . " | Mobile: " . $to . " | OTP: " . $otp);
 
     echo json_encode([
         "statusCode" => 200,

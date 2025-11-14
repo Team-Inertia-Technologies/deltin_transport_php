@@ -69,9 +69,6 @@ if ($mode == 'LOGIN') {
             $to = '91' . $to;
         $sms_response = SendSmsCurl2($templateid, $to, $message);
         
-        // Log SMS response for debugging
-        error_log("SMS Response for login: " . $sms_response . " | Mobile: " . $to . " | OTP: " . $otp);
-        
      // SendWhatsappMessage2($to, $otp);
         echo json_encode([
             "data" => [

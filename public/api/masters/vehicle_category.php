@@ -91,9 +91,9 @@ switch ($mode) {
                 'id' => intval($row['iVCatID']),
                 'categoryName' => db_output2($row['vName']),
                 'capacity' => intval($row['iCapacity']),
-                'rank' => intval($row['iRank']),
+             //   'rank' => intval($row['iRank']),
                 'status' => $row['cStatus'],
-                'statusText' => $row['cStatus'] == 'A' ? 'Active' : 'Inactive'
+               // 'statusText' => $row['cStatus'] == 'A' ? 'Active' : 'Inactive'
             ];
             $rowData[] = $category;
         }
@@ -161,7 +161,8 @@ switch ($mode) {
         $id = intval($_REQUEST['iVCatID'] ?? 0);
         $categoryName = db_input($_REQUEST['categoryName'] ?? '');
         $capacity = intval($_REQUEST['capacity'] ?? 0);
-        $rank = intval($_REQUEST['rank'] ?? 0);
+       // $rank = intval($_REQUEST['rank'] ?? 0);
+       $rank =1;
         $status = db_input($_REQUEST['status'] ?? 'A');
 
         if ($id <= 0) {
@@ -201,7 +202,7 @@ switch ($mode) {
         if (!in_array($status, ['A', 'I'])) {
             echo json_encode([
                 "error" => [
-                    "message" => "Invalid status. Must be 'A' (Active) or 'I' (Inactive)"
+                    "message" => "Invalid status. Must be (Active) or (Inactive)"
                 ],
                 "statusCode" => 400
             ]);
@@ -210,8 +211,7 @@ switch ($mode) {
 
         $sql = "UPDATE vehicle_category SET 
                     vName = '$categoryName',
-                    iCapacity = $capacity,
-                    iRank = $rank,
+                    iCapacity = $capacity
                     cStatus = '$status'
                 WHERE iVCatID = $id";
 
@@ -250,8 +250,8 @@ switch ($mode) {
     case 'ADD_CATEGORY':
         $categoryName = db_input($_REQUEST['categoryName'] ?? '');
         $capacity = intval($_REQUEST['capacity'] ?? 0);
-        $rank = intval($_REQUEST['rank'] ?? 0);
-        $status = db_input($_REQUEST['status'] ?? 'A');
+        $rank = 1;
+        $status = 'A';
 
         // Validate category name
         $validation = validateCategoryName($categoryName, 0);
@@ -277,15 +277,15 @@ switch ($mode) {
         }
 
         // Validate status
-        if (!in_array($status, ['A', 'I'])) {
-            echo json_encode([
-                "error" => [
-                    "message" => "Invalid status. Must be 'A' (Active) or 'I' (Inactive)"
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
+        // if (!in_array($status, ['A', 'I'])) {
+        //     echo json_encode([
+        //         "error" => [
+        //             "message" => "Invalid status. Must be 'A' (Active) or 'I' (Inactive)"
+        //         ],
+        //         "statusCode" => 400
+        //     ]);
+        //     exit;
+        // }
 
         $iVCatID = NextID('iVCatID', 'vehicle_category');
 
@@ -381,10 +381,10 @@ switch ($mode) {
             exit;
         }
 
-        // Get current status
-        $currentSql = "SELECT cStatus, vName FROM vehicle_category WHERE iVCatID = $id AND cStatus IN ('A', 'I')";
+        // Check current status first to see if we're deactivating
+        $currentSql = "SELECT cStatus FROM vehicle_category WHERE iVCatID = $id AND cStatus IN ('A', 'I')";
         $currentRes = sql_query($currentSql);
-
+        
         if (sql_num_rows($currentRes) == 0) {
             echo json_encode([
                 "error" => [
@@ -415,29 +415,9 @@ switch ($mode) {
             }
         }
 
-        $sql = "UPDATE vehicle_category SET cStatus = '$newStatus' WHERE iVCatID = $id";
-        $result = sql_query($sql);
-
-        if ($result && sql_affected_rows() > 0) {
-            // Log the status change
-            LogMasterEdit($id, 'VCT', 'U', $currentRow['vName'], 'Status changed to ' . ($newStatus == 'A' ? 'Active' : 'Inactive'), $user_id);
-
-            echo json_encode([
-                "statusCode" => 200,
-                "message" => "Vehicle category status updated successfully",
-                "data" => [
-                    "newStatus" => $newStatus,
-                    "statusText" => $newStatus == 'A' ? 'Active' : 'Inactive'
-                ]
-            ]);
-        } else {
-            echo json_encode([
-                "error" => [
-                    "message" => "Failed to update vehicle category status"
-                ],
-                "statusCode" => 500
-            ]);
-        }
+        // Use the reusable toggle function
+        $result = toggleStatus($id, 'vehicle_category', 'iVCatID', 'cStatus', 'vName', 'VCT', $user_id);
+        echo json_encode($result);
         break;
 
     // ===================== DEFAULT =====================

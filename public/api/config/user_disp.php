@@ -5,6 +5,38 @@ include "../../includes/common_api.php";
 
 header('Content-Type: application/json');
 
+// Handle POST requests and parse JSON input
+$postdata = file_get_contents("php://input");
+$request = json_decode($postdata, true);
+$_REQUEST = array_merge($_REQUEST, $request ?? []);
+
+// Token validation like other API files
+$Token = $_REQUEST['token'] ?? '';
+$user_id = intval(DecodeParam($Token));
+
+if (empty($Token)) {
+    echo json_encode([
+        "error" => [
+            "message" => "Token is required"
+        ],
+        "statusCode" => 401
+    ]);
+    exit;
+}
+
+$userCheckSql = "SELECT iUserID FROM users WHERE iUserID = $user_id AND cStatus = 'A'";
+$userCheckRes = sql_query($userCheckSql);
+
+if (sql_num_rows($userCheckRes) == 0) {
+    echo json_encode([
+        "error" => [
+            "message" => "User not found or inactive"
+        ],
+        "statusCode" => 401
+    ]);
+    exit;
+}
+
 try {
     // Build property map
     $PROPERTY_ARR = [];
@@ -30,31 +62,28 @@ try {
     while ($row = sql_fetch_assoc($result)) {
         $users[] = $row;
     }
-    $response = array (
-        "data" => array (
+    $response = [
+        "data" => [
             "message" => "Users Fetched Successfully",
             "users" => $users,
             "properties" => $PROPERTY_ARR
-        ),
-        "statuscode" => 200
-    );
+        ],
+        "statusCode" => 200
+    ];
 
     http_response_code(200);
-    header('Content-Type: application/json');
     echo json_encode($response);
     exit;
 
 } catch (Exception $e) {
-    $response = array (
-        "error" => array(
-            "message" => "Internal Server Error",
-        ),
-        "statuscode" => 500
-    );
+    $response = [
+        "error" => [
+            "message" => "Internal Server Error"
+        ],
+        "statusCode" => 500
+    ];
 
     http_response_code(500);
-    header('Content-Type: application/json');
     echo json_encode($response);
     exit;
 }
-?>

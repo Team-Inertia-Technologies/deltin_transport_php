@@ -31,3 +31,84 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 sql_query("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));");
+
+/**
+ * Generic function to toggle status of any record
+ * @param int $id - Record ID
+ * @param string $tableName - Table name
+ * @param string $idColumn - Primary key column name
+ * @param string $statusColumn - Status column name (default: 'cStatus')
+ * @param string $nameColumn - Name column for logging (optional)
+ * @param string $logCode - Log code for tracking (optional)
+ * @param int $userId - User ID for logging
+ * @return array - Response array with status and message
+ */
+function toggleStatus($id, $tableName, $idColumn, $statusColumn = 'cStatus', $nameColumn = '', $logCode = '', $userId = 0) {
+    // Validate inputs
+    if ($id <= 0) {
+        return [
+            "error" => [
+                "message" => "Invalid ID provided"
+            ],
+            "statusCode" => 400
+        ];
+    }
+
+    if (empty($tableName) || empty($idColumn)) {
+        return [
+            "error" => [
+                "message" => "Table name and ID column are required"
+            ],
+            "statusCode" => 400
+        ];
+    }
+
+    // Get current status
+    $selectColumns = $statusColumn;
+    if (!empty($nameColumn)) {
+        $selectColumns .= ", $nameColumn";
+    }
+    
+    $currentSql = "SELECT $selectColumns FROM $tableName WHERE $idColumn = $id AND $statusColumn IN ('A', 'I')";
+    $currentRes = sql_query($currentSql);
+
+    if (sql_num_rows($currentRes) == 0) {
+        return [
+            "error" => [
+                "message" => "Record not found"
+            ],
+            "statusCode" => 404
+        ];
+    }
+
+    $currentRow = sql_fetch_assoc($currentRes);
+    $newStatus = $currentRow[$statusColumn] == 'A' ? 'I' : 'A';
+
+    // Update status
+    $sql = "UPDATE $tableName SET $statusColumn = '$newStatus' WHERE $idColumn = $id";
+    $result = sql_query($sql);
+
+    if ($result && sql_affected_rows() > 0) {
+        // Log the status change if logging parameters provided
+        if (!empty($logCode) && $userId > 0 && !empty($nameColumn)) {
+            $recordName = $currentRow[$nameColumn] ?? '';
+            LogMasterEdit($id, $logCode, 'U', $recordName, 'Status changed to ' . ($newStatus == 'A' ? 'Active' : 'Inactive'), $userId);
+        }
+
+        return [
+            "statusCode" => 200,
+            "message" => "Status updated successfully",
+            "data" => [
+                "newStatus" => $newStatus,
+                "statusText" => $newStatus == 'A' ? 'Active' : 'Inactive'
+            ]
+        ];
+    } else {
+        return [
+            "error" => [
+                "message" => "Failed to update status"
+            ],
+            "statusCode" => 500
+        ];
+    }
+}
