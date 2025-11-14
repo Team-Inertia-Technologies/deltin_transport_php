@@ -163,7 +163,7 @@ switch ($mode) {
         $capacity = intval($_REQUEST['capacity'] ?? 0);
        // $rank = intval($_REQUEST['rank'] ?? 0);
        $rank =1;
-        $status = db_input($_REQUEST['status'] ?? 'A');
+      //  $status = db_input($_REQUEST['status'] ?? 'A');
 
         if ($id <= 0) {
             echo json_encode([
@@ -198,21 +198,20 @@ switch ($mode) {
             exit;
         }
 
-        // Validate status
-        if (!in_array($status, ['A', 'I'])) {
-            echo json_encode([
-                "error" => [
-                    "message" => "Invalid status. Must be (Active) or (Inactive)"
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
+        // // Validate status
+        // if (!in_array($status, ['A', 'I'])) {
+        //     echo json_encode([
+        //         "error" => [
+        //             "message" => "Invalid status. Must be (Active) or (Inactive)"
+        //         ],
+        //         "statusCode" => 400
+        //     ]);
+        //     exit;
+        // }
 
         $sql = "UPDATE vehicle_category SET 
                     vName = '$categoryName',
-                    iCapacity = $capacity,
-                    cStatus = '$status'
+                    iCapacity = $capacity
                 WHERE iVCatID = $id";
 
         $result = sql_query($sql);
