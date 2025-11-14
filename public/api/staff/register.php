@@ -166,7 +166,7 @@ else if ($mode == 'ADD_STAFF') {
 
     // Insert OTP for registration
     $code = '+91';
-    sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','R','0','$otp','$vMobile','$TIME','$dtTo','N')", "Insert OTP for staff registration");
+    sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','A','0','$otp','$vMobile','$TIME','$dtTo','N')", "Insert OTP for staff registration");
 
     // Send SMS
     $message = urlencode('Use code ' . $otp . ' to complete your registration for Deltin Transport. This OTP is valid for 5 minutes.');
@@ -174,9 +174,10 @@ else if ($mode == 'ADD_STAFF') {
     $to = $vMobile;
     if (strlen($to) == 10)
         $to = '91' . $to;
-    $response=SendSmsCurl2($templateid, $to, $message);
-    echo $response;
-    exit;
+    $sms_response = SendSmsCurl2($templateid, $to, $message);
+    
+    // Log SMS response for debugging
+    error_log("SMS Response for registration: " . $sms_response . " | Mobile: " . $to . " | OTP: " . $otp);
 
     echo json_encode([
         "statusCode" => 200,

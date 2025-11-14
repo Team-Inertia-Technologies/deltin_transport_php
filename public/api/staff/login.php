@@ -67,7 +67,11 @@ if ($mode == 'LOGIN') {
         $to = $mob;
         if (strlen($to) == 10)
             $to = '91' . $to;
-        SendSmsCurl2($templateid, $to, $message);
+        $sms_response = SendSmsCurl2($templateid, $to, $message);
+        
+        // Log SMS response for debugging
+        error_log("SMS Response for login: " . $sms_response . " | Mobile: " . $to . " | OTP: " . $otp);
+        
      // SendWhatsappMessage2($to, $otp);
         echo json_encode([
             "data" => [
@@ -312,7 +316,11 @@ if ($mode == 'LOGIN') {
         $to = $mobile;
         if (strlen($to) == 10)
             $to = '91' . $to;
-        SendSmsCurl2($templateid, $to, $message);
+        $sms_response = SendSmsCurl2($templateid, $to, $message);
+        
+        // Log SMS response for debugging
+        error_log("SMS Response for resend: " . $sms_response . " | Mobile: " . $to . " | OTP: " . $otp);
+        
              // SendWhatsappMessage2($to, $otp);
 
         echo json_encode([
