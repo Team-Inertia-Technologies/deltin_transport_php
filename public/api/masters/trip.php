@@ -668,12 +668,15 @@ switch ($mode) {
             $time = $trip['time'] ?? '';
             $vehicles = $trip['vehicle'] ?? [];
 
-            if (empty($time) || empty($vehicles)) {
-                $errors[] = "Trip at index $tripIndex missing time or vehicles";
-                continue;
+            if (empty($time)) {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Time is required for trip at index $tripIndex. Please provide a valid time."
+                    ],
+                    "statusCode" => 400
+                ]);
+                exit;
             }
-
-            // No need to calculate total capacity since each vehicle is a separate trip record
 
             // Process each date in the range
             foreach ($dateRange as $date) {
