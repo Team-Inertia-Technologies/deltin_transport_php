@@ -168,8 +168,8 @@ else if ($mode == 'ADD_STAFF') {
     $code = '+91';
     sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','A','0','$otp','$vMobile','$TIME','$dtTo','N')", "Insert OTP for staff registration");
 
-    // Send SMS
-    $message = urlencode('Use code ' . $otp . ' to complete your registration for Deltin Transport. This OTP is valid for 5 minutes.');
+    // Send SMS - using same message as login for testing
+    $message = urlencode('Use code ' . $otp . ' to verify your login for Deltin Transport. This OTP is valid for 5 minutes.');
     $templateid = '1707176249288519068';
     $to = $vMobile;
     if (strlen($to) == 10)
