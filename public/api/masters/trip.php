@@ -678,9 +678,27 @@ switch ($mode) {
                 exit;
             }
 
+            // Clean up time format - remove extra spaces and ensure proper format
+            $cleanTime = trim(str_replace(' ', '', $time));
+            // Ensure time is in HH:MM:SS format
+            if (strlen($cleanTime) == 5 && substr_count($cleanTime, ':') == 1) {
+                $cleanTime .= ':00'; // Add seconds if missing
+            }
+            
+            // Validate time format
+            if (!preg_match('/^([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/', $cleanTime)) {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Invalid time format for trip at index $tripIndex. Please use HH:MM or HH:MM:SS format."
+                    ],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+
             // Process each date in the range
             foreach ($dateRange as $date) {
-                $tripDateTime = $date . ' ' . $time;
+                $tripDateTime = $date . ' ' . $cleanTime;
 
                 // Check if we already have a group ID for this date/time combination
                 if (!isset($dateTimeGroupMap[$tripDateTime])) {
@@ -690,22 +708,30 @@ switch ($mode) {
 
                 $groupID = $dateTimeGroupMap[$tripDateTime];
 
-                // Process each vehicle for this trip and date
-                foreach ($vehicles as $vehicleIndex => $vehicle) {
-                    // Support multiple field name variations for vehicle ID
-                    $vehID = intval($vehicle['vhId'] ?? $vehicle['vehID'] ?? 0);
-                    // Support multiple field name variations for driver ID
-                    $driverID = intval($vehicle['driverId'] ?? $vehicle['driverID'] ?? 0);
-                    // Get individual vehicle capacity
-                    $vehicleCapacity = intval($vehicle['vhCap'] ?? $vehicle['vhCaps'] ?? $vehicle['capacity'] ?? 0);
-
-                    if ($vehID <= 0) {
-                        $errors[] = "Invalid vehicle ID in trip $tripIndex, vehicle $vehicleIndex";
-                        continue;
-                    }
-
-                    $insertValues[] = "($currentTripID, $groupID, $routeID, '$tripDateTime', $vehID, $driverID, $vehicleCapacity, 1, 'A')";
+                // If no vehicles provided, create a trip entry with default vehicle ID (0)
+                if (empty($vehicles)) {
+                    // Create trip entry with default vehicle details - can be updated later
+                    $insertValues[] = "($currentTripID, $groupID, $routeID, '$tripDateTime', 0, 0, 0, 1, 'A')";
                     $currentTripID++; // Increment for next record
+                } else {
+                    // Process each vehicle for this trip and date
+                    foreach ($vehicles as $vehicleIndex => $vehicle) {
+                        // Support multiple field name variations for vehicle ID
+                        $vehID = intval($vehicle['vhId'] ?? $vehicle['vehID'] ?? 0);
+                        // Support multiple field name variations for driver ID
+                        $driverID = intval($vehicle['driverId'] ?? $vehicle['driverID'] ?? 0);
+                        // Get individual vehicle capacity
+                        $vehicleCapacity = intval($vehicle['vhCap'] ?? $vehicle['vhCaps'] ?? $vehicle['capacity'] ?? 0);
+
+                        // Only validate vehicle ID if it's provided (not 0)
+                        if ($vehID > 0) {
+                            $insertValues[] = "($currentTripID, $groupID, $routeID, '$tripDateTime', $vehID, $driverID, $vehicleCapacity, 1, 'A')";
+                            $currentTripID++; // Increment for next record
+                        } else {
+                            // Skip invalid vehicle entries but don't fail the entire operation
+                            $errors[] = "Skipped invalid vehicle ID in trip $tripIndex, vehicle $vehicleIndex";
+                        }
+                    }
                 }
             }
         }
@@ -732,7 +758,10 @@ switch ($mode) {
             if (sql_query($insertSql)) {
                 $insertedCount = count($insertValues);
             } else {
-                $errors[] = "Failed to insert: ";
+                $sqlError = '';
+                $errors[] = "Failed to insert trips. SQL Error: " . $sqlError;
+                // Also log the problematic query for debugging
+                error_log("Failed SQL Query: " . $insertSql);
             }
 
             // Unlock tables
@@ -853,17 +882,11 @@ switch ($mode) {
                 //$vehicleOwnerID = intval($trip['vehicleOwnerID'] ?? 0);
                 $driverID = intval($trip['driverId'] ?? 0);
 
-                // Validate required fields
-                if ($vehicleID <= 0) {
-                    $errors[] = "Invalid vehicleID in trip detail at index $index";
-                    continue;
-                }
-
                 if ($tripID > 0) {
-                    // UPDATE existing trip
+                    // UPDATE existing trip - use 0 as default for unassigned vehicles
                     $updateSql = "UPDATE st_trips SET 
-                                    iVehicleID = $vehicleID,
-                                    iDriverID = $driverID,
+                                    iVehicleID = " . ($vehicleID > 0 ? $vehicleID : "0") . ",
+                                    iDriverID = " . ($driverID > 0 ? $driverID : "0") . ",
                                     iCapacity = $vehicleCapacity
                                   WHERE iTripID = $tripID AND iGrpID = $iGrpID AND cStatus = 'A'";
 
@@ -904,8 +927,8 @@ switch ($mode) {
                                         $iGrpID,
                                         $routeID,
                                         '$tripDateTime',
-                                        $vehicleID,
-                                        $driverID,
+                                        " . ($vehicleID > 0 ? $vehicleID : "0") . ",
+                                        " . ($driverID > 0 ? $driverID : "0") . ",
                                         $vehicleCapacity,
                                         1,
                                         'A'
