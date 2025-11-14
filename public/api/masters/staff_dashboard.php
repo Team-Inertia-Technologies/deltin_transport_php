@@ -70,7 +70,7 @@ switch ($mode) {
 
         $sql = "SELECT 
                     t.iTripID,
-                    t.iGrpID,
+                    t.iGrpID  as grpID,
                     t.dtTrip,
                     r.vName as routeName,
                     r.vDestination as destination,
@@ -144,6 +144,7 @@ switch ($mode) {
                 $groupedTrips[$routeKey]['vehicleInfo'][] = [
                     "time" => $tripTime,
                     "pax" => $totalRequestedPax,
+                    "grpID" => $grpID,
                     "status" => $status,
                     "vehiNum" => [
                         [
