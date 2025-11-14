@@ -70,7 +70,7 @@ switch ($mode) {
 
         $sql = "SELECT 
                     t.iTripID,
-                    t.iGrpID  as grpID,
+                    t.iGrpID,
                     t.dtTrip,
                     r.vName as routeName,
                     r.vDestination as destination,
@@ -135,6 +135,10 @@ switch ($mode) {
                         "count" => $vehicleCapacity
                     ];
                     $vehicleInfo['pax'] += $totalRequestedPax;
+                    // Update grpID if not already set or if current grpID is different
+                    if (!isset($vehicleInfo['grpID']) || $vehicleInfo['grpID'] === 0) {
+                        $vehicleInfo['grpID'] = (int) ($row['iGrpID'] ?? 0);
+                    }
                     $timeExists = true;
                     break;
                 }
@@ -144,8 +148,8 @@ switch ($mode) {
                 $groupedTrips[$routeKey]['vehicleInfo'][] = [
                     "time" => $tripTime,
                     "pax" => $totalRequestedPax,
-                    "grpID" => $grpID,
                     "status" => $status,
+                    "grpID" => (int) ($row['iGrpID'] ?? 0),
                     "vehiNum" => [
                         [
                             "num" => $row['vehicleNumber'] ?? '',
