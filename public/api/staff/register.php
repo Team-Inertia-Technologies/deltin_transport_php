@@ -6,8 +6,8 @@ include "../../includes/common_api.php";
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
 
-$request = json_decode($postdata, true); 
-$_REQUEST = array_merge($_REQUEST, $request ?? []); 
+$request = json_decode($postdata, true);
+$_REQUEST = array_merge($_REQUEST, $request ?? []);
 $mode = $_REQUEST['mode'] ?? '';
 $TIME = NOW;
 if ($mode == 'REGISTER_ONLOAD') {
@@ -20,7 +20,7 @@ if ($mode == 'REGISTER_ONLOAD') {
                         ORDER BY r.iRouteID, s.iStopID";
     $routeStopsResult = sql_query($routeStopsQuery);
 
-   // $PHONE_ARR = [];
+    // $PHONE_ARR = [];
     $CODE_ARR = [];
     $routes = [];
     $currentRouteId = null;
@@ -28,7 +28,7 @@ if ($mode == 'REGISTER_ONLOAD') {
 
     // Process staff data
     while ($row = sql_fetch_assoc($staff)) {
-      //  $PHONE_ARR[] = $row['vMobile'];
+        //  $PHONE_ARR[] = $row['vMobile'];
         $CODE_ARR[] = db_output2($row['vCode']);
     }
 
@@ -65,7 +65,7 @@ if ($mode == 'REGISTER_ONLOAD') {
 
     echo json_encode([
         "data" => [
-          //  "mobileArr" => $PHONE_ARR,
+            //  "mobileArr" => $PHONE_ARR,
             "codeArr" => $CODE_ARR,
             "routes" => $routes
         ],
@@ -81,7 +81,7 @@ else if ($mode == 'ADD_STAFF') {
     $vCode = db_input($request['code'] ?? '');
     $vName = db_input($request['name'] ?? '');
     $vMobile = db_input($request['mobile'] ?? '');
-    $iRouteID= db_input($request['routeid'] ?? 0);
+    $iRouteID = db_input($request['routeid'] ?? 0);
     $iStopID = db_input($request['stopid'] ?? 0);
 
     if (empty($vCode)) {
@@ -144,14 +144,14 @@ else if ($mode == 'ADD_STAFF') {
     $OtpID = NextID('iOTPID', 'otp');
     $dtTo = date('Y-m-d H:i:s', strtotime('+5 minutes'));
     $otp = GenerateRandomCode('4', 'vOTP', 'otp');
-    
+
     // Deactivate previous OTPs for this mobile
     sql_query("UPDATE otp SET cUsed='X' WHERE vPhone='$vMobile'");
 
     // Check OTP limit
     $NUMBER_OF_ATTEMPTS = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode='OTP_ATTEMPTS'");
     $RESTRICT_TIME_HOURS = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode='OTP_RESTRICT_TIME_HOURS'");
-    
+
     $otpCount = checkOTPLimit($vMobile, $RESTRICT_TIME_HOURS);
 
     if ($otpCount >= $NUMBER_OF_ATTEMPTS) {
@@ -175,6 +175,8 @@ else if ($mode == 'ADD_STAFF') {
     if (strlen($to) == 10)
         $to = '91' . $to;
     SendSmsCurl2($templateid, $to, $message);
+    echo $response;
+    exit;
 
     echo json_encode([
         "statusCode" => 200,

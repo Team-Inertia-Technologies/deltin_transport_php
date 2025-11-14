@@ -30,6 +30,8 @@ switch ($mode) {
     case 'VIEW':
         $TODAY= TODAY;
         $date = !empty($_REQUEST['date']) ? $_REQUEST['date'] : $TODAY;
+        $fromTime = $_REQUEST['fromTime'] ?? '';
+        $toTime = $_REQUEST['toTime'] ?? '';
         
         if (empty($date)) {
             echo json_encode([
@@ -52,6 +54,20 @@ switch ($mode) {
             exit;
         }
 
+        // Build WHERE conditions
+        $whereConditions = ["DATE(t.dtTrip) = '$date'", "t.cStatus = 'A'"];
+
+        // Add time filtering if provided
+        if (!empty($fromTime)) {
+            $whereConditions[] = "TIME(t.dtTrip) >= '$fromTime'";
+        }
+
+        if (!empty($toTime)) {
+            $whereConditions[] = "TIME(t.dtTrip) <= '$toTime'";
+        }
+
+        $whereClause = implode(' AND ', $whereConditions);
+
         $sql = "SELECT 
                     t.iTripID,
                     t.iGrpID,
@@ -67,7 +83,7 @@ switch ($mode) {
                 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
                 LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                 LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                WHERE DATE(t.dtTrip) = '$date' AND t.cStatus = 'A'
+                WHERE $whereClause
                 ORDER BY t.dtTrip, t.iGrpID";
 
         $res = sql_query($sql);
