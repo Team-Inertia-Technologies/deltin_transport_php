@@ -1,23 +1,22 @@
 <?php
-error_reporting(E_ALL);
 ini_set('display_errors', 1);
+
 include "../../includes/common_api.php";
 
 header('Content-Type: application/json');
-
-// Handle POST requests and parse JSON input
 $postdata = file_get_contents("php://input");
+
 $request = json_decode($postdata, true);
 $_REQUEST = array_merge($_REQUEST, $request ?? []);
-
-// Token validation like other API files
+$mode = $_REQUEST['mode'] ?? '';
 $Token = $_REQUEST['token'] ?? '';
 $user_id = intval(DecodeParam($Token));
 
-if (empty($Token)) {
+// Validate user_id exists in user table
+if ($user_id <= 0) {
     echo json_encode([
         "error" => [
-            "message" => "Token is required"
+            "message" => "Invalid or missing user token"
         ],
         "statusCode" => 401
     ]);
@@ -37,53 +36,53 @@ if (sql_num_rows($userCheckRes) == 0) {
     exit;
 }
 
-try {
-    // Build property map
-    $PROPERTY_ARR = [];
-    $query = "
-        SELECT up.iUserID, p.vShortCode
-        FROM users_property_assoc AS up
-        JOIN property AS p ON up.iPropertyID = p.iPropertyID
-        ORDER BY p.iPropertyID
-    ";
-    $res = sql_query($query);
-    while (list($u_id, $p_code) = sql_fetch_row($res)) {
-        $PROPERTY_ARR[$u_id][] = $p_code;
-    }
+switch ($mode) {
 
-    // Build condition
-    $cond = "WHERE cRefType='A' AND cStatus!='X'";
-    
-    // Fetch users
-    $sql = "SELECT * FROM users $cond ORDER BY vName ASC";
-    $result = sql_query($sql);
+    // ===================== CASE 1: LIST =====================
+    case 'LIST':
+    default:
+        try {
+            // Build property map
+            $PROPERTY_ARR = [];
+            $query = "
+                SELECT up.iUserID, p.vShortCode
+                FROM users_property_assoc AS up
+                JOIN property AS p ON up.iPropertyID = p.iPropertyID
+                ORDER BY p.iPropertyID
+            ";
+            $res = sql_query($query);
+            while (list($u_id, $p_code) = sql_fetch_row($res)) {
+                $PROPERTY_ARR[$u_id][] = $p_code;
+            }
 
-    $users = [];
-    while ($row = sql_fetch_assoc($result)) {
-        $users[] = $row;
-    }
-    $response = [
-        "data" => [
-            "message" => "Users Fetched Successfully",
-            "users" => $users,
-            "properties" => $PROPERTY_ARR
-        ],
-        "statusCode" => 200
-    ];
+            // Build condition
+            $cond = "WHERE cRefType='A' AND cStatus!='X'";
+            
+            // Fetch users
+            $sql = "SELECT * FROM users $cond ORDER BY vName ASC";
+            $result = sql_query($sql);
 
-    http_response_code(200);
-    echo json_encode($response);
-    exit;
+            $users = [];
+            while ($row = sql_fetch_assoc($result)) {
+                $users[] = $row;
+            }
 
-} catch (Exception $e) {
-    $response = [
-        "error" => [
-            "message" => "Internal Server Error"
-        ],
-        "statusCode" => 500
-    ];
+            echo json_encode([
+                "data" => [
+                    "message" => "Users Fetched Successfully",
+                    "users" => $users,
+                    "properties" => $PROPERTY_ARR
+                ],
+                "statusCode" => 200
+            ]);
 
-    http_response_code(500);
-    echo json_encode($response);
-    exit;
+        } catch (Exception $e) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Internal Server Error"
+                ],
+                "statusCode" => 500
+            ]);
+        }
+        break;
 }

@@ -211,7 +211,7 @@ switch ($mode) {
 
         $sql = "UPDATE vehicle_category SET 
                     vName = '$categoryName',
-                    iCapacity = $capacity
+                    iCapacity = $capacity,
                     cStatus = '$status'
                 WHERE iVCatID = $id";
 
