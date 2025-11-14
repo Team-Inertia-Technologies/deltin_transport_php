@@ -174,7 +174,7 @@ else if ($mode == 'ADD_STAFF') {
     $to = $vMobile;
     if (strlen($to) == 10)
         $to = '91' . $to;
-    SendSmsCurl2($templateid, $to, $message);
+    $response=SendSmsCurl2($templateid, $to, $message);
     echo $response;
     exit;
 
