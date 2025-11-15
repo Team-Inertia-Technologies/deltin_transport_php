@@ -8,7 +8,7 @@ header('Content-Type: application/json');
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         $response = array(
-            "error" =>array(
+            "error" => array(
                 "message" => "Method not Allowed",
             ),
             "statusCode" => 405,
@@ -101,14 +101,20 @@ try {
             }
         }
 
-        $response = array (
+        $response = array(
             "data" => array(
-                "message" => "Modules successfully updated",
-                "level_id" => $levelId,
-                "modules_updated" => $countInserted
+                "message" => "Successfully fetched the levels",
+                "levels" => array(
+                    array(
+                        "id" => $levelId,
+                        "name" => $levelName,
+                        "status" => $levelStatus
+                    )
+                )
             ),
-            "statusCode" => 200,
+            "statusCode" => 200
         );
+
 
         http_response_code(200);
         header('Content-Type: application/json');
@@ -127,10 +133,9 @@ try {
     header('Content-Type: application/json');
     echo json_encode($response);
     exit;
-
 } catch (Exception $e) {
-    $response = array (
-        "error" => array (
+    $response = array(
+        "error" => array(
             "message" => "Internal Server Error",
         ),
         "statusCode" => 500,
@@ -140,5 +145,3 @@ try {
     echo json_encode($response);
     exit;
 }
-?>
-
