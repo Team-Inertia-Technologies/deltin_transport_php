@@ -62,9 +62,48 @@ switch ($mode) {
             ];
         }
         
+        // Get routes and stops for dropdowns
+        $routeStopsQuery = "SELECT r.iRouteID, r.vName as routeName, s.iStopID, s.vName as stopName 
+                            FROM st_route r 
+                            LEFT JOIN st_route_stops s ON r.iRouteID = s.iRouteID 
+                            WHERE r.cStatus = 'A' AND s.cStatus = 'A'
+                            ORDER BY r.iRouteID, s.iStopID";
+        $routeStopsResult = sql_query($routeStopsQuery);
+        
+        $routes = [];
+        $currentRouteId = null;
+        $currentRoute = null;
+        
+        while ($row = sql_fetch_assoc($routeStopsResult)) {
+            if ($currentRouteId !== $row['iRouteID']) {
+                if ($currentRoute !== null) {
+                    $routes[] = $currentRoute;
+                }
+                
+                $currentRouteId = $row['iRouteID'];
+                $currentRoute = [
+                    "id" => (int) $row['iRouteID'],
+                    "name" => db_output2($row['routeName']),
+                    "stops" => []
+                ];
+            }
+            
+            if ($row['iStopID'] !== null) {
+                $currentRoute["stops"][] = [
+                    "id" => (int) $row['iStopID'],
+                    "name" => db_output2($row['stopName'])
+                ];
+            }
+        }
+        
+        if ($currentRoute !== null) {
+            $routes[] = $currentRoute;
+        }
+        
         echo json_encode([
             "data" => [
-                "staff" => $staffList
+                "staff" => $staffList,
+                "routes" => $routes
             ],
             "statusCode" => 200
         ]);
