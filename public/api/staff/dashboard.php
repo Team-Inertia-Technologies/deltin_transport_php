@@ -31,7 +31,7 @@ switch ($mode) {
 
         // Get requested pickups (future requests)
         $requestedSql = "SELECT 
-                            r.iTrReqID,
+                            r.iTrReqID as requestId,
                             rt.vName as route_name,
                             rs.vName as stop_name,
                             t.dtTrip as trip_date,
@@ -55,6 +55,7 @@ switch ($mode) {
             $pickupTime = date('H:i', strtotime($row['pickup_time']));
 
             $requestedPickups[] = [
+                 "requestId" => db_output2($row['requestId']),
                 "route" => db_output2($row['route_name']),
                 "place" => db_output2($row['stop_name']),
                 "date" => $tripDate . " | " . $pickupTime
