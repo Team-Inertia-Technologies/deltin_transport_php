@@ -125,13 +125,16 @@ switch ($mode) {
                 ];
             }
             
-            $routes[] = [
-                "id" => $routeID,
-                "name" => db_output2($routeName),
-                "pickUpOpt" => $pickUpOpt,
-                "timeOpt" => $timeOpt,
-                "daysArr" => $daysArr
-            ];
+            // Only include route if it has available days
+            if (!empty($daysArr)) {
+                $routes[] = [
+                    "id" => $routeID,
+                    "name" => db_output2($routeName),
+                    "pickUpOpt" => $pickUpOpt,
+                    "timeOpt" => $timeOpt,
+                    "daysArr" => $daysArr
+                ];
+            }
         }
         
         echo json_encode([

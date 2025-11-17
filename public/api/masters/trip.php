@@ -502,6 +502,26 @@ switch ($mode) {
             }
         }
 
+        // First, get the trip datetime for this group to check for conflicts
+        $tripDateTimeSql = "SELECT dtTrip FROM st_trips WHERE iGrpID = $iGrpID AND cStatus = 'A' LIMIT 1";
+        $tripDateTimeRes = sql_query($tripDateTimeSql);
+        $tripDateTimeRow = sql_fetch_assoc($tripDateTimeRes);
+        $currentTripDateTime = $tripDateTimeRow['dtTrip'] ?? '';
+
+        // Get vehicles that are already assigned to other trips at the same time
+        $conflictingVehiclesSql = "SELECT DISTINCT t.iVehicleID
+                                  FROM st_trips t
+                                  WHERE t.dtTrip = '$currentTripDateTime'
+                                  AND t.iGrpID != $iGrpID
+                                  AND t.cStatus = 'A'
+                                  AND t.iVehicleID > 0";
+        $conflictingVehiclesRes = sql_query($conflictingVehiclesSql);
+        
+        $conflictingVehicleIDs = [];
+        while ($conflictRow = sql_fetch_assoc($conflictingVehiclesRes)) {
+            $conflictingVehicleIDs[] = (int) $conflictRow['iVehicleID'];
+        }
+
         // Get vehicle options (excluding vehicles already assigned at the same time)
         $vehicleSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity 
                       FROM vehicle v
@@ -580,25 +600,6 @@ switch ($mode) {
         }
 
         // Get table array with vehicle details (same as ADD_ONLOAD)
-        // First, get the trip datetime for this group to check for conflicts
-        $tripDateTimeSql = "SELECT dtTrip FROM st_trips WHERE iGrpID = $iGrpID AND cStatus = 'A' LIMIT 1";
-        $tripDateTimeRes = sql_query($tripDateTimeSql);
-        $tripDateTimeRow = sql_fetch_assoc($tripDateTimeRes);
-        $currentTripDateTime = $tripDateTimeRow['dtTrip'] ?? '';
-
-        // Get vehicles that are already assigned to other trips at the same time
-        $conflictingVehiclesSql = "SELECT DISTINCT t.iVehicleID
-                                  FROM st_trips t
-                                  WHERE t.dtTrip = '$currentTripDateTime'
-                                  AND t.iGrpID != $iGrpID
-                                  AND t.cStatus = 'A'
-                                  AND t.iVehicleID > 0";
-        $conflictingVehiclesRes = sql_query($conflictingVehiclesSql);
-        
-        $conflictingVehicleIDs = [];
-        while ($conflictRow = sql_fetch_assoc($conflictingVehiclesRes)) {
-            $conflictingVehicleIDs[] = (int) $conflictRow['iVehicleID'];
-        }
 
         $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, ven.vName as vOwner
                        FROM vehicle v
