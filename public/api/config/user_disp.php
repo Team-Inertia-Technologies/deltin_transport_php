@@ -67,6 +67,8 @@ try {
     
     // Fetch users
     $sql = "SELECT * FROM users $cond ORDER BY vName ASC";
+    echo $sql;
+    exit;
     $result = sql_query($sql);
 
     $users = [];
