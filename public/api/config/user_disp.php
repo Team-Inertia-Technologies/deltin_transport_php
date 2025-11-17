@@ -22,7 +22,7 @@ try {
     $statusID = isset($_POST['status']) ? $_POST['status'] : null;
 
     $cond = "WHERE cRefType='A' AND cStatus!='X'";
-
+    $cond2 = "";
     if (!is_null($levelID) && intval($levelID) >= 0) {
         $cond2 .= " AND iLevel = " . intval($levelID);
     }
