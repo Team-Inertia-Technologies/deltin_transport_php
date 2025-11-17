@@ -22,7 +22,30 @@ try {
     // Build condition
     $cond = "WHERE cRefType='A' AND cStatus!='X'";
 
-    $USER_LEVEL_ARR = array('0' => 'Super Admin', '1' => 'Admin', '2' => 'HOD', '3' => 'National Head', '4' => 'Loyalty Coordinator', '5' => 'VIP Services', '6' => 'Jr. RM', '7' => 'Members', '8' => 'Sr. RM', '9' => 'Caller', '10' => 'Campaign Manager', '11' => 'Supervisor', '12' => 'Staff', '13' => 'Delights');
+    $USER_LEVEL_ARR = [];
+    $LEVELS = array(
+        '0' => 'Super Admin',
+        '1' => 'Admin',
+        '2' => 'HOD',
+        '3' => 'National Head',
+        '4' => 'Loyalty Coordinator',
+        '5' => 'VIP Services',
+        '6' => 'Jr. RM',
+        '7' => 'Members',
+        '8' => 'Sr. RM',
+        '9' => 'Caller',
+        '10' => 'Campaign Manager',
+        '11' => 'Supervisor',
+        '12' => 'Staff',
+        '13' => 'Delights'
+    );
+    
+    foreach ($LEVELS as $id => $name) {
+        $USER_LEVEL_ARR[] = [
+            "id" => (int)$id,
+            "name" => $name
+        ];
+    }
     
     // Fetch users
     $sql = "SELECT * FROM users $cond ORDER BY vName ASC";
