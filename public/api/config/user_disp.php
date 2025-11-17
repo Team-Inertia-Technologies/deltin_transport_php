@@ -46,6 +46,15 @@ try {
             "name" => $name
         ];
     }
+
+    $Status = [];
+    $STATUS_ARR = array("A" => "Active", "I" => "Inactive");
+    foreach ($STATUS_ARR as $key => $value) {
+        $Status[] = [
+            "id" => $key,
+            "name" => $value
+        ];
+    }
     
     // Fetch users
     $sql = "SELECT * FROM users $cond ORDER BY vName ASC";
@@ -60,7 +69,8 @@ try {
             "message" => "Users Fetched Successfully",
             "users" => $users,
             "properties" => $PROPERTY_ARR,
-            "levels" => $USER_LEVEL_ARR
+            "levels" => $USER_LEVEL_ARR,
+            "status" => $Status
         ),
         "statuscode" => 200
     );
