@@ -28,7 +28,7 @@ switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
     case 'LIST':
-        // Get all active staff with route and stop details
+        // Get all active and inactive staff with route and stop details
         $sql = "SELECT 
                     s.iStaffID,
                     s.vCode,
@@ -42,7 +42,7 @@ switch ($mode) {
                 FROM staff s
                 LEFT JOIN st_route r ON s.iRouteID = r.iRouteID AND r.cStatus = 'A'
                 LEFT JOIN st_route_stops st ON s.iStopID = st.iStopID AND st.cStatus = 'A'
-                WHERE s.cStatus = 'A'
+                WHERE s.cStatus IN ('A', 'I')
                 ORDER BY s.dtRegistered DESC";
         
         $res = sql_query($sql);
@@ -532,6 +532,39 @@ switch ($mode) {
             ],
             "statusCode" => 200
         ]);
+        break;
+
+    // ===================== CASE 7: TOGGLE_STATUS =====================
+    case 'TOGGLE_STATUS':
+        $id = intval($_REQUEST['iStaffID'] ?? 0);
+        
+        if ($id <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Staff ID is required"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Check current status
+        $currentSql = "SELECT cStatus FROM staff WHERE iStaffID = $id AND cStatus IN ('A', 'I')";
+        $currentRes = sql_query($currentSql);
+        
+        if (sql_num_rows($currentRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Staff member not found"
+                ],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        // Use the reusable toggle function
+        $result = toggleStatus($id, 'staff', 'iStaffID', 'cStatus', 'vName', 'STF', $user_id);
+        echo json_encode($result);
         break;
 
     // ===================== DEFAULT =====================
