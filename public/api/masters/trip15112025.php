@@ -502,7 +502,7 @@ switch ($mode) {
             }
         }
 
-        // Get vehicle options (excluding vehicles already assigned at the same time)
+        // Get vehicle options (same as ADD_ONLOAD)
         $vehicleSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity 
                       FROM vehicle v
                       LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
@@ -515,16 +515,9 @@ switch ($mode) {
         ];
 
         while ($vehicleRow = sql_fetch_assoc($vehicleRes)) {
-            $vehicleID = (int) $vehicleRow['iVehicleID'];
-            
-            // Skip vehicles that are already assigned to other trips at the same time
-            if (in_array($vehicleID, $conflictingVehicleIDs)) {
-                continue;
-            }
-            
             $capacity = $vehicleRow['iCapacity'] ?? 0;
             $vehiOpt[] = [
-                "id" => $vehicleID,
+                "id" => (int) $vehicleRow['iVehicleID'],
                 "name" => $vehicleRow['vRnum'] . ' (' . $capacity . ')'
             ];
         }
@@ -580,26 +573,6 @@ switch ($mode) {
         }
 
         // Get table array with vehicle details (same as ADD_ONLOAD)
-        // First, get the trip datetime for this group to check for conflicts
-        $tripDateTimeSql = "SELECT dtTrip FROM st_trips WHERE iGrpID = $iGrpID AND cStatus = 'A' LIMIT 1";
-        $tripDateTimeRes = sql_query($tripDateTimeSql);
-        $tripDateTimeRow = sql_fetch_assoc($tripDateTimeRes);
-        $currentTripDateTime = $tripDateTimeRow['dtTrip'] ?? '';
-
-        // Get vehicles that are already assigned to other trips at the same time
-        $conflictingVehiclesSql = "SELECT DISTINCT t.iVehicleID
-                                  FROM st_trips t
-                                  WHERE t.dtTrip = '$currentTripDateTime'
-                                  AND t.iGrpID != $iGrpID
-                                  AND t.cStatus = 'A'
-                                  AND t.iVehicleID > 0";
-        $conflictingVehiclesRes = sql_query($conflictingVehiclesSql);
-        
-        $conflictingVehicleIDs = [];
-        while ($conflictRow = sql_fetch_assoc($conflictingVehiclesRes)) {
-            $conflictingVehicleIDs[] = (int) $conflictRow['iVehicleID'];
-        }
-
         $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, ven.vName as vOwner
                        FROM vehicle v
                        LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
@@ -611,15 +584,8 @@ switch ($mode) {
         $tableArr = [];
 
         while ($tableRow = sql_fetch_assoc($tableArrRes)) {
-            $vehicleID = (int) $tableRow['iVehicleID'];
-            
-            // Skip vehicles that are already assigned to other trips at the same time
-            if (in_array($vehicleID, $conflictingVehicleIDs)) {
-                continue;
-            }
-            
             $tableArr[] = [
-                "id" => $vehicleID,
+                "id" => (int) $tableRow['iVehicleID'],
                 "vhNum" => db_output2($tableRow['vRnum'] ?? ''),
                 "vhCap" => (int) ($tableRow['iCapacity'] ?? 0),
                 "vhOwner" => db_output2($tableRow['vOwner'] ?? ''),

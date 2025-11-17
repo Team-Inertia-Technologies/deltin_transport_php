@@ -94,10 +94,14 @@ switch ($mode) {
             // Get days array for this specific route
             $today = date('Y-m-d');
             $maxDate = date('Y-m-d', strtotime('+7 days'));
+            $currentDateTime = date('Y-m-d H:i:s');
+            $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
             
-            $daysSql = "SELECT iTripID, DATE(dtTrip) as trip_date 
+            $daysSql = "SELECT iTripID, DATE(dtTrip) as trip_date, dtTrip
                        FROM st_trips 
-                       WHERE iRouteID = $routeID AND cStatus = 'A' AND DATE(dtTrip) >= '$today' AND DATE(dtTrip) <= '$maxDate'
+                       WHERE iRouteID = $routeID AND cStatus = 'A' 
+                       AND DATE(dtTrip) >= '$today' AND DATE(dtTrip) <= '$maxDate'
+                       AND dtTrip >= '$twoHoursFromNow'
                        GROUP BY DATE(dtTrip)
                        ORDER BY trip_date 
                        LIMIT 7";
@@ -233,7 +237,16 @@ switch ($mode) {
             
             $tripData = sql_fetch_assoc($tripRes);
             $tripDate = date('Y-m-d', strtotime($tripData['dtTrip']));
-            $tripDateTime = $tripDate . ' ' . $selectedTime;
+            $tripDateTime = "$tripDate $selectedTime";
+            
+            // Check if trip is within 2 hours from now (booking restriction)
+            $currentDateTime = date('Y-m-d H:i:s');
+            $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
+            
+            if ($tripDateTime < $twoHoursFromNow) {
+                $errors[] = "Cannot book trip on $tripDate - bookings must be made at least 2 hours in advance";
+                continue;
+            }
             
             // Check if request already exists for this staff, route, and trip
             $existingSql = "SELECT iTrReqID FROM st_request 
@@ -241,7 +254,7 @@ switch ($mode) {
             $existingRes = sql_query($existingSql);
             
             if (sql_num_rows($existingRes) > 0) {
-                $errors[] = "Request already exists for trip on " . $tripDate;
+                $errors[] = "Request already exists for trip on $tripDate";
                 continue;
             }
 
@@ -344,10 +357,10 @@ switch ($mode) {
                     // If trip update fails, rollback the request insert
                     $deleteSql = "DELETE FROM st_request WHERE iTrReqID = $iTrReqID";
                     sql_query($deleteSql);
-                    $errors[] = "Failed to update trip capacity for trip on " . $tripDate;
+                    $errors[] = "Failed to update trip capacity for trip on $tripDate";
                 }
             } else {
-                $errors[] = "Failed to save request for trip on " . $tripDate;
+                $errors[] = "Failed to save request for trip on $tripDate";
             }
         }
         
