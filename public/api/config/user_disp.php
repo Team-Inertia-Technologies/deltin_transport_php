@@ -24,11 +24,11 @@ try {
     $cond = "WHERE cRefType='A' AND cStatus!='X'";
 
     if (!is_null($levelID) && intval($levelID) >= 0) {
-        $cond .= " AND iLevel = " . intval($levelID);
+        $cond2 .= " AND iLevel = " . intval($levelID);
     }
 
     if (!is_null($statusID) && $statusID !== "") {
-        $cond .= " AND cStatuss = '" . db_input2($statusID) . "'";
+        $cond2 .= " AND cStatuss = '" . db_input2($statusID) . "'";
     }
 
     $USER_LEVEL_ARR = [];
@@ -66,7 +66,7 @@ try {
     }
     
     // Fetch users
-    $sql = "SELECT * FROM users $cond ORDER BY vName ASC";
+    $sql = "SELECT * FROM users $cond $cond2 ORDER BY vName ASC";
     echo $sql;
     exit;
     $result = sql_query($sql);
