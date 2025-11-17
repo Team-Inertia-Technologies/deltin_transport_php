@@ -23,9 +23,7 @@ try {
     while (list($u_id, $p_code) = sql_fetch_row($res)) {
         $PROPERTY_ARR[$u_id][] = $p_code;
     }
-    $levelID  = isset($_POST['level']) ? $_POST['level'] : null;
-    $statusID = isset($_POST['status']) ? $_POST['status'] : null;
-
+    
     $cond = "WHERE cRefType='A' AND cStatus!='X'";
     $cond2 = "";
     if (!is_null($levelID) && $levelID >= 0) {
