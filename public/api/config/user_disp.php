@@ -4,7 +4,12 @@ ini_set('display_errors', 1);
 include "../../includes/common_api.php";
 
 header('Content-Type: application/json');
+$postdata = file_get_contents("php://input");
 
+$request = json_decode($postdata, true);
+$_REQUEST = array_merge($_REQUEST, $request ?? []);
+$levelID  = $_REQUEST['level'] ?? null;
+$statusID = $_REQUEST['status'] ?? null;
 try {
     // Build property map
     $PROPERTY_ARR = [];
