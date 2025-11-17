@@ -11,7 +11,10 @@ $result = sql_query($query);
 
 if (sql_num_rows($result)) {
 	while ($data = sql_fetch_assoc($result)) {
-		$levels[$data['iLevelD']] = $data['vName'];
+		$levels[] = array(
+			"id" => (int)$data['iLevelD'],
+			"name" => $data['vName'],
+		);
 	}
 
 	$response = array(

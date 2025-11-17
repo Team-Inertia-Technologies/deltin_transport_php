@@ -18,9 +18,17 @@ try {
     while (list($u_id, $p_code) = sql_fetch_row($res)) {
         $PROPERTY_ARR[$u_id][] = $p_code;
     }
-
-    // Build condition
+    $levelID = isset($_GET['level']) ? intval($_GET['level']) : null;
+    $statusID = isset($_GET['status']) ? $_GET['status'] : null;
+    
     $cond = "WHERE cRefType='A' AND cStatus!='X'";
+    if (!is_null($levelID)) {
+        $cond .= " AND iLevel = " . intval($levelID);
+    }
+
+    if (!is_null($statusID) && $statusID !== "") {
+        $cond .= " AND cStatuss = '" .   db_input2($statusID) . "'";
+    }
 
     $USER_LEVEL_ARR = [];
     $LEVELS = array(
