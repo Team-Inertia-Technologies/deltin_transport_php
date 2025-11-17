@@ -18,17 +18,17 @@ try {
     while (list($u_id, $p_code) = sql_fetch_row($res)) {
         $PROPERTY_ARR[$u_id][] = $p_code;
     }
-    $levelID  = isset($_POST['level']) ? intval($_POST['level']) : null;
+    $levelID  = isset($_POST['level']) ? $_POST['level'] : null;
     $statusID = isset($_POST['status']) ? $_POST['status'] : null;
 
     $cond = "WHERE cRefType='A' AND cStatus!='X'";
     $cond2 = "";
-    if (!is_null($levelID) && intval($levelID) >= 0) {
+    if (!is_null($levelID) && $levelID >= 0) {
         $cond2 .= " AND iLevel = " . intval($levelID);
     }
 
     if (!is_null($statusID) && $statusID !== "") {
-        $cond2 .= " AND cStatuss = '" . db_input2($statusID) . "'";
+        $cond2 .= " AND cStatus = '" . db_input2($statusID) . "'";
     }
 
     $USER_LEVEL_ARR = [];
