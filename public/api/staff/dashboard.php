@@ -28,8 +28,9 @@ switch ($mode) {
     // ===================== CASE: VIEW =====================
     case 'VIEW':
         $today = date('Y-m-d');
+        $currentDateTime = date('Y-m-d H:i:s');
 
-        // Get requested pickups (future requests)
+        // Get requested pickups (future requests - date is future OR date is today but time hasn't passed)
         $requestedSql = "SELECT 
                             r.iTrReqID as requestId,
                             rt.vName as route_name,
@@ -43,7 +44,10 @@ switch ($mode) {
                         INNER JOIN st_trips t ON r.iTripID = t.iTripID
                         WHERE r.iStaffID = $user_id 
                         AND r.cStatus = 'A'
-                        AND DATE(t.dtTrip) >= '$today'
+                        AND (
+                            DATE(t.dtTrip) > '$today' 
+                            OR (DATE(t.dtTrip) = '$today' AND CONCAT(DATE(t.dtTrip), ' ', r.tPickup) > '$currentDateTime')
+                        )
                         ORDER BY t.dtTrip ASC";
 
         $requestedRes = sql_query($requestedSql);
@@ -62,7 +66,7 @@ switch ($mode) {
             ];
         }
 
-        // Get previous pickups (past requests)
+        // Get previous pickups (past requests - date is past OR date is today but time has passed)
         $previousSql = "SELECT 
                             r.iTrReqID,
                             rt.vName as route_name,
@@ -77,7 +81,10 @@ switch ($mode) {
                         INNER JOIN st_route_stops rs ON r.iStopID = rs.iStopID
                         INNER JOIN st_trips t ON r.iTripID = t.iTripID
                         WHERE r.iStaffID = $user_id 
-                        AND DATE(t.dtTrip) < '$today'
+                        AND (
+                            DATE(t.dtTrip) < '$today'
+                            OR (DATE(t.dtTrip) = '$today' AND CONCAT(DATE(t.dtTrip), ' ', r.tPickup) <= '$currentDateTime')
+                        )
                         ORDER BY t.dtTrip DESC
                         LIMIT 3";
 

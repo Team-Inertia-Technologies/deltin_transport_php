@@ -75,8 +75,8 @@ switch ($mode) {
                 ];
             }
             
-            // Get time options from existing trips for this route
-            $timeSql = "SELECT iTripID, TIME(dtTrip) as trip_time 
+            // Get time options from existing trips for this route with their specific days
+            $timeSql = "SELECT TIME(dtTrip) as trip_time 
                        FROM st_trips 
                        WHERE iRouteID = $routeID AND cStatus = 'A' 
                        GROUP BY TIME(dtTrip)
@@ -84,55 +84,64 @@ switch ($mode) {
             $timeRes = sql_query($timeSql);
             
             $timeOpt = [];
+            $timeIndex = 1; // Start from 1 for time IDs
+            
             while ($timeRow = sql_fetch_assoc($timeRes)) {
-                $timeOpt[] = [
-                    "id" => (int) $timeRow['iTripID'],
-                    "name" => date('H:i', strtotime($timeRow['trip_time']))
-                ];
-            }
-            
-            // Get days array for this specific route
-            $today = date('Y-m-d');
-            $maxDate = date('Y-m-d', strtotime('+7 days'));
-            $currentDateTime = date('Y-m-d H:i:s');
-            $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
-            
-            $daysSql = "SELECT iTripID, DATE(dtTrip) as trip_date, dtTrip
-                       FROM st_trips 
-                       WHERE iRouteID = $routeID AND cStatus = 'A' 
-                       AND DATE(dtTrip) >= '$today' AND DATE(dtTrip) <= '$maxDate'
-                       AND dtTrip >= '$twoHoursFromNow'
-                       GROUP BY DATE(dtTrip)
-                       ORDER BY trip_date 
-                       LIMIT 7";
-            $daysRes = sql_query($daysSql);
-            
-            $daysArr = [];
-            
-            // Only add "Select All" if there are actual days available
-            if (sql_num_rows($daysRes) > 0) {
-                $daysArr[] = ["id" => 0, "name" => "Select All"];
-            }
-            
-            while ($dayRow = sql_fetch_assoc($daysRes)) {
-                $tripDate = $dayRow['trip_date'];
-                $tripID = (int) $dayRow['iTripID'];
-                $dayName = date('l, j F', strtotime($tripDate)); // Format: "Monday, 26 August"
+                $tripTime = $timeRow['trip_time'];
                 
-                $daysArr[] = [
-                    "id" => $tripID,
-                    "name" => $dayName
-                ];
+                // Get days array for this specific time
+                $today = date('Y-m-d');
+                $maxDate = date('Y-m-d', strtotime('+7 days'));
+                $currentDateTime = date('Y-m-d H:i:s');
+                $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
+                
+                $daysSql = "SELECT iTripID, DATE(dtTrip) as trip_date, dtTrip
+                           FROM st_trips 
+                           WHERE iRouteID = $routeID AND cStatus = 'A' 
+                           AND TIME(dtTrip) = '$tripTime'
+                           AND DATE(dtTrip) >= '$today' AND DATE(dtTrip) <= '$maxDate'
+                           AND dtTrip >= '$twoHoursFromNow'
+                           ORDER BY trip_date 
+                           LIMIT 7";
+                $daysRes = sql_query($daysSql);
+                
+                $daysArr = [];
+                
+                // Only add "Select All" if there are actual days available
+                if (sql_num_rows($daysRes) > 0) {
+                    $daysArr[] = ["id" => 0, "name" => "Select All"];
+                }
+                
+                while ($dayRow = sql_fetch_assoc($daysRes)) {
+                    $tripDate = $dayRow['trip_date'];
+                    $tripID = (int) $dayRow['iTripID'];
+                    $dayName = date('l, j F', strtotime($tripDate)); // Format: "Monday, 26 August"
+                    
+                    $daysArr[] = [
+                        "id" => $tripID,
+                        "name" => $dayName
+                    ];
+                }
+                
+                // Only include time if it has available days
+                if (count($daysArr) > 1) { // More than just "Select All"
+                    $timeOpt[] = [
+                        "id" => $timeIndex,
+                        "name" => date('H:i', strtotime($tripTime)),
+                        "time" => $tripTime,
+                        "daysArr" => $daysArr
+                    ];
+                    $timeIndex++;
+                }
             }
             
-            // Only include route if it has available days
-            if (!empty($daysArr)) {
+            // Only include route if it has time options with available days
+            if (!empty($timeOpt)) {
                 $routes[] = [
                     "id" => $routeID,
                     "name" => db_output2($routeName),
                     "pickUpOpt" => $pickUpOpt,
-                    "timeOpt" => $timeOpt,
-                    "daysArr" => $daysArr
+                    "timeOpt" => $timeOpt
                 ];
             }
         }
@@ -190,22 +199,31 @@ switch ($mode) {
         $routeName = $routeData['vName'];
         $destination = $routeData['vDestination'];
         
-        // Get the trip time from the selected time (trip ID)
-        $timeTripSql = "SELECT TIME(dtTrip) as trip_time FROM st_trips WHERE iTripID = $time AND cStatus = 'A'";
-        $timeTripRes = sql_query($timeTripSql);
+        // Get the actual time value - support both old (trip ID) and new (time value) structure
+        $selectedTimeValue = $_REQUEST['timeValue'] ?? '';
         
-        if (sql_num_rows($timeTripRes) == 0) {
-            echo json_encode([
-                "error" => [
-                    "message" => "Selected time trip not found"
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
+        if (!empty($selectedTimeValue)) {
+            // New structure: time value is provided directly
+            $selectedTime = $selectedTimeValue;
+        } else {
+            // Fallback to old structure: get time from trip ID
+            $timeTripSql = "SELECT TIME(dtTrip) as trip_time FROM st_trips WHERE iTripID = $time AND cStatus = 'A'";
+            $timeTripRes = sql_query($timeTripSql);
+            
+            if (sql_num_rows($timeTripRes) == 0) {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Selected time not found. Please provide timeValue parameter."
+                    ],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+            
+            $timeTripData = sql_fetch_assoc($timeTripRes);
+            $selectedTime = $timeTripData['trip_time'];
         }
         
-        $timeTripData = sql_fetch_assoc($timeTripRes);
-        $selectedTime = $timeTripData['trip_time'];
         $timing = date('H:i', strtotime($selectedTime));
         
         // Get pickup point name
