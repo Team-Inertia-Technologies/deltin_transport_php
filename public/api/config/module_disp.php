@@ -6,7 +6,7 @@ include "../../includes/common_api.php";
 
 $levels = array();
 
-$query = "SELECT iLevelD, vName FROM levels WHERE cStatus='A' ORDER BY vName DESC";
+$query = "SELECT iLevelD, vName, cStatus FROM levels WHERE cStatus='A' ORDER BY vName DESC";
 $result = sql_query($query);
 
 if (sql_num_rows($result)) {
@@ -14,6 +14,7 @@ if (sql_num_rows($result)) {
 		$levels[] = array(
 			"id" => (int)$data['iLevelD'],
 			"name" => $data['vName'],
+			"status" => $data['cStatus'],
 		);
 	}
 
