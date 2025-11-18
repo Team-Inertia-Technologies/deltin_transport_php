@@ -595,13 +595,13 @@ switch ($mode) {
                 "requestId"   => (int)$row['iTrReqID'],
                 "staffid"     => (int)$row['staffid'],
                 "date"        => date('j M Y', strtotime($row['date'])),
-                "status"      => db_output2($row['status']),
+                //"status"      => db_output2($row['status']),
                 "route"       => db_output2($row['route']),
                 "pickup"      => db_output2($row['pickup']),
                 "pickupTime"  => date('H:i', strtotime($row['pickupTime'])),
                 "enteredTime" => $row['enteredTime'] ? date('H:i', strtotime($row['enteredTime'])) : "",
                 "vehiNum"     => db_output2($row['vehiNum']),
-                "sendStatus"  => $row['sendStatus']
+                "status"  => $row['sendStatus']
             ];
         }
 
