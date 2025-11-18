@@ -11,7 +11,7 @@ function LogMasterEdit($id, $flag, $mode, $name='', $desc_str='', $user_id=false
 		else if($flag=='VHC') $name = GetXFromYID("select vRnum from vehicle where iVehicleID=$id");
 		else if($flag=='DRV') $name = GetXFromYID("select vName from driver where iDriverID=$id");
 		else if($flag=='RTE') $name = GetXFromYID("select vName from st_route where iRouteID=$id");
-
+		else if($flag=='STF') $name = GetXFromYID("select vName from staff where iStaffID=$id");
 	}
 	
 	$ip = $_SERVER['REMOTE_ADDR'];

@@ -313,7 +313,7 @@ switch ($mode) {
         break;
 
     // ===================== CASE 4: UPDATE =====================
-    case 'UPDATE':
+    case 'UPDATE_STAFF':
         $iStaffID = intval($_REQUEST['id'] ?? 0);
         $vCode = db_input($_REQUEST['code'] ?? '');
         $vName = db_input($_REQUEST['name'] ?? '');
@@ -440,7 +440,7 @@ switch ($mode) {
         break;
 
     // ===================== CASE 5: DELETE =====================
-    case 'DELETE':
+    case 'DELETE_STAFF':
         $iStaffID = intval($_REQUEST['id'] ?? 0);
         
         if (empty($iStaffID)) {
@@ -533,8 +533,86 @@ switch ($mode) {
             "statusCode" => 200
         ]);
         break;
+        
+    // ===================== CASE 7: VIEW_STAFF =====================
+    case 'STAFF_VIEW':
 
-    // ===================== CASE 7: TOGGLE_STATUS =====================
+    $user_id = intval($_REQUEST['user_id'] ?? 0);
+
+    if ($user_id == 0) {
+        echo json_encode([
+            "error" => ["message" => "Missing user_id"],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+   // Check current status
+        $currentSql = "SELECT cStatus FROM staff WHERE iStaffID = $id AND cStatus IN ('A', 'I')";
+        $currentRes = sql_query($currentSql);
+        
+        if (sql_num_rows($currentRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Staff member not found"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+    $overviewSql = "
+        SELECT 
+            r.iTrReqID,
+            r.iStaffID AS staffid,
+            r.dPickup AS date,
+            r.cStatus AS status,
+            rt.vName AS route,
+            rs.vName AS pickup,
+            r.tPickup AS pickupTime,
+            r.dtIn AS enteredTime,
+            v.vRnum AS vehiNum,
+            CASE 
+                WHEN CONCAT(r.dPickup, ' ', r.tPickup) >= NOW() THEN 'UPCOMING'
+                ELSE 'PAST'
+            END AS sendStatus
+        FROM st_request r
+        INNER JOIN st_route rt ON r.iRouteID = rt.iRouteID
+        INNER JOIN st_route_stops rs ON r.iStopID = rs.iStopID
+        INNER JOIN st_trips t ON r.iTripID = t.iTripID
+        LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID
+        WHERE r.iStaffID = $user_id 
+        AND r.cStatus = 'A'
+        ORDER BY sendStatus DESC, r.iTrReqID DESC
+    ";
+
+    $overviewRes = sql_query($overviewSql);
+
+    $rowData = [];
+    while ($row = sql_fetch_assoc($overviewRes)) {
+        $rowData[] = [
+            "requestId"   => (int)$row['iTrReqID'],
+            "staffid"     => (int)$row['staffid'],
+            "date"        => date('j M Y', strtotime($row['date'])),
+            "status"      => db_output2($row['status']),
+            "route"       => db_output2($row['route']),
+            "pickup"      => db_output2($row['pickup']),
+            "pickupTime"  => date('H:i', strtotime($row['pickupTime'])),
+            "enteredTime" => $row['enteredTime'] ? date('H:i', strtotime($row['enteredTime'])) : "",
+            "vehiNum"     => db_output2($row['vehiNum']),
+            "sendStatus"  => $row['sendStatus']
+        ];
+    }
+
+    echo json_encode([
+        "data" => [
+            "rowData" => $rowData
+        ],
+        "statusCode" => 200
+    ]);
+
+    exit;
+
+    // ===================== CASE 8: TOGGLE_STATUS =====================
     case 'TOGGLE_STATUS':
         $id = intval($_REQUEST['iStaffID'] ?? 0);
         
