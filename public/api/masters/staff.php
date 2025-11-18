@@ -44,10 +44,10 @@ switch ($mode) {
                 LEFT JOIN st_route_stops st ON s.iStopID = st.iStopID AND st.cStatus = 'A'
                 WHERE s.cStatus IN ('A', 'I')
                 ORDER BY s.dtRegistered DESC";
-        
+
         $res = sql_query($sql);
         $staffList = [];
-        
+
         while ($row = sql_fetch_assoc($res)) {
             $staffList[] = [
                 'id' => (int) $row['iStaffID'],
@@ -61,7 +61,7 @@ switch ($mode) {
                 'status' => $row['cStatus']
             ];
         }
-        
+
         // Get routes and stops for dropdowns
         $routeStopsQuery = "SELECT r.iRouteID, r.vName as routeName, s.iStopID, s.vName as stopName 
                             FROM st_route r 
@@ -69,17 +69,17 @@ switch ($mode) {
                             WHERE r.cStatus = 'A' AND s.cStatus = 'A'
                             ORDER BY r.iRouteID, s.iStopID";
         $routeStopsResult = sql_query($routeStopsQuery);
-        
+
         $routes = [];
         $currentRouteId = null;
         $currentRoute = null;
-        
+
         while ($row = sql_fetch_assoc($routeStopsResult)) {
             if ($currentRouteId !== $row['iRouteID']) {
                 if ($currentRoute !== null) {
                     $routes[] = $currentRoute;
                 }
-                
+
                 $currentRouteId = $row['iRouteID'];
                 $currentRoute = [
                     "id" => (int) $row['iRouteID'],
@@ -87,7 +87,7 @@ switch ($mode) {
                     "stops" => []
                 ];
             }
-            
+
             if ($row['iStopID'] !== null) {
                 $currentRoute["stops"][] = [
                     "id" => (int) $row['iStopID'],
@@ -95,11 +95,11 @@ switch ($mode) {
                 ];
             }
         }
-        
+
         if ($currentRoute !== null) {
             $routes[] = $currentRoute;
         }
-        
+
         echo json_encode([
             "data" => [
                 "staff" => $staffList,
@@ -116,7 +116,7 @@ switch ($mode) {
         $vMobile = db_input($_REQUEST['mobile'] ?? '');
         $iRouteID = intval($_REQUEST['routeId'] ?? 0);
         $iStopID = intval($_REQUEST['stopId'] ?? 0);
-        
+
         // Validate required fields
         if (empty($vCode)) {
             echo json_encode([
@@ -127,7 +127,7 @@ switch ($mode) {
             ]);
             exit;
         }
-        
+
         if (empty($vName)) {
             echo json_encode([
                 "error" => [
@@ -137,7 +137,7 @@ switch ($mode) {
             ]);
             exit;
         }
-        
+
         if (empty($vMobile)) {
             echo json_encode([
                 "error" => [
@@ -147,7 +147,7 @@ switch ($mode) {
             ]);
             exit;
         }
-        
+
         // Validate mobile number format
         if (!preg_match('/^[0-9]{10}$/', $vMobile)) {
             echo json_encode([
@@ -158,11 +158,11 @@ switch ($mode) {
             ]);
             exit;
         }
-        
+
         // Check for duplicate vCode or vMobile
         $checkSql = "SELECT iStaffID, vCode, vMobile FROM staff WHERE (vCode = '$vCode' OR vMobile = '$vMobile') AND cStatus != 'X'";
         $checkRes = sql_query($checkSql);
-        
+
         if (sql_num_rows($checkRes) > 0) {
             $existingRow = sql_fetch_assoc($checkRes);
             if ($existingRow['vCode'] === $vCode) {
@@ -184,15 +184,15 @@ switch ($mode) {
                 exit;
             }
         }
-        
+
         // Create new staff record
         $iStaffID = NextID('iStaffID', 'staff');
         $cStatus = 'A';
         $dtRegistered = NOW;
-        
+
         $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile, iRouteID, iStopID, dtRegistered, cStatus) 
                 VALUES ($iStaffID, '$vCode', '$vName', '$vMobile', $iRouteID, $iStopID, '$dtRegistered', '$cStatus')";
-        
+
         if (sql_query($sql)) {
             echo json_encode([
                 "data" => [
@@ -214,7 +214,7 @@ switch ($mode) {
     // ===================== CASE 3: EDIT (Get single staff details) =====================
     case 'EDIT':
         $iStaffID = intval($_REQUEST['id'] ?? 0);
-        
+
         if (empty($iStaffID)) {
             echo json_encode([
                 "error" => [
@@ -224,7 +224,7 @@ switch ($mode) {
             ]);
             exit;
         }
-        
+
         $sql = "SELECT 
                     s.iStaffID,
                     s.vCode,
@@ -239,12 +239,12 @@ switch ($mode) {
                 LEFT JOIN st_route r ON s.iRouteID = r.iRouteID AND r.cStatus = 'A'
                 LEFT JOIN st_route_stops st ON s.iStopID = st.iStopID AND st.cStatus = 'A'
                 WHERE s.iStaffID = $iStaffID AND s.cStatus != 'X'";
-        
+
         $res = sql_query($sql);
-        
+
         if (sql_num_rows($res) > 0) {
             $row = sql_fetch_assoc($res);
-            
+
             // Get available routes and stops for dropdown
             $routeStopsQuery = "SELECT r.iRouteID, r.vName as routeName, s.iStopID, s.vName as stopName 
                                 FROM st_route r 
@@ -252,17 +252,17 @@ switch ($mode) {
                                 WHERE r.cStatus = 'A' AND s.cStatus = 'A'
                                 ORDER BY r.iRouteID, s.iStopID";
             $routeStopsResult = sql_query($routeStopsQuery);
-            
+
             $routes = [];
             $currentRouteId = null;
             $currentRoute = null;
-            
+
             while ($routeRow = sql_fetch_assoc($routeStopsResult)) {
                 if ($currentRouteId !== $routeRow['iRouteID']) {
                     if ($currentRoute !== null) {
                         $routes[] = $currentRoute;
                     }
-                    
+
                     $currentRouteId = $routeRow['iRouteID'];
                     $currentRoute = [
                         "id" => (int) $routeRow['iRouteID'],
@@ -270,7 +270,7 @@ switch ($mode) {
                         "stops" => []
                     ];
                 }
-                
+
                 if ($routeRow['iStopID'] !== null) {
                     $currentRoute["stops"][] = [
                         "id" => (int) $routeRow['iStopID'],
@@ -278,11 +278,11 @@ switch ($mode) {
                     ];
                 }
             }
-            
+
             if ($currentRoute !== null) {
                 $routes[] = $currentRoute;
             }
-            
+
             $staffData = [
                 'id' => (int) $row['iStaffID'],
                 'code' => db_output2($row['vCode']),
@@ -294,7 +294,7 @@ switch ($mode) {
                 'stopName' => db_output2($row['stopName'] ?? ''),
                 'status' => $row['cStatus']
             ];
-            
+
             echo json_encode([
                 "data" => [
                     "staff" => $staffData,
@@ -320,7 +320,7 @@ switch ($mode) {
         $vMobile = db_input($_REQUEST['mobile'] ?? '');
         $iRouteID = intval($_REQUEST['routeId'] ?? 0);
         $iStopID = intval($_REQUEST['stopId'] ?? 0);
-        
+
         if (empty($iStaffID)) {
             echo json_encode([
                 "error" => [
@@ -330,7 +330,7 @@ switch ($mode) {
             ]);
             exit;
         }
-        
+
         // Validate required fields
         if (empty($vCode)) {
             echo json_encode([
@@ -341,7 +341,7 @@ switch ($mode) {
             ]);
             exit;
         }
-        
+
         if (empty($vName)) {
             echo json_encode([
                 "error" => [
@@ -351,7 +351,7 @@ switch ($mode) {
             ]);
             exit;
         }
-        
+
         if (empty($vMobile)) {
             echo json_encode([
                 "error" => [
@@ -361,7 +361,7 @@ switch ($mode) {
             ]);
             exit;
         }
-        
+
         // Validate mobile number format
         if (!preg_match('/^[0-9]{10}$/', $vMobile)) {
             echo json_encode([
@@ -372,11 +372,11 @@ switch ($mode) {
             ]);
             exit;
         }
-        
+
         // Check if staff exists
         $existsSql = "SELECT iStaffID FROM staff WHERE iStaffID = $iStaffID AND cStatus != 'X'";
         $existsRes = sql_query($existsSql);
-        
+
         if (sql_num_rows($existsRes) == 0) {
             echo json_encode([
                 "error" => [
@@ -386,11 +386,11 @@ switch ($mode) {
             ]);
             exit;
         }
-        
+
         // Check for duplicate vCode or vMobile (excluding current staff)
         $checkSql = "SELECT iStaffID, vCode, vMobile FROM staff WHERE (vCode = '$vCode' OR vMobile = '$vMobile') AND iStaffID != $iStaffID AND cStatus != 'X'";
         $checkRes = sql_query($checkSql);
-        
+
         if (sql_num_rows($checkRes) > 0) {
             $existingRow = sql_fetch_assoc($checkRes);
             if ($existingRow['vCode'] === $vCode) {
@@ -412,7 +412,7 @@ switch ($mode) {
                 exit;
             }
         }
-        
+
         // Update staff record
         $sql = "UPDATE staff SET 
                     vCode = '$vCode',
@@ -421,7 +421,7 @@ switch ($mode) {
                     iRouteID = $iRouteID,
                     iStopID = $iStopID
                 WHERE iStaffID = $iStaffID";
-        
+
         if (sql_query($sql)) {
             echo json_encode([
                 "data" => [
@@ -442,7 +442,7 @@ switch ($mode) {
     // ===================== CASE 5: DELETE =====================
     case 'DELETE_STAFF':
         $iStaffID = intval($_REQUEST['id'] ?? 0);
-        
+
         if (empty($iStaffID)) {
             echo json_encode([
                 "error" => [
@@ -452,11 +452,11 @@ switch ($mode) {
             ]);
             exit;
         }
-        
+
         // Check if staff exists
         $existsSql = "SELECT iStaffID FROM staff WHERE iStaffID = $iStaffID AND cStatus != 'X'";
         $existsRes = sql_query($existsSql);
-        
+
         if (sql_num_rows($existsRes) == 0) {
             echo json_encode([
                 "error" => [
@@ -466,10 +466,10 @@ switch ($mode) {
             ]);
             exit;
         }
-        
+
         // Soft delete - mark as deleted
         $sql = "UPDATE staff SET cStatus = 'X' WHERE iStaffID = $iStaffID";
-        
+
         if (sql_query($sql)) {
             echo json_encode([
                 "data" => [
@@ -495,17 +495,17 @@ switch ($mode) {
                             WHERE r.cStatus = 'A' AND s.cStatus = 'A'
                             ORDER BY r.iRouteID, s.iStopID";
         $routeStopsResult = sql_query($routeStopsQuery);
-        
+
         $routes = [];
         $currentRouteId = null;
         $currentRoute = null;
-        
+
         while ($row = sql_fetch_assoc($routeStopsResult)) {
             if ($currentRouteId !== $row['iRouteID']) {
                 if ($currentRoute !== null) {
                     $routes[] = $currentRoute;
                 }
-                
+
                 $currentRouteId = $row['iRouteID'];
                 $currentRoute = [
                     "id" => (int) $row['iRouteID'],
@@ -513,7 +513,7 @@ switch ($mode) {
                     "stops" => []
                 ];
             }
-            
+
             if ($row['iStopID'] !== null) {
                 $currentRoute["stops"][] = [
                     "id" => (int) $row['iStopID'],
@@ -521,11 +521,11 @@ switch ($mode) {
                 ];
             }
         }
-        
+
         if ($currentRoute !== null) {
             $routes[] = $currentRoute;
         }
-        
+
         echo json_encode([
             "data" => [
                 "routes" => $routes
@@ -533,11 +533,11 @@ switch ($mode) {
             "statusCode" => 200
         ]);
         break;
-        
+
     // ===================== CASE 7: VIEW_STAFF =====================
     case 'STAFF_VIEW':
-        
-    $overviewSql = "
+
+        $overviewSql = "
         SELECT 
             r.iTrReqID,
             r.iStaffID AS staffid,
@@ -562,38 +562,38 @@ switch ($mode) {
         ORDER BY sendStatus DESC, r.iTrReqID DESC
     ";
 
-    $overviewRes = sql_query($overviewSql);
- $overviewResCount= sql_num_rows($overviewRes);
-    $rowData = [];
-    while ($row = sql_fetch_assoc($overviewRes)) {
-        $rowData[] = [
-            "requestId"   => (int)$row['iTrReqID'],
-            "staffid"     => (int)$row['staffid'],
-            "date"        => date('j M Y', strtotime($row['date'])),
-            "status"      => db_output2($row['status']),
-            "route"       => db_output2($row['route']),
-            "pickup"      => db_output2($row['pickup']),
-            "pickupTime"  => date('H:i', strtotime($row['pickupTime'])),
-            "enteredTime" => $row['enteredTime'] ? date('H:i', strtotime($row['enteredTime'])) : "",
-            "vehiNum"     => db_output2($row['vehiNum']),
-            "sendStatus"  => $row['sendStatus']
-        ];
-    }
+        $overviewRes = sql_query($overviewSql);
+        //$overviewResCount= sql_num_rows($overviewRes);
+        $rowData = [];
+        while ($row = sql_fetch_assoc($overviewRes)) {
+            $rowData[] = [
+                "requestId"   => (int)$row['iTrReqID'],
+                "staffid"     => (int)$row['staffid'],
+                "date"        => date('j M Y', strtotime($row['date'])),
+                "status"      => db_output2($row['status']),
+                "route"       => db_output2($row['route']),
+                "pickup"      => db_output2($row['pickup']),
+                "pickupTime"  => date('H:i', strtotime($row['pickupTime'])),
+                "enteredTime" => $row['enteredTime'] ? date('H:i', strtotime($row['enteredTime'])) : "",
+                "vehiNum"     => db_output2($row['vehiNum']),
+                "sendStatus"  => $row['sendStatus']
+            ];
+        }
 
-    echo json_encode([
-        "data" => [
-            "rowData" => $rowData
-        ],
-        "count" => $overviewResCount,
-        "statusCode" => 200
-    ]);
+        echo json_encode([
+            "data" => [
+                "rowData" => $rowData
+            ],
+            // "count" => $overviewResCount,
+            "statusCode" => 200
+        ]);
 
-    exit;
+        exit;
 
-    // ===================== CASE 8: TOGGLE_STATUS =====================
+        // ===================== CASE 8: TOGGLE_STATUS =====================
     case 'TOGGLE_STATUS':
         $id = intval($_REQUEST['iStaffID'] ?? 0);
-        
+
         if ($id <= 0) {
             echo json_encode([
                 "error" => [
@@ -607,7 +607,7 @@ switch ($mode) {
         // Check current status
         $currentSql = "SELECT cStatus FROM staff WHERE iStaffID = $id AND cStatus IN ('A', 'I')";
         $currentRes = sql_query($currentSql);
-        
+
         if (sql_num_rows($currentRes) == 0) {
             echo json_encode([
                 "error" => [
@@ -622,8 +622,96 @@ switch ($mode) {
         $result = toggleStatus($id, 'staff', 'iStaffID', 'cStatus', 'vName', 'STF', $user_id);
         echo json_encode($result);
         break;
+   // ===================== CASE 9: IMOPORT_STAFF =====================
+    case 'IMPORT_STAFF':
+        $rows = $_REQUEST['staffData'] ?? [];
+        $inserted = [];
+        $skipped = [];
 
-    // ===================== DEFAULT =====================
+        foreach ($rows as $index => $row) {
+
+            $vCode = db_input($row['code'] ?? '');
+            $vName = db_input($row['name'] ?? '');
+            $vMobile = db_input($row['mobile'] ?? '');
+            $iRouteID = 0;
+            $iStopID = 0;
+
+            // Validate empty fields
+            if ($vCode === '' || $vName === '' || $vMobile === '') {
+                $skipped[] = [
+                    "row" => $index + 1,
+                    "code" => $vCode,
+                    "mobile" => $vMobile,
+                    "reason" => "Missing required fields"
+                ];
+                continue;
+            }
+
+            // Validate mobile format
+            if (!preg_match('/^[0-9]{10}$/', $vMobile)) {
+                $skipped[] = [
+                    "row" => $index + 1,
+                    "code" => $vCode,
+                    "mobile" => $vMobile,
+                    "reason" => "Invalid mobile number format"
+                ];
+                continue;
+            }
+
+            // Check duplicates in DB
+            $checkSql = "SELECT iStaffID FROM staff 
+                     WHERE (vCode = '$vCode' OR vMobile = '$vMobile') 
+                     AND cStatus != 'X'";
+            $checkRes = sql_query($checkSql);
+
+            if (sql_num_rows($checkRes) > 0) {
+                $skipped[] = [
+                    "row" => $index + 1,
+                    "code" => $vCode,
+                    "mobile" => $vMobile,
+                    "reason" => "Duplicate code or mobile"
+                ];
+                continue;
+            }
+
+            // Insert valid record
+            $iStaffID = NextID('iStaffID', 'staff');
+            $cStatus = 'A';
+            $dtRegistered = NOW;
+
+            $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile, iRouteID, iStopID, dtRegistered, cStatus)
+                VALUES ($iStaffID, '$vCode', '$vName', '$vMobile', $iRouteID, $iStopID, '$dtRegistered', '$cStatus')";
+
+            if (sql_query($sql)) {
+                $inserted[] = [
+                    "row" => $index + 1,
+                    "id" => $iStaffID,
+                    "code" => $vCode,
+                    "mobile" => $vMobile
+                ];
+            } else {
+                $skipped[] = [
+                    "row" => $index + 1,
+                    "code" => $vCode,
+                    "mobile" => $vMobile,
+                    "reason" => "Failed to insert row"
+                ];
+            }
+        }
+
+        // Final Response
+        echo json_encode([
+            "data" => [
+                 "message" => "Staff member deleted successfully",
+              //  "inserted" => $inserted,
+                "skipped" => $skipped
+            ],
+            "statusCode" => 200 
+        ]);
+        exit;
+
+
+        // ===================== DEFAULT =====================
     default:
         echo json_encode([
             "error" => [
