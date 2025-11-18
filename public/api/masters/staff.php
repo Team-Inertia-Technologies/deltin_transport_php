@@ -565,29 +565,34 @@ switch ($mode) {
     $overviewRes = sql_query($overviewSql);
 
     $rowData = [];
-    while ($row = sql_fetch_assoc($overviewRes)) {
-        $rowData[] = [
-            "requestId"   => (int)$row['iTrReqID'],
-            "staffid"     => (int)$row['staffid'],
-            "date"        => date('j M Y', strtotime($row['date'])),
-            "status"      => db_output2($row['status']),
-            "route"       => db_output2($row['route']),
-            "pickup"      => db_output2($row['pickup']),
-            "pickupTime"  => date('H:i', strtotime($row['pickupTime'])),
-            "enteredTime" => $row['enteredTime'] ? date('H:i', strtotime($row['enteredTime'])) : "",
-            "vehiNum"     => db_output2($row['vehiNum']),
-            "sendStatus"  => $row['sendStatus']
-        ];
-    }
+    // while ($row = sql_fetch_assoc($overviewRes)) {
+    //     $rowData[] = [
+    //         "requestId"   => (int)$row['iTrReqID'],
+    //         "staffid"     => (int)$row['staffid'],
+    //         "date"        => date('j M Y', strtotime($row['date'])),
+    //         "status"      => db_output2($row['status']),
+    //         "route"       => db_output2($row['route']),
+    //         "pickup"      => db_output2($row['pickup']),
+    //         "pickupTime"  => date('H:i', strtotime($row['pickupTime'])),
+    //         "enteredTime" => $row['enteredTime'] ? date('H:i', strtotime($row['enteredTime'])) : "",
+    //         "vehiNum"     => db_output2($row['vehiNum']),
+    //         "sendStatus"  => $row['sendStatus']
+    //     ];
+    // }
+echo json_encode([
+    "user_id" => $user_id,
+    "sql" => $overviewSql
+]);
+exit;
 
-    echo json_encode([
-        "data" => [
-            "rowData" => $rowData
-        ],
-        "statusCode" => 200
-    ]);
+    // echo json_encode([
+    //     "data" => [
+    //         "rowData" => $rowData
+    //     ],
+    //     "statusCode" => 200
+    // ]);
 
-    exit;
+    // exit;
 
     // ===================== CASE 8: TOGGLE_STATUS =====================
     case 'TOGGLE_STATUS':
