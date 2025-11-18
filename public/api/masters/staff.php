@@ -536,30 +536,7 @@ switch ($mode) {
         
     // ===================== CASE 7: VIEW_STAFF =====================
     case 'STAFF_VIEW':
-
-    $user_id = intval($_REQUEST['user_id'] ?? 0);
-
-    if ($user_id == 0) {
-        echo json_encode([
-            "error" => ["message" => "Missing user_id"],
-            "statusCode" => 400
-        ]);
-        exit;
-    }
-   // Check current status
-        $currentSql = "SELECT cStatus FROM staff WHERE iStaffID = $id AND cStatus IN ('A', 'I')";
-        $currentRes = sql_query($currentSql);
         
-        if (sql_num_rows($currentRes) == 0) {
-            echo json_encode([
-                "error" => [
-                    "message" => "Staff member not found"
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
-
     $overviewSql = "
         SELECT 
             r.iTrReqID,
