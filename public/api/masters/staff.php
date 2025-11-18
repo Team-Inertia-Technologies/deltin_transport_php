@@ -536,6 +536,31 @@ switch ($mode) {
 
     // ===================== CASE 7: VIEW_STAFF =====================
     case 'STAFF_VIEW':
+        $iStaffID = intval($_REQUEST['id'] ?? 0);
+
+        if (empty($iStaffID)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Staff ID is required"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Check if staff exists
+        $existsSql = "SELECT iStaffID FROM staff WHERE iStaffID = $iStaffID AND cStatus != 'X'";
+        $existsRes = sql_query($existsSql);
+
+        if (sql_num_rows($existsRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Staff member not found"
+                ],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
 
         $overviewSql = "
         SELECT 
@@ -557,7 +582,7 @@ switch ($mode) {
         INNER JOIN st_route_stops rs ON r.iStopID = rs.iStopID
         INNER JOIN st_trips t ON r.iTripID = t.iTripID
         LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID
-        WHERE r.iStaffID = $user_id 
+        WHERE r.iStaffID = $iStaffID 
         AND r.cStatus = 'A'
         ORDER BY sendStatus DESC, r.iTrReqID DESC
     ";
@@ -702,7 +727,7 @@ switch ($mode) {
         // Final Response
         echo json_encode([
             "data" => [
-                 "message" => "Staff member deleted successfully",
+                 "message" => "Staff member inserted successfully",
               //  "inserted" => $inserted,
                 "skipped" => $skipped
             ],
