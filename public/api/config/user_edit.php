@@ -31,9 +31,9 @@ try {
 		$cmbproperty = $_POST['cmbproperty2'] ?? [];
 
         $sql = "INSERT INTO users_temp 
-                (iUserID, vName, vUName, vPassword, vEmail, vPhone, iLevel, cStatus, dtCreated, iCreated_UserID)
+                (iUserID, vName, vUName, vPassword, vEmail, vPhone, iLevel, cStatus, dtCreated, iCreated_UserID, cRefType)
                 VALUES 
-                ($txtid, '$txtname', '$txtusername', '$txtpassword', '$txtemail', '$txtphone', $cmblevel, 'D', '$dtCreated', $sess_user_id)";
+                ($txtid, '$txtname', '$txtusername', '$txtpassword', '$txtemail', '$txtphone', $cmblevel, 'D', '$dtCreated', $sess_user_id, 'A')";
         sql_query($sql, 'API.USER.INSERT');
 		LogMasterEdit($txtid, 'USR', $mode, $txtname);
 		
