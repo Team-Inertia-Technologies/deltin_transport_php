@@ -41,11 +41,11 @@ try {
 			$cmbproperty = [$cmbproperty];
 		}
 
-		if (!empty($cmbproperty)) {
-			foreach ($cmbproperty as $p) {
-				sql_query("INSERT INTO user_temp_property_assoc VALUES ($txtid, '$p')");
-			}
-		}
+		// if (!empty($cmbproperty)) {
+		// 	foreach ($cmbproperty as $p) {
+		// 		sql_query("INSERT INTO user_temp_property_assoc VALUES ($txtid, '$p')");
+		// 	}
+		// }
 
           // Fetch inserted status
 		$status = GetXFromYID("SELECT cStatus FROM users_temp WHERE iUserID = $txtid");
@@ -63,7 +63,7 @@ try {
     }
 	if ($mode === 'E') {
 		$dataArr = GetDataFromID("users_temp", "iUserID", $txtid);
-		$dataArr2 = GetDataFromID("user_temp_property_assoc", "iUserID", $txtid);
+		//$dataArr2 = GetDataFromID("user_temp_property_assoc", "iUserID", $txtid);
 		if (empty($dataArr) || $txtid == 0) {
 			http_response_code(400);
 			echo json_encode(['statusCode' => 400, 'message' => 'Invalid User ID']);
@@ -87,7 +87,7 @@ try {
 	$txtaction = db_output($dataArr[0]->cAction);
 	$status_str = GetStatusImageString2('USERS', $rdstatus, $txtid, false);
 	$txtreason = db_output($dataArr[0]->vRemark);
-	$cmbproperty2 = GetXArrFromYID('select iPropertyID from user_temp_property_assoc where iUserID=' . $txtid);
+	//$cmbproperty2 = GetXArrFromYID('select iPropertyID from user_temp_property_assoc where iUserID=' . $txtid);
 
 	http_response_code(200);
         echo json_encode([
@@ -105,8 +105,8 @@ try {
 				'prevUserData' => $prevUserData,
 				'cAction' => $txtaction,
 				'status_str' => $status_str,
-				'vRemark' => $txtreason,
-				'properties' => $cmbproperty2
+				'vRemark' => $txtreason
+				//'properties' => $cmbproperty2
 			]
         ]);
         exit;
@@ -146,19 +146,19 @@ try {
 			$update_fields[] = "iLevel = " . db_input($_POST['cmblevel']);
 		}
 	
-		$new_properties = $_POST['cmbproperty2'] ?? [];
-		$current_properties = GetXArrFromYID("SELECT iPropertyID FROM user_temp_property_assoc WHERE iUserID = '$txtid'");
+		// $new_properties = $_POST['cmbproperty2'] ?? [];
+		// $current_properties = GetXArrFromYID("SELECT iPropertyID FROM user_temp_property_assoc WHERE iUserID = '$txtid'");
 	
-		sort($new_properties);
-		sort($current_properties);
+		// sort($new_properties);
+		// sort($current_properties);
 	
-		if ($new_properties !== $current_properties) {
-			sql_query("DELETE FROM user_temp_property_assoc WHERE iUserID = '$txtid'");
-			foreach ($new_properties as $p) {
-				sql_query("INSERT INTO user_temp_property_assoc (iUserID, iPropertyID) VALUES ('$txtid', '$p')");
-			}
-			$update_fields[] = "cStatus = 'D'";
-		}
+		// if ($new_properties !== $current_properties) {
+		// 	sql_query("DELETE FROM user_temp_property_assoc WHERE iUserID = '$txtid'");
+		// 	foreach ($new_properties as $p) {
+		// 		sql_query("INSERT INTO user_temp_property_assoc (iUserID, iPropertyID) VALUES ('$txtid', '$p')");
+		// 	}
+		// 	$update_fields[] = "cStatus = 'D'";
+		// }
 	
 		if (!empty($update_fields)) {
 			if (db_output($original->cStatus) == 'A') {
@@ -236,19 +236,19 @@ try {
 						}
 	
 	
-						$propRes = sql_query("SELECT iPropertyID FROM user_temp_property_assoc WHERE iUserID = " . intval($txtid));
-						$values = [];
-						while ($row = sql_fetch_assoc($propRes)) {
-							$propertyID = intval($row['iPropertyID']);
-							$existsRes = sql_query("SELECT 1 FROM users_property_assoc WHERE iUserID = " . intval($txtid) . " AND iPropertyID = $propertyID LIMIT 1");
-							if (sql_num_rows($existsRes) == 0) {
-								$values[] = "(" . intval($txtid) . ", $propertyID)";
-							}
-						}
-						if (!empty($values)) {
-							$valuesStr = implode(',', $values);
-							sql_query("INSERT INTO users_property_assoc (iUserID, iPropertyID) VALUES $valuesStr");
-						}
+						// $propRes = sql_query("SELECT iPropertyID FROM user_temp_property_assoc WHERE iUserID = " . intval($txtid));
+						// $values = [];
+						// while ($row = sql_fetch_assoc($propRes)) {
+						// 	$propertyID = intval($row['iPropertyID']);
+						// 	$existsRes = sql_query("SELECT 1 FROM users_property_assoc WHERE iUserID = " . intval($txtid) . " AND iPropertyID = $propertyID LIMIT 1");
+						// 	if (sql_num_rows($existsRes) == 0) {
+						// 		$values[] = "(" . intval($txtid) . ", $propertyID)";
+						// 	}
+						// }
+						// if (!empty($values)) {
+						// 	$valuesStr = implode(',', $values);
+						// 	sql_query("INSERT INTO users_property_assoc (iUserID, iPropertyID) VALUES $valuesStr");
+						// }
 	
 						if (!empty($vPassword)) {
 							$iLYTPID = NextID('iLYTPID', 'log_user_temppassword');
@@ -282,20 +282,20 @@ try {
 						sql_query($insertSql);
 	
 	
-						$propRes = sql_query("SELECT iPropertyID FROM user_temp_property_assoc WHERE iUserID = $txtid");
+						// $propRes = sql_query("SELECT iPropertyID FROM user_temp_property_assoc WHERE iUserID = $txtid");
 	
-						$values = [];
-						while ($row = sql_fetch_assoc($propRes)) {
-							$propertyID = $row['iPropertyID'];
-							$values[] = "($txtid, $propertyID)";
-						}
+						// $values = [];
+						// while ($row = sql_fetch_assoc($propRes)) {
+						// 	$propertyID = $row['iPropertyID'];
+						// 	$values[] = "($txtid, $propertyID)";
+						// }
 						//DFA($values);
-						if (!empty($values)) {
-							$valuesStr = implode(',', $values);
-							sql_query("INSERT INTO users_property_assoc (iUserID, iPropertyID) VALUES $valuesStr");
-							//echo "INSERT INTO user_property_assoc (iUserID, iPropertyID) VALUES $valuesStr";
+						// if (!empty($values)) {
+						// 	$valuesStr = implode(',', $values);
+						// 	sql_query("INSERT INTO users_property_assoc (iUserID, iPropertyID) VALUES $valuesStr");
+						// 	//echo "INSERT INTO user_property_assoc (iUserID, iPropertyID) VALUES $valuesStr";
 	
-						}
+						// }
 						$iLYTPID = NextID('iLYTPID', 'log_user_temppassword');
 						$sq = "INSERT INTO log_user_temppassword (iLYTPID, dtEntry, iUserID, vPassword, cIsTemp, cStatus) VALUES ('$iLYTPID',NOW(),'$txtid','$vPassword','Y','A')";
 						sql_query($sq);
