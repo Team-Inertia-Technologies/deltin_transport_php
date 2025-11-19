@@ -146,6 +146,7 @@ switch ($mode) {
         $res = sql_query($sql);
 
         $data = [];
+        $rowData=[];
         while ($row = sql_fetch_assoc($res)) {
             $vehicleID = intval($row['iVehicleID']);
 

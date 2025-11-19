@@ -27,134 +27,136 @@ switch ($mode) {
 
     // ===================== CASE: ADD_ONLOAD =====================
     case 'ADD_ONLOAD':
-        $staffSql = "SELECT iRouteID, iStopID FROM staff WHERE iStaffID = $user_id AND cStatus = 'A'";
-        $staffRes = sql_query($staffSql);
-        $staffData = sql_fetch_assoc($staffRes);
 
-        $staffRouteID = (int) ($staffData['iRouteID'] ?? 0);
-        $staffStopID = (int) ($staffData['iStopID'] ?? 0);
+    // Fetch staff route & stop
+    $staffSql = "SELECT iRouteID, iStopID 
+                 FROM staff 
+                 WHERE iStaffID = $user_id AND cStatus = 'A'";
+    $staffRes = sql_query($staffSql);
+    $staffData = sql_fetch_assoc($staffRes);
 
-        // Get routes with their pickup options (stops) and time options from trips
-        $routesSql = "SELECT iRouteID, vName, vDestination FROM st_route WHERE cStatus = 'A' ORDER BY iRank";
-        $routesRes = sql_query($routesSql);
+    $staffRouteID = (int) ($staffData['iRouteID'] ?? 0);
+    $staffStopID  = (int) ($staffData['iStopID'] ?? 0);
 
-        $routes = [];
+    // Fetch all active routes
+    $routesSql = "SELECT iRouteID, vName, vDestination 
+                  FROM st_route 
+                  WHERE cStatus = 'A' 
+                  ORDER BY iRank";
+    $routesRes = sql_query($routesSql);
 
-        while ($routeRow = sql_fetch_assoc($routesRes)) {
-            $routeID = (int) $routeRow['iRouteID'];
-            $routeName = $routeRow['vName'];
+    $routes = [];
 
-            // Get pickup options (stops) for this route with timing calculations
-            $stopsSql = "SELECT iStopID, vName, tOffsetFromStart FROM st_route_stops 
-                        WHERE iRouteID = $routeID AND cStatus = 'A' 
-                        ORDER BY iRank";
-            $stopsRes = sql_query($stopsSql);
+    while ($routeRow = sql_fetch_assoc($routesRes)) {
 
-            // Get the earliest trip time for this route to calculate stop timings
-            $earliestTripSql = "SELECT TIME(dtTrip) as trip_time 
-                               FROM st_trips 
-                               WHERE iRouteID = $routeID AND cStatus = 'A' 
-                               ORDER BY TIME(dtTrip) 
-                               LIMIT 1";
-            $earliestTripRes = sql_query($earliestTripSql);
-            $baseTime = '00:00:00'; // Default base time
+        $routeID   = (int) $routeRow['iRouteID'];
+        $routeName = db_output2($routeRow['vName']);
 
-            if (sql_num_rows($earliestTripRes) > 0) {
-                $earliestTripData = sql_fetch_assoc($earliestTripRes);
-                $baseTime = $earliestTripData['trip_time'];
+        // Query stops for this route (used later for each time slot)
+        $stopsSql = "SELECT iStopID, vName, tOffsetFromStart 
+                     FROM st_route_stops 
+                     WHERE iRouteID = $routeID AND cStatus = 'A'
+                     ORDER BY iRank";
+
+        // ---- FETCH AVAILABLE TIME SLOTS ----
+        $timeSql = "SELECT TIME(dtTrip) AS trip_time
+                    FROM st_trips
+                    WHERE iRouteID = $routeID AND cStatus = 'A'
+                    GROUP BY TIME(dtTrip)
+                    ORDER BY trip_time";
+        $timeRes = sql_query($timeSql);
+
+        $timeOpt = [];
+        $timeIndex = 1;
+
+        while ($timeRow = sql_fetch_assoc($timeRes)) {
+
+            $tripTime = $timeRow['trip_time']; // base time for this slot (HH:MM:SS)
+
+            // ---- DAYS FOR THIS TIME SLOT ----
+            $today = date('Y-m-d');
+            $maxDate = date('Y-m-d', strtotime('+7 days'));
+            $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
+
+            $daysSql = "SELECT iTripID, DATE(dtTrip) AS trip_date
+                        FROM st_trips
+                        WHERE iRouteID = $routeID AND cStatus = 'A'
+                        AND TIME(dtTrip) = '$tripTime'
+                        AND DATE(dtTrip) >= '$today' 
+                        AND DATE(dtTrip) <= '$maxDate'
+                        AND dtTrip >= '$twoHoursFromNow'
+                        ORDER BY trip_date 
+                        LIMIT 7";
+            $daysRes = sql_query($daysSql);
+
+            $daysArr = [];
+            if (sql_num_rows($daysRes) > 0) {
+                $daysArr[] = ["id" => 0, "name" => "Select All"];
             }
 
+            while ($dayRow = sql_fetch_assoc($daysRes)) {
+                $daysArr[] = [
+                    "id"   => (int) $dayRow['iTripID'],
+                    "name" => date('l, j F', strtotime($dayRow['trip_date']))
+                ];
+            }
+
+            // Skip this time slot if no valid days
+            if (count($daysArr) <= 1) {
+                continue;
+            }
+
+            // ---- PICKUP OPTIONS FOR THIS TIME SLOT ----
             $pickUpOpt = [];
+            $stopsRes = sql_query($stopsSql); // re-run stops query fresh
+
             while ($stopRow = sql_fetch_assoc($stopsRes)) {
+
                 $offsetMinutes = intval($stopRow['tOffsetFromStart']);
-                $stopTime = date('H:i', strtotime($baseTime) + $offsetMinutes * 60);
+
+                // stopTime = tripTime + offset
+                $stopTime = date('H:i', strtotime($tripTime) + ($offsetMinutes * 60));
 
                 $pickUpOpt[] = [
-                    "id" => (int) $stopRow['iStopID'],
+                    "id"   => (int) $stopRow['iStopID'],
                     "name" => db_output2($stopRow['vName']) . " | " . $stopTime
                 ];
             }
 
-            // Get time options from existing trips for this route with their specific days
-            $timeSql = "SELECT TIME(dtTrip) as trip_time 
-                       FROM st_trips 
-                       WHERE iRouteID = $routeID AND cStatus = 'A' 
-                       GROUP BY TIME(dtTrip)
-                       ORDER BY trip_time";
-            $timeRes = sql_query($timeSql);
+            // Final time slot entry
+            $timeOpt[] = [
+                "id"       => $timeIndex,
+                "name"     => date('H:i', strtotime($tripTime)),
+                "time"     => $tripTime,
+                "daysArr"  => $daysArr,
+                "pickUpOpt"=> $pickUpOpt  // moved here
+            ];
 
-            $timeOpt = [];
-            $timeIndex = 1; // Start from 1 for time IDs
-
-            while ($timeRow = sql_fetch_assoc($timeRes)) {
-                $tripTime = $timeRow['trip_time'];
-
-                // Get days array for this specific time
-                $today = date('Y-m-d');
-                $maxDate = date('Y-m-d', strtotime('+7 days'));
-                $currentDateTime = date('Y-m-d H:i:s');
-                $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
-
-                $daysSql = "SELECT iTripID, DATE(dtTrip) as trip_date, dtTrip
-                           FROM st_trips 
-                           WHERE iRouteID = $routeID AND cStatus = 'A' 
-                           AND TIME(dtTrip) = '$tripTime'
-                           AND DATE(dtTrip) >= '$today' AND DATE(dtTrip) <= '$maxDate'
-                           AND dtTrip >= '$twoHoursFromNow'
-                           ORDER BY trip_date 
-                           LIMIT 7";
-                $daysRes = sql_query($daysSql);
-
-                $daysArr = [];
-
-                // Only add "Select All" if there are actual days available
-                if (sql_num_rows($daysRes) > 0) {
-                    $daysArr[] = ["id" => 0, "name" => "Select All"];
-                }
-
-                while ($dayRow = sql_fetch_assoc($daysRes)) {
-                    $tripDate = $dayRow['trip_date'];
-                    $tripID = (int) $dayRow['iTripID'];
-                    $dayName = date('l, j F', strtotime($tripDate)); // Format: "Monday, 26 August"
-
-                    $daysArr[] = [
-                        "id" => $tripID,
-                        "name" => $dayName
-                    ];
-                }
-
-                // Only include time if it has available days
-                if (count($daysArr) > 1) { // More than just "Select All"
-                    $timeOpt[] = [
-                        "id" => $timeIndex,
-                        "name" => date('H:i', strtotime($tripTime)),
-                        "time" => $tripTime,
-                        "daysArr" => $daysArr
-                    ];
-                    $timeIndex++;
-                }
-            }
-
-            // Only include route if it has time options with available days
-            if (!empty($timeOpt)) {
-                $routes[] = [
-                    "id" => $routeID,
-                    "name" => db_output2($routeName),
-                    "pickUpOpt" => $pickUpOpt,
-                    "timeOpt" => $timeOpt
-                ];
-            }
+            $timeIndex++;
         }
 
-        echo json_encode([
-            "data" => [
-                "routes" => $routes,
-                "staffRouteID" => $staffRouteID,
-                "staffStopID" => $staffStopID
-            ],
-            "statusCode" => 200
-        ]);
-        break;
+        // Include route only if time options exist
+        if (!empty($timeOpt)) {
+            $routes[] = [
+                "id"        => $routeID,
+                "name"      => $routeName,
+                "pickUpOpt" => [],         // maintained for compatibility (not removed)
+                "timeOpt"   => $timeOpt
+            ];
+        }
+    }
+
+    echo json_encode([
+        "data" => [
+            "routes"       => $routes,
+            "staffRouteID" => $staffRouteID,
+            "staffStopID"  => $staffStopID
+        ],
+        "statusCode" => 200
+    ]);
+
+break;
+
 
     // ===================== CASE: ADD_REQUEST =====================
     // Logic: When adding a new request, increase iRequested in st_trips table.
