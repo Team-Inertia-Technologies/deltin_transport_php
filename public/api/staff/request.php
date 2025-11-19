@@ -140,7 +140,7 @@ switch ($mode) {
             $routes[] = [
                 "id"        => $routeID,
                 "name"      => $routeName,
-                "pickUpOpt" => [],         // maintained for compatibility (not removed)
+            //    "pickUpOpt" => [],         // maintained for compatibility (not removed)
                 "timeOpt"   => $timeOpt
             ];
         }
