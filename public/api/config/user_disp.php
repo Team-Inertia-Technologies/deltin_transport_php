@@ -69,7 +69,7 @@ try {
     }
     
     // Fetch users
-    $sql = "SELECT * FROM users $cond $cond2 ORDER BY vName ASC";
+    $sql = "SELECT * FROM users_temp $cond $cond2 ORDER BY vName ASC";
     // echo $sql;
     // exit;
     $result = sql_query($sql);
