@@ -266,10 +266,10 @@ break;
             $currentDateTime = date('Y-m-d H:i:s');
             $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
 
-            if ($tripDateTime < $twoHoursFromNow) {
-                $errors[] = "Cannot book trip on $tripDate - bookings must be made at least 2 hours in advance";
-                continue;
-            }
+            // if ($tripDateTime < $twoHoursFromNow) {
+            //     $errors[] = "Cannot book trip on $tripDate - bookings must be made at least 2 hours in advance";
+            //     continue;
+            // }
 
             // Check if request already exists for this staff, route, and trip
             $existingSql = "SELECT iTrReqID FROM st_request 
