@@ -1,6 +1,6 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// error_reporting(E_ALL);
+// ini_set('display_errors', 1);
 include "../../includes/common_api.php";
 
 header('Content-Type: application/json');
@@ -165,6 +165,7 @@ try {
 				$update_fields[] = "cStatus = 'D'";
 			}
 			$update_query = "UPDATE users_temp SET " . implode(", ", $update_fields) . " WHERE iUserID = $txtid";
+			echo $update_query;
 			sql_query($update_query);
 		}
 	
