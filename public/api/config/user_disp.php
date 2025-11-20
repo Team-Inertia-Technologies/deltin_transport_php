@@ -60,7 +60,7 @@ try {
     }
 
     $Status = [];
-    $STATUS_ARR = array("A" => "Active", "I" => "Inactive");
+    $STATUS_ARR = array("A" => "Active", "I" => "Inactive", "P" => "Sent For Approval", "U" => "Pending For Activation");
     foreach ($STATUS_ARR as $key => $value) {
         $Status[] = [
             "id" => $key,
