@@ -162,277 +162,281 @@ break;
     // Logic: When adding a new request, increase iRequested in st_trips table.
     // If trip capacity is exceeded, check for other trips with same grpID.
     // If all trips in group are full, add to the last trip anyway.
-    case 'ADD_REQUEST':
-        $route = intval($_REQUEST['route'] ?? 0);
-        $pickUp = intval($_REQUEST['pickUp'] ?? 0);
-        $time = intval($_REQUEST['time'] ?? 0);
-        $days = $_REQUEST['days'] ?? [];
+   case 'ADD_REQUEST':
+    // ensure timezone is what you expect (change if needed)
+    date_default_timezone_set('Asia/Kolkata');
 
-        // Validate required fields
-        if ($route == 0 || $pickUp == 0 || $time == 0 || empty($days)) {
+    $route = intval($_REQUEST['route'] ?? 0);
+    $pickUp = intval($_REQUEST['pickUp'] ?? 0);
+    $time = intval($_REQUEST['time'] ?? 0);
+    $days = $_REQUEST['days'] ?? [];
+
+    // Validate required fields
+    if ($route == 0 || $pickUp == 0 || ($time == 0 && empty($_REQUEST['timeValue'])) || empty($days)) {
+        echo json_encode([
+            "error" => [
+                "message" => "Missing required fields: route, pickUp, time/timeValue, or days"
+            ],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
+    if (!is_array($days)) {
+        $days = [$days];
+    }
+
+    // Get route details
+    $routeSql = "SELECT vName, vDestination FROM st_route WHERE iRouteID = $route AND cStatus = 'A'";
+    $routeRes = sql_query($routeSql);
+
+    if (sql_num_rows($routeRes) == 0) {
+        echo json_encode([
+            "error" => [
+                "message" => "Route not found"
+            ],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
+    $routeData = sql_fetch_assoc($routeRes);
+    $routeName = $routeData['vName'];
+    $destination = $routeData['vDestination'];
+
+    // Determine selected time (new structure: timeValue OR fallback to trip id)
+    $selectedTimeValue = trim($_REQUEST['timeValue'] ?? '');
+
+    if ($selectedTimeValue !== '') {
+        // Accept values like "17:00" or "17:00:00"
+        $selectedTime = $selectedTimeValue;
+    } else {
+        // Fallback: time is a trip id
+        $timeTripSql = "SELECT TIME(dtTrip) as trip_time FROM st_trips WHERE iTripID = $time AND cStatus = 'A'";
+        $timeTripRes = sql_query($timeTripSql);
+
+        if (sql_num_rows($timeTripRes) == 0) {
             echo json_encode([
                 "error" => [
-                    "message" => "Missing required fields: route, pickUp, time, or days"
+                    "message" => "Selected time not found. Please provide timeValue parameter."
                 ],
                 "statusCode" => 400
             ]);
             exit;
         }
 
-        if (!is_array($days)) {
-            $days = [$days];
+        $timeTripData = sql_fetch_assoc($timeTripRes);
+        $selectedTime = $timeTripData['trip_time'];
+    }
+
+    // Normalize selected time
+    $selectedTime = date('H:i:s', strtotime($selectedTime)); // "HH:MM:SS" format
+    $timing = date('H:i', strtotime($selectedTime)); // for response
+
+    // Get pickup point name
+    $pickupPointSql = "SELECT vName, tOffsetFromStart FROM st_route_stops WHERE iStopID = $pickUp AND cStatus = 'A'";
+    $pickupPointRes = sql_query($pickupPointSql);
+
+    if (sql_num_rows($pickupPointRes) == 0) {
+        echo json_encode([
+            "error" => [
+                "message" => "Pickup stop not found"
+            ],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
+    $pickupPointData = sql_fetch_assoc($pickupPointRes);
+    $pickupPointName = db_output2($pickupPointData['vName']);
+    $defaultOffsetMinutes = intval($pickupPointData['tOffsetFromStart'] ?? 0);
+
+    $successCount = 0;
+    $errors = [];
+    $selectedDays = [];
+
+    // Precompute now and two-hours-later timestamp
+    $nowTs = time();
+    $twoHoursLaterTs = $nowTs + 2 * 3600;
+
+    // Process each selected day (tripID)
+    foreach ($days as $tripIDRaw) {
+        $tripID = intval($tripIDRaw);
+
+        // Skip if tripID is 0 (Select All option)
+        if ($tripID == 0) continue;
+
+        // Verify the trip exists and get trip details (use full dtTrip)
+        $tripSql = "SELECT iTripID, dtTrip, iGrpID FROM st_trips WHERE iTripID = $tripID AND cStatus = 'A'";
+        $tripRes = sql_query($tripSql);
+
+        if (sql_num_rows($tripRes) == 0) {
+            $errors[] = "Trip ID $tripID not found";
+            continue;
         }
 
-        // Get route details
-        $routeSql = "SELECT vName, vDestination FROM st_route WHERE iRouteID = $route AND cStatus = 'A'";
-        $routeRes = sql_query($routeSql);
+        $tripData = sql_fetch_assoc($tripRes);
+        $tripDateOnly = date('Y-m-d', strtotime($tripData['dtTrip'])); // date portion
+        // Build full trip datetime using tripDate + selectedTime (selectedTime already normalized)
+        $tripDateTimeStr = $tripDateOnly . ' ' . $selectedTime;
+        $tripTs = strtotime($tripDateTimeStr);
 
-        if (sql_num_rows($routeRes) == 0) {
-            echo json_encode([
-                "error" => [
-                    "message" => "Route not found"
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
+        if ($tripTs === false) {
+            $errors[] = "Invalid trip datetime for trip ID $tripID";
+            continue;
         }
 
-        $routeData = sql_fetch_assoc($routeRes);
-        $routeName = $routeData['vName'];
-        $destination = $routeData['vDestination'];
-
-        // Get the actual time value - support both old (trip ID) and new (time value) structure
-        $selectedTimeValue = $_REQUEST['timeValue'] ?? '';
-
-        if (!empty($selectedTimeValue)) {
-            // New structure: time value is provided directly
-            $selectedTime = $selectedTimeValue;
-        } else {
-            // Fallback to old structure: get time from trip ID
-            $timeTripSql = "SELECT TIME(dtTrip) as trip_time FROM st_trips WHERE iTripID = $time AND cStatus = 'A'";
-            $timeTripRes = sql_query($timeTripSql);
-
-            if (sql_num_rows($timeTripRes) == 0) {
-                echo json_encode([
-                    "error" => [
-                        "message" => "Selected time not found. Please provide timeValue parameter."
-                    ],
-                    "statusCode" => 400
-                ]);
-                exit;
-            }
-
-            $timeTripData = sql_fetch_assoc($timeTripRes);
-            $selectedTime = $timeTripData['trip_time'];
+        // Check booking restriction: must be >= now + 2 hours
+        if ($tripTs < $twoHoursLaterTs) {
+            $errors[] = "Cannot book trip on $tripDateOnly - bookings must be made at least 2 hours in advance";
+            continue;
         }
 
-        $timing = date('H:i', strtotime($selectedTime));
+        // Check if request already exists for this staff, route, and trip
+        $existingSql = "SELECT iTrReqID FROM st_request 
+                        WHERE iStaffID = $user_id AND iRouteID = $route AND iTripID = $tripID AND cStatus = 'A'";
+        $existingRes = sql_query($existingSql);
 
-        // Get pickup point name
-        $pickupPointSql = "SELECT vName FROM st_route_stops WHERE iStopID = $pickUp AND cStatus = 'A'";
-        $pickupPointRes = sql_query($pickupPointSql);
-        $pickupPointName = '';
-
-        if (sql_num_rows($pickupPointRes) > 0) {
-            $pickupPointData = sql_fetch_assoc($pickupPointRes);
-            $pickupPointName = db_output2($pickupPointData['vName']);
+        if (sql_num_rows($existingRes) > 0) {
+            $errors[] = "Request already exists for trip on $tripDateOnly";
+            continue;
         }
 
-        $successCount = 0;
-        $errors = [];
-        $selectedDays = [];
+        // Get stop's offset time (we already fetched defaultOffsetMinutes)
+        // But re-query to be safe in case offset differs per stop (we already have the row)
+        $offsetMinutes = $defaultOffsetMinutes;
 
-        // Process each day (tripID)
-        foreach ($days as $tripID) {
-            $tripID = intval($tripID);
+        // Calculate pickup time: trip start time + stop offset (as H:i:s)
+        $pickupTs = $tripTs + ($offsetMinutes * 60);
+        $pickupTime = date('H:i:s', $pickupTs);
 
-            // Skip if tripID is 0 (Select All option)
-            if ($tripID == 0) continue;
+        // Get next ID and rank
+        $iTrReqID = NextID('iTrReqID', 'st_request');
+        $nextRank = GetMaxRank('st_request', "iStaffID=$user_id and cStatus='A'", 'iRank');
 
-            // Verify the trip exists and get trip details
-            $tripSql = "SELECT iTripID, dtTrip FROM st_trips WHERE iTripID = $tripID AND cStatus = 'A'";
-            $tripRes = sql_query($tripSql);
+        // Find the best available trip for this request: check group if present
+        $finalTripID = $tripID;
 
-            if (sql_num_rows($tripRes) == 0) {
-                $errors[] = "Trip ID $tripID not found";
-                continue;
-            }
+        $grpID = isset($tripData['iGrpID']) ? intval($tripData['iGrpID']) : 0;
+        if ($grpID > 0) {
+            $groupTripsSql = "SELECT iTripID, iCapacity, iRequested 
+                              FROM st_trips 
+                              WHERE iGrpID = $grpID AND cStatus = 'A' 
+                              ORDER BY iTripID";
+            $groupTripsRes = sql_query($groupTripsSql);
 
-            $tripData = sql_fetch_assoc($tripRes);
-            $tripDate = date('Y-m-d', strtotime($tripData['dtTrip']));
-            $tripDateTime = "$tripDate $selectedTime";
+            $availableTrip = null;
+            $lastTrip = null;
 
-            // Check if trip is within 2 hours from now (booking restriction)
-            $currentDateTime = date('Y-m-d H:i:s');
-            $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
+            while ($groupTripRow = sql_fetch_assoc($groupTripsRes)) {
+                $currentTripID = (int) $groupTripRow['iTripID'];
+                $capacity = (int) $groupTripRow['iCapacity'];
+                $requested = (int) $groupTripRow['iRequested'];
 
-            if ($tripDateTime < $twoHoursFromNow) {
-                $errors[] = "Cannot book trip on $tripDate - bookings must be made at least 2 hours in advance";
-                continue;
-            }
+                $lastTrip = $currentTripID;
 
-            // Check if request already exists for this staff, route, and trip
-            $existingSql = "SELECT iTrReqID FROM st_request 
-                           WHERE iStaffID = $user_id AND iRouteID = $route AND iTripID = $tripID AND cStatus = 'A'";
-            $existingRes = sql_query($existingSql);
-
-            if (sql_num_rows($existingRes) > 0) {
-                $errors[] = "Request already exists for trip on $tripDate";
-                continue;
-            }
-
-            // Get stop's offset time to calculate pickup time
-            $stopSql = "SELECT tOffsetFromStart FROM st_route_stops 
-                       WHERE iStopID = $pickUp AND cStatus = 'A'";
-            $stopRes = sql_query($stopSql);
-
-            if (sql_num_rows($stopRes) == 0) {
-                $errors[] = "Stop ID $pickUp not found";
-                continue;
-            }
-
-            $stopData = sql_fetch_assoc($stopRes);
-            $offsetMinutes = intval($stopData['tOffsetFromStart']);
-
-            // Calculate pickup time: trip start time + stop offset
-            $pickupTime = date('H:i:s', strtotime($selectedTime) + $offsetMinutes * 60);
-
-            // Get next ID and rank
-            $iTrReqID = NextID('iTrReqID', 'st_request');
-            $nextRank = GetMaxRank('st_request', "iStaffID=$user_id and cStatus='A'", 'iRank');
-
-            // Find the best available trip for this request
-            $finalTripID = $tripID;
-
-            // Get the group ID for this trip
-            $grpSql = "SELECT iGrpID FROM st_trips WHERE iTripID = $tripID AND cStatus = 'A'";
-            $grpRes = sql_query($grpSql);
-
-            if (sql_num_rows($grpRes) > 0) {
-                $grpData = sql_fetch_assoc($grpRes);
-                $grpID = (int) $grpData['iGrpID'];
-
-                // Get all trips in this group with their current capacity status
-                $groupTripsSql = "SELECT iTripID, iCapacity, iRequested 
-                                 FROM st_trips 
-                                 WHERE iGrpID = $grpID AND cStatus = 'A' 
-                                 ORDER BY iTripID";
-                $groupTripsRes = sql_query($groupTripsSql);
-
-                $availableTrip = null;
-                $lastTrip = null;
-
-                while ($groupTripRow = sql_fetch_assoc($groupTripsRes)) {
-                    $currentTripID = (int) $groupTripRow['iTripID'];
-                    $capacity = (int) $groupTripRow['iCapacity'];
-                    $requested = (int) $groupTripRow['iRequested'];
-
-                    $lastTrip = $currentTripID; // Keep track of last trip
-
-                    // Check if this trip has available capacity
-                    if ($requested < $capacity) {
-                        $availableTrip = $currentTripID;
-                        break; // Found available trip, use it
-                    }
+                // Ensure the trip's datetime (date + selectedTime) is still >= twoHoursLater
+                // (Optional: if group trips are other dates/times, you may want to check their dtTrip)
+                if ($requested < $capacity) {
+                    $availableTrip = $currentTripID;
+                    break;
                 }
-
-                // Use available trip if found, otherwise use the last trip in group
-                $finalTripID = $availableTrip ?? $lastTrip ?? $tripID;
             }
 
-            // Insert request
-            $currentDateTime = date('Y-m-d H:i:s');
+            $finalTripID = $availableTrip ?? $lastTrip ?? $tripID;
+        }
 
-            $insertSql = "INSERT INTO st_request (
-                iTrReqID,
-                iStaffID, 
-                iRouteID, 
-                dPickup, 
-                tPickup, 
-                iStopID, 
-                iTripID, 
-                dtReq, 
-                iRank, 
-                cStatus
-            ) VALUES (
-                $iTrReqID,
-                $user_id,
-                $route,
-                '$tripDate',
-                '$pickupTime',
-                $pickUp,
-                $finalTripID,
-                '$currentDateTime',
-                $nextRank,
-                'A'
-            )";
+        // Insert request
+        $currentDateTime = date('Y-m-d H:i:s');
 
-            if (sql_query($insertSql)) {
-                // Update iRequested count in st_trips table
-                $updateTripSql = "UPDATE st_trips 
-                                 SET iRequested = iRequested + 1 
-                                 WHERE iTripID = $finalTripID AND cStatus = 'A'";
+        $insertSql = "INSERT INTO st_request (
+            iTrReqID,
+            iStaffID, 
+            iRouteID, 
+            dPickup, 
+            tPickup, 
+            iStopID, 
+            iTripID, 
+            dtReq, 
+            iRank, 
+            cStatus
+        ) VALUES (
+            $iTrReqID,
+            $user_id,
+            $route,
+            '$tripDateOnly',
+            '$pickupTime',
+            $pickUp,
+            $finalTripID,
+            '$currentDateTime',
+            $nextRank,
+            'A'
+        )";
 
-                if (sql_query($updateTripSql)) {
-                    $successCount++;
-                    $selectedDays[] = date('l, j F', strtotime($tripDate));
-                } else {
-                    // If trip update fails, rollback the request insert
-                    $deleteSql = "DELETE FROM st_request WHERE iTrReqID = $iTrReqID";
-                    sql_query($deleteSql);
-                    $errors[] = "Failed to update trip capacity for trip on $tripDate";
-                }
+        if (sql_query($insertSql)) {
+            // Update iRequested count in st_trips table
+            $updateTripSql = "UPDATE st_trips 
+                              SET iRequested = iRequested + 1 
+                              WHERE iTripID = $finalTripID AND cStatus = 'A'";
+
+            if (sql_query($updateTripSql)) {
+                $successCount++;
+                $selectedDays[] = date('l, j F', strtotime($tripDateOnly));
             } else {
-                $errors[] = "Failed to save request for trip on $tripDate";
+                // If trip update fails, rollback the request insert
+                $deleteSql = "DELETE FROM st_request WHERE iTrReqID = $iTrReqID";
+                sql_query($deleteSql);
+                $errors[] = "Failed to update trip capacity for trip on $tripDateOnly";
             }
-        }
-        $staffCheckSql = "SELECT iRouteID, iStopID FROM staff WHERE iStaffID = $user_id AND cStatus = 'A'";
-        $staffCheckRes = sql_query($staffCheckSql);
-
-        if (sql_num_rows($staffCheckRes) > 0) {
-            $staffRow = sql_fetch_assoc($staffCheckRes);
-
-            // If both are zero, update them with the requested values
-            if ((int)$staffRow['iRouteID'] == 0 && (int)$staffRow['iStopID'] == 0) {
-
-                $updateStaffSql = "UPDATE staff 
-                           SET iRouteID = $route, iStopID = $pickUp 
-                           WHERE iStaffID = $user_id AND cStatus = 'A'";
-
-                sql_query($updateStaffSql);
-            }
-        }
-
-        // Prepare response
-        if ($successCount > 0) {
-            $message = "$successCount request(s) submitted successfully";
-            if (!empty($errors)) {
-                $message .= ". Some requests failed: " . implode(", ", $errors);
-            }
-
-            echo json_encode([
-                "data" => [
-                    "message" => $message,
-                    "successCount" => $successCount,
-                    "routeName" => db_output2($routeName),
-                    "destination" => db_output2($destination),
-                    "pickupPoint" => $pickupPointName,
-                    "timing" => $timing,
-                    "selectedDays" => $selectedDays,
-                    "errors" => $errors
-                ],
-                "statusCode" => 200
-            ]);
         } else {
-            echo json_encode([
-                "error" => [
-                    "message" => "No requests were saved. " . implode(", ", $errors)
-                ],
-                "statusCode" => 400
-            ]);
+            $errors[] = "Failed to save request for trip on $tripDateOnly";
         }
-        break;
+    }
 
+    // Update staff default route/stop if they are zero
+    $staffCheckSql = "SELECT iRouteID, iStopID FROM staff WHERE iStaffID = $user_id AND cStatus = 'A'";
+    $staffCheckRes = sql_query($staffCheckSql);
+
+    if (sql_num_rows($staffCheckRes) > 0) {
+        $staffRow = sql_fetch_assoc($staffCheckRes);
+
+        if ((int)$staffRow['iRouteID'] == 0 && (int)$staffRow['iStopID'] == 0) {
+            $updateStaffSql = "UPDATE staff 
+                               SET iRouteID = $route, iStopID = $pickUp 
+                               WHERE iStaffID = $user_id AND cStatus = 'A'";
+            sql_query($updateStaffSql);
+        }
+    }
+
+    // Prepare response
+    if ($successCount > 0) {
+        $message = "$successCount request(s) submitted successfully";
+        if (!empty($errors)) {
+            $message .= ". Some requests failed: " . implode("; ", $errors);
+        }
+
+        echo json_encode([
+            "data" => [
+                "message" => $message,
+                "successCount" => $successCount,
+                "routeName" => db_output2($routeName),
+                "destination" => db_output2($destination),
+                "pickupPoint" => $pickupPointName,
+                "timing" => $timing,
+                "selectedDays" => $selectedDays,
+                "errors" => $errors
+            ],
+            "statusCode" => 200
+        ]);
+    } else {
+        echo json_encode([
+            "error" => [
+                "message" => "No requests were saved. " . implode("; ", $errors)
+            ],
+            "statusCode" => 400
+        ]);
+    }
+    break;
 
     // ===================== CASE: DELETE_REQUEST =====================
     case 'DELETE_REQUEST':
