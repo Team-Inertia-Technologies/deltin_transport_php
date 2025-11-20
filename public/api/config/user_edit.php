@@ -165,7 +165,7 @@ try {
 				$update_fields[] = "cStatus = 'D'";
 			}
 			$update_query = "UPDATE users_temp SET " . implode(", ", $update_fields) . " WHERE iUserID = $txtid";
-			echo $update_query;
+			//echo $update_query;
 			sql_query($update_query);
 		}
 	
