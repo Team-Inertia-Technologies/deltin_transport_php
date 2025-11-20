@@ -316,14 +316,53 @@ try {
 		}
 		
 		$status = GetXFromYID("SELECT cStatus FROM users_temp WHERE iUserID = $txtid");
+		$dataArr = GetDataFromID("users_temp", "iUserID", $txtid);
+		//$dataArr2 = GetDataFromID("user_temp_property_assoc", "iUserID", $txtid);
+		if (empty($dataArr) || $txtid == 0) {
+			http_response_code(400);
+			echo json_encode(['statusCode' => 400, 'message' => 'Invalid User ID']);
+			exit;
+		} 
+
+		$user_id = db_output($dataArr[0]->iUserID);
+		$txtname = db_output($dataArr[0]->vName);
+		$txtemail = db_output($dataArr[0]->vEmail);
+		$txtphone = db_output($dataArr[0]->vPhone);
+		$txtusername = db_output($dataArr[0]->vUName);
+		$cmblevel = db_output($dataArr[0]->iLevel);
+		$txtpassword = db_output($dataArr[0]->vPassword);
+		$rdstatus = db_output($dataArr[0]->cStatus);
+
+		$prevUserData = [];
+		if (in_array($rdstatus, ['P', 'U'])) {
+			$prevUserResult = sql_query("SELECT vName, vEmail, vPhone, vUName, iLevel FROM users WHERE iUserID = '$txtid'");
+			$prevUserData = sql_fetch_assoc($prevUserResult);
+		}
+		$txtaction = db_output($dataArr[0]->cAction);
+		$status_str = GetStatusImageString2('USERS', $rdstatus, $txtid, false);
+		$txtreason = db_output($dataArr[0]->vRemark);
 	
 		http_response_code(200);
 		echo json_encode([
 			'statusCode' => 200,
 			'message' => 'User updated successfully',
-			'data' => [
+			'User' => [
 				'iUserID' => $txtid,
-				'Status'  => $status
+				'Status'  => $status,
+				'data' => [
+					'iUserID' => $user_id,
+					'vName' => $txtname,
+					'vEmail' => $txtemail,
+					'vPhone' => $txtphone,
+					'vUName' => $txtusername,
+					'iLevel' => $cmblevel,
+					'vPassword' => $txtpassword,
+					'cStatus' => $rdstatus,
+					'prevUserData' => $prevUserData,
+					'cAction' => $txtaction,
+					'status_str' => $status_str,
+					'vRemark' => $txtreason
+				]
 			]
 		]);
 		exit;
