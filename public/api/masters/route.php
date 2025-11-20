@@ -365,6 +365,49 @@ case 'DELETE_ROUTE':
         ]);
     }
     break;
+// ===================== CASE: RANK_ROUTE =====================
+case 'RANK_ROUTE':
+
+    $routeOrder = $_REQUEST['routeOrder'] ?? [];
+
+    if (!is_array($routeOrder) || empty($routeOrder)) {
+        echo json_encode([
+            "error" => [
+                "message" => "routeOrder must be a non-empty array"
+            ],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
+    $rank = 1;
+
+    foreach ($routeOrder as $iRouteID) {
+        $iRouteID = intval($iRouteID);
+
+        // Skip only invalid zero/negative values
+        if ($iRouteID <= 0) continue;
+
+        $sql = "UPDATE st_route 
+                SET iRank = $rank
+                WHERE iRouteID = $iRouteID";
+
+        sql_query($sql);
+
+        // Log update
+        LogMasterEdit($iRouteID, 'RTE', 'U', "Rank updated to $rank", '', $user_id);
+
+        $rank++;
+    }
+
+    echo json_encode([
+        "data" => [
+            "message" => "Route ranks updated successfully",
+            "updatedCount" => count($routeOrder)
+        ],
+        "statusCode" => 200
+    ]);
+    break;
 
     // ===================== DEFAULT =====================
     default:
