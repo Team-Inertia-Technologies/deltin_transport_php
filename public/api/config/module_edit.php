@@ -48,40 +48,69 @@ try {
     }
 
     if ($action === 'fetch') {
-        // Fetch modules & assigned ones
-        $modulesQuery = "SELECT iModuleID, vName, cType, iParentID 
-                         FROM module 
-                         WHERE cStatus='A' 
-                         ORDER BY cType, iRank, vName";
-        $resModules = sql_query($modulesQuery);
 
+        // 1. Fetch all modules
+        $modulesQuery = "
+            SELECT iModuleID, vName, cType, iParentID
+            FROM module
+            WHERE cStatus='A'
+            ORDER BY cType, iRank, vName
+        ";
+        $resModules = sql_query($modulesQuery);
+    
         $modulesArr = [];
         while ($row = sql_fetch_assoc($resModules)) {
             $modulesArr[] = $row;
         }
-
+    
+        // 2. Fetch assigned modules
         $assignedQuery = "SELECT iModuleID FROM module_level_assoc WHERE iLevelD = $levelId";
         $resAssigned = sql_query($assignedQuery);
-
+    
         $assignedArr = [];
         while ($row = sql_fetch_assoc($resAssigned)) {
             $assignedArr[] = $row['iModuleID'];
         }
-
-        $response = array(
-            "data" => array(
+    
+        // 3. Build nested module structure
+        $finalModules = [];
+        $lookup = [];
+    
+        // Create lookup array for fast mapping
+        foreach ($modulesArr as $mod) {
+            $mod['children'] = [];   // prepare children placeholder
+            $lookup[$mod['iModuleID']] = $mod;
+        }
+    
+        // Now assign children to parents
+        foreach ($lookup as $id => &$mod) {
+            if ($mod['iParentID'] == 0) {
+                // Parent module
+                $finalModules[] = &$mod;
+            } else {
+                // Child → attach to parent
+                if (isset($lookup[$mod['iParentID']])) {
+                    $lookup[$mod['iParentID']]['children'][] = &$mod;
+                }
+            }
+        }
+    
+        // 4. Return Final Response
+        $response = [
+            "data" => [
                 "message" => "Modules fetched successfully",
-                "modules" => $modulesArr,
+                "modules" => $finalModules,   // nested structure
                 "assigned" => $assignedArr
-            ),
-            "statusCode" => 200,
-        );
-
+            ],
+            "statusCode" => 200
+        ];
+    
         http_response_code(200);
         header('Content-Type: application/json');
         echo json_encode($response);
         exit;
     }
+    
 
     if ($action === 'update') {
         // Clear existing mappings
