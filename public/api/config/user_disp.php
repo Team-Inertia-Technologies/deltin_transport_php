@@ -10,6 +10,7 @@ $request = json_decode($postdata, true);
 $_REQUEST = array_merge($_REQUEST, $request ?? []);
 $levelID  = $_REQUEST['level'] ?? null;
 $statusID = $_REQUEST['status'] ?? null;
+$keywords = $_REQUEST['keywords'] ?? null;
 try {
     // Build property map
     $PROPERTY_ARR = [];
@@ -32,6 +33,11 @@ try {
 
     if (!is_null($statusID) && $statusID !== "") {
         $cond2 .= " AND cStatus = '" . db_input2($statusID) . "'";
+    }
+
+    if (!is_null($keywords) && trim($keywords) !== "") {
+        $keywords_escaped = db_input2(trim($keywords));
+        $cond2 .= " AND (vName LIKE '%" . $keywords_escaped . "%' OR vUName LIKE '%" . $keywords_escaped . "%' OR vPhone LIKE '%" . $keywords_escaped . "%')";
     }
 
     $USER_LEVEL_ARR = [];

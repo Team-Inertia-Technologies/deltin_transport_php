@@ -48,8 +48,6 @@ try {
     }
 
     if ($action === 'fetch') {
-
-        // 1. Fetch all modules
         $modulesQuery = "
             SELECT iModuleID, vName, cType, iParentID
             FROM module
@@ -62,8 +60,6 @@ try {
         while ($row = sql_fetch_assoc($resModules)) {
             $modulesArr[] = $row;
         }
-    
-        // 2. Fetch assigned modules
         $assignedQuery = "SELECT iModuleID FROM module_level_assoc WHERE iLevelD = $levelId";
         $resAssigned = sql_query($assignedQuery);
     
@@ -72,34 +68,27 @@ try {
             $assignedArr[] = $row['iModuleID'];
         }
     
-        // 3. Build nested module structure
         $finalModules = [];
         $lookup = [];
-    
-        // Create lookup array for fast mapping
         foreach ($modulesArr as $mod) {
-            $mod['children'] = [];   // prepare children placeholder
+            $mod['children'] = [];
             $lookup[$mod['iModuleID']] = $mod;
         }
     
-        // Now assign children to parents
         foreach ($lookup as $id => &$mod) {
             if ($mod['iParentID'] == 0) {
-                // Parent module
                 $finalModules[] = &$mod;
             } else {
-                // Child → attach to parent
                 if (isset($lookup[$mod['iParentID']])) {
                     $lookup[$mod['iParentID']]['children'][] = &$mod;
                 }
             }
         }
     
-        // 4. Return Final Response
         $response = [
             "data" => [
                 "message" => "Modules fetched successfully",
-                "modules" => $finalModules,   // nested structure
+                "modules" => $finalModules,
                 "assigned" => $assignedArr
             ],
             "statusCode" => 200
