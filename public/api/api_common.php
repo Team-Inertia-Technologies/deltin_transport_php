@@ -265,3 +265,23 @@ function FetchSessionDate($property_id,$counter_id=0)
 
 	return $arr;
 }
+function generateVehicleCode($vehicleId) {
+    // Map digits 0-9 to letters A-J
+    $map = ['A','B','C','D','E','F','G','H','I','J'];
+    
+    // Convert vehicle ID last digit to mapped ASCII letter
+    $lastDigit = substr((string)$vehicleId, -1);
+    $mappedLetter = $map[$lastDigit];
+
+    // First 3 random alphabets
+    $first3 = '';
+    for ($i = 0; $i < 3; $i++) {
+        $first3 .= chr(rand(65, 90)); // A-Z
+    }
+
+    // Last 3 random digits
+    $last3 = str_pad(rand(0, 999), 3, '0', STR_PAD_LEFT);
+
+    return $first3 . $mappedLetter . $last3;
+}
+
