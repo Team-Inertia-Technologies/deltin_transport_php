@@ -269,7 +269,13 @@ break;
             //     $errors[] = "Cannot book trip on $tripDate - bookings must be made at least 2 hours in advance";
             //     continue;
             // }
-
+   //  Do not allow request if that person already has a request on that day (any route/time)
+        $dayConflictSql = "SELECT iTrReqID FROM st_request WHERE iStaffID = $user_id AND dPickup = '$tripDate' AND cStatus = 'A' LIMIT 1";
+        $dayConflictRes = sql_query($dayConflictSql);
+        if (sql_num_rows($dayConflictRes) > 0) {
+            $errors[] = "Staff already has a request on $tripDate";
+            continue;
+        }
             // Check if request already exists for this staff, route, and trip
             $existingSql = "SELECT iTrReqID FROM st_request 
                            WHERE iStaffID = $user_id AND iRouteID = $route AND iTripID = $tripID AND cStatus = 'A'";

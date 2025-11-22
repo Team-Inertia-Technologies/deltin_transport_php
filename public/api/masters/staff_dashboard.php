@@ -28,11 +28,11 @@ switch ($mode) {
 
     // ===================== CASE : VIEW =====================
     case 'VIEW':
-        $TODAY= TODAY;
+        $TODAY = TODAY;
         $date = !empty($_REQUEST['date']) ? $_REQUEST['date'] : $TODAY;
         $fromTime = $_REQUEST['fromTime'] ?? '';
         $toTime = $_REQUEST['toTime'] ?? '';
-        
+
         if (empty($date)) {
             echo json_encode([
                 "error" => [
@@ -94,11 +94,11 @@ switch ($mode) {
             $routeName = db_output2($row['routeName'] ?? '');
             $destination = db_output2($row['destination'] ?? '');
             $routeKey = $routeName . '|' . $destination; // Create unique key for same route
-            
+
             $tripTime = date('H:i', strtotime($row['dtTrip']));
             $currentTime = date('H:i');
             $currentDate = date('Y-m-d');
-            
+
             if (!isset($groupedTrips[$routeKey])) {
                 $groupedTrips[$routeKey] = [
                     "from" => $routeName,
@@ -111,7 +111,7 @@ switch ($mode) {
             $status = "pending"; // Default status
             $totalRequestedPax = (int) ($row['requestedPax'] ?? 0);
             $vehicleCapacity = (int) ($row['vehicleCapacity'] ?? 0);
-            
+
             // Check if trip is over (past time on same date or past date)
             if ($date < $currentDate || ($date == $currentDate && $tripTime < $currentTime)) {
                 $status = "success";
@@ -169,6 +169,20 @@ switch ($mode) {
         echo json_encode([
             "data" => [
                 "trips" => $trips
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
+
+    case 'HEADER':
+        $DATE = TODAY;
+        $CURRENTTIME = CURRENTTIME;
+
+        echo json_encode([
+            "data" => [
+                "date" => $DATE,
+                "time" => $CURRENTTIME,
             ],
             "statusCode" => 200
         ]);
