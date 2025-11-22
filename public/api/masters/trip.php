@@ -329,7 +329,8 @@ switch ($mode) {
                     d.vName as driverName,
                     d.vMobileNum as driverMobile,
                     t.iRequested as requestedPax,
-                    t.iAvaialed as availedPax
+                    t.iAvaialed as availedPax,
+                    r.iRank
                 FROM st_trips t
                 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
                 LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID
@@ -337,7 +338,7 @@ switch ($mode) {
                 LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
                 LEFT JOIN driver d ON t.iDriverID = d.iDriverID
                 WHERE t.iGrpID = $iGrpID AND t.cStatus = 'A'
-                ORDER BY t.iTripID";
+                ORDER BY t.iTripID, r.iRank";
 
         $res = sql_query($sql);
 

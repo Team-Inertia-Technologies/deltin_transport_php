@@ -13,11 +13,11 @@ $TIME = NOW;
 if ($mode == 'REGISTER_ONLOAD') {
     $staff = sql_query("SELECT vMobile, vCode FROM staff WHERE cStatus = 'A'");
 
-    $routeStopsQuery = "SELECT r.iRouteID, r.vName as routeName, s.iStopID, s.vName as stopName 
+    $routeStopsQuery = "SELECT r.iRouteID, r.vName as routeName, s.iStopID, s.vName as stopName,r.iRank 
                         FROM st_route r 
                         LEFT JOIN st_route_stops s ON r.iRouteID = s.iRouteID 
                         WHERE r.cStatus = 'A' AND s.cStatus ='A'
-                        ORDER BY r.iRouteID, s.iStopID";
+                        ORDER BY r.iRank, s.iStopID";
     $routeStopsResult = sql_query($routeStopsQuery);
 
     // $PHONE_ARR = [];

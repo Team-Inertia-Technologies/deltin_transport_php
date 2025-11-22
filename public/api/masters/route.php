@@ -28,7 +28,7 @@ switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
     case 'LIST':
-    $sql = "SELECT iRouteID, vName, vDestination FROM st_route WHERE cStatus = 'A' ORDER BY iRank";
+    $sql = "SELECT iRouteID, vName, vDestination,iRank FROM st_route WHERE cStatus = 'A' ORDER BY iRank";
     $res = sql_query($sql);
 
     $rowData = [];
@@ -39,7 +39,8 @@ switch ($mode) {
         $rowData[] = [
             "id" => (int)$row['iRouteID'],
             "route" => db_output2($row['vName']),
-            "destination" => db_output2($row['vDestination'])
+            "destination" => db_output2($row['vDestination']),
+              "rank" => db_output2($row['iRank'])
         ];
 
         // For dropdown options
