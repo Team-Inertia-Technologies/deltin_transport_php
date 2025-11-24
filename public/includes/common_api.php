@@ -97,8 +97,9 @@ function toggleStatus($id, $tableName, $idColumn, $statusColumn = 'cStatus', $na
 
         return [
             "statusCode" => 200,
-            "message" => "Status updated successfully",
+          
             "data" => [
+                  "message" => "Status updated successfully",
                 "newStatus" => $newStatus,
                 "statusText" => $newStatus == 'A' ? 'Active' : 'Inactive'
             ]

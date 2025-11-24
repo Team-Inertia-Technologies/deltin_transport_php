@@ -123,8 +123,9 @@ switch ($mode) {
 
         echo json_encode([
             "statusCode" => 200,
-            "message" => "Options loaded successfully",
+
             "data" => [
+                "message" => "Options loaded successfully",
                 'availableOpt' => $availableOpt,
                 'driverTypeOpt' => $driverTypeOpt,
                 'categoryOpt' => $categoryOpt,
@@ -146,7 +147,7 @@ switch ($mode) {
         $res = sql_query($sql);
 
         $data = [];
-        $rowData=[];
+        $rowData = [];
         while ($row = sql_fetch_assoc($res)) {
             $vehicleID = intval($row['iVehicleID']);
 
@@ -182,8 +183,9 @@ switch ($mode) {
 
         echo json_encode([
             "statusCode" => 200,
-            "message" => "Vehicle list fetched successfully",
+
             "data" => [
+                "message" => "Vehicle list fetched successfully",
                 "rowData" => $rowData
             ]
         ]);
@@ -269,9 +271,9 @@ switch ($mode) {
 
         echo json_encode([
             "statusCode" => 200,
-            "message" => "Vehicle details fetched successfully",
-            "data" => [
 
+            "data" => [
+                "message" => "Vehicle details fetched successfully",
                 'vehicleData' => [
                     'iVehicleID' => intval($row['iVehicleID']),
                     'vName' => db_output2($row['vName'] ?? ''),
@@ -396,7 +398,7 @@ switch ($mode) {
             $deleteAreaSql = "DELETE FROM vehicle_area_assoc WHERE iVehicleID = $id";
             sql_query($deleteAreaSql);
 
-    
+
             if (is_array($availability) && !empty($availability)) {
                 foreach ($availability as $areaId) {
                     $areaId = intval($areaId);
@@ -501,8 +503,11 @@ switch ($mode) {
 
             echo json_encode([
                 "statusCode" => 200,
-                "message" => "Vehicle added successfully",
-                "data" => ["iVehicleID" => $iVehicleID]
+
+                "data" => [
+                    "message" => "Vehicle added successfully",
+                    "iVehicleID" => $iVehicleID
+                ]
             ]);
         } else {
             echo json_encode([
@@ -539,12 +544,16 @@ switch ($mode) {
 
             echo json_encode([
                 "statusCode" => 200,
-                "message" => "Vehicle deleted successfully"
+                "data" => [
+                    "message" => "Vehicle deleted successfully"
+                ]
             ]);
         } else if ($result && sql_affected_rows() == 0) {
             echo json_encode([
                 "statusCode" => 200,
-                "message" => "Vehicle not found or already deleted"
+                "data" => [
+                    "message" => "Vehicle not found or already deleted"
+                ]
             ]);
         } else {
             echo json_encode([

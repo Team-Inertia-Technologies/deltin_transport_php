@@ -168,6 +168,7 @@ switch ($mode) {
 
         echo json_encode([
             "data" => [
+                "message" => "Success",
                 "trips" => $trips
             ],
             "statusCode" => 200

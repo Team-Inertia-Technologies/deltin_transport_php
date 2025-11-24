@@ -178,9 +178,10 @@ else if ($mode == 'ADD_STAFF') {
 
     echo json_encode([
         "statusCode" => 200,
-        "message" => "OTP sent to your mobile number for registration verification",
+       
         "data" => [
-            "mobile" => db_output2($vMobile)
+            "mobile" => db_output2($vMobile),
+             "message" => "OTP sent to your mobile number for registration verification",
         ]
     ]);
 

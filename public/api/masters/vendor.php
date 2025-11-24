@@ -144,8 +144,9 @@ switch ($mode) {
 
         echo json_encode([
             "statusCode" => 200,
-            "message" => "Vendor list fetched successfully",
+
             "data" => [
+                "message" => "Vendor list fetched successfully",
                 "rowData" => $rowData,
                 "availableOpt" => $availableOpt,
                 "serviceOpt" => $serviceOpt
@@ -159,7 +160,8 @@ switch ($mode) {
             "data" => [
                 "stateOpt" => $stateOpt,
                 "serviceOpt" => $serviceOpt,
-                "availableOpt" => $availableOpt
+                "availableOpt" => $availableOpt,
+                "message" => "success",
             ],
             "statusCode" => 200
         ]);
@@ -243,8 +245,9 @@ switch ($mode) {
 
         echo json_encode([
             "statusCode" => 200,
-            "message" => "Vendor details fetched successfully",
+
             "data" => [
+                "message" => "Vendor details fetched successfully",
                 "vendor" => $vendorData,
                 "stateOpt" => $stateOpt,
                 "serviceOpt" => $serviceOpt,
@@ -257,7 +260,7 @@ switch ($mode) {
 
     // ===================== CASE 4: UPDATE_VENDOR =====================
     case 'UPDATE_VENDOR':
-    
+
         $id = intval($request['iVendorID'] ?? 0);
         $vName = db_input($request['comName'] ?? '');
         $vContactPerson = db_input($request['perName'] ?? '');
@@ -343,7 +346,7 @@ switch ($mode) {
             // Update availability areas - delete all existing associations first
             $deleteAreaSql = "DELETE FROM vendor_area_assoc WHERE iVendorID = $id";
             $deleteResult = sql_query($deleteAreaSql);
-            
+
             // Insert new area associations - select all and add again
             if (is_array($availability) && !empty($availability)) {
                 foreach ($availability as $areaId) {
@@ -360,13 +363,15 @@ switch ($mode) {
 
             echo json_encode([
                 "statusCode" => 200,
-                "message" => "Vendor updated successfully"
+                "data" => [
+                    "message" => "Vendor updated successfully"
+                ]
             ]);
         } else if ($result && sql_affected_rows() == 0) {
             // Update availability areas even if no vendor changes were made
             $deleteAreaSql = "DELETE FROM vendor_area_assoc WHERE iVendorID = $id";
             sql_query($deleteAreaSql);
-            
+
             // Insert new area associations
             if (is_array($availability) && !empty($availability)) {
                 foreach ($availability as $areaId) {
@@ -377,12 +382,14 @@ switch ($mode) {
                     }
                 }
             }
-            
+
             LogMasterEdit($id, 'VND', 'U', $vName, '', $user_id);
 
             echo json_encode([
                 "statusCode" => 200,
-                "message" => "Vendor availability updated successfully"
+                "data" => [
+                    "message" => "Vendor availability updated successfully"
+                ]
             ]);
         } else {
             echo json_encode([
@@ -471,8 +478,11 @@ switch ($mode) {
 
             echo json_encode([
                 "statusCode" => 200,
-                "message" => "Vendor added successfully",
-                "data" => ["iVendorID" => $iVendorID]
+
+                "data" => [
+                    "message" => "Vendor added successfully",
+                    "iVendorID" => $iVendorID
+                ]
             ]);
         } else {
             echo json_encode([
@@ -509,12 +519,16 @@ switch ($mode) {
 
             echo json_encode([
                 "statusCode" => 200,
-                "message" => "Vendor deleted successfully"
+                "data" => [
+                    "message" => "Vendor deleted successfully"
+                ]
             ]);
         } else if ($result && sql_affected_rows() == 0) {
             echo json_encode([
                 "statusCode" => 200,
-                "message" => "Vendor not found or already deleted"
+                "data" => [
+                    "message" => "Vendor not found or already deleted"
+                ]
             ]);
         } else {
             echo json_encode([

@@ -52,8 +52,9 @@ switch ($mode) {
 
     echo json_encode([
         "statusCode" => 200,
-        "message" => "Route list fetched successfully",
+      
         "data" => [
+            "message" => "Route list fetched successfully",
             "rowData" => $rowData,
             "routesOpt" => $routesOpt
         ]
@@ -192,14 +193,15 @@ case 'ROUTE_DETAILS':
 
     echo json_encode([
         "statusCode" => 200,
-        "message" => "Route details fetched successfully",
+     
         "data" => [
             'routeData' => [
                 'iRouteID' => intval($row['iRouteID']),
                 'route' => db_output2($row['vName'] ?? ''),
                 'dest' => db_output2($row['vDestination'] ?? ''),
                 'rdp' => $rdpList,
-                'cStatus' => $row['cStatus'] ?? 'A'
+                'cStatus' => $row['cStatus'] ?? 'A',
+                "message" => "Route details fetched successfully"
             ]
         ]
     ]);
@@ -350,12 +352,16 @@ case 'DELETE_ROUTE':
 
         echo json_encode([
             "statusCode" => 200,
+             "data" => [
             "message" => "Route deleted successfully"
+             ]
         ]);
     } else if ($result && sql_affected_rows() == 0) {
         echo json_encode([
             "statusCode" => 200,
+             "data" => [
             "message" => "Route not found or already deleted"
+             ]
         ]);
     } else {
         echo json_encode([

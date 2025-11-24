@@ -193,7 +193,9 @@ if ($mode == 'LOGIN') {
                 echo json_encode([
                     'statusCode' => 200,
                     'data' => $USER_DATA,
+                        "data" => [
                     'message' => 'Registration completed and login successful'
+                        ]
                 ]);
                 exit;
             } else {
@@ -231,7 +233,9 @@ if ($mode == 'LOGIN') {
                 echo json_encode([
                     'statusCode' => 200,
                     'data' => $USER_DATA,
+                        "data" => [
                     'message' => 'Login successful'
+                        ]
                 ]);
                 exit;
             } else {
@@ -322,7 +326,9 @@ if ($mode == 'LOGIN') {
 
         echo json_encode([
             'statusCode' => 200,
+                "data" => [
             'message' => 'OTP resent successfully to your mobile'
+                ]
         ]);
         exit;
     } else {
