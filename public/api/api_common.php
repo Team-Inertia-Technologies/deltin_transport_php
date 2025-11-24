@@ -265,23 +265,153 @@ function FetchSessionDate($property_id,$counter_id=0)
 
 	return $arr;
 }
-function generateVehicleCode($vehicleId) {
-    // Map digits 0-9 to letters A-J
-    $map = ['A','B','C','D','E','F','G','H','I','J'];
+// function generateVehicleCode($vehicleId) {
+//     // Map digits 0-9 to letters A-J
+//     $map = ['A','B','C','D','E','F','G','H','I','J'];
     
-    // Convert vehicle ID last digit to mapped ASCII letter
-    $lastDigit = substr((string)$vehicleId, -1);
-    $mappedLetter = $map[$lastDigit];
+//     // Convert vehicle ID last digit to mapped ASCII letter
+//     $lastDigit = substr((string)$vehicleId, -1);
+//     $mappedLetter = $map[$lastDigit];
 
-    // First 3 random alphabets
-    $first3 = '';
-    for ($i = 0; $i < 3; $i++) {
-        $first3 .= chr(rand(65, 90)); // A-Z
+//     // First 3 random alphabets
+//     $first3 = '';
+//     for ($i = 0; $i < 3; $i++) {
+//         $first3 .= chr(rand(65, 90)); // A-Z
+//     }
+
+//     // Last 3 random digits
+//     $last3 = str_pad(rand(0, 999), 3, '0', STR_PAD_LEFT);
+
+//     return $first3 . $mappedLetter . $last3;
+// }
+
+function getTimeWindowMinutes()
+{
+    $sql = "SELECT vValue FROM sys_settings WHERE vCode = 'QR_CODE_SCAN_WINDOW' LIMIT 1";
+    $res = sql_query($sql);
+
+    if (sql_num_rows($res) == 0) {
+        return 30; // fallback default
     }
 
-    // Last 3 random digits
-    $last3 = str_pad(rand(0, 999), 3, '0', STR_PAD_LEFT);
-
-    return $first3 . $mappedLetter . $last3;
+    $row = sql_fetch_assoc($res);
+    return intval($row['key_value']);
 }
 
+function checkVehicleAvailability($vehicleId, $datetime)
+{
+    $vehicleId = intval($vehicleId);
+    $datetime = db_input($datetime);
+
+    if ($vehicleId == 0 || empty($datetime)) {
+        return [
+            "error" => ["message" => "Missing vehicleId or datetime"],
+            "statusCode" => 400
+        ];
+    }
+
+    // Check vehicle exists
+    $vehSql = "SELECT iVehicleID 
+               FROM st_vehicle 
+               WHERE iVehicleID = $vehicleId AND cStatus = 'A'";
+    $vehRes = sql_query($vehSql);
+
+    if (sql_num_rows($vehRes) == 0) {
+        return [
+            "error" => ["message" => "Vehicle not found"],
+            "statusCode" => 400
+        ];
+    }
+
+    // Convert datetime to timestamp
+    $reqTimestamp = strtotime($datetime);
+
+    // Get window minutes
+    $window = getTimeWindowMinutes();
+
+    $minWindow = date('Y-m-d H:i:s', strtotime("-{$window} minutes", $reqTimestamp));
+    $maxWindow = date('Y-m-d H:i:s', strtotime("+{$window} minutes", $reqTimestamp));
+
+    // dtTrip will be a datetime (YYYY-mm-dd HH:ii:ss)
+    $tripSql = "SELECT iTripID, dtTrip 
+                FROM st_trips 
+                WHERE iVehicleID = $vehicleId 
+                AND cStatus = 'A'
+                AND dtTrip BETWEEN '$minWindow' AND '$maxWindow'";
+
+    $tripRes = sql_query($tripSql);
+
+    if (sql_num_rows($tripRes) == 0) {
+        return [
+            "error" => ["message" => "No trip found within ±{$window} minutes"],
+            "statusCode" => 400
+        ];
+    }
+
+    $tripRow = sql_fetch_assoc($tripRes);
+
+    return [
+        "data" => [
+            "message" => "Vehicle available",
+            "tripId"  => $tripRow['iTripID'],
+            "tripTime" => $tripRow['dtTrip']
+        ],
+        "statusCode" => 200
+    ];
+}
+
+function checkStaffRequestConflict($staffId, $datetime)
+{
+    $staffId = intval($staffId);
+    $datetime = db_input($datetime);
+
+    if ($staffId == 0 || empty($datetime)) {
+        return [
+            "error" => ["message" => "Missing staffId or datetime"],
+            "statusCode" => 400
+        ];
+    }
+
+    // Convert request datetime to a timestamp
+    $reqTimestamp = strtotime($datetime);
+
+    // Window fetched dynamically from DB
+    $window = getTimeWindowMinutes();
+
+    // Calculate allowed time range (± window)
+    $minWindow = date('Y-m-d H:i:s', strtotime("-{$window} minutes", $reqTimestamp));
+    $maxWindow = date('Y-m-d H:i:s', strtotime("+{$window} minutes", $reqTimestamp));
+
+    // Fetch all active requests for that staff
+    $staffSql = "
+        SELECT dPickup, tPickup
+        FROM st_request
+        WHERE iStaffID = $staffId
+          AND cStatus = 'A'
+    ";
+
+    $staffRes = sql_query($staffSql);
+
+    while ($row = sql_fetch_assoc($staffRes)) {
+        // Combine date + time
+        $existingDatetime = $row['dPickup'] . ' ' . $row['tPickup'];
+
+        // Check if existing request falls in ±window
+        if ($existingDatetime >= $minWindow && $existingDatetime <= $maxWindow) {
+            return [
+                "data" => [
+                    "message" => "Valid — staff has a request within ±{$window} minutes"
+                ],
+                "statusCode" => 200
+            ];
+        }
+    }
+
+    // No matching request
+    return [
+        "error" => [
+            "message" => "No request found"
+        ],
+        "statusCode" => 400
+    ];
+}
