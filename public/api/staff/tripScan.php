@@ -66,7 +66,7 @@ switch ($mode) {
         }
         $date = TODAY;
         // find the most recent request for this staff and vehicle
-        $reqSql = "SELECT iRequestID FROM request WHERE iStaffID = $user_id AND dPickup= $date AND cStatus='A' LIMIT 1";
+        $reqSql = "SELECT iRequestID FROM st_request WHERE iStaffID = $user_id AND dPickup= $date AND cStatus='A' LIMIT 1";
         $reqRes = sql_query($reqSql);
 
         if (sql_num_rows($reqRes) == 0) {
@@ -82,7 +82,7 @@ switch ($mode) {
 
         // update the request: mark vehicle as entered and store registration number
         $updateSql = "
-    UPDATE request SET iVehicleID = '{$vehicleID}', dtIn = NOW() WHERE iRequestID = {$requestID} LIMIT 1
+    UPDATE st_request SET iVehicleID = '{$vehicleID}', dtIn = NOW() WHERE iRequestID = {$requestID} LIMIT 1
 ";
         $updateSqlRes = sql_query($updateSql);
 
