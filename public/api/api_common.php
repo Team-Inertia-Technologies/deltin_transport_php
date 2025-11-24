@@ -295,7 +295,7 @@ function getTimeWindowMinutes()
     }
 
     $row = sql_fetch_assoc($res);
-    return intval($row['key_value']);
+    return intval($row['vValue']);
 }
 
 function checkVehicleAvailability($vehicleId, $datetime)
@@ -360,7 +360,7 @@ function checkVehicleAvailability($vehicleId, $datetime)
     ];
 }
 
-function checkStaffRequestConflict($staffId, $datetime)
+function checkStaffRequest($staffId, $datetime)
 {
     $staffId = intval($staffId);
     $datetime = db_input($datetime);
@@ -372,32 +372,42 @@ function checkStaffRequestConflict($staffId, $datetime)
         ];
     }
 
-    // Convert request datetime to a timestamp
+    // Convert incoming datetime to timestamp
     $reqTimestamp = strtotime($datetime);
 
-    // Window fetched dynamically from DB
+    // Dynamic window (in minutes)
     $window = getTimeWindowMinutes();
 
-    // Calculate allowed time range (± window)
-    $minWindow = date('Y-m-d H:i:s', strtotime("-{$window} minutes", $reqTimestamp));
-    $maxWindow = date('Y-m-d H:i:s', strtotime("+{$window} minutes", $reqTimestamp));
+    $TODAY = TODAY;
 
-    // Fetch all active requests for that staff
+    // Fetch all active requests for staff for today
     $staffSql = "
         SELECT dPickup, tPickup
         FROM st_request
         WHERE iStaffID = $staffId
           AND cStatus = 'A'
+          AND dPickup = '$TODAY'
     ";
 
     $staffRes = sql_query($staffSql);
 
     while ($row = sql_fetch_assoc($staffRes)) {
-        // Combine date + time
-        $existingDatetime = $row['dPickup'] . ' ' . $row['tPickup'];
 
-        // Check if existing request falls in ±window
-        if ($existingDatetime >= $minWindow && $existingDatetime <= $maxWindow) {
+        // Build existing datetime timestamp
+        $existingTimestamp = strtotime($row['dPickup'] . ' ' . $row['tPickup']);
+
+        // Calculate min & max time window (based on EXISTING)
+        $minWindowTs = $existingTimestamp - ($window * 60);
+        $maxWindowTs = $existingTimestamp + ($window * 60);
+
+        // // Debug (remove later)
+        // echo date('Y-m-d H:i:s', $reqTimestamp) . "\n";
+        // echo date('Y-m-d H:i:s', $minWindowTs) . "\n";
+        // echo date('Y-m-d H:i:s', $maxWindowTs) . "\n";
+// exit;
+        // Compare TIMESTAMPS, NOT STRINGS
+		
+        if ($reqTimestamp >= $minWindowTs && $reqTimestamp <= $maxWindowTs) {
             return [
                 "data" => [
                     "message" => "Valid — staff has a request within ±{$window} minutes"
@@ -407,7 +417,6 @@ function checkStaffRequestConflict($staffId, $datetime)
         }
     }
 
-    // No matching request
     return [
         "error" => [
             "message" => "No request found"
@@ -415,3 +424,4 @@ function checkStaffRequestConflict($staffId, $datetime)
         "statusCode" => 400
     ];
 }
+

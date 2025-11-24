@@ -39,14 +39,14 @@ switch ($mode) {
             exit;
         }
         $vehicleID = deCodeParamSMS($vehicleCode);
-        $response = checkVehicleAvailability($vehicleID, $datetime);
+        // $response = checkVehicleAvailability($vehicleID, $datetime);
 
-        if ($response['statusCode'] != 200) {
-            echo json_encode($response);
-            exit;
-        }
+        // if ($response['statusCode'] != 200) {
+        //     echo json_encode($response);
+        //     exit;
+        // }
 
-        $response = checkStaffRequestConflict($user_id, $datetime);
+        $response = checkStaffRequest($user_id, $datetime);
 
         if ($response['statusCode'] != 200) {
             echo json_encode($response);
