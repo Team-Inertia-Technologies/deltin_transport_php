@@ -66,7 +66,7 @@ switch ($mode) {
         }
         $date = TODAY;
         // find the most recent request for this staff and vehicle
-        $reqSql = "SELECT iTrReqID FROM st_request WHERE iStaffID = $user_id AND dPickup= $date AND cStatus='A' LIMIT 1";
+        $reqSql = "SELECT iTrReqID FROM st_request WHERE iStaffID = $user_id AND dPickup= '$date' AND cStatus='A' LIMIT 1";
         $reqRes = sql_query($reqSql);
 
         if (sql_num_rows($reqRes) == 0) {
