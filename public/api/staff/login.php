@@ -181,7 +181,8 @@ if ($mode == 'LOGIN') {
                     'id' => $iStaffID,
                     'name' => db_output2($vName),
                     'mobile' => db_output2($vMobile),
-                    'token' => EncodeParam($iStaffID)
+                    'token' => EncodeParam($iStaffID),
+                      'message' => 'Registration completed and login successful'
                 ];
 
                 // Log the signin
@@ -193,9 +194,7 @@ if ($mode == 'LOGIN') {
                 echo json_encode([
                     'statusCode' => 200,
                     'data' => $USER_DATA,
-                        "data" => [
-                    'message' => 'Registration completed and login successful'
-                        ]
+                      
                 ]);
                 exit;
             } else {
@@ -222,7 +221,8 @@ if ($mode == 'LOGIN') {
                     'id' => $staffId,
                     'name' => db_output2($staffName),
                     'mobile' => db_output2($staffMobile),
-                    'token' => EncodeParam($staffId)
+                    'token' => EncodeParam($staffId),
+                       'message' => 'Login successful'
                 ];
 
                 // Log the signin
@@ -233,9 +233,7 @@ if ($mode == 'LOGIN') {
                 echo json_encode([
                     'statusCode' => 200,
                     'data' => $USER_DATA,
-                        "data" => [
-                    'message' => 'Login successful'
-                        ]
+                      
                 ]);
                 exit;
             } else {
