@@ -312,7 +312,7 @@ function checkVehicleAvailability($vehicleId, $datetime)
 
     // Check vehicle exists
     $vehSql = "SELECT iVehicleID 
-               FROM st_vehicle 
+               FROM vehicle 
                WHERE iVehicleID = $vehicleId AND cStatus = 'A'";
     $vehRes = sql_query($vehSql);
 
