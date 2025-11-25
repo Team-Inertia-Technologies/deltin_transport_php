@@ -425,3 +425,40 @@ function checkStaffRequest($staffId, $datetime)
     ];
 }
 
+/**
+ * Log QR Scan Errors to st_log_qrscan table
+ * @param int $staffId - Staff ID
+ * @param string $description - Error description
+ * @param string $status - Status (default 'E' for Error)
+ * @return bool - True if logged successfully, false otherwise
+ */
+function logQRScanError($staffId, $description, $status = 'E')
+{
+    $staffId = intval($staffId);
+    $description = db_input($description);
+    $status = db_input($status);
+    
+    // Get client IP address
+    $ip = '';
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        $ip = $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
+    } else {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    }
+    $ip = db_input($ip);
+    
+    $now = NOW;
+    
+    // Insert log entry
+    LockTable('st_log_qrscan');
+    $logId = NextID('iLogID', 'st_log_qrscan');
+    $insertSql = "INSERT INTO st_log_qrscan (iLogID, iStaffID, vDesc, dtAdded, vIP, cStatus) 
+                  VALUES ($logId, $staffId, '$description', '$now', '$ip', '$status')";
+    $result = sql_query($insertSql);
+    UnlockTable();
+    
+    return $result ? true : false;
+}
+

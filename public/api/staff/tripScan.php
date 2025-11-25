@@ -30,6 +30,7 @@ switch ($mode) {
         $vehicleCode = $_REQUEST['vehicleCode'] ?? '';
         $datetime = NOW;
         if (empty($vehicleCode)) {
+            logQRScanError($user_id, " Vehicle code is required");
             echo json_encode([
                 "error" => [
                     "message" => "Vehicle code is required"
@@ -39,16 +40,20 @@ switch ($mode) {
             exit;
         }
         $vehicleID = deCodeParamSMS($vehicleCode);
-        // $response = checkVehicleAvailability($vehicleID, $datetime);
+        $response = checkVehicleAvailability($vehicleID, $datetime);
 
-        // if ($response['statusCode'] != 200) {
-        //     echo json_encode($response);
-        //     exit;
-        // }
+        if ($response['statusCode'] != 200) {
+            $errorMsg = $response['error']['message'] ?? 'Unknown error';
+            logQRScanError($user_id, "Vehicle Availability: " . $errorMsg);
+            echo json_encode($response);
+            exit;
+        }
 
         $response = checkStaffRequest($user_id, $datetime);
 
         if ($response['statusCode'] != 200) {
+            $errorMsg = $response['error']['message'] ?? 'Unknown error';
+            logQRScanError($user_id, "Staff Request: " . $errorMsg);
             echo json_encode($response);
             exit;
         }
@@ -58,6 +63,7 @@ switch ($mode) {
         $vehRes = sql_query($vehSql);
 
         if (sql_num_rows($vehRes) == 0) {
+            logQRScanError($user_id, "Vehicle not found (ID: $vehicleID)");
             echo json_encode([
                 "error" => ["message" => "Vehicle not found"],
                 "statusCode" => 404
@@ -70,6 +76,7 @@ switch ($mode) {
         $reqRes = sql_query($reqSql);
 
         if (sql_num_rows($reqRes) == 0) {
+            logQRScanError($user_id, "No matching request found for date $date");
             echo json_encode([
                 "error" => ["message" => "No matching request found"],
                 "statusCode" => 404
