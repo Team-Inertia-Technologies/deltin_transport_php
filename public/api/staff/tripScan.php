@@ -27,6 +27,13 @@ switch ($mode) {
 
     // ===================== CASE: ADD_ONLOAD =====================
     case 'SCAN':
+         echo json_encode([
+                "data" => [
+                    DFA($_REQUEST)
+                ]
+              
+            ]);
+            exit;
         $vehicleCode = $_REQUEST['vehicleCode'] ?? '';
         $datetime = NOW;
         if (empty($vehicleCode)) {
