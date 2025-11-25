@@ -33,7 +33,9 @@
             if (!$deviceToken) {
                 $output = array(
                     'statusCode' => 400,
+                       "data" => [
                     'message' => 'Missing Device Token'
+                       ]
                 );
             } else {
                 $updateQuery = "UPDATE staff SET vDeviceToken = '$deviceToken' WHERE iStaffID = $user_id";
