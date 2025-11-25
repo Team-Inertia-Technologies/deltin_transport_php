@@ -140,6 +140,38 @@ try {
         exit;
     }
 
+    if ($action === 'Add') {
+        $txtid = NextID("iLevelD", "levels");
+        $txtname = db_input($_POST['txtname']);
+        $txtdesc = isset($_POST['txtdesc']) ? db_input($_POST['txtdesc']) : '';
+        $txtrank = GetMaxRank('levels');
+        $rdstatus = db_input($_POST['rdstatus']);
+    
+        $q = "INSERT INTO levels (iLevelD, vName, vDesc, cStatus,iRank) 
+                VALUES ($txtid, '$txtname', '$txtdesc', '$rdstatus', '$txtrank')";
+        $r = sql_query($q, "tax_edit.52");
+    
+    
+        sql_query("delete from module_level_assoc where iLevelD=$txtid");
+    
+        $cmbmodules = isset($_POST['cmbmodules']) ? $_POST['cmbmodules'] : array();
+    
+        if (!empty($cmbmodules)) {
+            foreach ($cmbmodules as $key => $value) {
+                $CTYPE = GetXFromYID("SELECT cType FROM module WHERE iModuleID=$value");
+                $q = "INSERT INTO module_level_assoc (iLevelD, iModuleID, cType) VALUES ($txtid, $value, '$CTYPE')";
+                $r = sql_query($q, 'CL_E.115');
+            }
+        }
+    
+        $response = array(
+            "data" => array(
+                "message" => "Level added successfully",
+            ),
+            "statusCode" => 200
+        );
+    }
+
     $response = array(
         "error" => array(
             "message" => "Invalid or missing action"
