@@ -768,7 +768,7 @@ switch ($mode) {
 
                         // Only validate vehicle ID if it's provided (not 0)
                         if ($vehID > 0) {
-                            $insertValues[] = "($currentTripID, $groupID, $routeID, '$tripDateTime', $vehID, $driverID, $vehicleCapacity, 1, 'A')";
+                            $insertValues[] = "($currentTripID, $groupID, $routeID, '$tripDateTime', $vehID, $driverID, $vehicleCapacity,$user_id, 1, 'A')";
                             $currentTripID++; // Increment for next record
                         } else {
                             // Skip invalid vehicle entries but don't fail the entire operation
@@ -794,6 +794,7 @@ switch ($mode) {
                 iVehicleID, 
                 iDriverID, 
                 iCapacity, 
+                iTripAddedBy,
                 iRank, 
                 cStatus
             ) VALUES " . implode(', ', $insertValues);
@@ -930,7 +931,7 @@ switch ($mode) {
                     $updateSql = "UPDATE st_trips SET 
                                     iVehicleID = " . ($vehicleID > 0 ? $vehicleID : "0") . ",
                                     iDriverID = " . ($driverID > 0 ? $driverID : "0") . ",
-                                    iCapacity = $vehicleCapacity
+                                    iCapacity = $vehicleCapacity,iVehAssignedBy=$user_id
                                   WHERE iTripID = $tripID AND iGrpID = $iGrpID AND cStatus = 'A'";
 
                     if (sql_query($updateSql)) {

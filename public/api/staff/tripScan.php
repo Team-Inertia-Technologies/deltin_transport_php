@@ -92,11 +92,14 @@ switch ($mode) {
     UPDATE st_request SET iVehicleID = '{$vehicleID}', dtIn = NOW() WHERE iTrReqID = {$requestID} LIMIT 1
 ";
         $updateSqlRes = sql_query($updateSql);
+        if($updateSqlRes){
+            sql_query("UPDATE st_trips SET iAvaialed = iAvaialed + 1 WHERE iTripID = {$requestID} LIMIT 1");
+        }
 
         if ($updateSqlRes) {
             echo json_encode([
                 "data" => [
-                    "message" => "Success"
+                    "message" => "Marked as entered"
                 ],
                 "statusCode" => 200
             ]);
