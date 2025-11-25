@@ -28,7 +28,7 @@
         // ===================== CASE: ADD_ONLOAD =====================
         case 'UPDATES_TOKEN':
             $deviceToken = $_REQUEST['device_token'] ?? '';
-            $deviceToken = $request->device_token;
+          //  $deviceToken = $request->device_token;
 
             if (!$deviceToken) {
                 $output = array(
