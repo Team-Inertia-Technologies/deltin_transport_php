@@ -19,7 +19,7 @@ function sendStaffVehicleNotification(
 
     // Resolve service account path (default relative to this file)
     if (empty($serviceAccountPath)) {
-        $serviceAccountPath = __DIR__ . '/../deltintransport-7d1c0-firebase-adminsdk-fbsvc-df872c15d3.json';
+        $serviceAccountPath = __DIR__ . '/../deltintransport-7d1c0-firebase-adminsdk-fbsvc-cca77faf1c.json';
     }
 
     if (!file_exists($serviceAccountPath) || !is_readable($serviceAccountPath)) {
