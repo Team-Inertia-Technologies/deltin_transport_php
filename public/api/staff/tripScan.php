@@ -134,7 +134,7 @@ $CURRENTTIME=CURRENTTIME;
                 "vehi"     => $vehicleNum,
                 "date"     => date('d/m/Y'),
                 "time"     => (!empty($CURRENTTIME) ? date('H:i', strtotime($CURRENTTIME)) : date('H:i')),
-                "staffName" => $d['staffName'] ?? ''
+                "name" => $d['staffName'] ?? ''
             ],
             "statusCode" => 200
         ]);
