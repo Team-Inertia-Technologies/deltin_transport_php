@@ -34,20 +34,21 @@ try {
         }
     }
 
-    if ($levelId <= 0) {
-        $response = array(
-            "error" => array(
-                "message" => "Invalid or missing Level ID",
-            ),
-            "statusCode" => 400,
-        );
-        http_response_code(400);
-        header('Content-Type: application/json');
-        echo json_encode($response);
-        exit;
-    }
+   
 
     if ($action === 'fetch') {
+        if ($levelId <= 0) {
+            $response = array(
+                "error" => array(
+                    "message" => "Invalid or missing Level ID",
+                ),
+                "statusCode" => 400,
+            );
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode($response);
+            exit;
+        }
         $modulesQuery = "
             SELECT iModuleID, vName, cType, iParentID
             FROM module
