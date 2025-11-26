@@ -171,7 +171,7 @@ try {
                 if ($modID > 0) {
                     $type = GetXFromYID("SELECT cType FROM module WHERE iModuleID=$modID");
                     $insertQuery = "INSERT INTO module_level_assoc (iLevelD, iModuleID, cType)
-                                    VALUES ($levelId, $modID, '$type')";
+                                    VALUES ($txtid, $modID, '$type')";
                     sql_query($insertQuery, 'module_assoc_update');
                     $countInserted++;
                 }
