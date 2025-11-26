@@ -141,7 +141,7 @@ try {
         exit;
     }
 
-    if ($action === 'Add') {
+    if ($action === 'add') {
         $txtid = NextID("iLevelD", "levels");
         $txtname = db_input($_POST['txtname']);
         $txtdesc = isset($_POST['txtdesc']) ? db_input($_POST['txtdesc']) : '';
@@ -164,7 +164,7 @@ try {
         //         $r = sql_query($q, 'CL_E.115');
         //     }
         // }
-
+        $countInserted = 0;
         if (!empty($modules)) {
             foreach ($modules as $modID) {
                 $modID = (int)$modID;
