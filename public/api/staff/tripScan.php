@@ -117,9 +117,10 @@ case 'SCAN':
 $CURRENTTIME=CURRENTTIME;
     // Update request (vehicle scanned entry time)
     $updateSql = "UPDATE st_request 
-                    SET iVehicleID = '{$vehicleID}', dtIn = '$CURRENTTIME'
+                    SET iVehicleID = '{$vehicleID}', dtIn = '$datetime'
                   WHERE iTrReqID = {$requestID} 
                   LIMIT 1";
+                //  error_log($updateSql);
 
     if (sql_query($updateSql)) {
         // Increment availed count for trip — using correct tripID
