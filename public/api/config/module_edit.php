@@ -155,13 +155,26 @@ try {
     
         sql_query("delete from module_level_assoc where iLevelD=$txtid");
     
-        $cmbmodules = isset($_POST['cmbmodules']) ? $_POST['cmbmodules'] : array();
+        
     
-        if (!empty($cmbmodules)) {
-            foreach ($cmbmodules as $key => $value) {
-                $CTYPE = GetXFromYID("SELECT cType FROM module WHERE iModuleID=$value");
-                $q = "INSERT INTO module_level_assoc (iLevelD, iModuleID, cType) VALUES ($txtid, $value, '$CTYPE')";
-                $r = sql_query($q, 'CL_E.115');
+        // if (!empty($cmbmodules)) {
+        //     foreach ($cmbmodules as $key => $value) {
+        //         $CTYPE = GetXFromYID("SELECT cType FROM module WHERE iModuleID=$value");
+        //         $q = "INSERT INTO module_level_assoc (iLevelD, iModuleID, cType) VALUES ($txtid, $value, '$CTYPE')";
+        //         $r = sql_query($q, 'CL_E.115');
+        //     }
+        // }
+
+        if (!empty($modules)) {
+            foreach ($modules as $modID) {
+                $modID = (int)$modID;
+                if ($modID > 0) {
+                    $type = GetXFromYID("SELECT cType FROM module WHERE iModuleID=$modID");
+                    $insertQuery = "INSERT INTO module_level_assoc (iLevelD, iModuleID, cType)
+                                    VALUES ($levelId, $modID, '$type')";
+                    sql_query($insertQuery, 'module_assoc_update');
+                    $countInserted++;
+                }
             }
         }
     
