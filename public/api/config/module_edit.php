@@ -145,7 +145,7 @@ try {
         $txtname = db_input($_POST['txtname']);
         $txtdesc = isset($_POST['txtdesc']) ? db_input($_POST['txtdesc']) : '';
         $txtrank = GetMaxRank('levels');
-        $rdstatus = db_input($_POST['rdstatus']);
+        $rdstatus = 'A';
     
         $q = "INSERT INTO levels (iLevelD, vName, vDesc, cStatus,iRank) 
                 VALUES ($txtid, '$txtname', '$txtdesc', '$rdstatus', '$txtrank')";
@@ -170,6 +170,59 @@ try {
             ),
             "statusCode" => 200
         );
+    }
+
+    if ($action === 'addfetch') {
+        $modulesQuery = "
+            SELECT iModuleID, vName, cType, iParentID
+            FROM module
+            WHERE cStatus='A'
+            ORDER BY cType, iRank, vName
+        ";
+        $resModules = sql_query($modulesQuery);
+    
+        $modulesArr = [];
+        while ($row = sql_fetch_assoc($resModules)) {
+            $modulesArr[] = $row;
+        }
+        // $assignedQuery = "SELECT iModuleID FROM module_level_assoc WHERE iLevelD = $levelId";
+        // $resAssigned = sql_query($assignedQuery);
+    
+        // $assignedArr = [];
+        // while ($row = sql_fetch_assoc($resAssigned)) {
+        //     $assignedArr[] = $row['iModuleID'];
+        // }
+    
+        $finalModules = [];
+        $lookup = [];
+        foreach ($modulesArr as $mod) {
+            $mod['children'] = [];
+            $lookup[$mod['iModuleID']] = $mod;
+        }
+    
+        foreach ($lookup as $id => &$mod) {
+            if ($mod['iParentID'] == 0) {
+                $finalModules[] = &$mod;
+            } else {
+                if (isset($lookup[$mod['iParentID']])) {
+                    $lookup[$mod['iParentID']]['children'][] = &$mod;
+                }
+            }
+        }
+    
+        $response = [
+            "data" => [
+                "message" => "Modules fetched successfully",
+                "modules" => $finalModules,
+                "assigned" => $assignedArr
+            ],
+            "statusCode" => 200
+        ];
+    
+        http_response_code(200);
+        header('Content-Type: application/json');
+        echo json_encode($response);
+        exit;
     }
 
     $response = array(
