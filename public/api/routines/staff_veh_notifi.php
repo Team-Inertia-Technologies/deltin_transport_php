@@ -9,7 +9,7 @@ function sendStaffVehicleNotification(
     string $deviceToken,
     string $vehicleNumber,
     array $details = [],
-    string $serviceAccountPath = null,
+    array $serviceAccountConfig = null,
     int $timeoutCurl = 10
 ) {
     // Validate
@@ -17,30 +17,41 @@ function sendStaffVehicleNotification(
         return "Missing deviceToken or vehicleNumber";
     }
 
-    // Resolve service account path (default relative to this file)
-    if (empty($serviceAccountPath)) {
-        $serviceAccountPath = __DIR__ . '/../deltintransport-7d1c0-firebase-adminsdk-fbsvc-cca77faf1c.json';
+    // Build service account configuration from environment variables
+    if (empty($serviceAccountConfig)) {
+        // Check if all required Firebase constants are defined
+        if (!defined('FIREBASE_PROJECT_ID') || !defined('FIREBASE_PRIVATE_KEY') || !defined('FIREBASE_CLIENT_EMAIL')) {
+            return "Firebase credentials not configured in environment variables";
+        }
+
+        $serviceAccountConfig = [
+            'type' => defined('FIREBASE_TYPE') ? FIREBASE_TYPE : 'service_account',
+            'project_id' => FIREBASE_PROJECT_ID,
+            'private_key_id' => defined('FIREBASE_PRIVATE_KEY_ID') ? FIREBASE_PRIVATE_KEY_ID : '',
+            'private_key' => FIREBASE_PRIVATE_KEY,
+            'client_email' => FIREBASE_CLIENT_EMAIL,
+            'client_id' => defined('FIREBASE_CLIENT_ID') ? FIREBASE_CLIENT_ID : '',
+            'auth_uri' => defined('FIREBASE_AUTH_URI') ? FIREBASE_AUTH_URI : 'https://accounts.google.com/o/oauth2/auth',
+            'token_uri' => defined('FIREBASE_TOKEN_URI') ? FIREBASE_TOKEN_URI : 'https://oauth2.googleapis.com/token',
+            'auth_provider_x509_cert_url' => defined('FIREBASE_AUTH_PROVIDER_CERT_URL') ? FIREBASE_AUTH_PROVIDER_CERT_URL : 'https://www.googleapis.com/oauth2/v1/certs',
+            'client_x509_cert_url' => defined('FIREBASE_CLIENT_CERT_URL') ? FIREBASE_CLIENT_CERT_URL : '',
+            'universe_domain' => defined('FIREBASE_UNIVERSE_DOMAIN') ? FIREBASE_UNIVERSE_DOMAIN : 'googleapis.com'
+        ];
     }
 
-    if (!file_exists($serviceAccountPath) || !is_readable($serviceAccountPath)) {
-        return "Service account JSON not found or unreadable at: $serviceAccountPath";
+    // Get project ID
+    if (empty($serviceAccountConfig['project_id'])) {
+        return "project_id not found in service account configuration";
     }
-
-    // Read project_id from JSON to build FCM URL
-    $credJson = json_decode(file_get_contents($serviceAccountPath), true);
-    if (empty($credJson['project_id'])) {
-        return "project_id not found in service account JSON";
-    }
-    $projectId = $credJson['project_id'];
+    $projectId = $serviceAccountConfig['project_id'];
     $fcmUrl = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
 
     // Initialize Google Client and request an OAuth2 access token
     try {
         $client = new Google_Client();
-        $client->setAuthConfig($serviceAccountPath);
+        $client->setAuthConfig($serviceAccountConfig);
 
         $client->addScope('https://www.googleapis.com/auth/firebase.messaging');
-
 
         $tokenArray = $client->fetchAccessTokenWithAssertion();
         if (isset($tokenArray['error'])) {
@@ -145,6 +156,7 @@ function sendStaffVehicleNotification(
     // Return response message on failure
     return "FCM HTTP {$httpCode} - Response: " . substr($response ?? '', 0, 2000);
 }
+
 function sendBulkStaffVehicleNotification(
     array $deviceTokens,
     string $vehicleNumber,
@@ -246,6 +258,7 @@ function notifyTripStaffVehicleAssignment($tripId, $vehicleNumber, $additionalDe
 
     return $results;
 }
+
 $res=notifyTripStaffVehicleAssignment(58, 'DL1AB1234', [
     'driver_name' => 'John Doe',
     'route' => 'Route 5',

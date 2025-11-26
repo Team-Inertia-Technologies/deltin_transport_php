@@ -104,18 +104,20 @@ case 'SCAN':
     // Fetch route and pickup details
     $detailSql = "SELECT 
                     rt.vName AS routeName,
-                    rs.vName AS pickupPt
+                    rs.vName AS pickupPt,
+                    s.vName AS staffName
                   FROM st_request r
                   LEFT JOIN st_route rt ON r.iRouteID = rt.iRouteID
                   LEFT JOIN st_route_stops rs ON r.iStopID = rs.iStopID
+                  LEFT JOIN staff s ON r.iStaffID = s.iStaffID
                   WHERE r.iTrReqID = {$requestID}
                   LIMIT 1";
     $detailRes = sql_query($detailSql);
     $d = sql_fetch_assoc($detailRes);
-
+$CURRENTTIME=CURRENTTIME;
     // Update request (vehicle scanned entry time)
     $updateSql = "UPDATE st_request 
-                    SET iVehicleID = '{$vehicleID}', dtIn = NOW() 
+                    SET iVehicleID = '{$vehicleID}', dtIn = '$CURRENTTIME'
                   WHERE iTrReqID = {$requestID} 
                   LIMIT 1";
 
@@ -130,7 +132,8 @@ case 'SCAN':
                 "pickupPt" => $d['pickupPt'] ?? '',
                 "vehi"     => $vehicleNum,
                 "date"     => date('d/m/Y'),
-                "time"     => date('H:i:s')
+                "time"     => (!empty($CURRENTTIME) ? date('H:i', strtotime($CURRENTTIME)) : date('H:i')),
+                "staffName" => $d['staffName'] ?? ''
             ],
             "statusCode" => 200
         ]);
