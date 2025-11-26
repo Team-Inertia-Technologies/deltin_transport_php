@@ -462,94 +462,94 @@ function logQRScanError($staffId, $description, $status = 'E')
     return $result ? true : false;
 }
 
-function sendFcmNotification($deviceToken, $name, $pic, $body, $RM_ID, $senderID)
-{
-    // Initialize Google Client
-    $client = new Google_Client();
-    $client->setAuthConfig('../deltin-one-firebase-adminsdk-fo0ep-80ce21da32.json');
-    $client->addScope('https://www.googleapis.com/auth/firebase.messaging');
+// function sendFcmNotification($deviceToken, $name, $pic, $body, $RM_ID, $senderID)
+// {
+//     // Initialize Google Client
+//     $client = new Google_Client();
+//     $client->setAuthConfig('../deltin-one-firebase-adminsdk-fo0ep-80ce21da32.json');
+//     $client->addScope('https://www.googleapis.com/auth/firebase.messaging');
 
-    // Generate a fresh access token
-    $token = $client->fetchAccessTokenWithAssertion()['access_token'];
+//     // Generate a fresh access token
+//     $token = $client->fetchAccessTokenWithAssertion()['access_token'];
 
-    // Fetch unread messages between sender and receiver
-       $unreadMessagesQuery = "
-    SELECT iChatID, vText 
-    FROM chats 
-    WHERE iFrom_RefID = $RM_ID 
-      AND iTo_RefID = $senderID 
-      AND cFrom_RefType = 'R' 
-      AND cTo_RefType = 'M' 
-      AND cRead = 'N' 
-    ORDER BY dtSent DESC 
-    LIMIT 4";
+//     // Fetch unread messages between sender and receiver
+//        $unreadMessagesQuery = "
+//     SELECT iChatID, vText 
+//     FROM chats 
+//     WHERE iFrom_RefID = $RM_ID 
+//       AND iTo_RefID = $senderID 
+//       AND cFrom_RefType = 'R' 
+//       AND cTo_RefType = 'M' 
+//       AND cRead = 'N' 
+//     ORDER BY dtSent DESC 
+//     LIMIT 4";
 
-    $result = sql_query($unreadMessagesQuery);
-    $messages = [];
+//     $result = sql_query($unreadMessagesQuery);
+//     $messages = [];
 
-    if ($result) {
-        while ($row = sql_fetch_assoc($result)) {
-            $messages[] = !empty($row['vText']) ? db_output2($row['vText']) : '';
-        }
-    }
+//     if ($result) {
+//         while ($row = sql_fetch_assoc($result)) {
+//             $messages[] = !empty($row['vText']) ? db_output2($row['vText']) : '';
+//         }
+//     }
 
-    // $messagesText = implode("\n", $messages);
-    $messages = array_reverse($messages);
-    $pic = !empty($pic) ? $pic : '';
-    $payload = [
-        'message' => [
-            'token' => $deviceToken,
+//     // $messagesText = implode("\n", $messages);
+//     $messages = array_reverse($messages);
+//     $pic = !empty($pic) ? $pic : '';
+//     $payload = [
+//         'message' => [
+//             'token' => $deviceToken,
 
-            'data' => [
-                'type' => "chat",
-                'senderName' => "$name",
-                'senderID' => "$RM_ID",
-                'profilePic' => "$pic",
-                'messages' => json_encode($messages),
+//             'data' => [
+//                 'type' => "chat",
+//                 'senderName' => "$name",
+//                 'senderID' => "$RM_ID",
+//                 'profilePic' => "$pic",
+//                 'messages' => json_encode($messages),
 
-            ],
-'android' => [
-                'priority' => 'high',
-            ],
-            'apns' => [
-                'headers' => [
-                    'apns-priority' => '5',
-                    'apns-push-type' => 'background',
-                ],
-                'payload' => [
-                    'aps' => [
-                        'content-available' => 1, // important for background/killed
-                    ],
-                ],
-            ],
-    ];
+//             ],
+// 'android' => [
+//                 'priority' => 'high',
+//             ],
+//             'apns' => [
+//                 'headers' => [
+//                     'apns-priority' => '5',
+//                     'apns-push-type' => 'background',
+//                 ],
+//                 'payload' => [
+//                     'aps' => [
+//                         'content-available' => 1, // important for background/killed
+//                     ],
+//                 ],
+//             ],
+//     ];
 
-    // Define the FCM URL for HTTP v1 API
-    $fcmUrl = "https://fcm.googleapis.com/v1/projects/deltin-one/messages:send";
+//     // Define the FCM URL for HTTP v1 API
+//     $fcmUrl = "https://fcm.googleapis.com/v1/projects/deltin-one/messages:send";
 
-    // Use cURL to send the request
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $fcmUrl);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: Bearer ' . $token,
-        'Content-Type: application/json',
-    ]);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+//     // Use cURL to send the request
+//     $ch = curl_init();
+//     curl_setopt($ch, CURLOPT_URL, $fcmUrl);
+//     curl_setopt($ch, CURLOPT_POST, 1);
+//     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+//     curl_setopt($ch, CURLOPT_HTTPHEADER, [
+//         'Authorization: Bearer ' . $token,
+//         'Content-Type: application/json',
+//     ]);
+//     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
 
-    // Execute the request
-    $response = curl_exec($ch);
-    $success = $response !== false;
+//     // Execute the request
+//     $response = curl_exec($ch);
+//     $success = $response !== false;
 
-    if (!$success) {
-        error_log('cURL Error: ' . curl_error($ch));
-    } else {
-        error_log("Notification sent: " . $response);
-    }
+//     if (!$success) {
+//         error_log('cURL Error: ' . curl_error($ch));
+//     } else {
+//         error_log("Notification sent: " . $response);
+//     }
 
-    // Close cURL
-    curl_close($ch);
+//     // Close cURL
+//     curl_close($ch);
 
-    return $success;
-}
+//     return $success;
+// }
