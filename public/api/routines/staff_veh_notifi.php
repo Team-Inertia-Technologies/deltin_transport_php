@@ -1,4 +1,5 @@
 <?php
+include "../../includes/common_api.php";
 require_once(__DIR__ . '/../api_common.php');
 require_once(__DIR__ . '/../../includes/libs/google_client/vendor/autoload.php');
 
@@ -204,7 +205,7 @@ function getStaffTokensByTripId($tripId) {
     $query = "
         SELECT DISTINCT m.vDeviceToken
         FROM staff m
-        INNER JOIN st_trips ts ON m.iStaffID = ts.iStaffID
+        INNER JOIN st_request ts ON m.iStaffID = ts.iStaffID
         WHERE ts.iTripID = " . $tripId . "
           AND m.vDeviceToken IS NOT NULL
           AND m.vDeviceToken != ''
