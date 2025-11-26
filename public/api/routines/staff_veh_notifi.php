@@ -245,7 +245,7 @@ function notifyTripStaffVehicleAssignment($tripId, $vehicleNumber, $additionalDe
 
     return $results;
 }
-$res=notifyTripStaffVehicleAssignment(1234, 'DL1AB1234', [
+$res=notifyTripStaffVehicleAssignment(58, 'DL1AB1234', [
     'driver_name' => 'John Doe',
     'route' => 'Route 5',
     'departure_time' => '08:30 AM'
