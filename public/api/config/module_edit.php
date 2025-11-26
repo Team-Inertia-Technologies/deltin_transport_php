@@ -215,7 +215,7 @@ try {
             "data" => [
                 "message" => "Modules fetched successfully",
                 "modules" => $finalModules,
-                "assigned" => $assignedArr
+                // "assigned" => $assignedArr
             ],
             "statusCode" => 200
         ];
