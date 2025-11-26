@@ -206,7 +206,7 @@ function getStaffTokensByTripId($tripId) {
         SELECT DISTINCT m.vDeviceToken
         FROM staff m
         INNER JOIN st_request ts ON m.iStaffID = ts.iStaffID
-        WHERE ts.iTripID = " . $tripId . "
+        WHERE ts.iTrReqID  = $tripId
           AND m.vDeviceToken IS NOT NULL
           AND m.vDeviceToken != ''
           AND m.cActive = 'Y'
