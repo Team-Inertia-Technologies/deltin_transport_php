@@ -73,6 +73,16 @@ try {
             "name" => $value
         ];
     }
+
+
+    $DEPT = [];
+    $DEPT_ARR = GetXFromYID("SELECT iDepartmentID, vName FROM department WHERE cStatus='A' ORDER BY vName ASC");
+    foreach ($DEPT_ARR as $key => $value) {
+        $DEPT[] = [
+            "id" => (int)$key,
+            "name" => $value
+        ];
+    }
     
     // Fetch users
     $sql = "SELECT * FROM users_temp $cond $cond2 ORDER BY vName ASC";
@@ -90,7 +100,8 @@ try {
             "users" => $users,
             "properties" => $PROPERTY_ARR,
             "levels" => $USER_LEVEL_ARR,
-            "status" => $Status
+            "status" => $Status,
+            "departments" => $DEPT
         ),
         "statuscode" => 200
     );
