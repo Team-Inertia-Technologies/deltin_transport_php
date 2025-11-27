@@ -84,7 +84,8 @@ function sendStaffVehicleNotification(
     $dataPayload = [
         'type' => 'vehicle_assignment',
         'vehicle_number' => (string)$vehicleNumber,
-        'timestamp' => date('Y-m-d H:i:s')
+        'timestamp' => date('Y-m-d H:i:s'),
+        'url' => 'https://staff-stage.deltin.com/home'
     ];
     foreach ($details as $k => $v) {
         // convert arrays to JSON string
