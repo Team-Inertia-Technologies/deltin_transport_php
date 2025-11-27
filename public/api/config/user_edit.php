@@ -20,6 +20,8 @@ try {
     // Example: handle Insert mode (I)
     if ($mode === 'I') { 
         $txtid = NextID('iUserID', 'users_temp');
+		$deptID = db_input($_POST['cmbdepartment']);
+		$reportingTo = db_input($_POST['cmbreportingto']);
         $txtname = db_input($_POST['txtname']);
         $txtusername = db_input($_POST['txtusername']);
         $txtpassword = htmlspecialchars_decode($_POST['txtpassword']);
@@ -31,9 +33,9 @@ try {
 		$cmbproperty = $_POST['cmbproperty2'] ?? [];
 
         $sql = "INSERT INTO users_temp 
-                (iUserID, vName, vUName, vPassword, vEmail, vPhone, iLevel, cStatus, dtCreated, iCreated_UserID, cRefType)
+                (iUserID, iDepartmentID, iReportingID, vName, vUName, vPassword, vEmail, vPhone, iLevel, cStatus, dtCreated, iCreated_UserID, cRefType)
                 VALUES 
-                ($txtid, '$txtname', '$txtusername', '$txtpassword', '$txtemail', '$txtphone', $cmblevel, 'D', '$dtCreated', $sess_user_id, 'A')";
+                ($txtid, $deptID, $reportingTo, '$txtname', '$txtusername', '$txtpassword', '$txtemail', '$txtphone', $cmblevel, 'D', '$dtCreated', $sess_user_id, 'A')";
         sql_query($sql, 'API.USER.INSERT');
 		LogMasterEdit($txtid, 'USR', $mode, $txtname);
 		
@@ -72,6 +74,8 @@ try {
 
 		$user_id = db_output($dataArr[0]->iUserID);
 	$txtname = db_output($dataArr[0]->vName);
+	$deptID = db_output($dataArr[0]->iDepartmentID);
+	$reportingTo = db_output($dataArr[0]->iReportingID);
 	$txtemail = db_output($dataArr[0]->vEmail);
 	$txtphone = db_output($dataArr[0]->vPhone);
 	$txtusername = db_output($dataArr[0]->vUName);
@@ -95,6 +99,10 @@ try {
             'message' => 'User Fetched successfully',
             'data' => [
 				'iUserID' => $user_id,
+				'DepartmentID' => $deptID,
+				'DepartmenName' => GetXFromYID("SELECT vName FROM department WHERE iDepartmentID = '$deptID'"),
+				'ReportingTo' => $reportingTo,
+				'ReportingToName' => GetXFromYID("SELECT vName FROM users WHERE iUserID = '$reportingTo'"),
 				'vName' => $txtname,
 				'vEmail' => $txtemail,
 				'vPhone' => $txtphone,
@@ -129,7 +137,9 @@ try {
 			'vName' => 'txtname',
 			'vEmail' => 'txtemail',
 			'vPhone' => 'txtphone',
-			'vUName' => 'txtusername'
+			'vUName' => 'txtusername',
+			'iDepartmentID' => 'cmbdepartment',
+			'iReportingID' => 'cmbreportingto'
 		];
 	
 		foreach ($fields_to_check as $db_field => $post_field) {
