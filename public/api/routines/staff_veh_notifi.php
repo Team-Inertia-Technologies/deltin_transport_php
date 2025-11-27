@@ -259,11 +259,25 @@ function notifyTripStaffVehicleAssignment($tripId, $vehicleNumber, $additionalDe
     return $results;
 }
 
-$res=notifyTripStaffVehicleAssignment(58, 'DL1AB1234', [
-    'driver_name' => 'John Doe',
-    'route' => 'Route 5',
-    'departure_time' => '08:30 AM'
-]);
+// $res=notifyTripStaffVehicleAssignment(58, 'DL1AB1234', [
+//     'driver_name' => 'John Doe',
+//     'route' => 'Route 5',
+//     'departure_time' => '08:30 AM'
+// ]);
+$deviceToken = $_GET['device_token'] ?? '';
+$vehicleNumber = "GA-09-AB-1234";
+
+$details = [
+    "driver_name" => "Yogesh",
+    "route" => "Panaji → Vasco",
+    "departure_time" => "2025-11-27 09:30 AM"
+];
+
+$res = sendStaffVehicleNotification(
+    $deviceToken,
+    $vehicleNumber,
+    $details
+);
 echo json_encode($res);
 exit;
 
