@@ -76,14 +76,15 @@ try {
 
 
     $DEPT = [];
-    $DEPT_ARR = GetXFromYID("SELECT iDepartmentID, vName FROM department WHERE cStatus='A' ORDER BY vName ASC");
-    foreach ($DEPT_ARR as $key => $value) {
+    $DEPT_ARR = GetXArrFromYID("SELECT iDepartmentID, vName FROM department WHERE cStatus='A' ORDER BY vName ASC"  ,$mode = "3");
+    //DFA($DEPT_ARR);
+    foreach ($DEPT_ARR as $dept_id => $dept_name) {
         $DEPT[] = [
-            "id" => (int)$key,
-            "name" => $value
+            "id" => (int)$dept_id,
+            "name" => $dept_name
         ];
     }
-    
+
     // Fetch users
     $sql = "SELECT * FROM users_temp $cond $cond2 ORDER BY vName ASC";
     // echo $sql;
