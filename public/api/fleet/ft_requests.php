@@ -131,7 +131,7 @@ switch ($mode) {
                 "bookedForOpt" => $bookedForOpt,
                 // "bookedByOpt" => $bookedByOpt,
                 "bookingCatOpt" => $bookingCatOpt,
-                "travelPurposeOpt" => $travelPurposeOpt,
+                "travelPurposeOpt" => $travelPurposeTypeOpt,
                 "propertyOpt" => $propertyOpt,
                 "paxOpt" => $paxOpt,
                 "baggageOpt" => $baggageOpt,
