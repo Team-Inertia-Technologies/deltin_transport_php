@@ -322,3 +322,5 @@ $BENEFICIARY_STAGE_ARR = array("P" => "Pending", "N" => "Notified", "V" => "View
 $SERVICE_OFFERED= array("F" => "Fleet", "B" => "Bus", "T" => "Both");
 
 $VEHICLE_DRIVER_TYPE= array("1" => "Hired", "2" => "Contract" , "3"=>"Owned");
+$FLEET_BOOKING_FOR= array("S" => "Staff", "G" => "Guest" );
+$FLEET_TRAVEL_TYPE= array("1" => "One Way Trip", "2" => "Return Trip",  "3" => "Vehicle Disposal" );

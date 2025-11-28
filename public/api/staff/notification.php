@@ -27,44 +27,7 @@ switch ($mode) {
 
     // ===================== CASE: VIEW =====================
     case 'VIEW':
-        $today = date('Y-m-d');
-        $currentDateTime = date('Y-m-d H:i:s');
-
-        // Get requested pickups (future requests - date is future OR date is today but time hasn't passed)
-        $requestedSql = "SELECT 
-                            r.iTrReqID as requestId,
-                            rt.vName as route_name,
-                            rs.vName as stop_name,
-                            t.dtTrip as trip_date,
-                            r.tPickup as pickup_time,
-                            r.cStatus
-                        FROM st_request r
-                        INNER JOIN st_route rt ON r.iRouteID = rt.iRouteID
-                        INNER JOIN st_route_stops rs ON r.iStopID = rs.iStopID
-                        INNER JOIN st_trips t ON r.iTripID = t.iTripID
-                        WHERE r.iStaffID = $user_id 
-                        AND r.cStatus = 'A'
-                        AND (
-                            DATE(t.dtTrip) > '$today' 
-                            OR (DATE(t.dtTrip) = '$today' AND CONCAT(DATE(t.dtTrip), ' ', r.tPickup) > '$currentDateTime')
-                        )
-                        ORDER BY t.dtTrip ASC";
-
-        $requestedRes = sql_query($requestedSql);
-        $requestedPickups = [];
-
-        while ($row = sql_fetch_assoc($requestedRes)) {
-
-            $tripDate = date('j M Y', strtotime($row['trip_date']));
-            $pickupTime = date('H:i', strtotime($row['pickup_time']));
-
-            $requestedPickups[] = [
-                 "requestId" => db_output2($row['requestId']),
-                "route" => db_output2($row['route_name']),
-                "place" => db_output2($row['stop_name']),
-                "date" => $tripDate . " | " . $pickupTime
-            ];
-        }
+     
 
         echo json_encode([
             "data" => [
