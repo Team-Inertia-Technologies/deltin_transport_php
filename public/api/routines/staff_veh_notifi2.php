@@ -17,7 +17,9 @@ function sendStaffVehicleNotification(
         return "Missing deviceToken or vehicleNumber";
     }
 
+    // Build service account configuration from environment variables
     if (empty($serviceAccountConfig)) {
+        // Check if all required Firebase constants are defined
         if (!defined('FIREBASE_PROJECT_ID') || !defined('FIREBASE_PRIVATE_KEY') || !defined('FIREBASE_CLIENT_EMAIL')) {
             return "Firebase credentials not configured in environment variables";
         }
@@ -67,15 +69,18 @@ function sendStaffVehicleNotification(
     // Build title/body
     $title = "Vehicle Assignment: " . $vehicleNumber;
     $bodyParts = ["Vehicle $vehicleNumber has been assigned"];
-   
+    if (!empty($details['driver_name'])) {
+        $bodyParts[] = "Driver: " . $details['driver_name'];
+    }
     if (!empty($details['route'])) {
-        $bodyParts[] = "Route: " . $details['route'];
+        $bodyParts[] = "Rou te: " . $details['route'];
     }
     if (!empty($details['departure_time'])) {
         $bodyParts[] = "Departure: " . $details['departure_time'];
     }
     $body = implode(" | ", $bodyParts);
 
+    // Prepare data payload (stringify everything)
     $dataPayload = [
         'type' => 'vehicle_assignment',
         'vehicle_number' => (string)$vehicleNumber,
@@ -83,9 +88,11 @@ function sendStaffVehicleNotification(
         'url' => 'https://staff-stage.deltin.com/home'
     ];
     foreach ($details as $k => $v) {
+        // convert arrays to JSON string
         $dataPayload[$k] = is_scalar($v) ? (string)$v : json_encode($v);
     }
 
+    // Build message payload for HTTP v1 (message object)
     $payload = [
         'message' => [
             'token' => $deviceToken,
@@ -143,6 +150,7 @@ function sendStaffVehicleNotification(
     }
 
     if ($httpCode >= 200 && $httpCode < 300) {
+        // success
         return true;
     }
 
@@ -199,12 +207,6 @@ function sendBulkStaffVehicleNotification(
 
     return $results;
 }
-function getStaffByToken($token) {
-    $token = db_input($token);
-    $sql = "SELECT iStaffID, vPhone AS phone FROM staff WHERE vDeviceToken = '$token' LIMIT 1";
-    $res = sql_query($sql);
-    return sql_fetch_assoc($res) ?: null;
-}
 
 function getStaffTokensByTripId($tripId) {
     $tokens = [];
@@ -214,8 +216,14 @@ function getStaffTokensByTripId($tripId) {
     }
 
     $query = "
-SELECT DISTINCT m.vDeviceToken FROM staff m INNER JOIN st_request ts ON m.iStaffID = ts.iStaffID WHERE ts.iTrReqID  = $tripId AND m.vDeviceToken IS NOT NULL AND m.vDeviceToken != ''
-          AND m.cActive = 'Y' ";
+        SELECT DISTINCT m.vDeviceToken
+        FROM staff m
+        INNER JOIN st_request ts ON m.iStaffID = ts.iStaffID
+        WHERE ts.iTrReqID  = $tripId
+          AND m.vDeviceToken IS NOT NULL
+          AND m.vDeviceToken != ''
+          AND m.cActive = 'Y'
+    ";
 
     $result = sql_query($query);
     if ($result) {
@@ -228,6 +236,7 @@ SELECT DISTINCT m.vDeviceToken FROM staff m INNER JOIN st_request ts ON m.iStaff
     }
     return $tokens;
 }
+
 function notifyTripStaffVehicleAssignment($tripId, $vehicleNumber, $additionalDetails = []) {
     $staffTokens = getStaffTokensByTripId($tripId);
     if (empty($staffTokens)) {
@@ -238,101 +247,39 @@ function notifyTripStaffVehicleAssignment($tripId, $vehicleNumber, $additionalDe
             'message' => "No active staff tokens found for trip ID {$tripId}"
         ];
     }
+
+    // Include trip id in details
     $details = array_merge(['trip_id' => (string)$tripId], $additionalDetails);
+
+    // For large lists you might want to chunk and/or use topics or FCM batch APIs.
     $results = sendBulkStaffVehicleNotification($staffTokens, $vehicleNumber, $details);
+
+    // Friendly message
     $results['message'] = "{$results['success']} successful, {$results['failed']} failed";
 
     return $results;
 }
 
-
-function sendVehicleAssignedNotification($trip)
-{
-    $tripId = $trip['iTripID'];
-    $trReqId = $trip['iTrReqID'];
-    $vehicleNumber = $trip['vRnum'];
-    // $driverName = $trip['driver_name'] ?? '';
-    $departureTime = $trip['dPickup'] .' '. $trip['tPickup'];
-    $route = $trip['route_name'] ?? '';
-
-    $details = [
-       // 'driver_name' => $driverName,
-        'route' => $route,
-        'departure_time' => $departureTime
-    ];
-
-    $tokens = getStaffTokensByTripId($trReqId);
-
-  if (!empty($tokens)) {
-    $res = sendBulkStaffVehicleNotification($tokens, $vehicleNumber, $details);
-
-    foreach ($tokens as $token) {
-        $staff = getStaffByToken($token);
-        $staffId = $staff['iStaffID'] ?? 0;
-        $phone = $staff['phone'] ?? '';
-
-        // Notification record insert (only if sent successfully)
-        $status = isset($res['errors'][$token]) ? 'F' : 'A';
-$now=NOW;
-        $insertSql = "
-            INSERT INTO st_notification 
-            (iUserID, vDeviceToken, dtSent, vPhoneNo, iRefID, cRefType, cStatus)
-            VALUES 
-            ($staffId, '$token', '$now', '$phone', {$trip['iTripID']}, 'T', '$status')
-        ";
-        sql_query($insertSql);
-    }
-
-    // Trip mark notified if at least one success
-    if ($res['success'] > 0) {
-        sql_query("UPDATE st_trips SET cNotified = 'Y' WHERE iTripID = {$trip['iTripID']}");
-    }
-}
-
-}
-
-function getUpcomingTrips()
-{
-    $now = date('Y-m-d H:i:s');
-    $twoHoursLater = date('Y-m-d H:i:s', strtotime('+2 hours'));
-
-    $sql = "
-        SELECT 
-            ts.iTrReqID,
-            t.iTripID,
-            ts.dPickup,
-            ts.tPickup,
-            t.cNotified,
-            v.vRnum,
-            r.vName AS route_name
-        FROM st_trips t
-        INNER JOIN st_request ts ON t.iTripID = ts.iTrReqID
-        INNER JOIN vehicle v ON ts.iVehicleID = v.iVehicleID
-        LEFT JOIN st_route r ON ts.iRouteID = r.iRouteID
-        WHERE t.dtTrip BETWEEN '$now' AND '$twoHoursLater'
-        AND t.cNotified = 'N'
-        AND v.vRnum IS NOT NULL
-    ";
-
-    $result = sql_query($sql);
-    $trips = [];
-
-    while ($row = sql_fetch_assoc($result)) {
-        $trips[] = $row;
-    }
-
-    return $trips;
-}
-
-$trips = getUpcomingTrips();
-
-foreach ($trips as $trip) {
-    sendVehicleAssignedNotification($trip);
-}
-
-echo json_encode([
-    "status" => "Cron Executed",
-    "checked" => count($trips)
+$res=notifyTripStaffVehicleAssignment(58, 'DL1AB1234', [
+    'driver_name' => 'John Doe',
+    'route' => 'Route 5',
+    'departure_time' => '08:30 AM'
 ]);
+// $deviceToken = $_GET['device_token'] ?? '';
+// $vehicleNumber = "GA-09-AB-1234";
+
+// $details = [
+//     "driver_name" => "Yogesh",
+//     "route" => "Panaji → Vasco",
+//     "departure_time" => "2025-11-27 09:30 AM"
+// ];
+
+// $res = sendStaffVehicleNotification(
+//     $deviceToken,
+//     $vehicleNumber,
+//     $details
+// );
+echo json_encode($res);
 exit;
+
 ?>
