@@ -90,12 +90,12 @@ switch ($mode) {
             $propertyOpt[] = ['id' => intval($id), 'name' => $name];
         }
         // Extract numeric values (assuming $MAX_PAX and $MAX_BAG return associative array)
-        $maxPaxValue = isset($MAX_PAX['vValue']) ? (int)$MAX_PAX['vValue'] : 0;
-        $maxBagValue = isset($MAX_BAG['vValue']) ? (int)$MAX_BAG['vValue'] : 0;
+        // $maxPaxValue = $MAX_PAX;
+        // $maxBagValue = $MAX_BAG;
 
         // Create arrays 0 to max values (or at least 0 if no limit)
-        $paxOpt  = ($maxPaxValue > 0) ? range(0, $maxPaxValue) : [0];
-        $baggageOpt = ($maxBagValue > 0) ? range(0, $maxBagValue) : [0];
+        $paxOpt  = ($MAX_PAX > 0) ? range(0, intval($MAX_PAX)) : [0];
+        $baggageOpt = ($MAX_BAG > 0) ? range(0, intval($MAX_BAG)) : [0];
 
         $vehiCatOpt   = [['id' => 0, 'name' => 'Choose']];
         foreach ($VEH_CAT as $id => $name) {
