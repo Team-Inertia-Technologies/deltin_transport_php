@@ -32,8 +32,8 @@ switch ($mode) {
         $TRAVEL_PURPOSE = GetXArrFromYID("SELECT iFleet_TrvPurID, vName from fleet_travelpurpose where cStatus='A' ORDER BY iRank", "3");
         $TRAVEL_TYPE = sql_query("SELECT iFleet_TrvTypeID, iFleet_TrvPurID, vName from fleet_traveltype where cStatus='A' ORDER BY iRank", "TRAVEL_TYPE");
         $PROPERTY_ARR = GetXArrFromYID("SELECT iPropertyID, vName from property where cStatus='A' ORDER BY vName", "3");
-        $MAX_PAX = GetXFromYID("SELECT vCode, vValue from sys_settings where vCode = 'FT_BK_MAX_PAX'");
-        $MAX_BAG = GetXFromYID("SELECT vCode, vValue from sys_settings where vCode = 'FT_BK_MAX_BAG'");
+        $MAX_PAX = GetXFromYID("SELECT vValue from sys_settings where vCode = 'FT_BK_MAX_PAX'");
+        $MAX_BAG = GetXFromYID("SELECT vValue from sys_settings where vCode = 'FT_BK_MAX_BAG'");
         $VEH_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
         // $STAFF_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
         $STAFF_DEPT = GetXArrFromYID("SELECT iDepartmentID, vName from department where cStatus='A' ORDER BY vName", "3");
@@ -93,9 +93,9 @@ switch ($mode) {
         $maxPaxValue = isset($MAX_PAX['vValue']) ? (int)$MAX_PAX['vValue'] : 0;
         $maxBagValue = isset($MAX_BAG['vValue']) ? (int)$MAX_BAG['vValue'] : 0;
 
-        // Create arrays 1 to max values
-        $paxOpt  = ($maxPaxValue > 0) ? range(1, $maxPaxValue) : [];
-        $baggageOpt = ($maxBagValue > 0) ? range(1, $maxBagValue) : [];
+        // Create arrays 0 to max values (or at least 0 if no limit)
+        $paxOpt  = ($maxPaxValue > 0) ? range(0, $maxPaxValue) : [0];
+        $baggageOpt = ($maxBagValue > 0) ? range(0, $maxBagValue) : [0];
 
         $vehiCatOpt   = [['id' => 0, 'name' => 'Choose']];
         foreach ($VEH_CAT as $id => $name) {
