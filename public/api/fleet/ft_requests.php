@@ -214,13 +214,13 @@ switch ($mode) {
 
         // Common columns (include PK as first column)
         $cols = "iFleet_BookingID, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
-                 iFleet_BKCatID, vInstructions, vName, vMobileNo, iGuestID, iStaffID,
+                 iFleet_BKCatID, vInstructions, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,
-                 vDropLocation, iVehicleCatID, cDisposal, vReturnTime";
+                 vDropLocation, iVehicleCatID, cDisposal,dtAdded,iAdded_UserID,cStatus";
 
         // Create OUTBOUND booking
         $iFleet_BookingID1 = NextID('iFleet_BookingID', 'fleet_booking');
-
+$dtAdded= NOW;
         // handle possible NULL for vReturnTime
         $vReturnTimeVal = (!empty($vReturnTime)) ? "'$vReturnTime'" : "NULL";
 
@@ -230,7 +230,7 @@ switch ($mode) {
             $iFleet_BookingID1, '$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
             $iFleet_BKCatID, '$vInstructions', '$vName', '$vMobileNo', $iGuestID, $iStaffID,
             $iPax, $iBaggage, '$vPickUpLocation', '$vPickUpTime',
-            '$vDropLocation', $iVehicleCatID, '$cDisposal', $vReturnTimeVal
+            '$vDropLocation', $iVehicleCatID, '$cDisposal','$dtAdded',$user_id,'A'
         )";
 
         $ok1 = sql_query($sql1);
@@ -255,8 +255,8 @@ switch ($mode) {
             VALUES (
                 $iFleet_BookingID2, '$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
                 $iFleet_BKCatID, '$vInstructions', '$vName', '$vMobileNo', $iGuestID, $iStaffID,
-                $iPax, $iBaggage, '$vDropLocation', '$vReturnTime',
-                '$vPickUpLocation', $iVehicleCatID, '$cDisposal', NULL
+                $iPax, $iBaggage, '$vDropLocation',
+                '$vPickUpLocation', $iVehicleCatID, '$cDisposal','$dtAdded',$user_id,'A'
             )";
 
             $ok2 = sql_query($sql2);
