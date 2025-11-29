@@ -150,6 +150,7 @@ switch ($mode) {
 
         // sanitize and collect inputs
         $cBookingFor = db_input($_REQUEST['bookedFor'] ?? '');
+        $iBookedBy = db_input($_REQUEST['bookedBy'] ?? '');
         $iFleet_TrvPurID = intval($_REQUEST['travelPurpose'] ?? 0);
         $iFleet_TrvTypeID = intval($_REQUEST['travelType'] ?? 0);
         $iFleet_BKCatID = intval($_REQUEST['bookingCat'] ?? 0);
@@ -213,7 +214,7 @@ switch ($mode) {
         }
 
         // Common columns (include PK as first column)
-        $cols = "iFleet_BookingID, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
+        $cols = "iFleet_BookingID,iBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,
                  vDropLocation, iVehicleCatID, cDisposal,dtAdded,iAdded_UserID,cStatus";
@@ -227,7 +228,7 @@ $dtAdded= NOW;
         $sql1 = "
         INSERT INTO fleet_booking ($cols)
         VALUES (
-            $iFleet_BookingID1, '$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
+            $iFleet_BookingID1,$iBookedBy, '$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
             $iFleet_BKCatID, '$vInstructions', '$vName', '$vMobileNo', $iGuestID, $iStaffID,
             $iPax, $iBaggage, '$vPickUpLocation', '$vPickUpTime',
             '$vDropLocation', $iVehicleCatID, '$cDisposal','$dtAdded',$user_id,'A'
@@ -253,7 +254,7 @@ $dtAdded= NOW;
             $sql2 = "
             INSERT INTO fleet_booking ($cols)
             VALUES (
-                $iFleet_BookingID2, '$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
+                $iFleet_BookingID2, $iBookedBy,'$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
                 $iFleet_BKCatID, '$vInstructions', '$vName', '$vMobileNo', $iGuestID, $iStaffID,
                 $iPax, $iBaggage, '$vDropLocation',
                 '$vPickUpLocation', $iVehicleCatID, '$cDisposal','$dtAdded',$user_id,'A'
