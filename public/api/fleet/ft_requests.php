@@ -475,7 +475,7 @@ $rowData = []; // No pre-loaded data for LIST; front-end will fetch as needed
                 iVehicleCatID = " . intval($iVehicleCatID) . ",
                 cDisposal = '" . $cDisposal . "',
                 tReturnTime = " . $vReturnTimeVal . ",
-                dtModified = '" . $dtNow . "',
+                dtUpdated = '" . $dtNow . "',
                 iModified_UserID = " . intval($user_id) . "
             WHERE iFleet_BookingID = " . intval($iFleet_BookingID) . " AND cStatus = 'A'
         ";
