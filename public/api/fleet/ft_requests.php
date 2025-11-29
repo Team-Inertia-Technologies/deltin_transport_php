@@ -85,7 +85,7 @@ switch ($mode) {
         // Reset array keys (remove gaps)
         $travelPurposeTypeOpt = array_values($travelPurposeTypeOpt);
 
-        $propertyOpt   = [['id' => 0, 'name' => 'Choose']];
+        $propertyOpt = [['id' => 0, 'name' => 'Choose']];
         foreach ($PROPERTY_ARR as $id => $name) {
             $propertyOpt[] = ['id' => intval($id), 'name' => $name];
         }
@@ -94,18 +94,18 @@ switch ($mode) {
         // $maxBagValue = $MAX_BAG;
 
         // Create arrays 0 to max values (or at least 0 if no limit)
-        $paxOpt  = ($MAX_PAX > 0) ? range(0, intval($MAX_PAX)) : [0];
+        $paxOpt = ($MAX_PAX > 0) ? range(0, intval($MAX_PAX)) : [0];
         $baggageOpt = ($MAX_BAG > 0) ? range(0, intval($MAX_BAG)) : [0];
 
-        $vehiCatOpt   = [['id' => 0, 'name' => 'Choose']];
+        $vehiCatOpt = [['id' => 0, 'name' => 'Choose']];
         foreach ($VEH_CAT as $id => $name) {
             $vehiCatOpt[] = ['id' => intval($id), 'name' => $name];
         }
-        $tripTypeArr    = [];
+        $tripTypeArr = [];
         foreach ($FLEET_TRAVEL_TYPE as $id => $name) {
             $tripTypeArr[] = ['id' => intval($id), 'name' => $name];
         }
-        $staffDeptOpt   = [['id' => 0, 'name' => 'Choose']];
+        $staffDeptOpt = [['id' => 0, 'name' => 'Choose']];
         foreach ($STAFF_DEPT as $id => $name) {
             $staffDeptOpt[] = ['id' => intval($id), 'name' => $name];
         }
@@ -125,28 +125,35 @@ switch ($mode) {
                 'mobile' => $row['vMobileNo']
             ];
         }
+        $optArr = [
+            "bookedForOpt" => $bookedForOpt,
+            "bookedByOpt" => $bookedByOpt,
+            "bookingCatOpt" => $bookingCatOpt,
+            "travelPurposeOpt" => $travelPurposeTypeOpt,
+            "travelTypeOpt" => $travelTypeOpt,
+            "propertyOpt" => $propertyOpt,
+            "paxOpt" => $paxOpt,
+            "baggageOpt" => $baggageOpt,
+            "pickUpLocOpt" => $pickUpLocOpt,
+            "vehiCatOpt" => $vehiCatOpt,
+            "tripTypeArr" => $tripTypeArr,
+            "staffDeptOpt" => $staffDeptOpt,
+            "staffOpt" => $staffOpt,
+            "guestOpts" => $guestOpts
+        ];
+
+
         echo json_encode([
             "data" => [
-                "rowData" => [],
-                "bookedForOpt" => $bookedForOpt,
-                // "bookedByOpt" => $bookedByOpt,
-                "bookingCatOpt" => $bookingCatOpt,
-                "travelPurposeOpt" => $travelPurposeTypeOpt,
-                "propertyOpt" => $propertyOpt,
-                "paxOpt" => $paxOpt,
-                "baggageOpt" => $baggageOpt,
-                "vehiCatOpt" => $vehiCatOpt,
-                "tripTypeArr" => $tripTypeArr,
-                "staffDeptOpt" => $staffDeptOpt,
-                "staffOpt" => $staffOpt,
-                "guestOpts" => $guestOpts,
+                "rowData" => $rowData,
+                "optArr" => $optArr
             ],
             "statusCode" => 200
         ]);
         break;
 
     // ===================== CASE: ADD =====================
-       case 'ADD_BOOKING':
+    case 'ADD_BOOKING':
 
         // sanitize and collect inputs
         $cBookingFor = db_input($_REQUEST['bookedFor'] ?? '');
@@ -221,7 +228,7 @@ switch ($mode) {
 
         // Create OUTBOUND booking
         $iFleet_BookingID1 = NextID('iFleet_BookingID', 'fleet_booking');
-$dtAdded= NOW;
+        $dtAdded = NOW;
         // handle possible NULL for vReturnTime
         $vReturnTimeVal = (!empty($vReturnTime)) ? "'$vReturnTime'" : "NULL";
 
