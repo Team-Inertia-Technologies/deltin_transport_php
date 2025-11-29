@@ -127,14 +127,12 @@ switch ($mode) {
         }
         $optArr = [
             "bookedForOpt" => $bookedForOpt,
-            "bookedByOpt" => $bookedByOpt,
+          // "bookedByOpt" => $bookedByOpt,
             "bookingCatOpt" => $bookingCatOpt,
             "travelPurposeOpt" => $travelPurposeTypeOpt,
-            "travelTypeOpt" => $travelTypeOpt,
             "propertyOpt" => $propertyOpt,
             "paxOpt" => $paxOpt,
             "baggageOpt" => $baggageOpt,
-            "pickUpLocOpt" => $pickUpLocOpt,
             "vehiCatOpt" => $vehiCatOpt,
             "tripTypeArr" => $tripTypeArr,
             "staffDeptOpt" => $staffDeptOpt,
@@ -142,7 +140,7 @@ switch ($mode) {
             "guestOpts" => $guestOpts
         ];
 
-
+$rowData = []; // No pre-loaded data for LIST; front-end will fetch as needed
         echo json_encode([
             "data" => [
                 "rowData" => $rowData,
