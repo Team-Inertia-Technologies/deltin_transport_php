@@ -283,6 +283,222 @@ switch ($mode) {
         ]);
 
         break;
+        // ===================== CASE: EDIT_BOOKING (no pairing) =====================
+    case 'EDIT_BOOKING':
+        $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
+
+        if ($iFleet_BookingID <= 0) {
+            echo json_encode([
+                "error" => ["message" => "bookingId missing or invalid"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $bookingSql = "SELECT * FROM fleet_booking WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
+        $bookingRes = sql_query($bookingSql);
+
+        if (sql_num_rows($bookingRes) == 0) {
+            echo json_encode([
+                "error" => ["message" => "Booking not found"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $booking = sql_fetch_assoc($bookingRes);
+
+        // Map DB columns to front-end keys (same as ADD inputs)
+        $response = [
+            "bookingId"      => intval($booking['iFleet_BookingID']),
+            "bookedBy"       => intval($booking['iBookedBy']),
+            "bookedFor"      => $booking['cBookingFor'],
+            "travelPurpose"  => intval($booking['iFleet_TrvPurID']),
+            "travelType"     => intval($booking['iFleet_TrvTypeID']),
+            "bookingCat"     => intval($booking['iFleet_BKCatID']),
+            "property"       => intval($booking['iPropertyID']),
+            "name"           => $booking['vName'],
+            "mob"            => $booking['vMobileNo'],
+            "pax"            => intval($booking['iPax']),
+            "baggage"        => intval($booking['iBaggage']),
+            "pickUpLoc"      => $booking['vPickUpLocation'],
+            "dropLoc"        => $booking['vDropLocation'],
+            "pickUpDateTime" => $booking['vPickUpTime'],
+            "returnTime"     => ($booking['vReturnTime'] ?? null),
+            "vehiCat"        => intval($booking['iVehicleCatID']),
+            "intruc"         => $booking['vInstructions'],
+            "guestID"        => intval($booking['iGuestID']),
+            "staffID"        => intval($booking['iFStaffID']),
+            "cDisposal"      => ($booking['cDisposal'] ?? 'N'),
+            "dtAdded"        => $booking['dtAdded'],
+            "addedUserId"    => intval($booking['iAdded_UserID']),
+        ];
+
+        // Option arrays for form rendering (minimal set; extend if needed)
+        $BOOKING_CAT = GetXArrFromYID("SELECT iFleet_BkCatID, vName from fleet_bookingcategory where cStatus='A' ORDER BY vName", "3");
+        $TRAVEL_PURPOSE = GetXArrFromYID("SELECT iFleet_TrvPurID, vName from fleet_travelpurpose where cStatus='A' ORDER BY iRank", "3");
+        $VEH_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
+        $PROPERTY_ARR = GetXArrFromYID("SELECT iPropertyID, vName from property where cStatus='A' ORDER BY vName", "3");
+        $STAFF_ARR = sql_query("SELECT iFStaffID, vName, iDepartmentID from fleet_staff where cStatus='A' ORDER BY vName");
+        $GUEST_ARR = sql_query("SELECT iGuestID, vName, vMobileNo from guest where cStatus='A' ORDER BY vName");
+
+        $bookingCatOpt = [['id' => 0, 'name' => 'Choose']];
+        foreach ($BOOKING_CAT as $id => $name) {
+            $bookingCatOpt[] = ['id' => intval($id), 'name' => $name];
+        }
+
+        $travelPurposeOpt = [];
+        foreach ($TRAVEL_PURPOSE as $id => $name) {
+            $travelPurposeOpt[] = ['id' => intval($id), 'name' => $name];
+        }
+
+        $propertyOpt = [['id' => 0, 'name' => 'Choose']];
+        foreach ($PROPERTY_ARR as $id => $name) {
+            $propertyOpt[] = ['id' => intval($id), 'name' => $name];
+        }
+
+        $vehiCatOpt = [['id' => 0, 'name' => 'Choose']];
+        foreach ($VEH_CAT as $id => $name) {
+            $vehiCatOpt[] = ['id' => intval($id), 'name' => $name];
+        }
+
+        $staffOpt = [];
+        while ($row = sql_fetch_assoc($STAFF_ARR)) {
+            $staffOpt[] = [
+                'id' => intval($row['iFStaffID']),
+                'name' => $row['vName'],
+                'departmentId' => intval($row['iDepartmentID'])
+            ];
+        }
+
+        $guestOpts = [];
+        while ($row = sql_fetch_assoc($GUEST_ARR)) {
+            $guestOpts[] = [
+                'id' => intval($row['iGuestID']),
+                'name' => $row['vName'],
+                'mobile' => $row['vMobileNo']
+            ];
+        }
+
+        echo json_encode([
+            "data" => [
+                "booking" => $response,
+                "bookingCatOpt" => $bookingCatOpt,
+                "travelPurposeOpt" => $travelPurposeOpt,
+                "propertyOpt" => $propertyOpt,
+                "vehiCatOpt" => $vehiCatOpt,
+                "staffOpt" => $staffOpt,
+                "guestOpts" => $guestOpts
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
+
+    // ===================== CASE: UPDATE_BOOKING (no pairing) =====================
+    case 'UPDATE_BOOKING':
+        $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
+        if ($iFleet_BookingID <= 0) {
+            echo json_encode([
+                "error" => ["message" => "bookingId missing or invalid"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Collect & sanitize inputs (same names as ADD_BOOKING)
+        $cBookingFor = db_input($_REQUEST['bookedFor'] ?? '');
+        $iBookedBy = db_input($_REQUEST['bookedBy'] ?? '');
+        $iFleet_TrvPurID = intval($_REQUEST['travelPurpose'] ?? 0);
+        $iFleet_TrvTypeID = intval($_REQUEST['travelType'] ?? 0);
+        $iFleet_BKCatID = intval($_REQUEST['bookingCat'] ?? 0);
+        $iPropertyID = intval($_REQUEST['property'] ?? 0);
+
+        $vName = db_input($_REQUEST['name'] ?? '');
+        $vMobileNo = db_input($_REQUEST['mob'] ?? '');
+        $iPax = intval($_REQUEST['pax'] ?? 0);
+        $iBaggage = intval($_REQUEST['baggage'] ?? 0);
+
+        $vPickUpLocation = db_input($_REQUEST['pickUpLoc'] ?? '');
+        $vDropLocation = db_input($_REQUEST['dropLoc'] ?? '');
+        $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
+
+        $iVehicleCatID = intval($_REQUEST['vehiCat'] ?? 0);
+        $vInstructions = db_input($_REQUEST['intruc'] ?? '');
+
+        $tripType = intval($_REQUEST['tripType'] ?? 0);
+        $cDisposal = ($tripType == 3) ? 'Y' : 'N';
+        $vReturnTime = db_input($_REQUEST['returnTime'] ?? null);
+
+        $iGuestID = intval($_REQUEST['guestID'] ?? 0);
+        $iStaffID = intval($_REQUEST['staffID'] ?? 0);
+
+        // Basic required fields check (mirror ADD_BOOKING)
+        if (empty($vName) || empty($vMobileNo) || empty($vPickUpTime)) {
+            echo json_encode([
+                "error" => ["message" => "Required fields missing"],
+                "statusCode" => 401
+            ]);
+            exit;
+        }
+
+        // Confirm booking exists and is active
+        $checkSql = "SELECT * FROM fleet_booking WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
+        $checkRes = sql_query($checkSql);
+        if (sql_num_rows($checkRes) == 0) {
+            echo json_encode([
+                "error" => ["message" => "Booking not found"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $vReturnTimeVal = (!empty($vReturnTime)) ? "'" . $vReturnTime . "'" : "NULL";
+        $dtNow = date('Y-m-d H:i:s');
+
+        $updateSql = "
+            UPDATE fleet_booking SET
+                iBookedBy = " . intval($iBookedBy) . ",
+                cBookingFor = '" . $cBookingFor . "',
+                iFleet_TrvPurID = " . intval($iFleet_TrvPurID) . ",
+                iFleet_TrvTypeID = " . intval($iFleet_TrvTypeID) . ",
+                iPropertyID = " . intval($iPropertyID) . ",
+                iFleet_BKCatID = " . intval($iFleet_BKCatID) . ",
+                vInstructions = '" . $vInstructions . "',
+                vName = '" . $vName . "',
+                vMobileNo = '" . $vMobileNo . "',
+                iGuestID = " . intval($iGuestID) . ",
+                iFStaffID = " . intval($iStaffID) . ",
+                iPax = " . intval($iPax) . ",
+                iBaggage = " . intval($iBaggage) . ",
+                vPickUpLocation = '" . $vPickUpLocation . "',
+                vPickUpTime = '" . $vPickUpTime . "',
+                vDropLocation = '" . $vDropLocation . "',
+                iVehicleCatID = " . intval($iVehicleCatID) . ",
+                cDisposal = '" . $cDisposal . "',
+                vReturnTime = " . $vReturnTimeVal . ",
+                dtModified = '" . $dtNow . "',
+                iModified_UserID = " . intval($user_id) . "
+            WHERE iFleet_BookingID = " . intval($iFleet_BookingID) . " AND cStatus = 'A'
+        ";
+
+        $okUpdate = sql_query($updateSql);
+        if (!$okUpdate) {
+            echo json_encode([
+                "error" => ["message" => "Failed to update booking"],
+                "statusCode" => 500
+            ]);
+            exit;
+        }
+
+        echo json_encode([
+            "data" => [
+                "message" => "Booking updated successfully",
+                "bookingId" => $iFleet_BookingID
+            ],
+            "statusCode" => 200
+        ]);
+        break;
 
 
     // ===================== DEFAULT =====================
