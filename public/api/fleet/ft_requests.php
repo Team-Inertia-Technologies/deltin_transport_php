@@ -222,7 +222,7 @@ $rowData = []; // No pre-loaded data for LIST; front-end will fetch as needed
         $cols = "iFleet_BookingID,iBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,
-                 vDropLocation, iVehicleCatID, cDisposal,dtAdded,iAdded_UserID,cStatus";
+                 vDropLocation, iVehicleCatID, cDisposal, tReturnTime, dtAdded,iAdded_UserID,cStatus";
 
         // Create OUTBOUND booking
         $iFleet_BookingID1 = NextID('iFleet_BookingID', 'fleet_booking');
@@ -236,7 +236,7 @@ $rowData = []; // No pre-loaded data for LIST; front-end will fetch as needed
             $iFleet_BookingID1,$iBookedBy, '$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
             $iFleet_BKCatID, '$vInstructions', '$vName', '$vMobileNo', $iGuestID, $iStaffID,
             $iPax, $iBaggage, '$vPickUpLocation', '$vPickUpTime',
-            '$vDropLocation', $iVehicleCatID, '$cDisposal','$dtAdded',$user_id,'A'
+            '$vDropLocation', $iVehicleCatID, '$cDisposal', $vReturnTimeVal, '$dtAdded',$user_id,'A'
         )";
 
         $ok1 = sql_query($sql1);
@@ -261,8 +261,8 @@ $rowData = []; // No pre-loaded data for LIST; front-end will fetch as needed
             VALUES (
                 $iFleet_BookingID2, $iBookedBy,'$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
                 $iFleet_BKCatID, '$vInstructions', '$vName', '$vMobileNo', $iGuestID, $iStaffID,
-                $iPax, $iBaggage, '$vDropLocation',
-                '$vPickUpLocation', $iVehicleCatID, '$cDisposal','$dtAdded',$user_id,'A'
+                $iPax, $iBaggage, '$vDropLocation', '$vReturnTime',
+                '$vPickUpLocation', $iVehicleCatID, '$cDisposal', $vReturnTimeVal, '$dtAdded',$user_id,'A'
             )";
 
             $ok2 = sql_query($sql2);
@@ -322,7 +322,7 @@ $rowData = []; // No pre-loaded data for LIST; front-end will fetch as needed
             "pickUpLoc"      => $booking['vPickUpLocation'],
             "dropLoc"        => $booking['vDropLocation'],
             "pickUpDateTime" => $booking['vPickUpTime'],
-            "returnTime"     => ($booking['vReturnTime'] ?? null),
+            "returnTime"     => ($booking['tReturnTime'] ?? null),
             "vehiCat"        => intval($booking['iVehicleCatID']),
             "intruc"         => $booking['vInstructions'],
             "guestID"        => intval($booking['iGuestID']),
@@ -474,7 +474,7 @@ $rowData = []; // No pre-loaded data for LIST; front-end will fetch as needed
                 vDropLocation = '" . $vDropLocation . "',
                 iVehicleCatID = " . intval($iVehicleCatID) . ",
                 cDisposal = '" . $cDisposal . "',
-                vReturnTime = " . $vReturnTimeVal . ",
+                tReturnTime = " . $vReturnTimeVal . ",
                 dtModified = '" . $dtNow . "',
                 iModified_UserID = " . intval($user_id) . "
             WHERE iFleet_BookingID = " . intval($iFleet_BookingID) . " AND cStatus = 'A'
