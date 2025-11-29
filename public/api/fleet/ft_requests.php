@@ -431,7 +431,7 @@ $rowData = []; // No pre-loaded data for LIST; front-end will fetch as needed
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
         $iStaffID = intval($_REQUEST['staffID'] ?? 0);
 
-        // Basic required fields check (mirror ADD_BOOKING)
+        // Basic required fields check 
         if (empty($vName) || empty($vMobileNo) || empty($vPickUpTime)) {
             echo json_encode([
                 "error" => ["message" => "Required fields missing"],
@@ -476,7 +476,7 @@ $rowData = []; // No pre-loaded data for LIST; front-end will fetch as needed
                 cDisposal = '" . $cDisposal . "',
                 tReturnTime = " . $vReturnTimeVal . ",
                 dtUpdated = '" . $dtNow . "',
-                iModified_UserID = " . intval($user_id) . "
+                iUpdated_UserID = " . intval($user_id) . "
             WHERE iFleet_BookingID = " . intval($iFleet_BookingID) . " AND cStatus = 'A'
         ";
 
