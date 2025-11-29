@@ -140,7 +140,52 @@ switch ($mode) {
             "guestOpts" => $guestOpts
         ];
 
-$rowData = []; // No pre-loaded data for LIST; front-end will fetch as needed
+        // Fetch booking data
+        $bookingSql = "
+            SELECT 
+                fb.iFleet_BookingID,
+                fb.vName,
+                fb.vMobileNo,
+                fb.cBookingFor,
+                fb.vPickUpLocation,
+                fb.vDropLocation,
+                fb.vPickUpTime,
+                fb.iPax,
+                fb.iBaggage,
+                fb.iBookedBy,
+                s.vName as bookedByName,
+                p.vName as propertyName,
+                vc.vName as vehicleCatName
+            FROM fleet_booking fb
+            LEFT JOIN staff s ON fb.iBookedBy = s.iStaffID
+            LEFT JOIN property p ON fb.iPropertyID = p.iPropertyID
+            LEFT JOIN vehicle_category vc ON fb.iVehicleCatID = vc.iVCatID
+            WHERE fb.cStatus = 'A'
+            ORDER BY fb.vPickUpTime DESC
+        ";
+        $bookingRes = sql_query($bookingSql);
+        
+        $rowData = [];
+        while ($row = sql_fetch_assoc($bookingRes)) {
+            $rowData[] = [
+                'id' => intval($row['iFleet_BookingID']),
+                'fullName' => $row['vName'] ?? '',
+                'phone' => $row['vMobileNo'] ?? '',
+                'from' => strtolower($row['cBookingFor'] ?? ''),
+                'location' => $row['vPickUpLocation'] ?? '',
+                'destination' => $row['vDropLocation'] ?? '',
+                'pickupTime' => $row['vPickUpTime'] ?? '',
+                'typeStatus' => '',
+                'paxs' => strval($row['iPax'] ?? '0'),
+                'bags' => strval($row['iBaggage'] ?? '0'),
+                'bookedBy' => $row['bookedByName'] ?? '',
+                'pickupByName' => '',
+                'pickupByPhone' => '',
+                'pickupByType' => '',
+                'vehicleDetails' => '',
+                'vehicleType' => $row['vehicleCatName'] ?? '',
+            ];
+        }
         echo json_encode([
             "data" => [
                 "rowData" => $rowData,
@@ -175,7 +220,7 @@ $rowData = []; // No pre-loaded data for LIST; front-end will fetch as needed
 
         $tripType = intval($_REQUEST['tripType'] ?? 0);
         $cDisposal = ($tripType == 3) ? 'Y' : 'N';
-        $vReturnTime = db_input($_REQUEST['returnTime'] ?? null);
+        $vReturnTime = !empty($_REQUEST['returnTime']) ? db_input($_REQUEST['returnTime']) : null;
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
         $iStaffID = intval($_REQUEST['staffID'] ?? 0);
@@ -426,7 +471,7 @@ $rowData = []; // No pre-loaded data for LIST; front-end will fetch as needed
 
         $tripType = intval($_REQUEST['tripType'] ?? 0);
         $cDisposal = ($tripType == 3) ? 'Y' : 'N';
-        $vReturnTime = db_input($_REQUEST['returnTime'] ?? null);
+        $vReturnTime = !empty($_REQUEST['returnTime']) ? db_input($_REQUEST['returnTime']) : null;
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
         $iStaffID = intval($_REQUEST['staffID'] ?? 0);
