@@ -146,9 +146,11 @@ switch ($mode) {
         break;
 
     // ===================== CASE: ADD =====================
-    case 'ADD_BOOKING':
+       case 'ADD_BOOKING':
 
+        // sanitize and collect inputs
         $cBookingFor = db_input($_REQUEST['bookedFor'] ?? '');
+        $iBookedBy = db_input($_REQUEST['bookedBy'] ?? '');
         $iFleet_TrvPurID = intval($_REQUEST['travelPurpose'] ?? 0);
         $iFleet_TrvTypeID = intval($_REQUEST['travelType'] ?? 0);
         $iFleet_BKCatID = intval($_REQUEST['bookingCat'] ?? 0);
@@ -184,23 +186,21 @@ switch ($mode) {
             exit;
         }
 
-        // Handle guest creation if guestID and staffID are 0
+        // Handle guest creation if both guestID and staffID are 0
         if ($iGuestID == 0 && $iStaffID == 0) {
-            // Check if guest with this name and mobile combination exists
             $guestCheckSql = "SELECT iGuestID FROM guest WHERE vName = '$vName' AND vMobileNo = '$vMobileNo' AND cStatus = 'A'";
             $guestCheckRes = sql_query($guestCheckSql);
-            
+
             if (sql_num_rows($guestCheckRes) > 0) {
-                // Guest exists, get the ID
                 $guestRow = sql_fetch_assoc($guestCheckRes);
                 $iGuestID = intval($guestRow['iGuestID']);
             } else {
-                // Guest doesn't exist, create new guest
-                $guestInsertSql = "INSERT INTO guest (vName, vMobileNo, dCreatedDate, cStatus) 
-                                   VALUES ('$vName', '$vMobileNo', NOW(), 'A')";
-                $iGuestID = sql_query($guestInsertSql);
-                
-                if (!$iGuestID) {
+                // generate guest PK and insert
+                $guest_id = NextID('iGuestID', 'guest');
+                $guestInsertSql = "INSERT INTO guest (iGuestID, vName, vMobileNo, dtCreated, cStatus)
+                                   VALUES ($guest_id, '$vName', '$vMobileNo', NOW(), 'A')";
+                $okGuest = sql_query($guestInsertSql);
+                if (!$okGuest) {
                     echo json_encode([
                         "error" => [
                             "message" => "Failed to create guest record"
@@ -209,28 +209,33 @@ switch ($mode) {
                     ]);
                     exit;
                 }
+                $iGuestID = $guest_id;
             }
         }
 
-        // Common columns
-        $cols = "cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
-             iFleet_BKCatID, vInstructions, vName, vMobileNo, iGuestID, iStaffID,
-             iPax, iBaggage, vPickUpLocation, vPickUpTime,
-             vDropLocation, iVehicleCatID, cDisposal, vReturnTime";
+        // Common columns (include PK as first column)
+        $cols = "iFleet_BookingID,iBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
+                 iFleet_BKCatID, vInstructions, vName, vMobileNo, iGuestID, iFStaffID,
+                 iPax, iBaggage, vPickUpLocation, vPickUpTime,
+                 vDropLocation, iVehicleCatID, cDisposal,dtAdded,iAdded_UserID,cStatus";
 
-        // Query 1: main trip
+        // Create OUTBOUND booking
+        $iFleet_BookingID1 = NextID('iFleet_BookingID', 'fleet_booking');
+$dtAdded= NOW;
+        // handle possible NULL for vReturnTime
+        $vReturnTimeVal = (!empty($vReturnTime)) ? "'$vReturnTime'" : "NULL";
+
         $sql1 = "
         INSERT INTO fleet_booking ($cols)
         VALUES (
-            '$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
+            $iFleet_BookingID1,$iBookedBy, '$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
             $iFleet_BKCatID, '$vInstructions', '$vName', '$vMobileNo', $iGuestID, $iStaffID,
             $iPax, $iBaggage, '$vPickUpLocation', '$vPickUpTime',
-            '$vDropLocation', $iVehicleCatID, '$cDisposal', '$vReturnTime'
-        )
-    ";
+            '$vDropLocation', $iVehicleCatID, '$cDisposal','$dtAdded',$user_id,'A'
+        )";
 
-        $bookingId1 = sql_query($sql1);
-        if (!$bookingId1) {
+        $ok1 = sql_query($sql1);
+        if (!$ok1) {
             echo json_encode([
                 "error" => [
                     "message" => "Failed to add booking"
@@ -240,25 +245,26 @@ switch ($mode) {
             exit;
         }
 
-        $responseIds = [$bookingId1];
+        $responseIds = [$iFleet_BookingID1];
 
-        // Round trip case → create return booking
+        // Round trip case → create RETURN booking
         if ($tripType == 2 && !empty($vReturnTime)) {
+            $iFleet_BookingID2 = NextID('iFleet_BookingID', 'fleet_booking');
 
             $sql2 = "
             INSERT INTO fleet_booking ($cols)
             VALUES (
-                '$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
+                $iFleet_BookingID2, $iBookedBy,'$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
                 $iFleet_BKCatID, '$vInstructions', '$vName', '$vMobileNo', $iGuestID, $iStaffID,
-                $iPax, $iBaggage, '$vDropLocation', '$vReturnTime',
-                '$vPickUpLocation', $iVehicleCatID, '$cDisposal', NULL
-            )
-        ";
+                $iPax, $iBaggage, '$vDropLocation',
+                '$vPickUpLocation', $iVehicleCatID, '$cDisposal','$dtAdded',$user_id,'A'
+            )";
 
-            $bookingId2 = sql_query($sql2);
-            if ($bookingId2) {
-                $responseIds[] = $bookingId2;
+            $ok2 = sql_query($sql2);
+            if ($ok2) {
+                $responseIds[] = $iFleet_BookingID2;
             }
+            // if return insert fails we still return outbound id (you can change behavior if needed)
         }
 
         echo json_encode([
