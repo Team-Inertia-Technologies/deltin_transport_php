@@ -50,14 +50,12 @@ SELECT
     fb.vMobileNo AS guestMobile,
     fb.iPax,
     fb.iBaggage,
-    locFrom.iFleet_LocationID AS fromLocation,
-    locTo.iFleet_LocationID AS toLocation,
+    fb.vPickUpLocation AS fromLocation,
+    fb.vDropLocation AS toLocation,
     v.vRnum AS vehicleNo,
     v.vName AS vehicleName,
     p.vName AS propertyName
 FROM fleet_booking fb
-LEFT JOIN fleet_location locFrom ON locFrom.iFleet_LocationID = fb.iFleet_LocationID_From
-LEFT JOIN fleet_location locTo   ON locTo.iFleet_LocationID   = fb.iFleet_LocationID_To
 LEFT JOIN vehicle v ON v.iVehicleID = fb.iVehicleID
 LEFT JOIN property p ON p.iPropertyID = fb.iPropertyID
 

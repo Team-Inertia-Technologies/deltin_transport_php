@@ -1,0 +1,149 @@
+<?php
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+$NO_REDIRECT = $NO_PRELOAD = 1;
+include "../../includes/common_api.php";
+date_default_timezone_set('Asia/Calcutta');
+
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Expires: " . gmdate("D, d M Y H:i:s", 1) . " GMT");
+header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Pragma: no-cache");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+$postdata = file_get_contents("php://input");
+$request = json_decode($postdata);
+
+$token = trim($request->token);
+$userid = DecodeParam($token);
+$stars = isset($request->stars) ? intval($request->stars) : 0;
+$dateID = isset($request->dateID) ? trim($request->dateID) : '';
+
+
+// -------------------- VERIFY TOKEN --------------------
+$q = "SELECT iDriverID, vName FROM driver WHERE iDriverID='$userid' AND cStatus='A'";
+$r = sql_query($q, 'AUTH.LEAD');
+
+if (!sql_num_rows($r)) {
+    http_response_code(401);
+    header('Content-Type: application/json');
+    echo json_encode(['statusCode' => 401, 'message' => 'Invalid Token.']);
+    exit;
+}
+
+$user = sql_fetch_assoc($r);
+
+// -------------------- FETCH DRIVER TRIPS --------------------
+$driverID = intval($userid);
+
+// SQL QUERY
+$sql = "
+SELECT 
+    fb.iFleet_BookingID,
+    fb.vPickUpTime,
+    fb.vName AS guestName,
+    fb.vMobileNo AS guestMobile,
+    fb.iPax,
+    fb.iBaggage,
+	fb.cStatus,
+	fb.fRate,
+	fb.vDropTime,
+    fb.vPickUpLocation AS fromLocation,
+    fb.vDropLocation AS toLocation,
+FROM fleet_booking fb
+WHERE 
+    fb.cStatus = 'A'
+    AND (
+        fb.iDriverID = '{$driverID}' 
+    )
+ORDER BY fb.vPickUpTime ASC
+";
+
+$res = sql_query($sql, "TRIPS.LIST");
+if (!$res) {
+    http_response_code(400);
+    header('Content-Type: application/json');
+    echo json_encode([
+        "statusCode" => 400,
+        "error" => [
+            "message" => "Failed to fetch trips."
+        ]
+    ]);
+    exit;
+}
+
+$trips = [];
+
+
+while ($row = sql_fetch_assoc($res)) {
+
+
+    $trips[] = [
+        "status" => $row["cStatus"],
+        "name"    => $row["guestName"],
+        "mobile"  => $row["guestMobile"],
+        "pax" => intval($row["iPax"]),
+        "bags" => intval($row["iBaggage"]),
+        "from" => $row["fromLocation"],
+        "to" => $row["toLocation"],
+		"pickupDatetime" => $row["vPickUpTime"],
+		"dropDateTime" => $row["vDropTime"],
+		"ratings" => intval($row["fRate"]),
+        "type" => 'guest',
+    ];
+}
+
+if (empty($trips)) {
+    http_response_code(404);
+    header("Content-Type: application/json");
+    echo json_encode([
+        "statusCode" => 404,
+        "message" => "No record found for this driver.",
+        "data" => [
+            "scheduleList" => []
+        ]
+    ]);
+    exit;
+}
+
+$response = [
+    "statusCode" => 200,
+    "message" => "Data fetched successfully",
+    "data" => [
+        "scheduleList" => $trips,
+        "dateFilter" => [
+            [
+                "id" => "",
+                "lable" => "today"
+            ],
+            [
+                "id" => "",
+                "lable" => "Yesterday"
+            ],
+            [
+                "id" => "",
+                "lable" => "Last 7 days"
+            ],
+            [
+                "id" => "",
+                "lable" => "Last 30 Days"
+            ],
+            [
+                "id" => "",
+                "lable" => "All time"
+            ]
+        ]
+    ]
+];
+
+
+header("Content-Type: application/json");
+echo json_encode($response);
+exit;
