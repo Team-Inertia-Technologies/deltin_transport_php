@@ -94,7 +94,7 @@ switch ($mode) {
         // $maxBagValue = $MAX_BAG;
 
         // Create arrays 0 to max values (or at least 0 if no limit)
-        $paxOpt = ($MAX_PAX > 0) ? range(0, intval($MAX_PAX)) : [0];
+        $paxOpt = ($MAX_PAX > 0) ? range(1, intval($MAX_PAX)) : [0];
         $baggageOpt = ($MAX_BAG > 0) ? range(0, intval($MAX_BAG)) : [0];
 
         $vehiCatOpt = [['id' => 0, 'name' => 'Choose']];
@@ -340,6 +340,7 @@ switch ($mode) {
 
         $bookingSql = "SELECT * FROM fleet_booking WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
         $bookingRes = sql_query($bookingSql);
+        $STAFF_DEPT_ARR= GetXArrFromYID("SELECT iDepartmentID, iFStaffID  from fleet_staff where cStatus='A'","3");
 
         if (sql_num_rows($bookingRes) == 0) {
             echo json_encode([
@@ -372,6 +373,7 @@ switch ($mode) {
             "intruc"         => $booking['vInstructions'],
             "guestID"        => intval($booking['iGuestID']),
             "staffID"        => intval($booking['iFStaffID']),
+            "staff_dept"        => isset($STAFF_DEPT_ARR[intval($booking['iFStaffID'])]) ? $STAFF_DEPT_ARR[intval($booking['iFStaffID'])]:0,
             "cDisposal"      => ($booking['cDisposal'] ?? 'N'),
             "dtAdded"        => $booking['dtAdded'],
             "addedUserId"    => intval($booking['iAdded_UserID']),
