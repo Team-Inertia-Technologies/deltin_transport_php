@@ -214,6 +214,7 @@ switch ($mode) {
         $vPickUpLocation = db_input($_REQUEST['pickUpLoc'] ?? '');
         $vDropLocation = db_input($_REQUEST['dropLoc'] ?? '');
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
+         $vPickUpTime = (isset($_REQUEST['pickUpDateTime']) && !empty($_REQUEST['pickUpDateTime'])) ? $_REQUEST['pickUpDateTime'] :NULL;
 
         $iVehicleCatID = intval($_REQUEST['vehiCat'] ?? 0);
         $vInstructions = db_input($_REQUEST['intruc'] ?? '');
