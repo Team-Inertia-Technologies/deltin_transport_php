@@ -69,22 +69,14 @@ SELECT
     fb.iFStaffID,
     locFrom.iFleet_LocationID AS fromLocation,
     locTo.iFleet_LocationID AS toLocation,
-
-    -- VEHICLE
     v.vRnum AS vehicleNo,
     v.vName AS vehicleName,
-    
-    -- PROPERTY
-    p.vPropertyName AS propertyName
-
+    p.vName AS propertyName
 FROM fleet_booking fb
-
 LEFT JOIN fleet_location locFrom ON locFrom.iFleet_LocationID = fb.iFleet_LocationID_From
 LEFT JOIN fleet_location locTo   ON locTo.iFleet_LocationID   = fb.iFleet_LocationID_To
-
 LEFT JOIN vehicle v ON v.iVehicleID = fb.iVehicleID
 LEFT JOIN property p ON p.iPropertyID = fb.iPropertyID
-
 WHERE fb.iFleet_BookingID = '{$booking_id}'
   AND (
         fb.iDriverID = '{$driverID}' 
@@ -112,7 +104,9 @@ $row = sql_fetch_assoc($res);
 $staffID = intval($row['iFStaffID']);
 $supervisorName   = GetXFromYID("SELECT vName FROM fleet_staff WHERE iFStaffID = $staffID");
 $supervisorMobile = GetXFromYID("SELECT vMobileNo FROM fleet_staff WHERE iFStaffID = $staffID");
-
+// OR fb.iVehicleID IN (
+//     SELECT iVehicleID FROM driver_vehicle_assoc WHERE iDriverID = '{$driverID}'
+// )
 $response = [
     "statusCode" => 200,
     "message" => "Trip details fetched successfully",
