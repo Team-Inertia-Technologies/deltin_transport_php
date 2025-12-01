@@ -121,7 +121,7 @@ if ($mode == 'LOGIN') {
 
 			$USER_DATA = [
 				'token' => EncodeParam($staffId),
-				'name' => db_output2($staffName),
+				'name' => db_output($staffName),
 				'pic'  => '',
 			];
 

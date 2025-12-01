@@ -22,7 +22,7 @@ $postdata = file_get_contents("php://input");
 $request = json_decode($postdata);
 
 $token      = trim($request->token);
-$booking_id = intval($request->booking_id);
+$booking_id = intval($request->id);
 
 if (!$token || !$booking_id) {
     http_response_code(400);
@@ -66,7 +66,7 @@ SELECT
     fb.iPax,
     fb.iBaggage,
     fb.vInstructions,
-    fb.vRemarks,
+    fb.iFStaffID,
     locFrom.iFleet_LocationID AS fromLocation,
     locTo.iFleet_LocationID AS toLocation,
 
@@ -109,25 +109,34 @@ if (!sql_num_rows($res)) {
 }
 
 $row = sql_fetch_assoc($res);
+$staffID = intval($row['iFStaffID']);
+$supervisorName   = GetXFromYID("SELECT vName FROM fleet_staff WHERE iFStaffID = $staffID");
+$supervisorMobile = GetXFromYID("SELECT vMobileNo FROM fleet_staff WHERE iFStaffID = $staffID");
+
 $response = [
     "statusCode" => 200,
     "message" => "Trip details fetched successfully",
     "data" => [
-        "vehicle" => [
-            "vehicle_no"   => $row["vehicleNo"],
-            "vehicle_name" => $row["vehicleName"],
+        "car" => [
+            "number" => $row["vehicleName"],
+            "number"   => $row["vehicleNo"]
         ],
-        "trip" => [
-            "booking_id"   => $row["iFleet_BookingID"],
-            "pickup_time"  => $row["vPickUpTime"],
-            "guest_name"   => $row["guestName"],
-            "guest_mobile" => $row["guestMobile"],
-            "pax"          => intval($row["iPax"]),
-            "baggage"      => intval($row["iBaggage"]),
-            "from_location" => $row["fromLocationName"],
-            "to_location"  => $row["toLocationName"],
-            "instructions" => $row["vInstructions"],
-            "remarks"      => $row["vRemarks"]
+      
+        $trip = [
+            "id"            => $row["iFleet_BookingID"],
+            "dateTime"      => $row["vPickUpTime"],
+            "name"          => $row["guestName"],
+            "guest_mobile"  => $row["guestMobile"],
+            "pax"           => intval($row["iPax"]),
+            "bags"          => intval($row["iBaggage"]),
+            "from"          => $row["fromLocationName"],
+            "to"            => $row["toLocationName"],
+            "type"          => "guest",
+            "instru"        => $row["vInstructions"],
+            "supervisor"    => [
+                "name"   => $supervisorName,
+                "number" => $supervisorMobile
+            ]
         ]
     ]
 ];

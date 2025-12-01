@@ -94,26 +94,29 @@ if (!$res) {
 
 $trips = [];
 $vehicle = [
-    "vehicle_no" => "",
-    "vehicle_name" => ""
+    "name" => "",
+    "number" => ""
 ];
 
 while ($row = sql_fetch_assoc($res)) {
 
-    if ($vehicle["vehicle_no"] === "" && !empty($row["vehicleNo"])) {
-        $vehicle["vehicle_no"]  = $row["vehicleNo"];
-        $vehicle["vehicle_name"] = $row["vehicleName"];
+    if ($vehicle["number"] === "" && !empty($row["vehicleNo"])) {
+        $vehicle["name"] = $row["vehicleName"];
+        $vehicle["number"]  = $row["vehicleNo"];
+       
     }
 
     $trips[] = [
         "id"            => $row["iFleet_BookingID"],
-        "pickup_time"   => $row["vPickUpTime"],
-        "guest_name"    => $row["guestName"],
-        "guest_mobile"  => $row["guestMobile"],
+        "dateTime"   => $row["vPickUpTime"],
+        "name"    => $row["guestName"],
+        "mobile"  => $row["guestMobile"],
         "pax"           => intval($row["iPax"]),
-        "baggage"       => intval($row["iBaggage"]),
-        "from_location" => $row["fromLocation"],
-        "to_location"   => $row["toLocation"],
+        "bags"       => intval($row["iBaggage"]),
+        "from" => $row["fromLocation"],
+        "to"   => $row["toLocation"],
+        "type" => 'guest',
+        "active" => true,
     ];
 }
 
@@ -124,8 +127,8 @@ if (empty($trips)) {
         "statusCode" => 404,
         "message" => "No trips found for this driver.",
         "data" => [
-            "vehicle" => (object)[],
-            "trips" => []
+            "car" => (object)[],
+            "requests" => []
         ]
     ]);
     exit;
@@ -135,8 +138,8 @@ $response = [
     "statusCode" => 200,
     "message" => "Trips fetched successfully",
     "data" => [
-        "vehicle" => $vehicle,
-        "trips"   => $trips
+        "car" => $vehicle,
+        "requests"   => $trips
     ]
 ];
 
