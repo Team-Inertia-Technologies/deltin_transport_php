@@ -580,13 +580,7 @@ switch ($mode) {
                 p.vName as propertyName,
                 
                 -- Staff details (if booking is for staff)
-                fs.vName as staffName,
-                fs.vMobileNo as staffMobile,
                 d.vName as departmentName,
-                
-                -- Guest details (if booking is for guest)
-                g.vName as guestName,
-                g.vMobileNo as guestMobile,
                 
                 -- Booked by staff
                 s.vName as bookedByName,
@@ -603,7 +597,6 @@ switch ($mode) {
             LEFT JOIN property p ON fb.iPropertyID = p.iPropertyID
             LEFT JOIN fleet_staff fs ON fb.iFStaffID = fs.iFStaffID
             LEFT JOIN department d ON fs.iDepartmentID = d.iDepartmentID
-            LEFT JOIN guest g ON fb.iGuestID = g.iGuestID
             LEFT JOIN staff s ON fb.iBookedBy = s.iStaffID
             LEFT JOIN vehicle_category vc ON fb.iVehicleCatID = vc.iVCatID
             LEFT JOIN fleet_travelpurpose ftp ON fb.iFleet_TrvPurID = ftp.iFleet_TrvPurID
@@ -635,6 +628,27 @@ switch ($mode) {
             $pickupDateTime = date('d-m-Y H:i', strtotime($booking['vPickUpTime']));
         }
 
+      // Fetch vehicle history for this booking
+        $vehicleHistorySql = "
+           SELECT vc.vName as vehicleCategory, v.vRnum as regNo, fb.vPickUpTime as travelDateTime FROM fleet_booking fb LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID WHERE fb.iFleet_BookingID = $iFleet_BookingID AND fb.cStatus = 'A' ORDER BY fb.vPickUpTime DESC;
+        ";
+        $vehicleHistoryRes = sql_query($vehicleHistorySql);
+        $vehicleHistory = [];
+
+        while ($historyRow = sql_fetch_assoc($vehicleHistoryRes)) {
+            $travelDateTime = '';
+            if (!empty($historyRow['travelDateTime'])) {
+                $travelDateTime = date('d-m-Y', strtotime($historyRow['travelDateTime']));
+              
+            }
+
+            $vehicleHistory[] = [
+                'vehicleCategory' => $historyRow['vehicleCategory'] ?? 'N/A',
+                'regNo' => $historyRow['regNo'] ?? 'N/A',
+                'date' => $travelDateTime
+            ];
+        }
+
         $requestDetails = [
             'bookingId' => intval($booking['iFleet_BookingID']),
             'passengerName' => $passengerName,
@@ -658,7 +672,8 @@ switch ($mode) {
 
         echo json_encode([
             "data" => [
-                "requestDetails" => $requestDetails
+                "requestDetails" => $requestDetails,
+                "vehicleHistory" => $vehicleHistory
             ],
             "statusCode" => 200
         ]);
