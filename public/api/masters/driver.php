@@ -560,9 +560,8 @@ switch ($mode) {
     case 'ASSIGN_VEHICLE':
         $driverID = intval($_REQUEST['driverID'] ?? 0);
         $vehicleID = intval($_REQUEST['vehicleID'] ?? 0);
-        $assignedFrom = db_input($_REQUEST['assignedFrom'] ?? ''); // dtAssigned_From
-        $assignedTo = db_input($_REQUEST['assignedTo'] ?? ''); // dtAssigned_To
-        $cStatus = db_input($_REQUEST['status'] ?? 'A'); // Default active status
+        $assignedFrom = db_input($_REQUEST['assignedFrom'] ?? '');
+        $cStatus ='A';
 
         // Basic validation
         if ($driverID <= 0) {
@@ -638,47 +637,21 @@ switch ($mode) {
             ]);
             exit;
         }
-
-        if (!empty($assignedTo) && !strtotime($assignedTo)) {
-            echo json_encode([
-                "error" => [
-                    "message" => "Invalid assigned to date format. Use YYYY-MM-DD HH:MM:SS"
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
-
-        // Check if assigned_to is after assigned_from
-        if (!empty($assignedFrom) && !empty($assignedTo)) {
-            if (strtotime($assignedTo) <= strtotime($assignedFrom)) {
-                echo json_encode([
-                    "error" => [
-                        "message" => "Assigned to date must be after assigned from date"
-                    ],
-                    "statusCode" => 400
-                ]);
-                exit;
-            }
-        }
-
-        // Generate next ID for driver_vehicle_assoc table
         $iDVID = NextID('iDVID', 'driver_vehicle_assoc');
 
         // Insert new vehicle assignment
-        $sql = "INSERT INTO driver_vehicle_assoc (iDVID, iVehicleID, iDriverID, dtAssigned_From, dtAssigned_To, iAssigned_By, cStatus) 
+        $sql = "INSERT INTO driver_vehicle_assoc (iDVID, iVehicleID, iDriverID, dtAssigned_From, iAssigned_By, cStatus) 
                 VALUES ($iDVID, $vehicleID, $driverID, 
-                    " . (!empty($assignedFrom) ? "'$assignedFrom'" : "NULL") . ", 
-                    " . (!empty($assignedTo) ? "'$assignedTo'" : "NULL") . ", 
+                    " . (!empty($assignedFrom) ? "'$assignedFrom'" : "NULL") . ",  
                     $user_id, '$cStatus')";
 
         if (sql_query($sql)) {
             // Get driver and vehicle names for logging
-            $driverRow = sql_fetch_assoc($driverCheckRes);
-            $vehicleRow = sql_fetch_assoc($vehicleCheckRes);
+            // $driverRow = sql_fetch_assoc($driverCheckRes);
+            // $vehicleRow = sql_fetch_assoc($vehicleCheckRes);
             
             // Log the assignment operation
-            LogMasterEdit($iDVID, 'DVA', 'I', "Driver: " . $driverRow['vName'] . " -> Vehicle: " . $vehicleRow['vRnum'], '', $user_id);
+         //   LogMasterEdit($iDVID, 'DVA', 'I', "Driver: " . $driverRow['vName'] . " -> Vehicle: " . $vehicleRow['vRnum'], '', $user_id);
 
             echo json_encode([
                 "data" => [
