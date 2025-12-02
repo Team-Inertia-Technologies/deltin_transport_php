@@ -572,8 +572,6 @@ switch ($mode) {
                 fb.vRemarks,
                 fb.iPax,
                 fb.iBaggage,
-                fb.dtAdded,
-                fb.dtUpdated,
                 
                 -- Booking category
                 fbc.vName as bookingCategoryName,
@@ -626,27 +624,10 @@ switch ($mode) {
 
         $booking = sql_fetch_assoc($viewRes);
 
-        // Determine passenger details based on booking type
-        $passengerName = '';
-        $passengerMobile = '';
-        $guestStaffType = '';
-
-        if ($booking['cBookingFor'] === 'S' && !empty($booking['staffName'])) {
-            // Staff booking
-            $passengerName = $booking['staffName'];
-            $passengerMobile = $booking['staffMobile'] ?? $booking['vMobileNo'];
-            $guestStaffType = 'Staff';
-        } elseif ($booking['cBookingFor'] === 'G' && !empty($booking['guestName'])) {
-            // Guest booking
-            $passengerName = $booking['guestName'];
-            $passengerMobile = $booking['guestMobile'] ?? $booking['vMobileNo'];
-            $guestStaffType = 'Guest';
-        } else {
-            // Fallback to booking details
-            $passengerName = $booking['vName'];
-            $passengerMobile = $booking['vMobileNo'];
-            $guestStaffType = ($booking['cBookingFor'] === 'S') ? 'Staff' : 'Guest';
-        }
+        // Use passenger details directly from fleet_booking table
+        $passengerName = $booking['vName'];
+        $passengerMobile = $booking['vMobileNo'];
+        $guestStaffType = ($booking['cBookingFor'] === 'S') ? 'Staff' : 'Guest';
 
         // Format date time for display
         $pickupDateTime = '';
@@ -672,9 +653,7 @@ switch ($mode) {
             'vehicleCategory' => $booking['vehicleCategoryName'] ?? 'N/A',
             'travelPurpose' => $booking['travelPurposeName'] ?? 'N/A',
             'travelType' => $booking['travelTypeName'] ?? 'N/A',
-            'departmentName' => $booking['departmentName'] ?? 'N/A',
-            'createdDate' => $booking['dtAdded'] ?? '',
-            'updatedDate' => $booking['dtUpdated'] ?? ''
+            'departmentName' => $booking['departmentName'] ?? '',
         ];
 
         echo json_encode([
