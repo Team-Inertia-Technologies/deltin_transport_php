@@ -68,6 +68,8 @@ function validateDriverData($vMobileNum, $vEmpCode, $excludeDriverID = 0)
     return ['valid' => true];
 }
 
+
+
 switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
@@ -509,6 +511,254 @@ switch ($mode) {
                 "statusCode" => 500
             ]);
         }
+        break;
+
+    // ===================== CASE 7: VIEW_VEHICLES =====================
+    case 'VIEW_VEHICLES':
+        // Get vehicle categories array
+        $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
+        $vehicleCategoryRes = sql_query($vehicleCategorySql);
+        
+        $vehicleCategories = [];
+        while ($categoryRow = sql_fetch_assoc($vehicleCategoryRes)) {
+            $vehicleCategories[] = [
+                'id' => intval($categoryRow['iVCatID']),
+                'name' => db_output2($categoryRow['vName']),
+                'capacity' => intval($categoryRow['iCapacity'])
+            ];
+        }
+
+        // Get vehicles array with category and registration number
+        $vehicleSql = "SELECT v.iVehicleID, v.vRnum, v.iCatID, vc.vName as categoryName, vc.iCapacity 
+                       FROM vehicle v
+                       LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+                       WHERE v.cStatus = 'A' 
+                       ORDER BY v.vRnum";
+        $vehicleRes = sql_query($vehicleSql);
+        
+        $vehicles = [];
+        while ($vehicleRow = sql_fetch_assoc($vehicleRes)) {
+            $vehicles[] = [
+                'id' => intval($vehicleRow['iVehicleID']),
+                'regNo' => db_output2($vehicleRow['vRnum']),
+                'categoryId' => intval($vehicleRow['iCatID']),
+                'categoryName' => db_output2($vehicleRow['categoryName'] ?? ''),
+                'capacity' => intval($vehicleRow['iCapacity'] ?? 0)
+            ];
+        }
+
+        echo json_encode([
+            "data" => [
+                "vehicleCategories" => $vehicleCategories,
+                "vehicles" => $vehicles
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
+    // ===================== CASE 8: ASSIGN_VEHICLE =====================
+    case 'ASSIGN_VEHICLE':
+        $driverID = intval($_REQUEST['driverID'] ?? 0);
+        $vehicleID = intval($_REQUEST['vehicleID'] ?? 0);
+        $assignedFrom = db_input($_REQUEST['assignedFrom'] ?? ''); // dtAssigned_From
+        $assignedTo = db_input($_REQUEST['assignedTo'] ?? ''); // dtAssigned_To
+        $cStatus = db_input($_REQUEST['status'] ?? 'A'); // Default active status
+
+        // Basic validation
+        if ($driverID <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Driver ID is required"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if ($vehicleID <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Vehicle ID is required"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Validate driver exists and is active
+        $driverCheckSql = "SELECT iDriverID, vName FROM driver WHERE iDriverID = $driverID AND cStatus = 'A'";
+        $driverCheckRes = sql_query($driverCheckSql);
+        
+        if (sql_num_rows($driverCheckRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Driver not found or inactive"
+                ],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        // Validate vehicle exists and is active
+        $vehicleCheckSql = "SELECT iVehicleID, vRnum FROM vehicle WHERE iVehicleID = $vehicleID AND cStatus = 'A'";
+        $vehicleCheckRes = sql_query($vehicleCheckSql);
+        
+        if (sql_num_rows($vehicleCheckRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Vehicle not found or inactive"
+                ],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        // Check if there's already an active assignment for this driver-vehicle combination
+        $existingAssignmentSql = "SELECT iDVID FROM driver_vehicle_assoc 
+                                  WHERE iDriverID = $driverID AND iVehicleID = $vehicleID AND cStatus = 'A'";
+        $existingAssignmentRes = sql_query($existingAssignmentSql);
+        
+        if (sql_num_rows($existingAssignmentRes) > 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "This driver is already assigned to this vehicle"
+                ],
+                "statusCode" => 409
+            ]);
+            exit;
+        }
+
+        // Validate date format if provided
+        if (!empty($assignedFrom) && !strtotime($assignedFrom)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Invalid assigned from date format. Use YYYY-MM-DD HH:MM:SS"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if (!empty($assignedTo) && !strtotime($assignedTo)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Invalid assigned to date format. Use YYYY-MM-DD HH:MM:SS"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Check if assigned_to is after assigned_from
+        if (!empty($assignedFrom) && !empty($assignedTo)) {
+            if (strtotime($assignedTo) <= strtotime($assignedFrom)) {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Assigned to date must be after assigned from date"
+                    ],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+        }
+
+        // Generate next ID for driver_vehicle_assoc table
+        $iDVID = NextID('iDVID', 'driver_vehicle_assoc');
+
+        // Insert new vehicle assignment
+        $sql = "INSERT INTO driver_vehicle_assoc (iDVID, iVehicleID, iDriverID, dtAssigned_From, dtAssigned_To, iAssigned_By, cStatus) 
+                VALUES ($iDVID, $vehicleID, $driverID, 
+                    " . (!empty($assignedFrom) ? "'$assignedFrom'" : "NULL") . ", 
+                    " . (!empty($assignedTo) ? "'$assignedTo'" : "NULL") . ", 
+                    $user_id, '$cStatus')";
+
+        if (sql_query($sql)) {
+            // Get driver and vehicle names for logging
+            $driverRow = sql_fetch_assoc($driverCheckRes);
+            $vehicleRow = sql_fetch_assoc($vehicleCheckRes);
+            
+            // Log the assignment operation
+            LogMasterEdit($iDVID, 'DVA', 'I', "Driver: " . $driverRow['vName'] . " -> Vehicle: " . $vehicleRow['vRnum'], '', $user_id);
+
+            echo json_encode([
+                "data" => [
+                    "message" => "Vehicle assigned to driver successfully",
+                    "assignmentID" => $iDVID,
+                    "driverName" => db_output2($driverRow['vName']),
+                    "vehicleRegNo" => db_output2($vehicleRow['vRnum'])
+                ],
+                "token" => $Token,
+                "statusCode" => 200
+            ]);
+        } else {
+            echo json_encode([
+                "error" => [
+                    "message" => "Failed to assign vehicle to driver"
+                ],
+                "statusCode" => 500
+            ]);
+        }
+        break;
+
+    // ===================== CASE 9: VIEW_ASSIGNMENTS =====================
+    case 'VIEW_ASSIGNMENTS':
+        $driverID = intval($_REQUEST['driverID'] ?? 0);
+        $vehicleID = intval($_REQUEST['vehicleID'] ?? 0);
+        $status = db_input($_REQUEST['status'] ?? 'A');
+
+        // Build WHERE clause based on filters
+        $whereConditions = ["dva.cStatus = '$status'"];
+        
+        if ($driverID > 0) {
+            $whereConditions[] = "dva.iDriverID = $driverID";
+        }
+        
+        if ($vehicleID > 0) {
+            $whereConditions[] = "dva.iVehicleID = $vehicleID";
+        }
+
+        $whereClause = implode(' AND ', $whereConditions);
+
+        // Get vehicle assignments with driver and vehicle details
+        $assignmentSql = "SELECT dva.iDVID, dva.iDriverID, dva.iVehicleID, dva.dtAssigned_From, 
+                                 dva.dtAssigned_To, dva.iAssigned_By, dva.cStatus,
+                                 d.vName as driverName, d.vMobileNum as driverMobile,
+                                 v.vRnum as vehicleRegNo, vc.vName as categoryName,
+                                 u.vName as assignedByName
+                          FROM driver_vehicle_assoc dva
+                          LEFT JOIN driver d ON dva.iDriverID = d.iDriverID
+                          LEFT JOIN vehicle v ON dva.iVehicleID = v.iVehicleID
+                          LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID
+                          LEFT JOIN users u ON dva.iAssigned_By = u.iUserID
+                          WHERE $whereClause
+                          ORDER BY dva.dtAssigned_From DESC, dva.iDVID DESC";
+        
+        $assignmentRes = sql_query($assignmentSql);
+        
+        $assignments = [];
+        while ($assignmentRow = sql_fetch_assoc($assignmentRes)) {
+            $assignments[] = [
+                'assignmentID' => intval($assignmentRow['iDVID']),
+                'driverID' => intval($assignmentRow['iDriverID']),
+                'driverName' => db_output2($assignmentRow['driverName'] ?? ''),
+                'driverMobile' => db_output2($assignmentRow['driverMobile'] ?? ''),
+                'vehicleID' => intval($assignmentRow['iVehicleID']),
+                'vehicleRegNo' => db_output2($assignmentRow['vehicleRegNo'] ?? ''),
+                'categoryName' => db_output2($assignmentRow['categoryName'] ?? ''),
+                'assignedFrom' => $assignmentRow['dtAssigned_From'],
+                'assignedTo' => $assignmentRow['dtAssigned_To'],
+                'assignedBy' => db_output2($assignmentRow['assignedByName'] ?? ''),
+                'status' => $assignmentRow['cStatus']
+            ];
+        }
+
+        echo json_encode([
+            "data" => [
+                "assignments" => $assignments,
+                "totalCount" => count($assignments)
+            ],
+            "statusCode" => 200
+        ]);
         break;
 
     // ===================== DEFAULT =====================

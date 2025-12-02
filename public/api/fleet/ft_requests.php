@@ -219,8 +219,9 @@ switch ($mode) {
         $iVehicleCatID = intval($_REQUEST['vehiCat'] ?? 0);
         $vInstructions = db_input($_REQUEST['intruc'] ?? '');
 
-        $tripType = intval($_REQUEST['tripType'] ?? 0);
-        $cDisposal = ($tripType == 3) ? 'Y' : 'N';
+        // $tripType = intval($_REQUEST['tripType'] ?? 0);
+        // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
+        $cDisposal = intval($_REQUEST['disposal'] ?? 'N');
         $vReturnTime = !empty($_REQUEST['returnTime']) ? db_input($_REQUEST['returnTime']) : null;
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
@@ -298,25 +299,6 @@ switch ($mode) {
 
         $responseIds = [$iFleet_BookingID1];
 
-        // Round trip case → create RETURN booking
-        if ($tripType == 2 && !empty($vReturnTime)) {
-            $iFleet_BookingID2 = NextID('iFleet_BookingID', 'fleet_booking');
-
-            $sql2 = "
-            INSERT INTO fleet_booking ($cols)
-            VALUES (
-                $iFleet_BookingID2, $iBookedBy,'$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
-                $iFleet_BKCatID, '$vInstructions', '$vName', '$vMobileNo', $iGuestID, $iStaffID,
-                $iPax, $iBaggage, '$vDropLocation', '$vReturnTime',
-                '$vPickUpLocation', $iVehicleCatID, '$cDisposal', $vReturnTimeVal, '$dtAdded',$user_id,'A'
-            )";
-
-            $ok2 = sql_query($sql2);
-            if ($ok2) {
-                $responseIds[] = $iFleet_BookingID2;
-            }
-            // if return insert fails we still return outbound id (you can change behavior if needed)
-        }
 
         echo json_encode([
             "data" => [
@@ -375,7 +357,7 @@ switch ($mode) {
             "guestID"        => intval($booking['iGuestID']),
             "staffID"        => intval($booking['iFStaffID']),
             "staff_dept"        => isset($STAFF_DEPT_ARR[intval($booking['iFStaffID'])]) ? $STAFF_DEPT_ARR[intval($booking['iFStaffID'])]:0,
-            "cDisposal"      => ($booking['cDisposal'] ?? 'N'),
+            "disposal"       => ($booking['cDisposal'] ?? 'N'),
             "dtAdded"        => $booking['dtAdded'],
             "addedUserId"    => intval($booking['iAdded_UserID']),
         ];
@@ -472,8 +454,9 @@ switch ($mode) {
         $iVehicleCatID = intval($_REQUEST['vehiCat'] ?? 0);
         $vInstructions = db_input($_REQUEST['intruc'] ?? '');
 
-        $tripType = intval($_REQUEST['tripType'] ?? 0);
-        $cDisposal = ($tripType == 3) ? 'Y' : 'N';
+        // $tripType = intval($_REQUEST['tripType'] ?? 0);
+        // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
+         $cDisposal = intval($_REQUEST['disposal'] ?? 'N');
         $vReturnTime = !empty($_REQUEST['returnTime']) ? db_input($_REQUEST['returnTime']) : null;
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
@@ -620,7 +603,8 @@ switch ($mode) {
         // Use passenger details directly from fleet_booking table
         $passengerName = $booking['vName'];
         $passengerMobile = $booking['vMobileNo'];
-        $guestStaffType = ($booking['cBookingFor'] === 'S') ? 'Staff' : 'Guest';
+        // $guestStaffType = ($booking['cBookingFor'] === 'S') ? 'Staff' : 'Guest';
+         $guestStaffType = $booking['cBookingFor'];
 
         // Format date time for display
         $pickupDateTime = '';

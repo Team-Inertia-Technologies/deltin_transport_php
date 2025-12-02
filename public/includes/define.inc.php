@@ -306,7 +306,7 @@ const STATUS_COLORS = [
 	'V' => 'green',
 
 ];
-$BOOKING_TYPE_ARR = array('WALK' => 'Walk IN', 'COD' => 'COD', 'PRE' => 'Pre Purchase', 'GRP' => 'Group');
+
 $EMAIL_TYPE_ARR = array('To' => 'To', 'CC' => 'CC', 'BCC' => 'BCC');
 $PHONE_TYPE_OPTIONS = ['SMS' => 'SMS', 'WA' => 'WhatsApp'];
 $DOW_ARR = array("0" => "Sunday", "1" => "Monday", "2" => "Tuesday", "3" => "Wednesday", "4" => "Thursday", "5" => "Friday", "6" => "Saturday");
@@ -315,8 +315,6 @@ $PACKAGE_TYPE_ARR = array("A" => "Adults", "K" => "Kids", "C" => "Couples");
 $PACKAGE_TYPE_ARR2 = array("MEM" => "Member", "GST" => "Guest");
 $KYC_VERIFY_TYPE_ARR = array('1' => 'pan', '2' => 'adh', '3' => 'dl', '4' => 'pp', '5' => 'vtr', '6' => ''/* 'fpp' */, '7' => ''/* 'vsa' */, '8' => ''/* 'ctz' */);
 $KYC_VERIFY_TYPE_FLIP_ARR = array_flip(array_filter($KYC_VERIFY_TYPE_ARR));
-$DL_INTROMEDIA_TYPE = array("I" => "Image", "V" => "Video", "H" => "HTML Page");
-$DL_CAMPAIGN_FLOWTYPE = array("2" => "2 Step", "3" => "3 Step");
 $BENEFICIARY_STAGE_ARR = array("P" => "Pending", "N" => "Notified", "V" => "Viewed", "A" => "Availed");
 
 $SERVICE_OFFERED= array("F" => "Fleet", "B" => "Bus", "T" => "Both");
@@ -324,3 +322,4 @@ $SERVICE_OFFERED= array("F" => "Fleet", "B" => "Bus", "T" => "Both");
 $VEHICLE_DRIVER_TYPE= array("1" => "Hired", "2" => "Contract" , "3"=>"Owned");
 $FLEET_BOOKING_FOR= array("S" => "Staff", "G" => "Guest" );
 $FLEET_TRAVEL_TYPE= array("1" => "One Way Trip", "2" => "Return Trip",  "3" => "Vehicle Disposal" );
+$VEHICLE_SERVICE_TYPE= array("F" => "Fleet", "S" => "staff", "B" => "Both");
