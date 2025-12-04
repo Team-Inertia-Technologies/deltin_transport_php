@@ -614,7 +614,7 @@ switch ($mode) {
     case 'ASSIGN_VEHICLE':
         $driverID = intval($_REQUEST['driverID'] ?? 0);
         $vehicleID = intval($_REQUEST['vehicleID'] ?? 0);
-        $assignedFrom = db_input($_REQUEST['assignedFrom'] ?? '');
+        $assignedFrom = NOW;
         $cStatus ='A';
 
         // Basic validation
@@ -651,6 +651,8 @@ switch ($mode) {
             ]);
             exit;
         }
+        
+        $driverRow = sql_fetch_assoc($driverCheckRes);
 
         // Validate vehicle exists and is active
         $vehicleCheckSql = "SELECT iVehicleID, vRnum FROM vehicle WHERE iVehicleID = $vehicleID AND cStatus = 'A'";
@@ -665,6 +667,8 @@ switch ($mode) {
             ]);
             exit;
         }
+        
+        $vehicleRow = sql_fetch_assoc($vehicleCheckRes);
 
         // Check if there's already an active assignment for this driver-vehicle combination
         $existingAssignmentSql = "SELECT iDVID FROM driver_vehicle_assoc 
@@ -672,25 +676,15 @@ switch ($mode) {
         $existingAssignmentRes = sql_query($existingAssignmentSql);
         
         if (sql_num_rows($existingAssignmentRes) > 0) {
-            echo json_encode([
-                "error" => [
-                    "message" => "This driver is already assigned to this vehicle"
-                ],
-                "statusCode" => 409
-            ]);
-            exit;
+            // Deallocate the existing assignment by setting dtAssigned_To
+            $currentDateTime = date('Y-m-d H:i:s');
+            $deallocateSql = "UPDATE driver_vehicle_assoc 
+                              SET dtAssigned_To = '$currentDateTime', cStatus = 'X' 
+                              WHERE iDriverID = $driverID AND iVehicleID = $vehicleID AND cStatus = 'A'";
+            sql_query($deallocateSql);
         }
 
-        // Validate date format if provided
-        if (!empty($assignedFrom) && !strtotime($assignedFrom)) {
-            echo json_encode([
-                "error" => [
-                    "message" => "Invalid assigned from date format. Use YYYY-MM-DD HH:MM:SS"
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
+
         $iDVID = NextID('iDVID', 'driver_vehicle_assoc');
 
         // Insert new vehicle assignment
@@ -700,12 +694,8 @@ switch ($mode) {
                     $user_id, '$cStatus')";
 
         if (sql_query($sql)) {
-            // Get driver and vehicle names for logging
-            // $driverRow = sql_fetch_assoc($driverCheckRes);
-            // $vehicleRow = sql_fetch_assoc($vehicleCheckRes);
-            
             // Log the assignment operation
-         //   LogMasterEdit($iDVID, 'DVA', 'I', "Driver: " . $driverRow['vName'] . " -> Vehicle: " . $vehicleRow['vRnum'], '', $user_id);
+            LogMasterEdit($iDVID, 'DVA', 'I', "Driver: " . $driverRow['vName'] . " -> Vehicle: " . $vehicleRow['vRnum'], '', $user_id);
 
             echo json_encode([
                 "data" => [
