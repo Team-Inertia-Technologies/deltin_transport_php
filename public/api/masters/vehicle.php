@@ -564,6 +564,113 @@ switch ($mode) {
             ]);
         }
         break;
+
+    // ===================== CASE 7: VEHICLE_DETAILS_WITH_TRIPS =====================
+    case 'VEHICLE_DETAILS_WITH_TRIPS':
+        $vehicleID = intval($_REQUEST['vehicleID'] ?? 0);
+        
+        if ($vehicleID <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Vehicle ID is required"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Get vehicle basic details with category name
+        $vehicleSql = "SELECT v.iVehicleID, v.vRnum, vc.vName as categoryName
+                       FROM vehicle v
+                       LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+                       WHERE v.iVehicleID = $vehicleID AND v.cStatus = 'A'";
+        $vehicleRes = sql_query($vehicleSql);
+        
+        if (sql_num_rows($vehicleRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Vehicle not found"
+                ],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+        
+        $vehicleRow = sql_fetch_assoc($vehicleRes);
+        
+        // Get currently assigned driver
+        $currentDriverSql = "SELECT d.vName as driverName, d.vMobileNum as driverMobile
+                             FROM driver_vehicle_assoc dva
+                             LEFT JOIN driver d ON dva.iDriverID = d.iDriverID AND d.cStatus = 'A'
+                             WHERE dva.iVehicleID = $vehicleID AND dva.cStatus = 'A'
+                             ORDER BY dva.dtAssigned_From DESC, dva.iDVID DESC
+                             LIMIT 1";
+        $currentDriverRes = sql_query($currentDriverSql);
+        
+        $currentDriver = null;
+        $currentDriverMobile = null;
+        if (sql_num_rows($currentDriverRes) > 0) {
+            $driverRow = sql_fetch_assoc($currentDriverRes);
+            $currentDriver = $driverRow['driverName'];
+            $currentDriverMobile = $driverRow['driverMobile'];
+        }
+        
+        // Get trip history - previous trips (completed trips before current time)
+        $currentDateTime = date('Y-m-d H:i:s');
+        $previousTripsSql = "SELECT fb.vName as guestName, fb.iPax, fb.cBookingFor, fb.vPickUpTime
+                             FROM fleet_booking fb
+                             WHERE fb.iVehicleID = $vehicleID 
+                             AND fb.cStatus = 'A'
+                             AND fb.vPickUpTime < '$currentDateTime'
+                             ORDER BY fb.vPickUpTime DESC
+                             LIMIT 10";
+        $previousTripsRes = sql_query($previousTripsSql);
+        
+        $previousTrips = [];
+        while ($tripRow = sql_fetch_assoc($previousTripsRes)) {
+            $previousTrips[] = [
+                'guestName' => db_output2($tripRow['guestName']),
+                'pax' => intval($tripRow['iPax']),
+                'type' => ($tripRow['cBookingFor'] === 'S') ? 'Staff' : 'Guest',
+                'pickUpTime' => $tripRow['vPickUpTime']
+            ];
+        }
+        
+        // Get trip history - next trips (upcoming trips after current time)
+        $nextTripsSql = "SELECT fb.vName as guestName, fb.iPax, fb.cBookingFor, fb.vPickUpTime
+                         FROM fleet_booking fb
+                         WHERE fb.iVehicleID = $vehicleID 
+                         AND fb.cStatus = 'A'
+                         AND fb.vPickUpTime >= '$currentDateTime'
+                         ORDER BY fb.vPickUpTime ASC
+                         LIMIT 10";
+        $nextTripsRes = sql_query($nextTripsSql);
+        
+        $nextTrips = [];
+        while ($tripRow = sql_fetch_assoc($nextTripsRes)) {
+            $nextTrips[] = [
+                'guestName' => db_output2($tripRow['guestName']),
+                'pax' => intval($tripRow['iPax']),
+                'type' => ($tripRow['cBookingFor'] === 'S') ? 'Staff' : 'Guest',
+                'pickUpTime' => $tripRow['vPickUpTime']
+            ];
+        }
+        
+        echo json_encode([
+            "data" => [
+                "vehicleRNum" => db_output2($vehicleRow['vRnum']),
+                "categoryName" => db_output2($vehicleRow['categoryName'] ?? ''),
+                "currentlyAssignedDriver" => $currentDriver,
+                "currentlyAssignedDriverMobile" => $currentDriverMobile,
+                "tripHistory" => [
+                    "previousTrips" => $previousTrips,
+                    "nextTrips" => $nextTrips
+                ]
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
     // ===================== DEFAULT =====================
     default:
         echo json_encode([

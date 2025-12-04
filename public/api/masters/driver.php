@@ -518,6 +518,11 @@ switch ($mode) {
         // Get the current driver ID from request
         $currentDriverID = intval($_REQUEST['driverID'] ?? 0);
         
+        // Get filter parameters
+        $keyword = db_input($_REQUEST['keyword'] ?? '');
+        $categoryID = intval($_REQUEST['categoryID'] ?? 0);
+        $typeID = intval($_REQUEST['typeID'] ?? 0);
+        
         // Get vehicle categories array
         $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
         $vehicleCategoryRes = sql_query($vehicleCategorySql);
@@ -537,11 +542,31 @@ switch ($mode) {
             ];
         }
 
+        // Build WHERE conditions for filtering
+        $whereConditions = ["v.cStatus = 'A'"];
+        
+        // Add keyword search (search in vehicle registration number and category name)
+        if (!empty($keyword)) {
+            $whereConditions[] = "(UPPER(v.vRnum) LIKE UPPER('%$keyword%') OR UPPER(vc.vName) LIKE UPPER('%$keyword%'))";
+        }
+        
+        // Add category filter
+        if ($categoryID > 0) {
+            $whereConditions[] = "v.iCatID = $categoryID";
+        }
+        
+        // Add type filter
+        if ($typeID > 0) {
+            $whereConditions[] = "v.iType = $typeID";
+        }
+        
+        $whereClause = implode(' AND ', $whereConditions);
+
         // Get vehicles array with category and registration number
         $vehicleSql = "SELECT v.iVehicleID, v.vRnum, v.iCatID, v.iType as vehicletype, vc.vName as categoryName, vc.iCapacity 
                        FROM vehicle v
                        LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                       WHERE v.cStatus = 'A' 
+                       WHERE $whereClause 
                        ORDER BY v.vRnum";
         $vehicleRes = sql_query($vehicleSql);
         
