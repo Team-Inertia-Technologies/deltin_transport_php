@@ -77,7 +77,7 @@ LEFT JOIN vehicle v ON v.iVehicleID = fb.iVehicleID
 LEFT JOIN property p ON p.iPropertyID = fb.iPropertyID
 WHERE fb.iFleet_BookingID = '{$booking_id}'
   AND (
-        fb.iDriverID = '{$driverID}' 
+        fb.iDriverID = '{$driverID}' OR fb.iVehicleID IN (SELECT iVehicleID FROM driver_vehicle_assoc WHERE iDriverID = '{$driverID}')
       )
 LIMIT 1
 ";
@@ -99,9 +99,7 @@ $row = sql_fetch_assoc($res);
 $staffID = intval($row['iFStaffID']);
 $supervisorName   = GetXFromYID("SELECT vName FROM fleet_staff WHERE iFStaffID = $staffID");
 $supervisorMobile = GetXFromYID("SELECT vMobileNo FROM fleet_staff WHERE iFStaffID = $staffID");
-// OR fb.iVehicleID IN (
-//     SELECT iVehicleID FROM driver_vehicle_assoc WHERE iDriverID = '{$driverID}'
-// )
+
 $response = [
     "statusCode" => 200,
     "message" => "Trip details fetched successfully",
