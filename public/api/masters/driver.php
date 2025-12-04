@@ -515,9 +515,18 @@ switch ($mode) {
 
     // ===================== CASE 7: VIEW_VEHICLES =====================
     case 'VIEW_VEHICLES':
+        // Get the current driver ID from request
+        $currentDriverID = intval($_REQUEST['driverID'] ?? 0);
+        
         // Get vehicle categories array
         $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
         $vehicleCategoryRes = sql_query($vehicleCategorySql);
+        
+
+        $vehicleTypeOpt = [['id' => 0, 'name' => 'All']];
+        foreach ($VEHICLE_DRIVER_TYPE as $id => $name) {
+            $vehicleTypeOpt[] = ['id' => intval($id), 'name' => $name];
+        }
         
         $vehicleCategories = [];
         while ($categoryRow = sql_fetch_assoc($vehicleCategoryRes)) {
@@ -529,7 +538,7 @@ switch ($mode) {
         }
 
         // Get vehicles array with category and registration number
-        $vehicleSql = "SELECT v.iVehicleID, v.vRnum, v.iCatID, vc.vName as categoryName, vc.iCapacity 
+        $vehicleSql = "SELECT v.iVehicleID, v.vRnum, v.iCatID, v.iType as vehicletype, vc.vName as categoryName, vc.iCapacity 
                        FROM vehicle v
                        LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                        WHERE v.cStatus = 'A' 
@@ -538,19 +547,39 @@ switch ($mode) {
         
         $vehicles = [];
         while ($vehicleRow = sql_fetch_assoc($vehicleRes)) {
+            $vehicleID = intval($vehicleRow['iVehicleID']);
+            
+            // Check if current driver was the last one assigned to this vehicle
+            $lastAssigned = false;
+            if ($currentDriverID > 0) {
+                $lastAssignmentSql = "SELECT iDriverID FROM driver_vehicle_assoc 
+                                      WHERE iVehicleID = $vehicleID 
+                                      ORDER BY dtAssigned_From DESC, iDVID DESC 
+                                      LIMIT 1";
+                $lastAssignmentRes = sql_query($lastAssignmentSql);
+                
+                if (sql_num_rows($lastAssignmentRes) > 0) {
+                    $lastAssignmentRow = sql_fetch_assoc($lastAssignmentRes);
+                    $lastAssigned = (intval($lastAssignmentRow['iDriverID']) === $currentDriverID);
+                }
+            }
+            
             $vehicles[] = [
-                'id' => intval($vehicleRow['iVehicleID']),
+                'id' => $vehicleID,
                 'regNo' => db_output2($vehicleRow['vRnum']),
+                'vehicletype' => intval($vehicleRow['vehicletype']),
                 'categoryId' => intval($vehicleRow['iCatID']),
                 'categoryName' => db_output2($vehicleRow['categoryName'] ?? ''),
-                'capacity' => intval($vehicleRow['iCapacity'] ?? 0)
+                'capacity' => intval($vehicleRow['iCapacity'] ?? 0),
+                'lastAssigned' => $lastAssigned
             ];
         }
 
         echo json_encode([
             "data" => [
                 "vehicleCategories" => $vehicleCategories,
-                "vehicles" => $vehicles
+                "vehicles" => $vehicles,
+                "vehicleTypeOpt" => $vehicleTypeOpt
             ],
             "statusCode" => 200
         ]);
