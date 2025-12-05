@@ -75,7 +75,7 @@ switch ($mode) {
     // ===================== CASE 1: LIST =====================
     case 'LIST':
         // Optimized query with JOINs to get vendor and vehicle data in single query
-        $sql = "SELECT d.iDriverID, d.vName, d.vMobileNum, d.vEmpCode, d.iVendorID, 
+        $sql = "SELECT d.iDriverID, d.vName, d.vMobileNum, d.vEmpCode, d.iVendorID,  d.iType,
                        d.iAreaID, d.iRank, d.cStatus, v.vName as vendor_name, d.iVehicleID,
                        vh.vRnum, vh.iSeats
                 FROM driver d
@@ -100,7 +100,9 @@ switch ($mode) {
                 'id' => intval($row['iDriverID']),
                 'fullName' => db_output2($row['vName']),
                 'mobileNumber' => db_output2($row['vMobileNum']),
-                'owner' => db_output2($row['vendor_name'] ?? '')
+                'owner' => db_output2($row['vendor_name'] ?? ''),
+                'type' => db_output2($row['iType'] ?? ''),
+                 'status' =>'A'
                // 'vehicleAssigned' => $vehicleAssigned
             ];
             $rowData[] = $driver;

@@ -11,10 +11,10 @@ $_REQUEST = array_merge($_REQUEST, $request ?? []);
 $mode = $_REQUEST['mode'] ?? '';
 $Token = $_REQUEST['token'] ?? '';
 $user_id = intval(DecodeParam($Token));
-$staffCheckSql = "SELECT iStaffID FROM staff WHERE iStaffID = $user_id AND cStatus = 'A'";
-$staffCheckRes = sql_query($staffCheckSql);
+$userCheckSql = "SELECT iUserID FROM users WHERE iUserID = $user_id AND cStatus = 'A'";
+$userCheckRes = sql_query($userCheckSql);
 
-if (sql_num_rows($staffCheckRes) == 0) {
+if (sql_num_rows($userCheckRes) == 0) {
     echo json_encode([
         "error" => [
             "message" => "User not found or inactive"
@@ -23,12 +23,13 @@ if (sql_num_rows($staffCheckRes) == 0) {
     ]);
     exit;
 }
+
 switch ($mode) {
 
     // ===================== CASE: LIST =====================
     case 'LIST':
         // $FLEET_BOOKED_BY = GetXArrFromYID("SELECT iUserID, vName from users where cStatus='A' ORDER BY vName", "3");
-        $BOOKING_CAT = GetXArrFromYID("SELECT iFleet_BkCatID, vName from fleet_bookingcategory where cStatus='A' ORDER BY vName", "3");
+        $BOOKING_CAT = GetXArrFromYID("SELECT iFleet_BkCatID, vName from fleet_bookingcategory where cStatus='A' ORDER BY iRank", "3");
         $TRAVEL_PURPOSE = GetXArrFromYID("SELECT iFleet_TrvPurID, vName from fleet_travelpurpose where cStatus='A' ORDER BY iRank", "3");
         $TRAVEL_TYPE = sql_query("SELECT iFleet_TrvTypeID, iFleet_TrvPurID, vName from fleet_traveltype where cStatus='A' ORDER BY iRank", "TRAVEL_TYPE");
         $PROPERTY_ARR = GetXArrFromYID("SELECT iPropertyID, vName from property where cStatus='A' ORDER BY vName", "3");
@@ -157,7 +158,7 @@ switch ($mode) {
                 p.vName as propertyName,
                 vc.vName as vehicleCatName
             FROM fleet_booking fb
-            LEFT JOIN staff s ON fb.iBookedBy = s.iStaffID
+            LEFT JOIN fleet_staff s ON fb.iBookedBy = s.iFStaffID
             LEFT JOIN property p ON fb.iPropertyID = p.iPropertyID
             LEFT JOIN vehicle_category vc ON fb.iVehicleCatID = vc.iVCatID
             WHERE fb.cStatus = 'A'
@@ -225,7 +226,7 @@ switch ($mode) {
         $vReturnTime = !empty($_REQUEST['returnTime']) ? db_input($_REQUEST['returnTime']) : null;
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
-        $iStaffID = intval($_REQUEST['staffID'] ?? 0);
+        $iFStaffID = intval($_REQUEST['staffID'] ?? 0);
 
         // Validate required inputs
         if (empty($vName) || empty($vMobileNo) || empty($vPickUpTime)) {
@@ -239,7 +240,7 @@ switch ($mode) {
         }
 
         // Handle guest creation if both guestID and staffID are 0
-        if ($iGuestID == 0 && $iStaffID == 0) {
+        if ($iGuestID == 0 && $iFStaffID == 0) {
             $guestCheckSql = "SELECT iGuestID FROM guest WHERE vName = '$vName' AND vMobileNo = '$vMobileNo' AND cStatus = 'A'";
             $guestCheckRes = sql_query($guestCheckSql);
 
@@ -281,7 +282,7 @@ switch ($mode) {
         INSERT INTO fleet_booking ($cols)
         VALUES (
             $iFleet_BookingID1,$iBookedBy, '$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
-            $iFleet_BKCatID, '$vInstructions', '$vName', '$vMobileNo', $iGuestID, $iStaffID,
+            $iFleet_BKCatID, '$vInstructions', '$vName', '$vMobileNo', $iGuestID, $iFStaffID,
             $iPax, $iBaggage, '$vPickUpLocation', '$vPickUpTime',
             '$vDropLocation', $iVehicleCatID, '$cDisposal', $vReturnTimeVal, '$dtAdded',$user_id,'A'
         )";
@@ -348,8 +349,8 @@ switch ($mode) {
             "mob"            => $booking['vMobileNo'],
             "pax"            => intval($booking['iPax']),
             "baggage"        => intval($booking['iBaggage']),
-            "pickUpLoc"      => $booking['vPickUpLocation'],
-            "dropLoc"        => $booking['vDropLocation'],
+            "pickUpLoc"      => db_output2($booking['vPickUpLocation']),
+            "dropLoc"        => db_output2($booking['vDropLocation']),
             "pickUpDateTime" => $booking['vPickUpTime'],
             "returnTime"     => ($booking['tReturnTime'] ?? null),
             "vehiCat"        => intval($booking['iVehicleCatID']),
@@ -460,7 +461,7 @@ switch ($mode) {
         $vReturnTime = !empty($_REQUEST['returnTime']) ? db_input($_REQUEST['returnTime']) : null;
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
-        $iStaffID = intval($_REQUEST['staffID'] ?? 0);
+        $iFStaffID = intval($_REQUEST['staffID'] ?? 0);
 
         // Basic required fields check 
         if (empty($vName) || empty($vMobileNo) || empty($vPickUpTime)) {
@@ -497,7 +498,7 @@ switch ($mode) {
                 vName = '" . $vName . "',
                 vMobileNo = '" . $vMobileNo . "',
                 iGuestID = " . intval($iGuestID) . ",
-                iFStaffID = " . intval($iStaffID) . ",
+                iFStaffID = " . intval($iFStaffID) . ",
                 iPax = " . intval($iPax) . ",
                 iBaggage = " . intval($iBaggage) . ",
                 vPickUpLocation = '" . $vPickUpLocation . "',
@@ -555,32 +556,19 @@ switch ($mode) {
                 fb.vRemarks,
                 fb.iPax,
                 fb.iBaggage,
-                
-                -- Booking category
                 fbc.vName as bookingCategoryName,
-                
-                -- Property
                 p.vName as propertyName,
-                
-                -- Staff details (if booking is for staff)
                 d.vName as departmentName,
-                
-                -- Booked by staff
                 s.vName as bookedByName,
-                
-                -- Vehicle category
                 vc.vName as vehicleCategoryName,
-                
-                -- Travel purpose and type
                 ftp.vName as travelPurposeName,
                 ftt.vName as travelTypeName
-                
             FROM fleet_booking fb
             LEFT JOIN fleet_bookingcategory fbc ON fb.iFleet_BKCatID = fbc.iFleet_BkCatID
             LEFT JOIN property p ON fb.iPropertyID = p.iPropertyID
             LEFT JOIN fleet_staff fs ON fb.iFStaffID = fs.iFStaffID
             LEFT JOIN department d ON fs.iDepartmentID = d.iDepartmentID
-            LEFT JOIN staff s ON fb.iBookedBy = s.iStaffID
+            LEFT JOIN fleet_staff s ON fb.iBookedBy = s.iFStaffID
             LEFT JOIN vehicle_category vc ON fb.iVehicleCatID = vc.iVCatID
             LEFT JOIN fleet_travelpurpose ftp ON fb.iFleet_TrvPurID = ftp.iFleet_TrvPurID
             LEFT JOIN fleet_traveltype ftt ON fb.iFleet_TrvTypeID = ftt.iFleet_TrvTypeID
