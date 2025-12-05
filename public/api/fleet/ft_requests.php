@@ -631,7 +631,7 @@ switch ($mode) {
             'pickupFrom' => $booking['vPickUpLocation'] ?? '',
             'dropTo' => $booking['vDropLocation'] ?? '',
             'dateTime' => $pickupDateTime,
-            'instructions' => $booking['vInstructions'] ?? '',
+            'instructions' => db_output2($booking['vInstructions']) ?? '',
             'remarks' => $booking['vRemarks'] ?? '',
             'passengers' => intval($booking['iPax'] ?? 0),
             'baggage' => intval($booking['iBaggage'] ?? 0),

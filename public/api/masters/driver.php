@@ -130,7 +130,7 @@ switch ($mode) {
         foreach ($VEHICLE_DRIVER_TYPE as $id => $title) {
             $driverTypeOpt[] = [
                 'id' => intval($id),
-                'title' => $title
+                'title' => db_output2($title)
             ];
         }
 
@@ -141,7 +141,7 @@ switch ($mode) {
         while ($vendorRow = sql_fetch_assoc($vendorRes)) {
             $vendorOpt[] = [
                 'id' => intval($vendorRow['iVendorID']),
-                'title' => $vendorRow['vName']
+                'title' => db_output2($vendorRow['vName'])
             ];
         }
 
@@ -208,7 +208,7 @@ switch ($mode) {
         foreach ($VEHICLE_DRIVER_TYPE as $id => $title) {
             $driverTypeOpt[] = [
                 'id' => intval($id),
-                'title' => $title
+                'title' => db_output2($title)
             ];
         }
 
@@ -218,7 +218,7 @@ switch ($mode) {
         while ($vendorRow = sql_fetch_assoc($vendorRes)) {
             $vendorOpt[] = [
                 'id' => intval($vendorRow['iVendorID']),
-                'title' => $vendorRow['vName']
+                'title' => db_output2($vendorRow['vName'])
             ];
         }
 
