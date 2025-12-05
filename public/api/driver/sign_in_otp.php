@@ -207,7 +207,7 @@ if ($mode == 'LOGIN') {
 
 		$message = urlencode('Dear Guest, To access your account on DeltinOne, please use ' . $otp . ' as your one-time password (OTP). Best regards, Deltin wPYrBplEnt1');
         $templateid = '1307175128414225156';
-        $to = $mob;
+        $to = $mobile;
         if (strlen($to) == 10) $to = '91' . $to;
         $status = SendSmsCurl2($templateid, $to, $message);
         SendWhatsappMessage2($to, $otp);
