@@ -64,8 +64,8 @@ $profile = [
 	"licenseValidDate" => $driverData['dExpiry'],
 	"BadgeNo" => $driverData['vBatchNo'],
 	"BadgeValidDate" => $driverData['dExpiry'],
-	"rating" => floatval($driverData['fRating']),
-	"noOfTrips" => intval($driverData['iTotalTrips'])
+	"rating" => floatval($driverData['iRating']),
+	"noOfTrips" => 0
 ];
 http_response_code(200);
 header('Content-Type: application/json');
@@ -77,4 +77,3 @@ echo json_encode([
 	)
 ]);
 exit;
-
