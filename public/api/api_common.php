@@ -453,8 +453,8 @@ function logQRScanError($staffId, $description, $status = 'E')
     
     // Insert log entry
     LockTable('st_log_qrscan');
-    $logId = NextID('iLogID', 'st_log_qrscan');
-    $insertSql = "INSERT INTO st_log_qrscan (iLogID, iStaffID, vDesc, dtAdded, vIP, cStatus) 
+    $logId = NextID('iLogQRSID', 'st_log_qrscan');
+    $insertSql = "INSERT INTO st_log_qrscan (iLogQRSID, iStaffID, vDesc, dtAdded, vIP, cStatus) 
                   VALUES ($logId, $staffId, '$description', '$now', '$ip', '$status')";
     $result = sql_query($insertSql);
     UnlockTable();
