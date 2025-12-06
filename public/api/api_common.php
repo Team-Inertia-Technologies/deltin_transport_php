@@ -343,7 +343,7 @@ function checkVehicleAvailability($vehicleId, $datetime)
 
     if (sql_num_rows($tripRes) == 0) {
         return [
-            "error" => ["message" => "No trip found within ±{$window} minutes"],
+            "error" => ["message" => "No trip found"],
             "statusCode" => 400
         ];
     }
@@ -410,7 +410,7 @@ function checkStaffRequest($staffId, $datetime)
         if ($reqTimestamp >= $minWindowTs && $reqTimestamp <= $maxWindowTs) {
             return [
                 "data" => [
-                    "message" => "Valid — staff has a request within ±{$window} minutes"
+                    "message" => "Valid — staff has a request"
                 ],
                 "statusCode" => 200
             ];
