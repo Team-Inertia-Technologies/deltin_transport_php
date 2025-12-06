@@ -101,6 +101,20 @@ case 'SCAN':
     $requestID = intval($reqRow['iTrReqID']);
     $tripID = intval($reqRow['iTripID']);
 
+    // Check if already scanned
+    $scanCheckSql = "SELECT dtIn FROM st_request WHERE iTrReqID = {$requestID} LIMIT 1";
+    $scanCheckRes = sql_query($scanCheckSql);
+    $scanCheckRow = sql_fetch_assoc($scanCheckRes);
+    
+    if (!empty($scanCheckRow['dtIn']) && $scanCheckRow['dtIn'] != '0000-00-00 00:00:00' && $scanCheckRow['dtIn'] != NULL) {
+        logQRScanError($user_id, "Already marked as entered");
+        echo json_encode([
+            "error" => ["message" => "You are already marked as entered"],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
     // Fetch route and pickup details
     $detailSql = "SELECT 
                     rt.vName AS routeName,
