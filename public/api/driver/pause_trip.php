@@ -26,13 +26,13 @@ $booking_id = intval($request->id);
 $pauseId = intval($request->pauseId);
 $notes = trim($request->notes);
 
-if (!$token || !$booking_id) {
+if (!$token || !$booking_id || !$pauseId) {
     http_response_code(400);
     header('Content-Type: application/json');
     echo json_encode([
         "statusCode" => 400,
         "error" => [
-            "message" => "Missing token or booking_id."
+            "message" => "Missing token or booking_id or pauseId."
         ]
     ]);
     exit;
