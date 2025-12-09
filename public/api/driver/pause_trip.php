@@ -23,6 +23,8 @@ $request = json_decode($postdata);
 
 $token      = trim($request->token);
 $booking_id = intval($request->id);
+$pauseId = intval($request->pauseId);
+$notes = trim($request->notes);
 
 if (!$token || !$booking_id) {
     http_response_code(400);
@@ -58,7 +60,7 @@ $driverID = intval($userid);
 
 
 // -------------------- UPDATE TRIP STATUS TO STARTED --------------------
-$query = "UPDATE fleet_booking SET cType='P' WHERE iFleet_BookingID='$booking_id' AND iDriverID='$driverID'";
+$query = "UPDATE fleet_booking SET cType='P', iPauseID = $pauseId, vNotes = $notes WHERE iFleet_BookingID='$booking_id' AND iDriverID='$driverID'";
 $result = sql_query($query, 'TRIP.START');
 if (sql_affected_rows() > 0) {
     http_response_code(200);
