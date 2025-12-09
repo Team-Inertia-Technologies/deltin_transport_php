@@ -98,7 +98,7 @@ if (!sql_num_rows($res)) {
 $row = sql_fetch_assoc($res);
 $staffID = intval($row['iFStaffID']);
 $supervisorName   = GetXFromYID("SELECT vName FROM fleet_staff WHERE iFStaffID = $staffID");
-$supervisorMobile = GetXFromYID("SELECT vMobileNo FROM fleet_staff WHERE iFStaffID = $staffID");
+$supervisorMobile = GetXFromYID("SELECT vMobile FROM fleet_staff WHERE iFStaffID = $staffID");
 
 $response = [
     "statusCode" => 200,
