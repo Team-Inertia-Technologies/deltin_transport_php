@@ -47,8 +47,8 @@ SELECT
 	fb.vMobileNo AS mobile,
 	fb.iPax AS pax,
 	fb.iBaggage AS bags,
-	fb.vPickUpLocation AS from,
-	fb.vDropLocation AS to,
+	fb.vPickUpLocation AS fromlocation,
+	fb.vDropLocation AS tolocation,
 	p.vName AS propertyName
 FROM fleet_booking fb
 LEFT JOIN property p ON p.iPropertyID = fb.iPropertyID
