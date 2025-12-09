@@ -53,10 +53,11 @@ SELECT
     fb.vPickUpLocation AS fromLocation,
     fb.vDropLocation AS toLocation,
     v.vRnum AS vehicleNo,
-    v.vName AS vehicleName,
+    vc.vName AS vehicleName,
     p.vName AS propertyName
 FROM fleet_booking fb
 LEFT JOIN vehicle v ON v.iVehicleID = fb.iVehicleID
+LEFT JOIN vehicle_category vc ON vc.iVCatID = v.iCatID
 LEFT JOIN property p ON p.iPropertyID = fb.iPropertyID
 
 WHERE 
