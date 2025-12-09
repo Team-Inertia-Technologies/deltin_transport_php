@@ -52,6 +52,11 @@ if (!sql_num_rows($result)) {
 }
 
 $driverData = sql_fetch_assoc($result);
+$tripQuery = "SELECT COUNT(*) AS tripCount FROM fleet_booking WHERE iDriverID = '$driverID'";
+$tripResult = sql_query($tripQuery, 'DRIVER.TRIPS');
+$tripRow = sql_fetch_assoc($tripResult);
+$noOfTrips = intval($tripRow['tripCount'] ?? 0);
+
 $profile = [
 	"driverID" => intval($driverData['iDriverID']),
 	"pic" => '',
@@ -59,13 +64,14 @@ $profile = [
 	"mobile" => $driverData['vMobileNum'],
 	"altMobile" => $driverData['vMobileNum'],
 	"address" => '',
-	"vehicleType" => $driverData['vVehicleType'],
+	"rating" => 0,
+	"noOfTrips" => $noOfTrips
+];
+$carDetails =[
 	"licenseNo" => $driverData['vEmpCode'],
 	"licenseValidDate" => $driverData['dExpiry'],
 	"BadgeNo" => $driverData['vBatchNo'],
 	"BadgeValidDate" => $driverData['dExpiry'],
-	"rating" => floatval($driverData['iRating']),
-	"noOfTrips" => 0
 ];
 http_response_code(200);
 header('Content-Type: application/json');
@@ -73,7 +79,8 @@ echo json_encode([
 	"statusCode" => 200,
 	"message" => "Driver profile fetched successfully.",
 	"data" => array(
-	"profile" => $profile
+	"profile" => $profile,
+	"carDetails" => $carDetails
 	)
 ]);
 exit;
