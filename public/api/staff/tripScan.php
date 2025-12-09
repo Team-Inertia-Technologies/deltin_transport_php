@@ -102,14 +102,17 @@ case 'SCAN':
     $tripID = intval($reqRow['iTripID']);
 
     // Check if already scanned
-    $scanCheckSql = "SELECT dtIn FROM st_request WHERE iTrReqID = {$requestID} LIMIT 1";
+    $scanCheckSql = "SELECT dtIn, dtOut FROM st_request WHERE iTrReqID = {$requestID} LIMIT 1";
     $scanCheckRes = sql_query($scanCheckSql);
     $scanCheckRow = sql_fetch_assoc($scanCheckRes);
     
-    if (!empty($scanCheckRow['dtIn']) && $scanCheckRow['dtIn'] != '0000-00-00 00:00:00' && $scanCheckRow['dtIn'] != NULL) {
-        logQRScanError($user_id, "Already marked as entered");
+    $hasEntry = !empty($scanCheckRow['dtIn']) && $scanCheckRow['dtIn'] != '0000-00-00 00:00:00' && $scanCheckRow['dtIn'] != NULL;
+    $hasExit = !empty($scanCheckRow['dtOut']) && $scanCheckRow['dtOut'] != '0000-00-00 00:00:00' && $scanCheckRow['dtOut'] != NULL;
+    
+    if ($hasEntry && $hasExit) {
+        logQRScanError($user_id, "Both entry and exit already marked for today");
         echo json_encode([
-            "error" => ["message" => "You are already marked as entered"],
+            "error" => ["message" => "Both entry and exit are already marked for today"],
             "statusCode" => 400
         ]);
         exit;
@@ -129,17 +132,32 @@ case 'SCAN':
     $detailRes = sql_query($detailSql);
     $d = sql_fetch_assoc($detailRes);
 $CURRENTTIME=CURRENTTIME;
-    // Update request (vehicle scanned entry time)
-    $updateSql = "UPDATE st_request 
-                    SET iVehicleID = '{$vehicleID}', dtIn = '$datetime'
-                  WHERE iTrReqID = {$requestID} 
-                  LIMIT 1";
-                //  error_log($updateSql);
+    
+    // Determine if this is entry or exit scan
+    if (!$hasEntry) {
+        // Mark entry
+        $updateSql = "UPDATE st_request 
+                        SET iVehicleID = '{$vehicleID}', dtIn = '$datetime'
+                      WHERE iTrReqID = {$requestID} 
+                      LIMIT 1";
+        $scanType = "entry";
+        $message = "Entry marked successfully";
+    } else {
+        // Mark exit
+        $updateSql = "UPDATE st_request 
+                        SET dtOut = '$datetime'
+                      WHERE iTrReqID = {$requestID} 
+                      LIMIT 1";
+        $scanType = "exit";
+        $message = "Exit marked successfully";
+    }
 
     if (sql_query($updateSql)) {
-        // Increment availed count for trip — using correct tripID
-        sql_query("UPDATE st_trips SET iAvaialed = iAvaialed + 1 
-                   WHERE iTripID = {$tripID} LIMIT 1");
+        // Increment availed count for trip only on entry
+        if (!$hasEntry) {
+            sql_query("UPDATE st_trips SET iAvaialed = iAvaialed + 1 
+                       WHERE iTripID = {$tripID} LIMIT 1");
+        }
 
         echo json_encode([
             "data" => [
@@ -148,13 +166,15 @@ $CURRENTTIME=CURRENTTIME;
                 "vehi"     => $vehicleNum,
                 "date"     => date('d/m/Y'),
                 "time"     => (!empty($CURRENTTIME) ? date('H:i', strtotime($CURRENTTIME)) : date('H:i')),
-                "name" => $d['staffName'] ?? ''
+                "name"     => $d['staffName'] ?? '',
+                "scanType" => $scanType,
+                "message"  => $message
             ],
             "statusCode" => 200
         ]);
     } else {
         echo json_encode([
-            "error" => ["message" => "Failed to update entry"],
+            "error" => ["message" => "Failed to update " . $scanType],
             "statusCode" => 500
         ]);
     }

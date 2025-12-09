@@ -28,7 +28,7 @@ switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
     case 'LIST':
-        // Get all active and inactive staff with route and stop details
+
         $sql = "SELECT 
                     s.iStaffID,
                     s.vCode,
@@ -36,12 +36,15 @@ switch ($mode) {
                     s.vMobile,
                     s.iRouteID,
                     s.iStopID,
+                    s.iDepartmentID,
                     s.cStatus,
                     r.vName as routeName,
-                    st.vName as stopName
+                    st.vName as stopName,
+                    d.vName as departmentName
                 FROM staff s
                 LEFT JOIN st_route r ON s.iRouteID = r.iRouteID AND r.cStatus = 'A'
                 LEFT JOIN st_route_stops st ON s.iStopID = st.iStopID AND st.cStatus = 'A'
+                LEFT JOIN department d ON s.iDepartmentID = d.iDepartmentID AND d.cStatus = 'A'
                 WHERE s.cStatus IN ('A', 'I')
                 ORDER BY s.dtRegistered DESC";
 
@@ -53,11 +56,13 @@ switch ($mode) {
                 'id' => (int) $row['iStaffID'],
                 'code' => db_output2($row['vCode']),
                 'name' => db_output2($row['vName']),
-                'mobile' => db_output2($row['vMobile']),
+                'mobile' => maskMobileNumber($row['vMobile']),
                 'routeId' => (int) ($row['iRouteID'] ?? 0),
                 'routeName' => db_output2($row['routeName'] ?? ''),
                 'stopId' => (int) ($row['iStopID'] ?? 0),
                 'stopName' => db_output2($row['stopName'] ?? ''),
+                'departmentId' => (int) ($row['iDepartmentID'] ?? 0),
+                'departmentName' => db_output2($row['departmentName'] ?? ''),
                 'status' => $row['cStatus']
             ];
         }
@@ -100,10 +105,23 @@ switch ($mode) {
             $routes[] = $currentRoute;
         }
 
+        // Get departments for dropdown
+        $departmentQuery = "SELECT iDepartmentID, vName FROM department WHERE cStatus = 'A' ORDER BY vName";
+        $departmentResult = sql_query($departmentQuery);
+        $departments = [];
+
+        while ($row = sql_fetch_assoc($departmentResult)) {
+            $departments[] = [
+                "id" => (int) $row['iDepartmentID'],
+                "name" => db_output2($row['vName'])
+            ];
+        }
+
         echo json_encode([
             "data" => [
                 "staff" => $staffList,
-                "routes" => $routes
+                "routes" => $routes,
+                "departments" => $departments
             ],
             "statusCode" => 200
         ]);
@@ -116,6 +134,7 @@ switch ($mode) {
         $vMobile = db_input($_REQUEST['mobile'] ?? '');
         $iRouteID = intval($_REQUEST['routeId'] ?? 0);
         $iStopID = intval($_REQUEST['stopId'] ?? 0);
+        $iDepartmentID = intval($_REQUEST['departmentId'] ?? 0);
 
         // Validate required fields
         if (empty($vCode)) {
@@ -190,8 +209,8 @@ switch ($mode) {
         $cStatus = 'A';
         $dtRegistered = NOW;
 
-        $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile, iRouteID, iStopID, dtRegistered, cStatus) 
-                VALUES ($iStaffID, '$vCode', '$vName', '$vMobile', $iRouteID, $iStopID, '$dtRegistered', '$cStatus')";
+        $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile, iRouteID, iStopID, iDepartmentID, dtRegistered, cStatus) 
+                VALUES ($iStaffID, '$vCode', '$vName', '$vMobile', $iRouteID, $iStopID, $iDepartmentID, '$dtRegistered', '$cStatus')";
 
         if (sql_query($sql)) {
             echo json_encode([
@@ -232,12 +251,15 @@ switch ($mode) {
                     s.vMobile,
                     s.iRouteID,
                     s.iStopID,
+                    s.iDepartmentID,
                     s.cStatus,
                     r.vName as routeName,
-                    st.vName as stopName
+                    st.vName as stopName,
+                    d.vName as departmentName
                 FROM staff s
                 LEFT JOIN st_route r ON s.iRouteID = r.iRouteID AND r.cStatus = 'A'
                 LEFT JOIN st_route_stops st ON s.iStopID = st.iStopID AND st.cStatus = 'A'
+                LEFT JOIN department d ON s.iDepartmentID = d.iDepartmentID AND d.cStatus = 'A'
                 WHERE s.iStaffID = $iStaffID AND s.cStatus != 'X'";
 
         $res = sql_query($sql);
@@ -283,6 +305,18 @@ switch ($mode) {
                 $routes[] = $currentRoute;
             }
 
+            // Get departments for dropdown
+            $departmentQuery = "SELECT iDepartmentID, vName FROM department WHERE cStatus = 'A' ORDER BY vName";
+            $departmentResult = sql_query($departmentQuery);
+            $departments = [];
+
+            while ($deptRow = sql_fetch_assoc($departmentResult)) {
+                $departments[] = [
+                    "id" => (int) $deptRow['iDepartmentID'],
+                    "name" => db_output2($deptRow['vName'])
+                ];
+            }
+
             $staffData = [
                 'id' => (int) $row['iStaffID'],
                 'code' => db_output2($row['vCode']),
@@ -292,13 +326,16 @@ switch ($mode) {
                 'routeName' => db_output2($row['routeName'] ?? ''),
                 'stopId' => (int) ($row['iStopID'] ?? 0),
                 'stopName' => db_output2($row['stopName'] ?? ''),
+                'departmentId' => (int) ($row['iDepartmentID'] ?? 0),
+                'departmentName' => db_output2($row['departmentName'] ?? ''),
                 'status' => $row['cStatus']
             ];
 
             echo json_encode([
                 "data" => [
                     "staff" => $staffData,
-                    "routes" => $routes
+                    "routes" => $routes,
+                    "departments" => $departments
                 ],
                 "statusCode" => 200
             ]);
@@ -320,6 +357,7 @@ switch ($mode) {
         $vMobile = db_input($_REQUEST['mobile'] ?? '');
         $iRouteID = intval($_REQUEST['routeId'] ?? 0);
         $iStopID = intval($_REQUEST['stopId'] ?? 0);
+        $iDepartmentID = intval($_REQUEST['departmentId'] ?? 0);
 
         if (empty($iStaffID)) {
             echo json_encode([
@@ -419,7 +457,8 @@ switch ($mode) {
                     vName = '$vName',
                     vMobile = '$vMobile',
                     iRouteID = $iRouteID,
-                    iStopID = $iStopID
+                    iStopID = $iStopID,
+                    iDepartmentID = $iDepartmentID
                 WHERE iStaffID = $iStaffID";
 
         if (sql_query($sql)) {
@@ -526,9 +565,22 @@ switch ($mode) {
             $routes[] = $currentRoute;
         }
 
+        // Get departments for dropdown
+        $departmentQuery = "SELECT iDepartmentID, vName FROM department WHERE cStatus = 'A' ORDER BY vName";
+        $departmentResult = sql_query($departmentQuery);
+        $departments = [];
+
+        while ($row = sql_fetch_assoc($departmentResult)) {
+            $departments[] = [
+                "id" => (int) $row['iDepartmentID'],
+                "name" => db_output2($row['vName'])
+            ];
+        }
+
         echo json_encode([
             "data" => [
-                "routes" => $routes
+                "routes" => $routes,
+                "departments" => $departments
             ],
             "statusCode" => 200
         ]);
@@ -647,19 +699,46 @@ switch ($mode) {
         $result = toggleStatus($id, 'staff', 'iStaffID', 'cStatus', 'vName', 'STF', $user_id);
         echo json_encode($result);
         break;
-   // ===================== CASE 9: IMOPORT_STAFF =====================
+   // ===================== CASE 9: IMPORT_STAFF =====================
     case 'IMPORT_STAFF':
         $rows = $_REQUEST['staffData'] ?? [];
         $inserted = [];
         $skipped = [];
+
+        // Get all departments for matching
+        $departmentQuery = "SELECT iDepartmentID, vName FROM department WHERE cStatus = 'A'";
+        $departmentResult = sql_query($departmentQuery);
+        $departmentMap = [];
+        
+        while ($deptRow = sql_fetch_assoc($departmentResult)) {
+            $departmentMap[strtolower(trim($deptRow['vName']))] = (int) $deptRow['iDepartmentID'];
+        }
 
         foreach ($rows as $index => $row) {
 
             $vCode = db_input($row['code'] ?? '');
             $vName = db_input($row['name'] ?? '');
             $vMobile = db_input($row['mobile'] ?? '');
+            $departmentName = trim($row['department'] ?? '');
             $iRouteID = 0;
             $iStopID = 0;
+            $iDepartmentID = 0;
+
+            // Match department name to ID (case-insensitive, word-to-word matching)
+            if (!empty($departmentName)) {
+                $departmentKey = strtolower($departmentName);
+                if (isset($departmentMap[$departmentKey])) {
+                    $iDepartmentID = $departmentMap[$departmentKey];
+                } else {
+                    $skipped[] = [
+                        "row" => $index + 1,
+                        "code" => $vCode,
+                        "mobile" => $vMobile,
+                        "reason" => "Department '$departmentName' not found"
+                    ];
+                    continue;
+                }
+            }
 
             // Validate empty fields
             if ($vCode === '' || $vName === '' || $vMobile === '') {
@@ -704,15 +783,16 @@ switch ($mode) {
             $cStatus = 'A';
             $dtRegistered = NOW;
 
-            $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile, iRouteID, iStopID, dtRegistered, cStatus)
-                VALUES ($iStaffID, '$vCode', '$vName', '$vMobile', $iRouteID, $iStopID, '$dtRegistered', '$cStatus')";
+            $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile, iRouteID, iStopID, iDepartmentID, dtRegistered, cStatus)
+                VALUES ($iStaffID, '$vCode', '$vName', '$vMobile', $iRouteID, $iStopID, $iDepartmentID, '$dtRegistered', '$cStatus')";
 
             if (sql_query($sql)) {
                 $inserted[] = [
                     "row" => $index + 1,
                     "id" => $iStaffID,
                     "code" => $vCode,
-                    "mobile" => $vMobile
+                    "mobile" => $vMobile,
+                    "department" => $departmentName
                 ];
             } else {
                 $skipped[] = [
