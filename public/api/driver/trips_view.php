@@ -70,10 +70,11 @@ SELECT
     fb.vPickUpLocation AS fromLocation,
     fb.vDropLocation AS toLocation,
     v.vRnum AS vehicleNo,
-    v.vName AS vehicleName,
+    vc.vName AS vehicleName,
     p.vName AS propertyName
 FROM fleet_booking fb
 LEFT JOIN vehicle v ON v.iVehicleID = fb.iVehicleID
+LEFT JOIN vehicle_category vc ON vc.iVCatID = v.iCatID
 LEFT JOIN property p ON p.iPropertyID = fb.iPropertyID
 WHERE fb.iFleet_BookingID = '{$booking_id}'
   AND (
@@ -105,28 +106,29 @@ $response = [
     "message" => "Trip details fetched successfully",
     "data" => [
         "car" => [
-            "number" => $row["vehicleName"],
-            "number"   => $row["vehicleNo"]
+            "name"   => $row["vehicleName"],
+            "number" => $row["vehicleNo"]
         ],
-      
-        $trip = [
-            "id"            => $row["iFleet_BookingID"],
-            "dateTime"      => $row["vPickUpTime"],
-            "name"          => $row["guestName"],
-            "guest_mobile"  => $row["guestMobile"],
-            "pax"           => intval($row["iPax"]),
-            "bags"          => intval($row["iBaggage"]),
-            "from"          => $row["fromLocationName"],
-            "to"            => $row["toLocationName"],
-            "type"          => "guest",
-            "instru"        => $row["vInstructions"],
-            "supervisor"    => [
+
+        "trip" => [
+            "id"           => $row["iFleet_BookingID"],
+            "dateTime"     => $row["vPickUpTime"],
+            "name"         => $row["guestName"],
+            "guest_mobile" => $row["guestMobile"],
+            "pax"          => intval($row["iPax"]),
+            "bags"         => intval($row["iBaggage"]),
+            "from"         => $row["fromLocation"],
+            "to"           => $row["toLocation"],
+            "type"         => "guest",
+            "instru"       => $row["vInstructions"],
+            "supervisor"   => [
                 "name"   => $supervisorName,
                 "number" => $supervisorMobile
             ]
         ]
     ]
 ];
+
 http_response_code(200);
 header("Content-Type: application/json");
 echo json_encode($response);
