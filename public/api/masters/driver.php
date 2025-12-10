@@ -780,6 +780,43 @@ switch ($mode) {
         ]);
         break;
 
+    // ===================== CASE 10: DRIVER_POPUP =====================
+    case 'DRIVER_POPUP':
+        // Get list of active drivers with id, name, and phone number
+        $driverSql = "SELECT iDriverID, vName, vMobileNum, iType 
+                      FROM driver 
+                      WHERE cStatus = 'A' 
+                      ORDER BY vName";
+        $driverRes = sql_query($driverSql);
+
+        $drivers = [];
+        while ($row = sql_fetch_assoc($driverRes)) {
+            $drivers[] = [
+                'id' => intval($row['iDriverID']),
+                'name' => db_output2($row['vName']),
+                'phone' => db_output2($row['vMobileNum']),
+                'type' => intval($row['iType'] ?? 0)
+            ];
+        }
+
+        // Driver type options
+        $driverTypeOpt = [];
+        foreach ($VEHICLE_DRIVER_TYPE as $id => $title) {
+            $driverTypeOpt[] = [
+                'id' => intval($id),
+                'title' => db_output2($title)
+            ];
+        }
+
+        echo json_encode([
+            "data" => [
+                "drivers" => $drivers,
+                "driverTypeOpt" => $driverTypeOpt
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
     // ===================== DEFAULT =====================
     default:
         echo json_encode([

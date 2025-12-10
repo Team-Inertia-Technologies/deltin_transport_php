@@ -641,13 +641,21 @@ switch ($mode) {
             'travelType' => $booking['travelTypeName'] ?? 'N/A',
             'departmentName' => $booking['departmentName'] ?? '',
         ];
+    echo json_encode([
+            "data" => [
+                "requestDetails" => $requestDetails,
+                "vehicleHistory" => $vehicleHistory
+            ],
+            "statusCode" => 200
+        ]);
+        break;
 
-        // Vehicle Details Section (merged from VEHICLE_DETAILS case)
-        // Get filter parameters
+    // ===================== CASE: VEHICLE_DETAILS =====================
+    case 'SEARCH_VEHICLE':
         $keyword = db_input($_REQUEST['keyword'] ?? '');
         $categoryID = intval($_REQUEST['categoryID'] ?? 0);
         $typeID = intval($_REQUEST['typeID'] ?? 0);
-        
+        $iFleet_BookingID= intval($_REQUEST['bookingId'] ?? 0);
         // Get vehicle categories array
         $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
         $vehicleCategoryRes = sql_query($vehicleCategorySql);
@@ -748,7 +756,7 @@ switch ($mode) {
                 'categoryName' => db_output2($vehicleRow['categoryName'] ?? ''),
                 'capacity' => intval($vehicleRow['iCapacity'] ?? 0),
                 'isAssigned' => $isAssigned,
-                'assignedVeh' => $assignedVeh,
+                'currentlyAssigned' => $assignedVeh,
                 'driverName' => $isAssigned ? db_output2($vehicleRow['driverName']) : '',
                 'driverMobile' => $isAssigned ? db_output2($vehicleRow['driverMobile']) : '',
               //  'assignedFrom' => $isAssigned ? $vehicleRow['dtAssigned_From'] : null,
@@ -760,12 +768,201 @@ switch ($mode) {
 
         echo json_encode([
             "data" => [
-                "requestDetails" => $requestDetails,
-                "vehicleHistory" => $vehicleHistory,
                 "vehicleCategories" => $vehicleCategories,
                 "vehicles" => $vehicles,
                 "vehicleTypeOpt" => $vehicleTypeOpt,
                 "tripStatusOpts" => $tripStatusOpts
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
+    // ===================== CASE: ASSIGN_REQUEST_VEHICLE =====================
+    case 'ASSIGN_REQUEST_VEHICLE':
+        $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
+        $iVehicleID = intval($_REQUEST['vehicleId'] ?? 0);
+        $iDriverID = intval($_REQUEST['driverId'] ?? 0);
+        $vRemarks = db_input($_REQUEST['remarks'] ?? '');
+
+        // Validate required inputs
+        if ($iFleet_BookingID <= 0) {
+            echo json_encode([
+                "error" => ["message" => "Booking ID is required"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if ($iVehicleID <= 0) {
+            echo json_encode([
+                "error" => ["message" => "Vehicle ID is required"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if ($iDriverID <= 0) {
+            echo json_encode([
+                "error" => ["message" => "Driver ID is required"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Check if booking exists and is active
+        $bookingCheckSql = "SELECT iFleet_BookingID, vName, vPickUpTime FROM fleet_booking 
+                           WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
+        $bookingCheckRes = sql_query($bookingCheckSql);
+
+        if (sql_num_rows($bookingCheckRes) == 0) {
+            echo json_encode([
+                "error" => ["message" => "Booking not found or inactive"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $bookingData = sql_fetch_assoc($bookingCheckRes);
+
+        // Check if vehicle exists and is active
+        $vehicleCheckSql = "SELECT v.iVehicleID, v.vRnum, vc.vName as categoryName 
+                           FROM vehicle v 
+                           LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID 
+                           WHERE v.iVehicleID = $iVehicleID AND v.cStatus = 'A' LIMIT 1";
+        $vehicleCheckRes = sql_query($vehicleCheckSql);
+
+        if (sql_num_rows($vehicleCheckRes) == 0) {
+            echo json_encode([
+                "error" => ["message" => "Vehicle not found or inactive"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $vehicleData = sql_fetch_assoc($vehicleCheckRes);
+
+        // Check if driver exists and is active
+        $driverCheckSql = "SELECT iDriverID, vName, vMobileNum FROM driver 
+                          WHERE iDriverID = $iDriverID AND cStatus = 'A' LIMIT 1";
+        $driverCheckRes = sql_query($driverCheckSql);
+
+        if (sql_num_rows($driverCheckRes) == 0) {
+            echo json_encode([
+                "error" => ["message" => "Driver not found or inactive"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $driverData = sql_fetch_assoc($driverCheckRes);
+
+        // Check if vehicle is already assigned to another booking at the same time
+        $conflictCheckSql = "SELECT iFleet_BookingID, vName FROM fleet_booking 
+                            WHERE iVehicleID = $iVehicleID 
+                            AND iFleet_BookingID != $iFleet_BookingID 
+                            AND cStatus = 'A' 
+                            AND vPickUpTime = '" . db_input($bookingData['vPickUpTime']) . "'";
+        $conflictCheckRes = sql_query($conflictCheckSql);
+
+        if (sql_num_rows($conflictCheckRes) > 0) {
+            $conflictData = sql_fetch_assoc($conflictCheckRes);
+            echo json_encode([
+                "error" => [
+                    "message" => "Vehicle is already assigned to another booking at the same time",
+                    "conflictBooking" => [
+                        "bookingId" => intval($conflictData['iFleet_BookingID']),
+                        "passengerName" => db_output2($conflictData['vName'])
+                    ]
+                ],
+                "statusCode" => 409
+            ]);
+            exit;
+        }
+
+        // Check if driver is already assigned to another booking at the same time
+        $driverConflictSql = "SELECT fb.iFleet_BookingID, fb.vName FROM fleet_booking fb
+                             WHERE fb.iDriverID = $iDriverID 
+                             AND fb.iFleet_BookingID != $iFleet_BookingID 
+                             AND fb.cStatus = 'A' 
+                             AND fb.vPickUpTime = '" . db_input($bookingData['vPickUpTime']) . "'";
+        $driverConflictRes = sql_query($driverConflictSql);
+
+        if (sql_num_rows($driverConflictRes) > 0) {
+            $driverConflictData = sql_fetch_assoc($driverConflictRes);
+            echo json_encode([
+                "error" => [
+                    "message" => "Driver is already assigned to another booking at the same time",
+                    "conflictBooking" => [
+                        "bookingId" => intval($driverConflictData['iFleet_BookingID']),
+                        "passengerName" => db_output2($driverConflictData['vName'])
+                    ]
+                ],
+                "statusCode" => 409
+            ]);
+            exit;
+        }
+
+        // Update the booking with vehicle and driver assignment
+        $dtNow = date('Y-m-d H:i:s');
+        $updateSql = "UPDATE fleet_booking SET 
+                     iVehicleID = $iVehicleID,
+                     iDriverID = $iDriverID,
+                     vRemarks = '" . db_input($vRemarks) . "',
+                     dtUpdated = '" . db_input($dtNow) . "',
+                     iUpdated_UserID = $user_id
+                     WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A'";
+
+        $updateResult = sql_query($updateSql);
+
+        if (!$updateResult) {
+            echo json_encode([
+                "error" => ["message" => "Failed to assign vehicle and driver to booking"],
+                "statusCode" => 500
+            ]);
+            exit;
+        }
+
+        $assocCheckSql = "SELECT iDVAssocID FROM driver_vehicle_assoc 
+                         WHERE iDriverID = $iDriverID 
+                         AND iVehicleID = $iVehicleID 
+                         AND cStatus = 'A' 
+                         AND dtAssigned_To IS NULL";
+        $assocCheckRes = sql_query($assocCheckSql);
+
+        if (sql_num_rows($assocCheckRes) == 0) {
+            // Create new driver-vehicle association
+            $iDVAssocID = NextID('iDVAssocID', 'driver_vehicle_assoc');
+            $assocInsertSql = "INSERT INTO driver_vehicle_assoc 
+                              (iDVAssocID, iDriverID, iVehicleID, dtAssigned_From, dtAdded, iAdded_UserID, cStatus)
+                              VALUES 
+                              ($iDVAssocID, $iDriverID, $iVehicleID, '" . db_input($dtNow) . "', '" . db_input($dtNow) . "', $user_id, 'A')";
+            
+            $assocResult = sql_query($assocInsertSql);
+            if (!$assocResult) {
+                // Log warning but don't fail the main assignment
+                error_log("Warning: Failed to create driver-vehicle association for Driver ID: $iDriverID, Vehicle ID: $iVehicleID");
+            }
+        }
+
+        echo json_encode([
+            "data" => [
+                "message" => "Vehicle and driver assigned successfully",
+                // "assignment" => [
+                //     "bookingId" => $iFleet_BookingID,
+                //     "passengerName" => db_output2($bookingData['vName']),
+                //     "vehicle" => [
+                //         "id" => $iVehicleID,
+                //         "regNo" => db_output2($vehicleData['vRnum']),
+                //         "category" => db_output2($vehicleData['categoryName'])
+                //     ],
+                //     "driver" => [
+                //         "id" => $iDriverID,
+                //         "name" => db_output2($driverData['vName']),
+                //         "mobile" => db_output2($driverData['vMobileNum'])
+                //     ],
+                //     "remarks" => db_output2($vRemarks),
+                //     "assignedAt" => $dtNow
+                // ]
             ],
             "statusCode" => 200
         ]);
