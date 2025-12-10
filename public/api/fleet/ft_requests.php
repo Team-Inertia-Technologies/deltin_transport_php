@@ -651,6 +651,94 @@ switch ($mode) {
         ]);
         break;
 
+    // ===================== CASE: VEHICLE_DETAILS =====================
+    case 'VEHICLE_DETAILS':
+        // Get filter parameters
+        $keyword = db_input($_REQUEST['keyword'] ?? '');
+        $categoryID = intval($_REQUEST['categoryID'] ?? 0);
+        $typeID = intval($_REQUEST['typeID'] ?? 0);
+        
+        // Get vehicle categories array
+        $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
+        $vehicleCategoryRes = sql_query($vehicleCategorySql);
+        
+        $vehicleTypeOpt = [['id' => 0, 'name' => 'All']];
+        foreach ($VEHICLE_DRIVER_TYPE as $id => $name) {
+            $vehicleTypeOpt[] = ['id' => intval($id), 'name' => $name];
+        }
+        
+        $vehicleCategories = [];
+        while ($categoryRow = sql_fetch_assoc($vehicleCategoryRes)) {
+            $vehicleCategories[] = [
+                'id' => intval($categoryRow['iVCatID']),
+                'name' => db_output2($categoryRow['vName']),
+                'capacity' => intval($categoryRow['iCapacity'])
+            ];
+        }
+
+        // Build WHERE conditions for filtering
+        $whereConditions = ["v.cStatus = 'A'"];
+        
+        // Add keyword search (search in vehicle registration number and category name)
+        if (!empty($keyword)) {
+            $whereConditions[] = "(UPPER(v.vRnum) LIKE UPPER('%$keyword%') OR UPPER(vc.vName) LIKE UPPER('%$keyword%'))";
+        }
+        
+        // Add category filter
+        if ($categoryID > 0) {
+            $whereConditions[] = "v.iCatID = $categoryID";
+        }
+        
+        // Add type filter
+        if ($typeID > 0) {
+            $whereConditions[] = "v.iType = $typeID";
+        }
+        
+        $whereClause = implode(' AND ', $whereConditions);
+
+        // Get vehicles array with category, registration number, and assignment status
+        $vehicleSql = "SELECT v.iVehicleID, v.vRnum, v.iCatID, v.iType as vehicletype, 
+                              vc.vName as categoryName, vc.iCapacity,
+                              dva.iDriverID, dva.dtAssigned_From, dva.dtAssigned_To,
+                              d.vName as driverName, d.vMobileNum as driverMobile
+                       FROM vehicle v
+                       LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+                       LEFT JOIN driver_vehicle_assoc dva ON v.iVehicleID = dva.iVehicleID 
+                                 AND dva.cStatus = 'A' AND dva.dtAssigned_To IS NULL
+                       LEFT JOIN driver d ON dva.iDriverID = d.iDriverID AND d.cStatus = 'A'
+                       WHERE $whereClause 
+                       ORDER BY v.vRnum";
+        $vehicleRes = sql_query($vehicleSql);
+        
+        $vehicles = [];
+        while ($vehicleRow = sql_fetch_assoc($vehicleRes)) {
+            $vehicleID = intval($vehicleRow['iVehicleID']);
+            $isAssigned = !empty($vehicleRow['iDriverID']);
+            
+            $vehicles[] = [
+                'id' => $vehicleID,
+                'regNo' => db_output2($vehicleRow['vRnum']),
+                'vehicletype' => intval($vehicleRow['vehicletype']),
+                'categoryId' => intval($vehicleRow['iCatID']),
+                'categoryName' => db_output2($vehicleRow['categoryName'] ?? ''),
+                'capacity' => intval($vehicleRow['iCapacity'] ?? 0),
+                'isAssigned' => $isAssigned,
+                'driverName' => $isAssigned ? db_output2($vehicleRow['driverName']) : '',
+                'driverMobile' => $isAssigned ? db_output2($vehicleRow['driverMobile']) : '',
+                'assignedFrom' => $isAssigned ? $vehicleRow['dtAssigned_From'] : null
+            ];
+        }
+
+        echo json_encode([
+            "data" => [
+                "vehicleCategories" => $vehicleCategories,
+                "vehicles" => $vehicles,
+                "vehicleTypeOpt" => $vehicleTypeOpt
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
 
     // ===================== DEFAULT =====================
     default:
