@@ -137,7 +137,7 @@ $CURRENTTIME=CURRENTTIME;
     if (!$hasEntry) {
         // Mark entry
         $updateSql = "UPDATE st_request 
-                        SET iVehicleID = '{$vehicleID}', dtIn = '$datetime'
+                        SET iVehicleID = '" . db_input($vehicleID) . "', dtIn = '" . db_input($datetime) . "'
                       WHERE iTrReqID = {$requestID} 
                       LIMIT 1";
         $scanType = "entry";
@@ -145,7 +145,7 @@ $CURRENTTIME=CURRENTTIME;
     } else {
         // Mark exit
         $updateSql = "UPDATE st_request 
-                        SET dtOut = '$datetime'
+                        SET dtOut = '" . db_input($datetime) . "'
                       WHERE iTrReqID = {$requestID} 
                       LIMIT 1";
         $scanType = "exit";
@@ -161,12 +161,12 @@ $CURRENTTIME=CURRENTTIME;
 
         echo json_encode([
             "data" => [
-                "route"    => $d['routeName'] ?? '',
-                "pickupPt" => $d['pickupPt'] ?? '',
-                "vehi"     => $vehicleNum,
+                "route"    => db_output2($d['routeName'] ?? ''),
+                "pickupPt" => db_output2($d['pickupPt'] ?? ''),
+                "vehi"     => db_output2($vehicleNum),
                 "date"     => date('d/m/Y'),
                 "time"     => (!empty($CURRENTTIME) ? date('H:i', strtotime($CURRENTTIME)) : date('H:i')),
-                "name"     => $d['staffName'] ?? '',
+                "name"     => db_output2($d['staffName'] ?? ''),
                 "scanType" => $scanType,
                 "message"  => $message
             ],

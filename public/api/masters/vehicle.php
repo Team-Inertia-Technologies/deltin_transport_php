@@ -45,7 +45,7 @@ function validateVehicleData($vRnum, $excludeVehicleID = 0)
     }
 
     $sql = "SELECT iVehicleID, vName FROM vehicle 
-            WHERE vRnum = '$vRnum' AND iVehicleID != $excludeVehicleID AND cStatus = 'A'";
+            WHERE vRnum = '" . db_input($vRnum) . "' AND iVehicleID != $excludeVehicleID AND cStatus = 'A'";
 
     $res = sql_query($sql);
 
@@ -357,14 +357,14 @@ switch ($mode) {
         }
 
         $sql = "UPDATE vehicle SET 
-                    vRnum = '$vehiNum',
+                    vRnum = '" . db_input($vehiNum) . "',
                     iCatID = $category,
                     iVendorID = $vendor,
                     iType = $type,
-                    dRegistration = " . (!empty($dateOfReg) ? "'$dateOfReg'" : "NULL") . ",
-                    dExpiry = " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ",
-                    vTouristPerNo = '$perNum',
-                    dTouristPerNoExpiry = " . (!empty($perNumExpiry) ? "'$perNumExpiry'" : "NULL") . "
+                    dRegistration = " . (!empty($dateOfReg) ? "'" . db_input($dateOfReg) . "'" : "NULL") . ",
+                    dExpiry = " . (!empty($dateOfExp) ? "'" . db_input($dateOfExp) . "'" : "NULL") . ",
+                    vTouristPerNo = '" . db_input($perNum) . "',
+                    dTouristPerNoExpiry = " . (!empty($perNumExpiry) ? "'" . db_input($perNumExpiry) . "'" : "NULL") . "
                 WHERE iVehicleID = $id AND cStatus = 'A'";
 
         $result = sql_query($sql);
@@ -480,12 +480,12 @@ switch ($mode) {
 
         // Using the newly added database fields
         $sql = "INSERT INTO vehicle (iVehicleID, vRnum, iCatID, iVendorID, iType, dRegistration, dExpiry, vTouristPerNo, dTouristPerNoExpiry, cStatus) 
-                VALUES ($iVehicleID, '$vehiNum', $category, $vendor, $type, 
-                    " . (!empty($dateOfReg) ? "'$dateOfReg'" : "NULL") . ", 
-                    " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ", 
-                    '$perNum', 
-                    " . (!empty($perNumExpiry) ? "'$perNumExpiry'" : "NULL") . ", 
-                    '$cStatus')";
+                VALUES ($iVehicleID, '" . db_input($vehiNum) . "', $category, $vendor, $type, 
+                    " . (!empty($dateOfReg) ? "'" . db_input($dateOfReg) . "'" : "NULL") . ", 
+                    " . (!empty($dateOfExp) ? "'" . db_input($dateOfExp) . "'" : "NULL") . ", 
+                    '" . db_input($perNum) . "', 
+                    " . (!empty($perNumExpiry) ? "'" . db_input($perNumExpiry) . "'" : "NULL") . ", 
+                    '" . db_input($cStatus) . "')";
 
         if (sql_query($sql)) {
             if (is_array($availability) && !empty($availability)) {

@@ -47,7 +47,7 @@ function validateCategoryName($vName, $excludeCategoryID = 0)
     }
 
     $sql = "SELECT iVCatID, vName FROM vehicle_category 
-            WHERE vName = '$vName' AND iVCatID != $excludeCategoryID AND cStatus = 'A'";
+            WHERE vName = '" . db_input($vName) . "' AND iVCatID != $excludeCategoryID AND cStatus = 'A'";
 
     $res = sql_query($sql);
 
@@ -210,7 +210,7 @@ switch ($mode) {
         // }
 
         $sql = "UPDATE vehicle_category SET 
-                    vName = '$categoryName',
+                    vName = '" . db_input($categoryName) . "',
                     iCapacity = $capacity
                 WHERE iVCatID = $id";
 
@@ -289,7 +289,7 @@ switch ($mode) {
         $iVCatID = NextID('iVCatID', 'vehicle_category');
 
         $sql = "INSERT INTO vehicle_category (iVCatID, iCapacity, vName, iRank, cStatus) 
-                VALUES ($iVCatID, $capacity, '$categoryName', $rank, '$status')";
+                VALUES ($iVCatID, $capacity, '" . db_input($categoryName) . "', $rank, '" . db_input($status) . "')";
 
         if (sql_query($sql)) {
             // Log the add operation

@@ -55,15 +55,15 @@ switch ($mode) {
         }
 
         // Build WHERE conditions
-        $whereConditions = ["DATE(t.dtTrip) = '$date'", "t.cStatus = 'A'"];
+        $whereConditions = ["DATE(t.dtTrip) = '" . db_input($date) . "'", "t.cStatus = 'A'"];
 
         // Add time filtering if provided
         if (!empty($fromTime)) {
-            $whereConditions[] = "TIME(t.dtTrip) >= '$fromTime'";
+            $whereConditions[] = "TIME(t.dtTrip) >= '" . db_input($fromTime) . "'";
         }
 
         if (!empty($toTime)) {
-            $whereConditions[] = "TIME(t.dtTrip) <= '$toTime'";
+            $whereConditions[] = "TIME(t.dtTrip) <= '" . db_input($toTime) . "'";
         }
 
         $whereClause = implode(' AND ', $whereConditions);
@@ -131,7 +131,7 @@ switch ($mode) {
                 if ($vehicleInfo['time'] === $tripTime) {
                     // Add vehicle to existing time slot
                     $vehicleInfo['vehiNum'][] = [
-                        "num" => $row['vehicleNumber'] ?? '',
+                        "num" => db_output2($row['vehicleNumber'] ?? ''),
                         "count" => $vehicleCapacity
                     ];
                     $vehicleInfo['pax'] += $totalRequestedPax;
@@ -152,7 +152,7 @@ switch ($mode) {
                     "grpID" => (int) ($row['iGrpID'] ?? 0),
                     "vehiNum" => [
                         [
-                            "num" => $row['vehicleNumber'] ?? '',
+                            "num" => db_output2($row['vehicleNumber'] ?? ''),
                             "count" => $vehicleCapacity
                         ]
                     ]

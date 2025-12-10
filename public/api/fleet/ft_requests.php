@@ -170,8 +170,8 @@ switch ($mode) {
         while ($row = sql_fetch_assoc($bookingRes)) {
             $rowData[] = [
                 'id' => intval($row['iFleet_BookingID']),
-                'fullName' => $row['vName'] ?? '',
-                'phone' => $row['vMobileNo'] ?? '',
+                'fullName' => db_output2($row['vName'] ?? ''),
+                'phone' => db_output2($row['vMobileNo'] ?? ''),
                 'from' => strtolower($row['cBookingFor'] ?? ''),
                 'location' => db_output2($row['vPickUpLocation'] ?? ''),
                 'destination' => db_output2($row['vDropLocation'] ?? ''),
@@ -184,7 +184,7 @@ switch ($mode) {
                 'pickupByPhone' => '',
                 'pickupByType' => '',
                 'vehicleDetails' => '',
-                'vehicleType' => $row['vehicleCatName'] ?? '',
+                'vehicleType' => db_output2($row['vehicleCatName'] ?? ''),
             ];
         }
         echo json_encode([
@@ -241,7 +241,7 @@ switch ($mode) {
 
         // Handle guest creation if both guestID and staffID are 0
         if ($iGuestID == 0 && $iFStaffID == 0) {
-            $guestCheckSql = "SELECT iGuestID FROM guest WHERE vName = '$vName' AND vMobileNo = '$vMobileNo' AND cStatus = 'A'";
+            $guestCheckSql = "SELECT iGuestID FROM guest WHERE vName = '" . db_input($vName) . "' AND vMobileNo = '" . db_input($vMobileNo) . "' AND cStatus = 'A'";
             $guestCheckRes = sql_query($guestCheckSql);
 
             if (sql_num_rows($guestCheckRes) > 0) {
@@ -251,7 +251,7 @@ switch ($mode) {
                 // generate guest PK and insert
                 $guest_id = NextID('iGuestID', 'guest');
                 $guestInsertSql = "INSERT INTO guest (iGuestID, vName, vMobileNo, dtCreated, cStatus)
-                                   VALUES ($guest_id, '$vName', '$vMobileNo', NOW(), 'A')";
+                                   VALUES ($guest_id, '" . db_input($vName) . "', '" . db_input($vMobileNo) . "', NOW(), 'A')";
                 $okGuest = sql_query($guestInsertSql);
                 if (!$okGuest) {
                     echo json_encode([
@@ -281,10 +281,10 @@ switch ($mode) {
         $sql1 = "
         INSERT INTO fleet_booking ($cols)
         VALUES (
-            $iFleet_BookingID1,$iBookedBy, '$cBookingFor', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
-            $iFleet_BKCatID, '$vInstructions', '$vName', '$vMobileNo', $iGuestID, $iFStaffID,
-            $iPax, $iBaggage, '$vPickUpLocation', '$vPickUpTime',
-            '$vDropLocation', $iVehicleCatID, '$cDisposal', $vReturnTimeVal, '$dtAdded',$user_id,'A'
+            $iFleet_BookingID1,$iBookedBy, '" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
+            $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
+            $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "',
+            '" . db_input($vDropLocation) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal, '" . db_input($dtAdded) . "',$user_id,'A'
         )";
 
         $ok1 = sql_query($sql1);
@@ -489,25 +489,25 @@ switch ($mode) {
         $updateSql = "
             UPDATE fleet_booking SET
                 iBookedBy = " . intval($iBookedBy) . ",
-                cBookingFor = '" . $cBookingFor . "',
+                cBookingFor = '" . db_input($cBookingFor) . "',
                 iFleet_TrvPurID = " . intval($iFleet_TrvPurID) . ",
                 iFleet_TrvTypeID = " . intval($iFleet_TrvTypeID) . ",
                 iPropertyID = " . intval($iPropertyID) . ",
                 iFleet_BKCatID = " . intval($iFleet_BKCatID) . ",
-                vInstructions = '" . $vInstructions . "',
-                vName = '" . $vName . "',
-                vMobileNo = '" . $vMobileNo . "',
+                vInstructions = '" . db_input($vInstructions) . "',
+                vName = '" . db_input($vName) . "',
+                vMobileNo = '" . db_input($vMobileNo) . "',
                 iGuestID = " . intval($iGuestID) . ",
                 iFStaffID = " . intval($iFStaffID) . ",
                 iPax = " . intval($iPax) . ",
                 iBaggage = " . intval($iBaggage) . ",
-                vPickUpLocation = '" . $vPickUpLocation . "',
-                vPickUpTime = '" . $vPickUpTime . "',
-                vDropLocation = '" . $vDropLocation . "',
+                vPickUpLocation = '" . db_input($vPickUpLocation) . "',
+                vPickUpTime = '" . db_input($vPickUpTime) . "',
+                vDropLocation = '" . db_input($vDropLocation) . "',
                 iVehicleCatID = " . intval($iVehicleCatID) . ",
-                cDisposal = '" . $cDisposal . "',
+                cDisposal = '" . db_input($cDisposal) . "',
                 tReturnTime = " . $vReturnTimeVal . ",
-                dtUpdated = '" . $dtNow . "',
+                dtUpdated = '" . db_input($dtNow) . "',
                 iUpdated_UserID = " . intval($user_id) . "
             WHERE iFleet_BookingID = " . intval($iFleet_BookingID) . " AND cStatus = 'A'
         ";
@@ -674,7 +674,7 @@ switch ($mode) {
         
         // Add keyword search (search in vehicle registration number and category name)
         if (!empty($keyword)) {
-            $whereConditions[] = "(UPPER(v.vRnum) LIKE UPPER('%$keyword%') OR UPPER(vc.vName) LIKE UPPER('%$keyword%'))";
+            $whereConditions[] = "(UPPER(v.vRnum) LIKE UPPER('%" . db_input($keyword) . "%') OR UPPER(vc.vName) LIKE UPPER('%" . db_input($keyword) . "%'))";
         }
         
         // Add category filter

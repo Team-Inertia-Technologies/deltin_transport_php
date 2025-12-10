@@ -36,11 +36,11 @@ switch ($mode) {
         $whereConditions = ["t.cStatus = 'A'"];
 
         if (!empty($fromDate)) {
-            $whereConditions[] = "DATE(t.dtTrip) >= '$fromDate'";
+            $whereConditions[] = "DATE(t.dtTrip) >= '" . db_input($fromDate) . "'";
         }
 
         if (!empty($toDate)) {
-            $whereConditions[] = "DATE(t.dtTrip) <= '$toDate'";
+            $whereConditions[] = "DATE(t.dtTrip) <= '" . db_input($toDate) . "'";
         }
 
         if ($routeID > 0) {
@@ -913,7 +913,7 @@ switch ($mode) {
                 // If no vehicles provided, create a trip entry with default vehicle ID (0)
                 if (empty($vehicles)) {
                     // Create trip entry with default vehicle details - can be updated later
-                    $insertValues[] = "($currentTripID, $groupID, $routeID, '$tripDateTime', 0, 0, 0, 1, 'A')";
+                    $insertValues[] = "($currentTripID, $groupID, $routeID, '" . db_input($tripDateTime) . "', 0, 0, 0, 1, 'A')";
                     $currentTripID++; // Increment for next record
                 } else {
                     // Process each vehicle for this trip and date
@@ -927,7 +927,7 @@ switch ($mode) {
 
                         // Only validate vehicle ID if it's provided (not 0)
                         if ($vehID > 0) {
-                            $insertValues[] = "($currentTripID, $groupID, $routeID, '$tripDateTime', $vehID, $driverID, $vehicleCapacity,$user_id, 1, 'A')";
+                            $insertValues[] = "($currentTripID, $groupID, $routeID, '" . db_input($tripDateTime) . "', $vehID, $driverID, $vehicleCapacity,$user_id, 1, 'A')";
                             $currentTripID++; // Increment for next record
                         } else {
                             // Skip invalid vehicle entries but don't fail the entire operation
@@ -1129,7 +1129,7 @@ switch ($mode) {
                                         $newTripID,
                                         $iGrpID,
                                         $routeID,
-                                        '$tripDateTime',
+                                        '" . db_input($tripDateTime) . "',
                                         " . ($vehicleID > 0 ? $vehicleID : "0") . ",
                                         " . ($driverID > 0 ? $driverID : "0") . ",
                                         $vehicleCapacity,

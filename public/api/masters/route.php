@@ -86,7 +86,7 @@ case 'ADD_ROUTE':
 
     // Insert main route
     $sql = "INSERT INTO st_route (iRouteID, vName, vDestination, cStatus)
-            VALUES ($iRouteID, '$route', '$dest', '$cStatus')";
+            VALUES ($iRouteID, '" . db_input($route) . "', '" . db_input($dest) . "', '" . db_input($cStatus) . "')";
 
     if (sql_query($sql)) {
 
@@ -114,7 +114,7 @@ case 'ADD_ROUTE':
 
                     $stopSql = "INSERT INTO st_route_stops 
                         (iStopID, iRouteID, vName, tOffsetFromStart, iRank, cStatus)
-                        VALUES ($iStopID, $iRouteID, '$pickupPt', $minutes, $iRank, 'A')";
+                        VALUES ($iStopID, $iRouteID, '" . db_input($pickupPt) . "', $minutes, $iRank, 'A')";
                     sql_query($stopSql);
 
                     
@@ -238,7 +238,7 @@ case 'UPDATE_ROUTE':
     }
 
     // Update main route
-    $sql = "UPDATE st_route SET vName = '$route', vDestination = '$dest' 
+    $sql = "UPDATE st_route SET vName = '" . db_input($route) . "', vDestination = '" . db_input($dest) . "' 
             WHERE iRouteID = $id AND cStatus = 'A'";
 
     $result = sql_query($sql);
@@ -276,7 +276,7 @@ case 'UPDATE_ROUTE':
                     if ($iStopID > 0 && in_array($iStopID, $existingStopIDs)) {
                         // Update existing stop
                         $stopSql = "UPDATE st_route_stops SET 
-                                    vName = '$pickupPt', 
+                                    vName = '" . db_input($pickupPt) . "', 
                                     tOffsetFromStart = $minutes 
                                     WHERE iStopID = $iStopID AND iRouteID = $id";
                         sql_query($stopSql);
@@ -288,7 +288,7 @@ case 'UPDATE_ROUTE':
 
                         $stopSql = "INSERT INTO st_route_stops 
                             (iStopID, iRouteID, vName, tOffsetFromStart, iRank, cStatus)
-                            VALUES ($newStopID, $id, '$pickupPt', $minutes, $iRank, 'A')";
+                            VALUES ($newStopID, $id, '" . db_input($pickupPt) . "', $minutes, $iRank, 'A')";
                         sql_query($stopSql);
                         $processedStopIDs[] = $newStopID;
                     }

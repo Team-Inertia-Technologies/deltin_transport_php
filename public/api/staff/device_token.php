@@ -38,7 +38,7 @@
                        ]
                 );
             } else {
-                $updateQuery = "UPDATE staff SET vDeviceToken = '$deviceToken' WHERE iStaffID = $user_id";
+                $updateQuery = "UPDATE staff SET vDeviceToken = '" . db_input($deviceToken) . "' WHERE iStaffID = $user_id";
                 if (sql_query($updateQuery)) {
                     $output = array(
                         'statusCode' => 200,

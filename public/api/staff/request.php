@@ -81,10 +81,10 @@ switch ($mode) {
             $daysSql = "SELECT iTripID, DATE(dtTrip) AS trip_date
                         FROM st_trips
                         WHERE iRouteID = $routeID AND cStatus = 'A'
-                        AND TIME(dtTrip) = '$tripTime'
-                        AND DATE(dtTrip) >= '$today' 
-                        AND DATE(dtTrip) <= '$maxDate'
-                        AND dtTrip >= '$twoHoursFromNow'
+                        AND TIME(dtTrip) = '" . db_input($tripTime) . "'
+                        AND DATE(dtTrip) >= '" . db_input($today) . "' 
+                        AND DATE(dtTrip) <= '" . db_input($maxDate) . "'
+                        AND dtTrip >= '" . db_input($twoHoursFromNow) . "'
                         ORDER BY trip_date 
                         LIMIT 7";
             $daysRes = sql_query($daysSql);
@@ -270,7 +270,7 @@ break;
             //     continue;
             // }
    //  Do not allow request if that person already has a request on that day (any route/time)
-        $dayConflictSql = "SELECT iTrReqID FROM st_request WHERE iStaffID = $user_id AND dPickup = '$tripDate' AND cStatus = 'A' LIMIT 1";
+        $dayConflictSql = "SELECT iTrReqID FROM st_request WHERE iStaffID = $user_id AND dPickup = '" . db_input($tripDate) . "' AND cStatus = 'A' LIMIT 1";
         $dayConflictRes = sql_query($dayConflictSql);
         if (sql_num_rows($dayConflictRes) > 0) {
             $errors[] = "Staff already has a request on $tripDate";
@@ -363,11 +363,11 @@ break;
                 $iTrReqID,
                 $user_id,
                 $route,
-                '$tripDate',
-                '$pickupTime',
+                '" . db_input($tripDate) . "',
+                '" . db_input($pickupTime) . "',
                 $pickUp,
                 $finalTripID,
-                '$currentDateTime',
+                '" . db_input($currentDateTime) . "',
                 $nextRank,
                 'A'
             )";

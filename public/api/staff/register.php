@@ -115,7 +115,7 @@ else if ($mode == 'ADD_STAFF') {
     }
 
     // Check for duplicate vCode or vMobile
-    $checkSql = "SELECT iStaffID, vCode, vMobile FROM staff WHERE (vCode = '$vCode' OR vMobile = '$vMobile') AND cStatus != 'X'";
+    $checkSql = "SELECT iStaffID, vCode, vMobile FROM staff WHERE (vCode = '" . db_input($vCode) . "' OR vMobile = '" . db_input($vMobile) . "') AND cStatus != 'X'";
     $checkRes = sql_query($checkSql);
 
     if (sql_num_rows($checkRes) > 0) {
@@ -146,7 +146,7 @@ else if ($mode == 'ADD_STAFF') {
     $otp = GenerateRandomCode('4', 'vOTP', 'otp');
 
     // Deactivate previous OTPs for this mobile
-    sql_query("UPDATE otp SET cUsed='X' WHERE vPhone='$vMobile'");
+    sql_query("UPDATE otp SET cUsed='X' WHERE vPhone='" . db_input($vMobile) . "'");
 
     // Check OTP limit
     $NUMBER_OF_ATTEMPTS = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode='OTP_ATTEMPTS'");
@@ -166,7 +166,7 @@ else if ($mode == 'ADD_STAFF') {
 
     // Insert OTP for registration
     $code = '+91';
-    sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','A','0','$otp','$vMobile','$TIME','$dtTo','N')", "Insert OTP for staff registration");
+    sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('" . db_input($OtpID) . "','" . db_input($TIME) . "','" . db_input($code) . "','S','0','A','0','" . db_input($otp) . "','" . db_input($vMobile) . "','" . db_input($TIME) . "','" . db_input($dtTo) . "','N')", "Insert OTP for staff registration");
 
     // Send SMS - using same message as login for testing
     $message = urlencode('Use code ' . $otp . ' to verify your login for Deltin Transport. This OTP is valid for 5 minutes.');
@@ -200,6 +200,6 @@ function checkOTPLimit($mobile, $HOURS)
 {
     date_default_timezone_set('Asia/Calcutta');
     $HoursAgo = date('Y-m-d H:i:s', strtotime('-' . $HOURS . ' hours'));
-    $OTP_COUNT = GetXFromYID("SELECT COUNT(*) as otp_count FROM otp WHERE vPhone ='$mobile' AND dtAdded >'$HoursAgo' ");
+    $OTP_COUNT = GetXFromYID("SELECT COUNT(*) as otp_count FROM otp WHERE vPhone ='" . db_input($mobile) . "' AND dtAdded >'" . db_input($HoursAgo) . "' ");
     return $OTP_COUNT;
 }

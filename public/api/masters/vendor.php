@@ -64,11 +64,11 @@ function validateVendorData($vContactNum, $vEmail, $excludeVendorID = 0)
     $conditions = [];
 
     if (!empty($vContactNum)) {
-        $conditions[] = "vContactNum = '$vContactNum'";
+        $conditions[] = "vContactNum = '" . db_input($vContactNum) . "'";
     }
 
     if (!empty($vEmail)) {
-        $conditions[] = "vEmail = '$vEmail'";
+        $conditions[] = "vEmail = '" . db_input($vEmail) . "'";
     }
 
     if (empty($conditions)) {
@@ -323,21 +323,21 @@ switch ($mode) {
 
         // Update vendor details
         $sql = "UPDATE vendor SET 
-                    vName = '$vName',
-                    cType = '$cType',
-                    vPanNo = '$vPanNo',
-                    vContactPerson = '$vContactPerson',
-                    vContactNum = '$vContactNum',
-                    vEmail = '$vEmail',
-                    cTDSApplicable = '$cTDSApplicable',
+                    vName = '" . db_input($vName) . "',
+                    cType = '" . db_input($cType) . "',
+                    vPanNo = '" . db_input($vPanNo) . "',
+                    vContactPerson = '" . db_input($vContactPerson) . "',
+                    vContactNum = '" . db_input($vContactNum) . "',
+                    vEmail = '" . db_input($vEmail) . "',
+                    cTDSApplicable = '" . db_input($cTDSApplicable) . "',
                     fTDSperc = $fTDSperc,
-                    vGSTIN = '$vGSTIN',
+                    vGSTIN = '" . db_input($vGSTIN) . "',
                     iStateCode = $iStateCode,
-                    vBankAcctNum = '$vBankAcctNum',
-                    vBankIFSC = '$vBankIFSC',
-                    vDetails = '$vDetails',
-                    cStatus = '$cStatus',
-                    vAddress = '$vAddress'
+                    vBankAcctNum = '" . db_input($vBankAcctNum) . "',
+                    vBankIFSC = '" . db_input($vBankIFSC) . "',
+                    vDetails = '" . db_input($vDetails) . "',
+                    cStatus = '" . db_input($cStatus) . "',
+                    vAddress = '" . db_input($vAddress) . "'
                 WHERE iVendorID = $id AND cStatus != 'X'";
 
         $result = sql_query($sql);
@@ -457,9 +457,9 @@ switch ($mode) {
         $sql = "INSERT INTO vendor (iVendorID, vName, cType, vPanNo, vContactPerson, vContactNum, vEmail,
                     cTDSApplicable, fTDSperc, vGSTIN, iStateCode, vBankAcctNum, vBankIFSC,
                     vDetails, iRank, cStatus, vAddress
-                ) VALUES ($iVendorID, '$vName', '$cType', '$vPanNo', '$vContactPerson', '$vContactNum', '$vEmail',
-                    '$cTDSApplicable', $fTDSperc, '$vGSTIN', $iStateCode, '$vBankAcctNum', '$vBankIFSC',
-                    '$vDetails', $iVendorID, '$cStatus', '$vAddress')";
+                ) VALUES ($iVendorID, '" . db_input($vName) . "', '" . db_input($cType) . "', '" . db_input($vPanNo) . "', '" . db_input($vContactPerson) . "', '" . db_input($vContactNum) . "', '" . db_input($vEmail) . "',
+                    '" . db_input($cTDSApplicable) . "', $fTDSperc, '" . db_input($vGSTIN) . "', $iStateCode, '" . db_input($vBankAcctNum) . "', '" . db_input($vBankIFSC) . "',
+                    '" . db_input($vDetails) . "', $iVendorID, '" . db_input($cStatus) . "', '" . db_input($vAddress) . "')";
 
         if (sql_query($sql)) {
             // Handle availability areas array - insert multiple area associations

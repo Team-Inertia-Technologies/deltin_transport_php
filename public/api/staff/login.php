@@ -27,7 +27,7 @@ if ($mode == 'LOGIN') {
         exit;
     }
 
-    $sql = "SELECT vMobile, cStatus FROM staff WHERE vMobile = '$mob' AND cStatus = 'A'";
+    $sql = "SELECT vMobile, cStatus FROM staff WHERE vMobile = '" . db_input($mob) . "' AND cStatus = 'A'";
     $res = sql_query($sql);
 
     if (sql_num_rows($res) > 0) {
@@ -38,7 +38,7 @@ if ($mode == 'LOGIN') {
         // $otp = "1234";
 
         // Deactivate previous OTPs for this mobile
-        sql_query("UPDATE otp SET cUsed='X' WHERE vPhone='$mob'");
+        sql_query("UPDATE otp SET cUsed='X' WHERE vPhone='" . db_input($mob) . "'");
 
         // Check OTP limit
         $otpCount = checkOTPLimit($mob, $RESTRICT_TIME_HOURS);
@@ -58,7 +58,7 @@ if ($mode == 'LOGIN') {
         }
 
         $code = '+91';
-        sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','A','0','$otp','$mob','$TIME','$dtTo','N')", "Insert OTP for staff login");
+        sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('" . db_input($OtpID) . "','" . db_input($TIME) . "','" . db_input($code) . "','S','0','A','0','" . db_input($otp) . "','" . db_input($mob) . "','" . db_input($TIME) . "','" . db_input($dtTo) . "','N')", "Insert OTP for staff login");
 
         // Send SMS (commented out for now)
         $message = urlencode('Your OTP for staff login is: ' . $otp);
@@ -105,14 +105,14 @@ if ($mode == 'LOGIN') {
     }
 
     // Check if OTP exists and is valid in otp table for staff (both login 'A' and registration 'R' types)
-    $otp_query = "SELECT iOTPID FROM otp WHERE vOTP='$OTP' AND vPhone='$mobile' AND cAdded_RefType='S' AND cUsed!='X' AND '$TIME' < dtTo";
+    $otp_query = "SELECT iOTPID FROM otp WHERE vOTP='" . db_input($OTP) . "' AND vPhone='" . db_input($mobile) . "' AND cAdded_RefType='S' AND cUsed!='X' AND '" . db_input($TIME) . "' < dtTo";
     $otp_result = sql_query($otp_query, "Check if OTP exists for staff");
 
     if (sql_num_rows($otp_result)) {
         [$iOTPID] = sql_fetch_row($otp_result);
 
         // Deactivate the OTP
-        sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='$iOTPID'");
+        sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='" . db_input($iOTPID) . "'");
         if ($newUser) {
             // Get registration data from request
             $vCode = db_input($_REQUEST['code'] ?? '');
@@ -143,7 +143,7 @@ if ($mode == 'LOGIN') {
             }
 
             // Check for duplicate vCode or vMobile
-            $checkSql = "SELECT iStaffID, vCode, vMobile FROM staff WHERE (vCode = '$vCode' OR vMobile = '$vMobile') AND cStatus != 'X'";
+            $checkSql = "SELECT iStaffID, vCode, vMobile FROM staff WHERE (vCode = '" . db_input($vCode) . "' OR vMobile = '" . db_input($vMobile) . "') AND cStatus != 'X'";
             $checkRes = sql_query($checkSql);
 
             if (sql_num_rows($checkRes) > 0) {
@@ -174,7 +174,7 @@ if ($mode == 'LOGIN') {
             $dtRegistered = NOW;
 
             $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile, iRouteID, iStopID, dtRegistered, cStatus) 
-                    VALUES ($iStaffID, '$vCode', '$vName', '$vMobile', $iRouteID, $iStopID, '$dtRegistered', '$cStatus')";
+                    VALUES ($iStaffID, '" . db_input($vCode) . "', '" . db_input($vName) . "', '" . db_input($vMobile) . "', $iRouteID, $iStopID, '" . db_input($dtRegistered) . "', '" . db_input($cStatus) . "')";
 
             if (sql_query($sql)) {
                 $USER_DATA = [
@@ -209,7 +209,7 @@ if ($mode == 'LOGIN') {
         } else {
             // This is a login OTP or existing user verification
             // Check if user exists in staff table
-            $staff_query = "SELECT iStaffID, vName, vMobile FROM staff WHERE vMobile='$mobile' AND cStatus='A'";
+            $staff_query = "SELECT iStaffID, vName, vMobile FROM staff WHERE vMobile='" . db_input($mobile) . "' AND cStatus='A'";
             $staff_result = sql_query($staff_query, "Get staff details");
 
             if (sql_num_rows($staff_result)) {
@@ -271,7 +271,7 @@ if ($mode == 'LOGIN') {
     }
 
     // Check if staff exists
-    $staff_check = "SELECT vMobile FROM staff WHERE vMobile = '$mobile' AND cStatus = 'A'";
+    $staff_check = "SELECT vMobile FROM staff WHERE vMobile = '" . db_input($mobile) . "' AND cStatus = 'A'";
     $staff_res = sql_query($staff_check);
 
     if (sql_num_rows($staff_res) > 0) {
@@ -282,7 +282,7 @@ if ($mode == 'LOGIN') {
         // $otp = "1234";
 
         // Deactivate previous OTPs
-        sql_query("UPDATE otp SET cUsed='X' WHERE vPhone='$mobile'");
+        sql_query("UPDATE otp SET cUsed='X' WHERE vPhone='" . db_input($mobile) . "'");
 
         // Check OTP limit
         $otpCount = checkOTPLimit($mobile, $RESTRICT_TIME_HOURS);
@@ -306,7 +306,7 @@ if ($mode == 'LOGIN') {
 
         // Insert new OTP for staff
         $code = '+91';
-        sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','A','0','$otp','$mobile','$TIME','$dtTo','N')", "Resend OTP for staff");
+        sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('" . db_input($OtpID) . "','" . db_input($TIME) . "','" . db_input($code) . "','S','0','A','0','" . db_input($otp) . "','" . db_input($mobile) . "','" . db_input($TIME) . "','" . db_input($dtTo) . "','N')", "Resend OTP for staff");
 
         // Send SMS (commented out for now)
         $message = urlencode('Your OTP for staff login is: ' . $otp);

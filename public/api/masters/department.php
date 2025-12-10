@@ -74,7 +74,7 @@ switch ($mode) {
         }
 
         // Check for duplicate name
-        $checkSql = "SELECT iDepartmentID FROM department WHERE vName = '$vName' AND cStatus != 'X'";
+        $checkSql = "SELECT iDepartmentID FROM department WHERE vName = '" . db_input($vName) . "' AND cStatus != 'X'";
         $checkRes = sql_query($checkSql);
 
         if (sql_num_rows($checkRes) > 0) {
@@ -93,7 +93,7 @@ switch ($mode) {
         $dtRegistered = NOW;
 
         $sql = "INSERT INTO department (iDepartmentID, vName, vDescription, dtRegistered, cStatus) 
-                VALUES ($iDepartmentID, '$vName', '$vDescription', '$dtRegistered', '$cStatus')";
+                VALUES ($iDepartmentID, '" . db_input($vName) . "', '" . db_input($vDescription) . "', '" . db_input($dtRegistered) . "', '" . db_input($cStatus) . "')";
 
         if (sql_query($sql)) {
             echo json_encode([
