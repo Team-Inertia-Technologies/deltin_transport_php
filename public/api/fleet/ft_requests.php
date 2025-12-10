@@ -542,7 +542,7 @@ switch ($mode) {
             exit;
         }
 
-        // Fetch detailed booking information with all related data
+        // Fetch detailed booking information with all related data including vehicle and driver assignment
         $viewSql = "
             SELECT 
                 fb.iFleet_BookingID,
@@ -556,6 +556,8 @@ switch ($mode) {
                 fb.vRemarks,
                 fb.iPax,
                 fb.iBaggage,
+                fb.iVehicleID,
+                fb.iDriverID,
                 fbc.vName as bookingCategoryName,
                 p.vName as propertyName,
                 d.vName as departmentName,
@@ -621,6 +623,10 @@ switch ($mode) {
             ];
         }
 
+        // Check if vehicle and driver are assigned
+        $isVehicleAssigned = !empty($booking['iVehicleID']) && intval($booking['iVehicleID']) > 0;
+        $isDriverAssigned = !empty($booking['iDriverID']) && intval($booking['iDriverID']) > 0;
+
         $requestDetails = [
             'bookingId' => intval($booking['iFleet_BookingID']),
             'passengerName' => $passengerName,
@@ -640,6 +646,8 @@ switch ($mode) {
             'travelPurpose' => $booking['travelPurposeName'] ?? 'N/A',
             'travelType' => $booking['travelTypeName'] ?? 'N/A',
             'departmentName' => $booking['departmentName'] ?? '',
+            'isVehicleAssigned' => $isVehicleAssigned,
+            'isDriverAssigned' => $isDriverAssigned
         ];
     echo json_encode([
             "data" => [
