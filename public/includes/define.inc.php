@@ -323,3 +323,5 @@ $VEHICLE_DRIVER_TYPE= array("1" => "Hired", "2" => "Contract" , "3"=>"Owned");
 $FLEET_BOOKING_FOR= array("S" => "Staff", "G" => "Guest" );
 $FLEET_TRAVEL_TYPE= array("1" => "One Way Trip", "2" => "Return Trip",  "3" => "Vehicle Disposal" );
 $VEHICLE_SERVICE_TYPE= array("F" => "Fleet", "S" => "staff", "B" => "Both");
+
+$TRIP_STATUS= array("S" => "Start", "E" => "Enroute", "P" => "Pause", "C" => "Complete");

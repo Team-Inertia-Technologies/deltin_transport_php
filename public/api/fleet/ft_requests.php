@@ -666,7 +666,10 @@ switch ($mode) {
         foreach ($VEHICLE_DRIVER_TYPE as $id => $name) {
             $vehicleTypeOpt[] = ['id' => intval($id), 'name' => $name];
         }
-        
+          $tripStatusOpts = [['id' => 0, 'name' => 'All']];
+        foreach ($TRIP_STATUS as $id => $name) {
+            $tripStatusOpts[] = ['id' => intval($id), 'name' => $name];
+        }
         $vehicleCategories = [];
         while ($categoryRow = sql_fetch_assoc($vehicleCategoryRes)) {
             $vehicleCategories[] = [
@@ -715,6 +718,27 @@ switch ($mode) {
             $vehicleID = intval($vehicleRow['iVehicleID']);
             $isAssigned = !empty($vehicleRow['iDriverID']);
             
+            // Get next trip time for this vehicle
+            $nextTripSql = "SELECT vPickUpTime
+                           FROM fleet_booking 
+                           WHERE iVehicleID = $vehicleID 
+                           AND cStatus = 'A' 
+                           AND vPickUpTime > NOW() 
+                           ORDER BY vPickUpTime ASC 
+                           LIMIT 1";
+            $nextTripRes = sql_query($nextTripSql);
+            
+            $nextTripTime = null;
+            $nextTripLocation = '';
+            $nextTripDestination = '';
+            
+            if (sql_num_rows($nextTripRes) > 0) {
+                $nextTripRow = sql_fetch_assoc($nextTripRes);
+                $nextTripTime = $nextTripRow['vPickUpTime'];
+                // $nextTripLocation = db_output2($nextTripRow['vPickUpLocation'] ?? '');
+                // $nextTripDestination = db_output2($nextTripRow['vDropLocation'] ?? '');
+            }
+            
             $vehicles[] = [
                 'id' => $vehicleID,
                 'regNo' => db_output2($vehicleRow['vRnum']),
@@ -725,7 +749,10 @@ switch ($mode) {
                 'isAssigned' => $isAssigned,
                 'driverName' => $isAssigned ? db_output2($vehicleRow['driverName']) : '',
                 'driverMobile' => $isAssigned ? db_output2($vehicleRow['driverMobile']) : '',
-                'assignedFrom' => $isAssigned ? $vehicleRow['dtAssigned_From'] : null
+              //  'assignedFrom' => $isAssigned ? $vehicleRow['dtAssigned_From'] : null,
+                'nextTripTime' => $nextTripTime
+                // 'nextTripLocation' => $nextTripLocation,
+                // 'nextTripDestination' => $nextTripDestination
             ];
         }
 
@@ -733,7 +760,8 @@ switch ($mode) {
             "data" => [
                 "vehicleCategories" => $vehicleCategories,
                 "vehicles" => $vehicles,
-                "vehicleTypeOpt" => $vehicleTypeOpt
+                "vehicleTypeOpt" => $vehicleTypeOpt,
+                "tripStatusOpts" => $tripStatusOpts
             ],
             "statusCode" => 200
         ]);
