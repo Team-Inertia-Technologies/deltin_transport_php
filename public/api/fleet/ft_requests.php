@@ -642,17 +642,7 @@ switch ($mode) {
             'departmentName' => $booking['departmentName'] ?? '',
         ];
 
-        echo json_encode([
-            "data" => [
-                "requestDetails" => $requestDetails,
-                "vehicleHistory" => $vehicleHistory
-            ],
-            "statusCode" => 200
-        ]);
-        break;
-
-    // ===================== CASE: VEHICLE_DETAILS =====================
-    case 'VEHICLE_DETAILS':
+        // Vehicle Details Section (merged from VEHICLE_DETAILS case)
         // Get filter parameters
         $keyword = db_input($_REQUEST['keyword'] ?? '');
         $categoryID = intval($_REQUEST['categoryID'] ?? 0);
@@ -758,6 +748,8 @@ switch ($mode) {
 
         echo json_encode([
             "data" => [
+                "requestDetails" => $requestDetails,
+                "vehicleHistory" => $vehicleHistory,
                 "vehicleCategories" => $vehicleCategories,
                 "vehicles" => $vehicles,
                 "vehicleTypeOpt" => $vehicleTypeOpt,
@@ -766,6 +758,8 @@ switch ($mode) {
             "statusCode" => 200
         ]);
         break;
+
+
 
 
     // ===================== DEFAULT =====================
