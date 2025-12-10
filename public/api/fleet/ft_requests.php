@@ -564,7 +564,11 @@ switch ($mode) {
                 s.vName as bookedByName,
                 vc.vName as vehicleCategoryName,
                 ftp.vName as travelPurposeName,
-                ftt.vName as travelTypeName
+                ftt.vName as travelTypeName,
+                v.vRnum as assignedVehicleRegNo,
+                vcat.vName as assignedVehicleCategoryName,
+                dr.vName as assignedDriverName,
+                dr.vMobileNum as assignedDriverMobile
             FROM fleet_booking fb
             LEFT JOIN fleet_bookingcategory fbc ON fb.iFleet_BKCatID = fbc.iFleet_BkCatID
             LEFT JOIN property p ON fb.iPropertyID = p.iPropertyID
@@ -574,6 +578,9 @@ switch ($mode) {
             LEFT JOIN vehicle_category vc ON fb.iVehicleCatID = vc.iVCatID
             LEFT JOIN fleet_travelpurpose ftp ON fb.iFleet_TrvPurID = ftp.iFleet_TrvPurID
             LEFT JOIN fleet_traveltype ftt ON fb.iFleet_TrvTypeID = ftt.iFleet_TrvTypeID
+            LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
+            LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID AND vcat.cStatus = 'A'
+            LEFT JOIN driver dr ON fb.iDriverID = dr.iDriverID AND dr.cStatus = 'A'
             WHERE fb.iFleet_BookingID = $iFleet_BookingID AND fb.cStatus = 'A'
             LIMIT 1
         ";
@@ -647,7 +654,17 @@ switch ($mode) {
             'travelType' => $booking['travelTypeName'] ?? 'N/A',
             'departmentName' => $booking['departmentName'] ?? '',
             'isVehicleAssigned' => $isVehicleAssigned,
-            'isDriverAssigned' => $isDriverAssigned
+            'isDriverAssigned' => $isDriverAssigned,
+            'assignedVehicle' => $isVehicleAssigned ? [
+                'id' => intval($booking['iVehicleID']),
+                'regNo' => db_output2($booking['assignedVehicleRegNo'] ?? ''),
+                'categoryName' => db_output2($booking['assignedVehicleCategoryName'] ?? '')
+            ] : null,
+            'assignedDriver' => $isDriverAssigned ? [
+                'id' => intval($booking['iDriverID']),
+                'name' => db_output2($booking['assignedDriverName'] ?? ''),
+                'mobile' => db_output2($booking['assignedDriverMobile'] ?? '')
+            ] : null
         ];
     echo json_encode([
             "data" => [
