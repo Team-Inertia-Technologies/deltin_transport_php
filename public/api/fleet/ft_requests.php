@@ -708,6 +708,17 @@ switch ($mode) {
             $vehicleID = intval($vehicleRow['iVehicleID']);
             $isAssigned = !empty($vehicleRow['iDriverID']);
             
+            // Check if this vehicle is already assigned to the current trip/booking
+            $assignedVeh = false;
+            $tripAssignmentSql = "SELECT iVehicleID FROM fleet_booking 
+                                 WHERE iFleet_BookingID = $iFleet_BookingID 
+                                 AND iVehicleID = $vehicleID 
+                                 AND cStatus = 'A'";
+            $tripAssignmentRes = sql_query($tripAssignmentSql);
+            if (sql_num_rows($tripAssignmentRes) > 0) {
+                $assignedVeh = true;
+            }
+            
             // Get next trip time for this vehicle
             $nextTripSql = "SELECT vPickUpTime
                            FROM fleet_booking 
@@ -737,6 +748,7 @@ switch ($mode) {
                 'categoryName' => db_output2($vehicleRow['categoryName'] ?? ''),
                 'capacity' => intval($vehicleRow['iCapacity'] ?? 0),
                 'isAssigned' => $isAssigned,
+                'assignedVeh' => $assignedVeh,
                 'driverName' => $isAssigned ? db_output2($vehicleRow['driverName']) : '',
                 'driverMobile' => $isAssigned ? db_output2($vehicleRow['driverMobile']) : '',
               //  'assignedFrom' => $isAssigned ? $vehicleRow['dtAssigned_From'] : null,
