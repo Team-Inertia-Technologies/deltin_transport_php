@@ -782,10 +782,29 @@ switch ($mode) {
 
     // ===================== CASE 10: DRIVER_POPUP =====================
     case 'DRIVER_POPUP':
+        // Get filter parameters
+        $keyword = db_input($_REQUEST['keyword'] ?? '');
+        $type = intval($_REQUEST['type'] ?? 0);
+
+        // Build WHERE conditions
+        $whereConditions = ["cStatus = 'A'"];
+        
+        // Add keyword search (search in driver name or mobile number)
+        if (!empty($keyword)) {
+            $whereConditions[] = "(UPPER(vName) LIKE UPPER('%$keyword%') OR vMobileNum LIKE '%$keyword%')";
+        }
+        
+        // Add type filter
+        if ($type > 0) {
+            $whereConditions[] = "iType = $type";
+        }
+        
+        $whereClause = implode(' AND ', $whereConditions);
+
         // Get list of active drivers with id, name, and phone number
         $driverSql = "SELECT iDriverID, vName, vMobileNum, iType 
                       FROM driver 
-                      WHERE cStatus = 'A' 
+                      WHERE $whereClause 
                       ORDER BY vName";
         $driverRes = sql_query($driverSql);
 
