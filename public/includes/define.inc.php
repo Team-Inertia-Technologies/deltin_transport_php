@@ -162,7 +162,9 @@ $SHORT_MONTH_ARR = array("1" => "Jan", "2" => "Feb", "3" => "Mar", "4" => "Apr",
 
 $PAYMENT_STATUS_ARR = array('N' => 'Not Paid', 'P' => 'Paid');
 
-$USER_LEVEL_ARR = array('0' => 'Super Admin', '1' => 'Admin', '2' => 'HOD', '3' => 'National Head', '4' => 'Loyalty Coordinator', '5' => 'VIP Services', '6' => 'Jr. RM', '7' => 'Members', '8' => 'Sr. RM', '9' => 'Caller', '10' => 'Campaign Manager', '11' => 'Supervisor', '12' => 'Staff', '13' => 'Delights');
+// $USER_LEVEL_ARR = array('0' => 'Super Admin', '1' => 'Admin', '2' => 'HOD', '3' => 'National Head', '4' => 'Loyalty Coordinator', '5' => 'VIP Services', '6' => 'Jr. RM', '7' => 'Members', '8' => 'Sr. RM', '9' => 'Caller', '10' => 'Campaign Manager', '11' => 'Supervisor', '12' => 'Staff', '13' => 'Delights');
+
+$USER_LEVEL_ARR = array('0' => 'Super Admin', '1' => 'Admin', '2' => 'Manager', '3' => 'Supervisor', '4' => 'Jr Supervisor');
 
 $YES_ARR = array('Y' => 'Yes', 'N' => 'No');
 

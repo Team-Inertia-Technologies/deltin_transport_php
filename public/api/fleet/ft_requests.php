@@ -785,7 +785,9 @@ switch ($mode) {
                 'driverName' => $isAssigned ? db_output2($vehicleRow['driverName']) : '',
                 'driverMobile' => $isAssigned ? db_output2($vehicleRow['driverMobile']) : '',
               //  'assignedFrom' => $isAssigned ? $vehicleRow['dtAssigned_From'] : null,
-                'nextTripTime' => $nextTripTime
+                'nextTripTime' => $nextTripTime,
+                "disponsal"=>false,
+                "status"=>'A', //static
                 // 'nextTripLocation' => $nextTripLocation,
                 // 'nextTripDestination' => $nextTripDestination
             ];
