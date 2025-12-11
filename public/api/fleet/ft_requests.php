@@ -702,7 +702,6 @@ switch ($mode) {
             ];
         }
 
-        // Build WHERE conditions for filtering
         $whereConditions = ["v.cStatus = 'A'"];
         
         // Add keyword search (search in vehicle registration number and category name)
@@ -710,12 +709,10 @@ switch ($mode) {
             $whereConditions[] = "(UPPER(v.vRnum) LIKE UPPER('%" . db_input($keyword) . "%') OR UPPER(vc.vName) LIKE UPPER('%" . db_input($keyword) . "%'))";
         }
         
-        // Add category filter
         if ($categoryID > 0) {
             $whereConditions[] = "v.iCatID = $categoryID";
         }
         
-        // Add type filter
         if ($typeID > 0) {
             $whereConditions[] = "v.iType = $typeID";
         }

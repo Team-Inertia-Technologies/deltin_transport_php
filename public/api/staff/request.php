@@ -129,7 +129,7 @@ switch ($mode) {
                 "name"     => date('H:i', strtotime($tripTime)),
                 "time"     => $tripTime,
                 "daysArr"  => $daysArr,
-                "pickUpOpt"=> $pickUpOpt  // moved here
+                "pickUpOpt"=> $pickUpOpt  
             ];
 
             $timeIndex++;
@@ -140,7 +140,7 @@ switch ($mode) {
             $routes[] = [
                 "id"        => $routeID,
                 "name"      => $routeName,
-            //    "pickUpOpt" => [],         // maintained for compatibility (not removed)
+            //    "pickUpOpt" => [],        
                 "timeOpt"   => $timeOpt
             ];
         }

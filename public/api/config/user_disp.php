@@ -58,7 +58,7 @@ try {
     //     '13' => 'Delights'
     // );
     
-    foreach ($LEVELS as $id => $name) {
+    foreach ($USER_LEVEL_ARR as $id => $name) {
         $USER_LEVEL_ARR[] = [
             "id" => (int)$id,
             "name" => $name
