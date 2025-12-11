@@ -701,7 +701,7 @@ switch ($mode) {
 
             echo json_encode([
                 "data" => [
-                    "message" => "Vehicle assigned to driver successfully",
+                    "message" => "Assigned successfully",
                     "assignmentID" => $iDVID,
                     "driverName" => db_output2($driverRow['vName']),
                     "vehicleRegNo" => db_output2($vehicleRow['vRnum'])

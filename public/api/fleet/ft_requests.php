@@ -722,7 +722,7 @@ switch ($mode) {
         // Get vehicles array with category, registration number, and assignment status
         $vehicleSql = "SELECT v.iVehicleID, v.vRnum, v.iCatID, v.iType as vehicletype, 
                               vc.vName as categoryName, vc.iCapacity,
-                              dva.iDriverID, dva.dtAssigned_From, dva.dtAssigned_To,
+                              dva.iDriverID as driverID, dva.dtAssigned_From, dva.dtAssigned_To,
                               d.vName as driverName, d.vMobileNum as driverMobile
                        FROM vehicle v
                        LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
@@ -779,6 +779,7 @@ switch ($mode) {
                 'capacity' => intval($vehicleRow['iCapacity'] ?? 0),
                 'lastAssigned' => $isAssigned,
                 'alreadyAssigned' => $assignedVeh,
+                 'driverID' => $isAssigned ? db_output2($vehicleRow['driverID']) : 0,
                 'driverName' => $isAssigned ? db_output2($vehicleRow['driverName']) : '',
                 'driverMobile' => $isAssigned ? db_output2($vehicleRow['driverMobile']) : '',
               //  'assignedFrom' => $isAssigned ? $vehicleRow['dtAssigned_From'] : null,
