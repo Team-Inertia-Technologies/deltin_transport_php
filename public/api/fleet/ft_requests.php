@@ -212,8 +212,25 @@ switch ($mode) {
         $iPax = intval($_REQUEST['pax'] ?? 0);
         $iBaggage = intval($_REQUEST['baggage'] ?? 0);
 
-        $vPickUpLocation = db_input($_REQUEST['pickUpLoc'] ?? '');
-        $vDropLocation = db_input($_REQUEST['dropLoc'] ?? '');
+        // Handle new location format with lat/lng
+        $pickUpLocData = $_REQUEST['pickUpLoc'] ?? [];
+        $dropLocData = $_REQUEST['dropLoc'] ?? [];
+        
+        // Extract location name and coordinates
+        $vPickUpLocation = db_input($pickUpLocData['loc'] ?? '');
+        $vDropLocation = db_input($dropLocData['loc'] ?? '');
+        
+        // Extract and format lat/lng coordinates
+        $vLatLong_From = '';
+        if (!empty($pickUpLocData['lat']) && !empty($pickUpLocData['lng'])) {
+            $vLatLong_From = $pickUpLocData['lat'] . ',' . $pickUpLocData['lng'];
+        }
+        
+        $vLatLong_To = '';
+        if (!empty($dropLocData['lat']) && !empty($dropLocData['lng'])) {
+            $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
+        }
+        
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
          $vPickUpTime = (isset($_REQUEST['pickUpDateTime']) && !empty($_REQUEST['pickUpDateTime'])) ? $_REQUEST['pickUpDateTime'] :NULL;
 
@@ -222,7 +239,7 @@ switch ($mode) {
 
         // $tripType = intval($_REQUEST['tripType'] ?? 0);
         // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
-        $cDisposal = intval($_REQUEST['disposal'] ?? 'N');
+       $cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true') ? 'Y' : 'N';
         $vReturnTime = !empty($_REQUEST['returnTime']) ? db_input($_REQUEST['returnTime']) : null;
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
@@ -270,7 +287,7 @@ switch ($mode) {
         $cols = "iFleet_BookingID,iBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,
-                 vDropLocation, iVehicleCatID, cDisposal, tReturnTime, dtAdded,iAdded_UserID,cStatus";
+                 vDropLocation, vLatLong_From, vLatLong_To, iVehicleCatID, cDisposal, tReturnTime, dtAdded,iAdded_UserID,cStatus";
 
         // Create OUTBOUND booking
         $iFleet_BookingID1 = NextID('iFleet_BookingID', 'fleet_booking');
@@ -284,7 +301,7 @@ switch ($mode) {
             $iFleet_BookingID1,$iBookedBy, '" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
             $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
             $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "',
-            '" . db_input($vDropLocation) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal, '" . db_input($dtAdded) . "',$user_id,'A'
+            '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal, '" . db_input($dtAdded) . "',$user_id,'A'
         )";
 
         $ok1 = sql_query($sql1);
@@ -336,7 +353,10 @@ switch ($mode) {
 
         $booking = sql_fetch_assoc($bookingRes);
 
-        // Map DB columns to front-end keys (same as ADD inputs)
+        // Parse lat/lng coordinates from database
+        $pickUpLatLng = explode(',', $booking['vLatLong_From'] ?? '');
+        $dropLatLng = explode(',', $booking['vLatLong_To'] ?? '');
+        
         $response = [
             "bookingId"      => intval($booking['iFleet_BookingID']),
             "bookedBy"       => intval($booking['iBookedBy']),
@@ -349,8 +369,16 @@ switch ($mode) {
             "mob"            => $booking['vMobileNo'],
             "pax"            => intval($booking['iPax']),
             "baggage"        => intval($booking['iBaggage']),
-            "pickUpLoc"      => db_output2($booking['vPickUpLocation']),
-            "dropLoc"        => db_output2($booking['vDropLocation']),
+            "pickUpLoc"      => [
+                'lat' => isset($pickUpLatLng[0]) && !empty(trim($pickUpLatLng[0])) ? floatval(trim($pickUpLatLng[0])) : null,
+                'lng' => isset($pickUpLatLng[1]) && !empty(trim($pickUpLatLng[1])) ? floatval(trim($pickUpLatLng[1])) : null,
+                'loc' => db_output2($booking['vPickUpLocation'])
+            ],
+            "dropLoc"        => [
+                'lat' => isset($dropLatLng[0]) && !empty(trim($dropLatLng[0])) ? floatval(trim($dropLatLng[0])) : null,
+                'lng' => isset($dropLatLng[1]) && !empty(trim($dropLatLng[1])) ? floatval(trim($dropLatLng[1])) : null,
+                'loc' => db_output2($booking['vDropLocation'])
+            ],
             "pickUpDateTime" => $booking['vPickUpTime'],
             "returnTime"     => ($booking['tReturnTime'] ?? null),
             "vehiCat"        => intval($booking['iVehicleCatID']),
@@ -358,7 +386,7 @@ switch ($mode) {
             "guestID"        => intval($booking['iGuestID']),
             "staffID"        => intval($booking['iFStaffID']),
             "staff_dept"        => isset($STAFF_DEPT_ARR[intval($booking['iFStaffID'])]) ? $STAFF_DEPT_ARR[intval($booking['iFStaffID'])]:0,
-            "disposal"       => ($booking['cDisposal'] ?? 'N'),
+            "disposal"       => ($booking['cDisposal'] ?? 'N') === 'Y' ? true : false,
             "dtAdded"        => $booking['dtAdded'],
             "addedUserId"    => intval($booking['iAdded_UserID']),
         ];
@@ -448,8 +476,25 @@ switch ($mode) {
         $iPax = intval($_REQUEST['pax'] ?? 0);
         $iBaggage = intval($_REQUEST['baggage'] ?? 0);
 
-        $vPickUpLocation = db_input($_REQUEST['pickUpLoc'] ?? '');
-        $vDropLocation = db_input($_REQUEST['dropLoc'] ?? '');
+        // Handle new location format with lat/lng
+        $pickUpLocData = $_REQUEST['pickUpLoc'] ?? [];
+        $dropLocData = $_REQUEST['dropLoc'] ?? [];
+        
+        // Extract location name and coordinates
+        $vPickUpLocation = db_input($pickUpLocData['loc'] ?? '');
+        $vDropLocation = db_input($dropLocData['loc'] ?? '');
+        
+        // Extract and format lat/lng coordinates
+        $vLatLong_From = '';
+        if (!empty($pickUpLocData['lat']) && !empty($pickUpLocData['lng'])) {
+            $vLatLong_From = $pickUpLocData['lat'] . ',' . $pickUpLocData['lng'];
+        }
+        
+        $vLatLong_To = '';
+        if (!empty($dropLocData['lat']) && !empty($dropLocData['lng'])) {
+            $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
+        }
+        
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
 
         $iVehicleCatID = intval($_REQUEST['vehiCat'] ?? 0);
@@ -457,7 +502,7 @@ switch ($mode) {
 
         // $tripType = intval($_REQUEST['tripType'] ?? 0);
         // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
-         $cDisposal = intval($_REQUEST['disposal'] ?? 'N');
+$cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true') ? 'Y' : 'N';
         $vReturnTime = !empty($_REQUEST['returnTime']) ? db_input($_REQUEST['returnTime']) : null;
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
@@ -504,6 +549,8 @@ switch ($mode) {
                 vPickUpLocation = '" . db_input($vPickUpLocation) . "',
                 vPickUpTime = '" . db_input($vPickUpTime) . "',
                 vDropLocation = '" . db_input($vDropLocation) . "',
+                vLatLong_From = '" . db_input($vLatLong_From) . "',
+                vLatLong_To = '" . db_input($vLatLong_To) . "',
                 iVehicleCatID = " . intval($iVehicleCatID) . ",
                 cDisposal = '" . db_input($cDisposal) . "',
                 tReturnTime = " . $vReturnTimeVal . ",
@@ -558,6 +605,7 @@ switch ($mode) {
                 fb.iBaggage,
                 fb.iVehicleID,
                 fb.iDriverID,
+                fb.cType as currentStatus,
                 fbc.vName as bookingCategoryName,
                 p.vName as propertyName,
                 d.vName as departmentName,
@@ -664,7 +712,9 @@ switch ($mode) {
                 'id' => intval($booking['iDriverID']),
                 'name' => db_output2($booking['assignedDriverName'] ?? ''),
                 'mobile' => db_output2($booking['assignedDriverMobile'] ?? '')
-            ] : null
+            ] : null,
+            'tripStatus' => isset($TRIP_STATUS[$booking['currentStatus']]) ? $TRIP_STATUS[$booking['currentStatus']] : 'Not Started'
+           // "status" => $booking['currentStatus']
         ];
     echo json_encode([
             "data" => [
@@ -749,6 +799,20 @@ switch ($mode) {
                 $assignedVeh = true;
             }
             
+            // Get the last time this vehicle was assigned (most recent booking)
+            $lastAssignedSql = "SELECT vPickUpTime FROM fleet_booking 
+                               WHERE iVehicleID = $vehicleID 
+                               AND cStatus = 'A' 
+                               AND vPickUpTime <= NOW() 
+                               ORDER BY vPickUpTime DESC 
+                               LIMIT 1";
+            $lastAssignedRes = sql_query($lastAssignedSql);
+            $lastAssignedTime = null;
+            if (sql_num_rows($lastAssignedRes) > 0) {
+                $lastAssignedRow = sql_fetch_assoc($lastAssignedRes);
+                $lastAssignedTime = $lastAssignedRow['vPickUpTime'];
+            }
+            
             // Get next trip time for this vehicle
             $nextTripSql = "SELECT vPickUpTime
                            FROM fleet_booking 
@@ -777,8 +841,8 @@ switch ($mode) {
                 'categoryId' => intval($vehicleRow['iCatID']),
                 'categoryName' => db_output2($vehicleRow['categoryName'] ?? ''),
                 'capacity' => intval($vehicleRow['iCapacity'] ?? 0),
-                'lastAssigned' => $isAssigned,
-                'alreadyAssigned' => $assignedVeh,
+                'lastAssigned' => $lastAssignedTime, // Last time this vehicle was assigned
+                'alreadyAssigned' => $assignedVeh, // Whether this vehicle is currently assigned to this booking
                  'driverID' => $isAssigned ? db_output2($vehicleRow['iDriverID']) : 0,
                 'driverName' => $isAssigned ? db_output2($vehicleRow['driverName']) : '',
                 'driverMobile' => $isAssigned ? db_output2($vehicleRow['driverMobile']) : '',
