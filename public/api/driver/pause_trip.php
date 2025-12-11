@@ -60,8 +60,11 @@ $driverID = intval($userid);
 
 
 // -------------------- UPDATE TRIP STATUS TO STARTED --------------------
-$query = "UPDATE fleet_booking SET cType='P', iPauseID = $pauseId, vNotes = $notes WHERE iFleet_BookingID='$booking_id' AND iDriverID='$driverID'";
+$query = "UPDATE fleet_booking SET cType='P' WHERE iFleet_BookingID='$booking_id' AND iDriverID='$driverID'";
 $result = sql_query($query, 'TRIP.START');
+$NOW = NOW;
+$log_id = NextID('iLogID', 'trip_pause_log');
+sql_query("INSERT INTO trip_pause_log (iLogID, iFleet_BookingID, iDriverID, iPauseTypeID, tNotes, dPauseTime) VALUES ('$log_id','$booking_id', '$driverID', '$pauseId', $notes, '$NOW')", 'TRIP.PAUSE.LOG');
 if (sql_affected_rows() > 0) {
     http_response_code(200);
     header('Content-Type: application/json');
