@@ -420,7 +420,7 @@ switch ($mode) {
         $vBankIFSC = db_input($request['bankIfscCode'] ?? '');
         $cStatus = 'A'; // Default active status
 
-        // Basic validation
+
         if (empty($vName)) {
             echo json_encode([
                 "error" => [
@@ -508,8 +508,6 @@ switch ($mode) {
             ]);
             exit;
         }
-
-        // Update cStatus to 'X' instead of actual deletion
         $sql = "UPDATE vendor SET cStatus = 'X' WHERE iVendorID = $id AND cStatus != 'X'";
         $result = sql_query($sql);
 

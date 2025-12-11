@@ -780,8 +780,8 @@ switch ($mode) {
                 'categoryId' => intval($vehicleRow['iCatID']),
                 'categoryName' => db_output2($vehicleRow['categoryName'] ?? ''),
                 'capacity' => intval($vehicleRow['iCapacity'] ?? 0),
-                'isAssigned' => $isAssigned,
-                'currentlyAssigned' => $assignedVeh,
+                'lastAssigned' => $isAssigned,
+                'alreadyAssigned' => $assignedVeh,
                 'driverName' => $isAssigned ? db_output2($vehicleRow['driverName']) : '',
                 'driverMobile' => $isAssigned ? db_output2($vehicleRow['driverMobile']) : '',
               //  'assignedFrom' => $isAssigned ? $vehicleRow['dtAssigned_From'] : null,
@@ -964,7 +964,6 @@ switch ($mode) {
             
             $assocResult = sql_query($assocInsertSql);
             if (!$assocResult) {
-                // Log warning but don't fail the main assignment
                 error_log("Warning: Failed to create driver-vehicle association for Driver ID: $iDriverID, Vehicle ID: $iVehicleID");
             }
         }
