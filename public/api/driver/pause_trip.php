@@ -24,7 +24,7 @@ $request = json_decode($postdata);
 $token      = trim($request->token);
 $booking_id = intval($request->id);
 $pauseId = intval($request->pauseId);
-$notes = trim($request->notes);
+$notes = isset($request->notes) ? "'" . db_input(trim($request->notes)) . "'" : '';
 
 if (!$token || !$booking_id || !$pauseId) {
     http_response_code(400);

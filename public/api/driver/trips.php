@@ -61,7 +61,7 @@ LEFT JOIN vehicle_category vc ON vc.iVCatID = v.iCatID
 LEFT JOIN property p ON p.iPropertyID = fb.iPropertyID
 
 WHERE 
-    fb.cStatus = 'A'
+    fb.cType = 'N'
     AND (
         fb.iDriverID = '{$driverID}' OR fb.iVehicleID IN (SELECT iVehicleID FROM driver_vehicle_assoc WHERE iDriverID = '{$driverID}')
         )
