@@ -928,7 +928,7 @@ switch ($mode) {
         }
 
         // Update the booking with vehicle and driver assignment
-        $dtNow = date('Y-m-d H:i:s');
+        $dtNow = NOW;
         $updateSql = "UPDATE fleet_booking SET 
                      iVehicleID = $iVehicleID,
                      iDriverID = $iDriverID,
@@ -947,26 +947,26 @@ switch ($mode) {
             exit;
         }
 
-        $assocCheckSql = "SELECT iDVAssocID FROM driver_vehicle_assoc 
-                         WHERE iDriverID = $iDriverID 
-                         AND iVehicleID = $iVehicleID 
-                         AND cStatus = 'A' 
-                         AND dtAssigned_To IS NULL";
-        $assocCheckRes = sql_query($assocCheckSql);
+        // $assocCheckSql = "SELECT iDVAssocID FROM driver_vehicle_assoc 
+        //                  WHERE iDriverID = $iDriverID 
+        //                  AND iVehicleID = $iVehicleID 
+        //                  AND cStatus = 'A' 
+        //                  AND dtAssigned_To IS NULL";
+        // $assocCheckRes = sql_query($assocCheckSql);
 
-        if (sql_num_rows($assocCheckRes) == 0) {
-            // Create new driver-vehicle association
-            $iDVAssocID = NextID('iDVAssocID', 'driver_vehicle_assoc');
-            $assocInsertSql = "INSERT INTO driver_vehicle_assoc 
-                              (iDVAssocID, iDriverID, iVehicleID, dtAssigned_From, dtAdded, iAdded_UserID, cStatus)
-                              VALUES 
-                              ($iDVAssocID, $iDriverID, $iVehicleID, '" . db_input($dtNow) . "', '" . db_input($dtNow) . "', $user_id, 'A')";
+        // if (sql_num_rows($assocCheckRes) == 0) {
+        //     // Create new driver-vehicle association
+        //     $iDVAssocID = NextID('iDVAssocID', 'driver_vehicle_assoc');
+        //     $assocInsertSql = "INSERT INTO driver_vehicle_assoc 
+        //                       (iDVAssocID, iDriverID, iVehicleID, dtAssigned_From, dtAdded, iAdded_UserID, cStatus)
+        //                       VALUES 
+        //                       ($iDVAssocID, $iDriverID, $iVehicleID, '" . db_input($dtNow) . "', '" . db_input($dtNow) . "', $user_id, 'A')";
             
-            $assocResult = sql_query($assocInsertSql);
-            if (!$assocResult) {
-                error_log("Warning: Failed to create driver-vehicle association for Driver ID: $iDriverID, Vehicle ID: $iVehicleID");
-            }
-        }
+        //     $assocResult = sql_query($assocInsertSql);
+        //     if (!$assocResult) {
+        //         error_log("Warning: Failed to create driver-vehicle association for Driver ID: $iDriverID, Vehicle ID: $iVehicleID");
+        //     }
+        // }
 
         echo json_encode([
             "data" => [
