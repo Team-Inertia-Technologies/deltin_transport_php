@@ -67,7 +67,7 @@ if (sql_affected_rows() > 0) {
     header('Content-Type: application/json');
     echo json_encode([
         "statusCode" => 200,
-        "message" => "Trip started successfully."
+        "message" => "Trip Paused successfully."
     ]);
 } else {
     http_response_code(400);
@@ -75,7 +75,7 @@ if (sql_affected_rows() > 0) {
     echo json_encode([
         "statusCode" => 400,
         "error" => [
-            "message" => "Failed to start trip. Please check booking ID and driver ID."
+            "message" => "Failed to pause trip. Please check booking ID and driver ID."
         ]
     ]);
 }
