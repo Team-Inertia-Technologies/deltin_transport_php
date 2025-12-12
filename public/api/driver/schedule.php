@@ -56,7 +56,7 @@ SELECT
 	fb.fRate,
 	fb.vDropTime,
     fb.vPickUpLocation AS fromLocation,
-    fb.vDropLocation AS toLocation,
+    fb.vDropLocation AS toLocation
 FROM fleet_booking fb
 WHERE 
     fb.cType IN ('P', 'C')
