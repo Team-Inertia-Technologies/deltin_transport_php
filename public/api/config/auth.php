@@ -1,6 +1,6 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', '1');
+ini_set('display_errors', '0');
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../../includes/common_api.php";
 //require_once('../../includes/ti-salt.php');
@@ -64,7 +64,7 @@ if (true) {
 					$u_pass = htmlspecialchars_decode($u_pass);
 					//$USER_MODULE_ACCESS = GetIDString2('select distinct(iModuleID) from role_access where iRoleID=' . $u_level);
 					
-					$MODULE_ACCESS_ARR = GetXArrFromYID('select m.vCode from module as m join module_level_assoc as ma on m.iModuleID=ma.iModuleID where ma.iLevelD='.$u_level.' and m.cStatus="A" and ma.cType="FL"', '3');
+					$MODULE_ACCESS_ARR = GetXArrFromYID('select m.vCode from module as m join module_level_assoc as ma on m.iModuleID=ma.iModuleID where ma.iLevelD='.$u_level.' and m.cStatus="A" and ma.cType="FL"', '1');
 					
 					/*if (!empty($USER_MODULE_ACCESS) && $USER_MODULE_ACCESS != '1') {
 						LogAttempt($username, 'F', 'Invalid Module Access Detected');
