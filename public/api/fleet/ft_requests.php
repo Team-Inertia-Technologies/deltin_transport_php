@@ -239,7 +239,8 @@ switch ($mode) {
 
         // $tripType = intval($_REQUEST['tripType'] ?? 0);
         // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
-       $cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true') ? 'Y' : 'N';
+    //    $cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true') ? 'Y' : 'N';
+      $cDisposal = isset($_REQUEST['disposal']) ? $_REQUEST['disposal'] : 'N';
         $vReturnTime = !empty($_REQUEST['returnTime']) ? db_input($_REQUEST['returnTime']) : null;
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
@@ -386,7 +387,8 @@ switch ($mode) {
             "guestID"        => intval($booking['iGuestID']),
             "staffID"        => intval($booking['iFStaffID']),
             "staff_dept"        => isset($STAFF_DEPT_ARR[intval($booking['iFStaffID'])]) ? $STAFF_DEPT_ARR[intval($booking['iFStaffID'])]:0,
-            "disposal"       => ($booking['cDisposal'] ?? 'N') === 'Y' ? true : false,
+            //"disposal"       => ($booking['cDisposal'] ?? 'N') === 'Y' ? true : false,
+            "disposal"       => $booking['cDisposal'] ?? 'N',
             "dtAdded"        => $booking['dtAdded'],
             "addedUserId"    => intval($booking['iAdded_UserID']),
         ];
@@ -502,7 +504,8 @@ switch ($mode) {
 
         // $tripType = intval($_REQUEST['tripType'] ?? 0);
         // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
-$cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true') ? 'Y' : 'N';
+// $cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true') ? 'Y' : 'N';
+  $cDisposal = isset($_REQUEST['disposal']) ? $_REQUEST['disposal'] : 'N';
         $vReturnTime = !empty($_REQUEST['returnTime']) ? db_input($_REQUEST['returnTime']) : null;
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
@@ -587,6 +590,10 @@ $cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true'
                 "statusCode" => 400
             ]);
             exit;
+        }
+           $tripStatusArr = [];
+        foreach ($STAFF_TRIP_STATUS as $id => $name) {
+            $tripStatusArr[] = ['id' =>$id, 'name' => $name];
         }
 
         // Fetch detailed booking information with all related data including vehicle and driver assignment
@@ -713,13 +720,15 @@ $cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true'
                 'name' => db_output2($booking['assignedDriverName'] ?? ''),
                 'mobile' => db_output2($booking['assignedDriverMobile'] ?? '')
             ] : null,
-            'tripStatus' => isset($TRIP_STATUS[$booking['currentStatus']]) ? $TRIP_STATUS[$booking['currentStatus']] : 'Not Started'
+            'tripStatus' => isset($booking['currentStatus']) ? $booking['currentStatus'] : 'N'
+            // 'tripStatus' => isset($FLEET_TRIP_STATUS[$booking['currentStatus']]) ? $FLEET_TRIP_STATUS[$booking['currentStatus']] : 'Not Started'
            // "status" => $booking['currentStatus']
         ];
     echo json_encode([
             "data" => [
                 "requestDetails" => $requestDetails,
-                "vehicleHistory" => $vehicleHistory
+                "vehicleHistory" => $vehicleHistory,
+                "tripStatusOpts"=>$tripStatusArr
             ],
             "statusCode" => 200
         ]);
@@ -740,7 +749,7 @@ $cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true'
             $vehicleTypeOpt[] = ['id' => intval($id), 'name' => $name];
         }
           $tripStatusOpts = [['id' => 0, 'name' => 'All']];
-        foreach ($TRIP_STATUS as $id => $name) {
+        foreach ($FLEET_TRIP_STATUS as $id => $name) {
             $tripStatusOpts[] = ['id' => intval($id), 'name' => $name];
         }
         $vehicleCategories = [];
