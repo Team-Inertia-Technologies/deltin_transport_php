@@ -55,7 +55,7 @@ switch ($mode) {
         }
 
         // Build WHERE conditions
-        $whereConditions = ["DATE(t.dtTrip) = '" . db_input($date) . "'", "t.cStatus = 'A'"];
+        $whereConditions = ["DATE(t.dtTrip) = '" . db_input($date) . "'", "t.cStatus != 'X'"];
 
         // Add time filtering if provided
         if (!empty($fromTime)) {

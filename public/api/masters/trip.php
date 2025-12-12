@@ -33,7 +33,7 @@ switch ($mode) {
         $routeID = intval($_REQUEST['routeID'] ?? 0);
 
         // Build WHERE conditions
-        $whereConditions = ["t.cStatus = 'A'"];
+        $whereConditions = ["t.cStatus != 'X'"];
 
         if (!empty($fromDate)) {
             $whereConditions[] = "DATE(t.dtTrip) >= '" . db_input($fromDate) . "'";
@@ -117,7 +117,7 @@ switch ($mode) {
                              INNER JOIN st_trips t ON req.iTripID = t.iTripID
                              WHERE t.iGrpID = $grpID 
                              AND req.cStatus = 'A'
-                             AND t.cStatus = 'A'";
+                             AND t.cStatus != 'X'";
             $staffCountRes = sql_query($staffCountSql);
             $staffCountRow = sql_fetch_assoc($staffCountRes);
             $groupedTrips[$grpID]['totalPax'] = (int) ($staffCountRow['totalStaff'] ?? 0);
@@ -128,11 +128,11 @@ switch ($mode) {
         foreach ($groupedTrips as $grpID => $tripGroup) {
             // Create vehicle details string (comma separated)
             $vehicleDetails = [];
-            
+
             foreach ($tripGroup['vehicles'] as $vehicle) {
                 $vehicleDetails[] = $vehicle['vehicleDetail'];
             }
-            
+
             // Single row per group with all vehicles listed
             $rowData[] = [
                 "grpID" => $grpID,
@@ -194,7 +194,6 @@ switch ($mode) {
                 "id" => (int) $vehicleRow['iVehicleID'],
                 "name" => $vehicleRow['vRnum'] . ' (' . $capacity . ')'
             ];
-
         }
 
         // Get mode options from vehicle category table
@@ -258,7 +257,7 @@ switch ($mode) {
 
         while ($tableRow = sql_fetch_assoc($tableArrRes)) {
             $vendorID = (int) ($tableRow['iVendorID'] ?? 0);
-            
+
             // Get drivers for this specific vendor only
             $vhDriver = [];
             if ($vendorID > 0) {
@@ -267,7 +266,7 @@ switch ($mode) {
                                    WHERE d.cStatus = 'A' AND d.iVendorID = $vendorID
                                    ORDER BY d.vName";
                 $vendorDriversRes = sql_query($vendorDriversSql);
-                
+
                 while ($driverRow = sql_fetch_assoc($vendorDriversRes)) {
                     $vhDriver[] = [
                         "id" => (int) $driverRow['iDriverID'],
@@ -276,7 +275,7 @@ switch ($mode) {
                     ];
                 }
             }
-            
+
             $tableArr[] = [
                 "id" => (int) $tableRow['iVehicleID'],
                 "vhNum" => db_output2($tableRow['vRnum'] ?? ''),
@@ -330,6 +329,7 @@ switch ($mode) {
                     d.vMobileNum as driverMobile,
                     t.iRequested as requestedPax,
                     t.iAvaialed as availedPax,
+                    t.cStatus as tripStatus
                     r.iRank
                 FROM st_trips t
                 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
@@ -337,7 +337,7 @@ switch ($mode) {
                 LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                 LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
                 LEFT JOIN driver d ON t.iDriverID = d.iDriverID
-                WHERE t.iGrpID = $iGrpID AND t.cStatus = 'A'
+                WHERE t.iGrpID = $iGrpID AND t.cStatus != 'X'
                 ORDER BY t.iTripID, r.iRank";
 
         $res = sql_query($sql);
@@ -393,7 +393,12 @@ switch ($mode) {
                     "vehicleCapacity" => (int) ($row['vehicleCapacity'] ?? 0)
                 ];
             }
+$tripStatusText="";
+$tripStatus=$row['tripStatus'];
+if($tripStatus !=' A' || $tripStatus!=' D' ){
+$tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tripStatus]:"";
 
+}
             // Get driver ID from current row
             $driverID = (int) ($row['iDriverID'] ?? 0);
 
@@ -409,7 +414,9 @@ switch ($mode) {
                 "driverName" => $row['driverName'] ?? '',
                 "driverMobile" => $row['driverMobile'] ?? '',
                 "requestedPax" => (int) ($row['requestedPax'] ?? 0),
-                "availedPax" => (int) ($row['availedPax'] ?? 0)
+                "availedPax" => (int) ($row['availedPax'] ?? 0),
+                "tripStatus" => $tripStatus,
+                "tripStatusText" => $tripStatusText
             ];
         }
 
@@ -419,7 +426,7 @@ switch ($mode) {
                          INNER JOIN st_trips t ON req.iTripID = t.iTripID
                          WHERE t.iGrpID = $iGrpID 
                          AND req.cStatus = 'A'
-                         AND t.cStatus = 'A'";
+                         AND t.cStatus != 'X'";
         $staffCountRes = sql_query($staffCountSql);
         $staffCountRow = sql_fetch_assoc($staffCountRes);
         $totalRequestedPax = (int) ($staffCountRow['totalStaff'] ?? 0);
@@ -433,7 +440,7 @@ switch ($mode) {
         $stops = [];
         if (!empty($routeInfo)) {
             // Get the route ID from the first trip
-            $routeIDSql = "SELECT iRouteID FROM st_trips WHERE iGrpID = $iGrpID AND cStatus = 'A' LIMIT 1";
+            $routeIDSql = "SELECT iRouteID FROM st_trips WHERE iGrpID = $iGrpID AND cStatus != 'X' LIMIT 1";
             $routeIDRes = sql_query($routeIDSql);
 
             if ($routeIDRow = sql_fetch_assoc($routeIDRes)) {
@@ -456,7 +463,7 @@ switch ($mode) {
 
                     // Calculate pickup time for this stop
                     // Get trip start time from any trip in this group
-                    $tripTimeSql = "SELECT dtTrip FROM st_trips WHERE iGrpID = $iGrpID AND cStatus = 'A' LIMIT 1";
+                    $tripTimeSql = "SELECT dtTrip FROM st_trips WHERE iGrpID = $iGrpID AND cStatus != 'X' LIMIT 1";
                     $tripTimeRes = sql_query($tripTimeSql);
                     $tripTimeRow = sql_fetch_assoc($tripTimeRes);
 
@@ -508,7 +515,7 @@ switch ($mode) {
         }
 
         // First, get the trip datetime for this group to check for conflicts
-        $tripDateTimeSql = "SELECT dtTrip FROM st_trips WHERE iGrpID = $iGrpID AND cStatus = 'A' LIMIT 1";
+        $tripDateTimeSql = "SELECT dtTrip FROM st_trips WHERE iGrpID = $iGrpID AND cStatus != 'X' LIMIT 1";
         $tripDateTimeRes = sql_query($tripDateTimeSql);
         $tripDateTimeRow = sql_fetch_assoc($tripDateTimeRes);
         $currentTripDateTime = $tripDateTimeRow['dtTrip'] ?? '';
@@ -518,10 +525,10 @@ switch ($mode) {
                                   FROM st_trips t
                                   WHERE t.dtTrip = '$currentTripDateTime'
                                   AND t.iGrpID != $iGrpID
-                                  AND t.cStatus = 'A'
+                                  AND t.cStatus != 'X'
                                   AND t.iVehicleID > 0";
         $conflictingVehiclesRes = sql_query($conflictingVehiclesSql);
-        
+
         $conflictingVehicleIDs = [];
         while ($conflictRow = sql_fetch_assoc($conflictingVehiclesRes)) {
             $conflictingVehicleIDs[] = (int) $conflictRow['iVehicleID'];
@@ -541,12 +548,12 @@ switch ($mode) {
 
         while ($vehicleRow = sql_fetch_assoc($vehicleRes)) {
             $vehicleID = (int) $vehicleRow['iVehicleID'];
-            
+
             // Skip vehicles that are already assigned to other trips at the same time
             if (in_array($vehicleID, $conflictingVehicleIDs)) {
                 continue;
             }
-            
+
             $capacity = $vehicleRow['iCapacity'] ?? 0;
             $vehiOpt[] = [
                 "id" => $vehicleID,
@@ -601,14 +608,14 @@ switch ($mode) {
 
         while ($tableRow = sql_fetch_assoc($tableArrRes)) {
             $vehicleID = (int) $tableRow['iVehicleID'];
-            
+
             // Skip vehicles that are already assigned to other trips at the same time
             if (in_array($vehicleID, $conflictingVehicleIDs)) {
                 continue;
             }
-            
+
             $vendorID = (int) ($tableRow['iVendorID'] ?? 0);
-            
+
             // Get drivers for this specific vendor only
             $vhDriver = [];
             if ($vendorID > 0) {
@@ -617,7 +624,7 @@ switch ($mode) {
                                    WHERE d.cStatus = 'A' AND d.iVendorID = $vendorID
                                    ORDER BY d.vName";
                 $vendorDriversRes = sql_query($vendorDriversSql);
-                
+
                 while ($driverRow = sql_fetch_assoc($vendorDriversRes)) {
                     $vhDriver[] = [
                         "id" => (int) $driverRow['iDriverID'],
@@ -626,7 +633,7 @@ switch ($mode) {
                     ];
                 }
             }
-            
+
             $tableArr[] = [
                 "id" => $vehicleID,
                 "vhNum" => db_output2($tableRow['vRnum'] ?? ''),
@@ -635,7 +642,11 @@ switch ($mode) {
                 "vhDriver" => $vhDriver  // Vendor-specific driver list for each vehicle
             ];
         }
-
+        $CANCELATION_STATUS = array("NS" => "No Show", "XP" => "Cancel with payment", "XN" => "Cancel without payment", "X" => "Remove");
+        $cancelOpt = [['id' => 0, 'name' => 'Choose']];
+        foreach ($cancelOpt as $id => $name) {
+            $bookedForOpt[] = ['id' => $id, 'name' => $name];
+        }
         echo json_encode([
             "data" => [
                 "iGrpID" => $iGrpID,
@@ -646,7 +657,8 @@ switch ($mode) {
                 "vehiOpt" => $vehiOpt,
                 "modeOpt" => $modeOpt,
                 "vendorOpt" => $vendorOpt,
-                "stops" => $stops
+                "stops" => $stops,
+                "cancelOpt" => $CANCELATION_STATUS
             ],
             "statusCode" => 200
         ]);
@@ -698,7 +710,7 @@ switch ($mode) {
                             (SELECT SUM(t2.iRequested) 
                              FROM st_trips t2 
                              WHERE t2.iGrpID = $iGrpID 
-                             AND t2.cStatus = 'A') as totalPaxRequested
+                             AND t2.cStatus != 'X') as totalPaxRequested
                              
                         FROM st_trips t
                         LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
@@ -708,9 +720,9 @@ switch ($mode) {
                         LEFT JOIN st_request req ON t.iTripID = req.iTripID AND req.iStopID = s.iStopID AND req.cStatus = 'A'
                         LEFT JOIN staff st ON req.iStaffID = st.iStaffID AND st.cStatus = 'A'
                         
-                        WHERE t.iGrpID = $iGrpID AND t.cStatus = 'A'
+                        WHERE t.iGrpID = $iGrpID AND t.cStatus != 'X'
                         ORDER BY s.iRank, st.vName, t.iTripID";
-        
+
         $manifestRes = sql_query($manifestSql);
 
         // Initialize variables
@@ -790,7 +802,7 @@ switch ($mode) {
 
         // Convert processed stops to indexed array and sort by rank
         $stops = array_values($processedStops);
-        usort($stops, function($a, $b) {
+        usort($stops, function ($a, $b) {
             return $a['rank'] - $b['rank'];
         });
 
@@ -886,7 +898,7 @@ switch ($mode) {
             if (strlen($cleanTime) == 5 && substr_count($cleanTime, ':') == 1) {
                 $cleanTime .= ':00'; // Add seconds if missing
             }
-            
+
             // Validate time format
             if (!preg_match('/^([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/', $cleanTime)) {
                 echo json_encode([
@@ -1012,7 +1024,7 @@ switch ($mode) {
         // Check for duplicate vehicle IDs in the request
         $vehicleIDs = [];
         $duplicateVehicles = [];
-        
+
         foreach ($trip_details as $index => $trip) {
             $vehicleID = intval($trip['vehicleID'] ?? 0);
             if ($vehicleID > 0) {
@@ -1041,28 +1053,28 @@ switch ($mode) {
                                    FROM st_trips 
                                    WHERE iGrpID = $iGrpID 
                                    AND iVehicleID IN ($vehicleIDsStr) 
-                                   AND cStatus = 'A'";
+                                   AND cStatus != 'X'";
             $existingVehiclesRes = sql_query($existingVehiclesSql);
-            
+
             $conflictingVehicles = [];
             $existingTripVehicles = [];
-            
+
             while ($row = sql_fetch_assoc($existingVehiclesRes)) {
                 $existingTripVehicles[intval($row['iTripID'])] = intval($row['iVehicleID']);
             }
-            
+
             // Check for conflicts (vehicle assigned to different trip in same group)
             foreach ($trip_details as $index => $trip) {
                 $tripID = intval($trip['tripID'] ?? 0);
                 $vehicleID = intval($trip['vhId'] ?? 0);
-                
+
                 foreach ($existingTripVehicles as $existingTripID => $existingVehicleID) {
                     if ($vehicleID == $existingVehicleID && $tripID != $existingTripID) {
                         $conflictingVehicles[] = $vehicleID;
                     }
                 }
             }
-            
+
             if (!empty($conflictingVehicles)) {
                 echo json_encode([
                     "error" => [
@@ -1091,7 +1103,7 @@ switch ($mode) {
                                     iVehicleID = " . ($vehicleID > 0 ? $vehicleID : "0") . ",
                                     iDriverID = " . ($driverID > 0 ? $driverID : "0") . ",
                                     iCapacity = $vehicleCapacity,iVehAssignedBy=$user_id
-                                  WHERE iTripID = $tripID AND iGrpID = $iGrpID AND cStatus = 'A'";
+                                  WHERE iTripID = $tripID AND iGrpID = $iGrpID AND cStatus != 'X'";
 
                     if (sql_query($updateSql)) {
                         if (sql_affected_rows() > 0) {
@@ -1105,7 +1117,7 @@ switch ($mode) {
                 } else {
                     // INSERT new trip (tripID = 0)
                     // Get the trip details from existing trips in the same group for route and datetime
-                    $groupInfoSql = "SELECT iRouteID, dtTrip FROM st_trips WHERE iGrpID = $iGrpID AND cStatus = 'A' LIMIT 1";
+                    $groupInfoSql = "SELECT iRouteID, dtTrip FROM st_trips WHERE iGrpID = $iGrpID AND cStatus != 'X' LIMIT 1";
                     $groupInfoRes = sql_query($groupInfoSql);
 
                     if ($groupInfoRow = sql_fetch_assoc($groupInfoRes)) {
@@ -1167,11 +1179,10 @@ switch ($mode) {
             }
 
             echo json_encode($response);
-
         } catch (Exception $e) {
             // Rollback transaction on error
             sql_query("ROLLBACK");
-            
+
             echo json_encode([
                 "error" => [
                     "message" => "Transaction failed: " . $e->getMessage()
@@ -1197,7 +1208,7 @@ switch ($mode) {
         }
 
         // Check if trip exists and is active
-        $checkSql = "SELECT iTripID, iGrpID FROM st_trips WHERE iTripID = $iTripID AND cStatus = 'A'";
+        $checkSql = "SELECT iTripID, iGrpID FROM st_trips WHERE iTripID = $iTripID AND cStatus != 'X'";
         $checkRes = sql_query($checkSql);
 
         if (sql_num_rows($checkRes) == 0) {
@@ -1240,6 +1251,191 @@ switch ($mode) {
             echo json_encode([
                 "error" => [
                     "message" => "Database error occurred while deleting trip"
+                ],
+                "statusCode" => 500
+            ]);
+        }
+        break;
+
+    // ===================== CASE MARK_TRIP_AS_COMPLETE =====================
+    case 'MARK_TRIP_AS_COMPLETE':
+        $iTripID = intval($_REQUEST['iTripID'] ?? 0);
+
+        // Validate required parameter
+        if ($iTripID <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing or invalid iTripID parameter"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Check if trip exists and is active
+        $checkSql = "SELECT iTripID, iGrpID FROM st_trips WHERE iTripID = $iTripID AND cStatus != 'X'";
+        $checkRes = sql_query($checkSql);
+
+        if (sql_num_rows($checkRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Trip not found or not active"
+                ],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $tripRow = sql_fetch_assoc($checkRes);
+        $iGrpID = $tripRow['iGrpID'];
+
+        // Mark trip as complete (status = 'C')
+        $completeSql = "UPDATE st_trips SET 
+                          cStatus = 'C',iStatusChangedBy=$user_id
+                        WHERE iTripID = $iTripID";
+
+        if (sql_query($completeSql)) {
+            if (sql_affected_rows() > 0) {
+                echo json_encode([
+                    "data" => [
+                        "message" => "Trip marked as complete successfully",
+                        "iTripID" => $iTripID,
+                        "iGrpID" => $iGrpID
+                    ],
+                    "statusCode" => 200
+                ]);
+            } else {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Failed to mark trip as complete"
+                    ],
+                    "statusCode" => 500
+                ]);
+            }
+        } else {
+            echo json_encode([
+                "error" => [
+                    "message" => "Database error occurred while marking trip as complete"
+                ],
+                "statusCode" => 500
+            ]);
+        }
+        break;
+
+    // ===================== CASE CHANGE_TRIP_STATUS =====================
+    case 'CHANGE_TRIP_STATUS':
+        $iTripID = intval($_REQUEST['iTripID'] ?? 0);
+        $status = $_REQUEST['status'] ?? '';
+        $reason = $_REQUEST['reason'] ?? '';
+
+        // Validate required parameters
+        if ($iTripID <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing or invalid iTripID parameter"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if (empty($status)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Status parameter is required"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Validate status length (max 255 characters)
+        if (strlen($status) > 255) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Status must not exceed 255 characters"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Validate reason length (max 255 characters)
+        if (strlen($reason) > 255) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Reason must not exceed 255 characters"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Validate status against allowed values from STAFF_TRIP_STATUS
+        $validStatuses = array_keys($STAFF_TRIP_STATUS);
+        if (!in_array($status, $validStatuses)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Invalid status. Allowed values: " . implode(', ', $validStatuses)
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Check if trip exists and is not already deleted
+        $checkSql = "SELECT iTripID, iGrpID, cStatus FROM st_trips WHERE iTripID = $iTripID";
+        $checkRes = sql_query($checkSql);
+
+        if (sql_num_rows($checkRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Trip not found"
+                ],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $tripRow = sql_fetch_assoc($checkRes);
+        $iGrpID = $tripRow['iGrpID'];
+        $currentStatus = $tripRow['cStatus'];
+
+        // Update trip status with reason
+        $updateSql = "UPDATE st_trips SET 
+                        cStatus = '" . db_input($status) . "',
+                        vReason = '" . db_input($reason) . "',
+                        iStatusChangedBy = $user_id
+                      WHERE iTripID = $iTripID";
+
+        if (sql_query($updateSql)) {
+            if (sql_affected_rows() > 0) {
+                $statusText = isset($STAFF_TRIP_STATUS[$status]) ? $STAFF_TRIP_STATUS[$status] : $status;
+                
+                echo json_encode([
+                    "data" => [
+                        "message" => "Trip status changed successfully",
+                        "iTripID" => $iTripID,
+                        "iGrpID" => $iGrpID,
+                        "oldStatus" => $currentStatus,
+                        "newStatus" => $status,
+                        "statusText" => $statusText,
+                        "reason" => $reason
+                    ],
+                    "statusCode" => 200
+                ]);
+            } else {
+                echo json_encode([
+                    "error" => [
+                        "message" => "No changes made to trip status"
+                    ],
+                    "statusCode" => 400
+                ]);
+            }
+        } else {
+            echo json_encode([
+                "error" => [
+                    "message" => "Database error occurred while updating trip status"
                 ],
                 "statusCode" => 500
             ]);

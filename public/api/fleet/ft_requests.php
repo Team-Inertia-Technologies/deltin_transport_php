@@ -592,7 +592,7 @@ switch ($mode) {
             exit;
         }
            $tripStatusArr = [];
-        foreach ($STAFF_TRIP_STATUS as $id => $name) {
+        foreach ($FLEET_TRIP_STATUS as $id => $name) {
             $tripStatusArr[] = ['id' =>$id, 'name' => $name];
         }
 
