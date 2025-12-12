@@ -64,7 +64,7 @@ if (true) {
 					$u_pass = htmlspecialchars_decode($u_pass);
 					//$USER_MODULE_ACCESS = GetIDString2('select distinct(iModuleID) from role_access where iRoleID=' . $u_level);
 					
-					$MODULE_ACCESS_ARR = GetXArrFromYID('select m.vCode from module as m join module_level_assoc as ma on m.iModuleID=ma.iModuleID where ma.iLevelD='.$u_level.' and m.cStatus="A" and ma.cType="BL"', '2');
+					$MODULE_ACCESS_ARR = GetXArrFromYID('select m.vCode from module as m join module_level_assoc as ma on m.iModuleID=ma.iModuleID where ma.iLevelD='.$u_level.' and m.cStatus="A" and ma.cType="FL"', '3');
 					
 					/*if (!empty($USER_MODULE_ACCESS) && $USER_MODULE_ACCESS != '1') {
 						LogAttempt($username, 'F', 'Invalid Module Access Detected');
