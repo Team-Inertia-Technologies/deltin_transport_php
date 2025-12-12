@@ -150,7 +150,9 @@ $response = [
             "toLoc" => [
                 "lat" => $toLat,
                 "log" => $toLng
-            ]
+            ],
+            "tripStarted" => $row["cType"] === 'S' ? true : false,
+            "guestPicked" => $row["cType"] === 'G' ? true : false,
         ]
     ]
 ];
