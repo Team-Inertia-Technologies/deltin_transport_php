@@ -329,7 +329,7 @@ switch ($mode) {
                     d.vMobileNum as driverMobile,
                     t.iRequested as requestedPax,
                     t.iAvaialed as availedPax,
-                    t.cStatus as tripStatus
+                    t.cStatus as tripStatus,
                     r.iRank
                 FROM st_trips t
                 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
@@ -1300,7 +1300,7 @@ $tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tri
                     "data" => [
                         "message" => "Trip marked as complete successfully",
                         "iTripID" => $iTripID,
-                        "iGrpID" => $iGrpID
+                        "iGrpID" => intval($iGrpID)
                     ],
                     "statusCode" => 200
                 ]);
@@ -1416,7 +1416,7 @@ $tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tri
                     "data" => [
                         "message" => "Trip status changed successfully",
                         "iTripID" => $iTripID,
-                        "iGrpID" => $iGrpID,
+                        "iGrpID" => intval($iGrpID),
                         "oldStatus" => $currentStatus,
                         "newStatus" => $status,
                         "statusText" => $statusText,
