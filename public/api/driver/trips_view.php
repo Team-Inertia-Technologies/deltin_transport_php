@@ -67,6 +67,7 @@ SELECT
     fb.iBaggage,
     fb.vRemarks,
     fb.iFStaffID,
+    fb.cType,
     fb.vPickUpLocation AS fromLocation,
     fb.vDropLocation AS toLocation,
     fb.vLatLong_From AS fromLatLong,
