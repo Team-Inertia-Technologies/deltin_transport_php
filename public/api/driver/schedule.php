@@ -59,7 +59,7 @@ SELECT
     fb.vDropLocation AS toLocation,
 FROM fleet_booking fb
 WHERE 
-    fb.cStatus = 'A'
+    fb.cType IN ('P', 'C')
     AND (
         fb.iDriverID = '{$driverID}' 
     )
@@ -138,6 +138,32 @@ $response = [
             [
                 "id" => "",
                 "lable" => "All time"
+            ]
+        ],
+        "starFilter" => [
+            [
+                "id" => 0,
+                "lable" => "All Ratings"
+            ],
+            [
+                "id" => 1,
+                "lable" => "1 Star"
+            ],
+            [
+                "id" => 2,
+                "lable" => "2 Stars"
+            ],
+            [
+                "id" => 3,
+                "lable" => "3 Stars"
+            ],
+            [
+                "id" => 4,
+                "lable" => "4 Stars"
+            ],
+            [
+                "id" => 5,
+                "lable" => "5 Stars"
             ]
         ]
     ]
