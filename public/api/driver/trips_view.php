@@ -65,10 +65,12 @@ SELECT
     fb.vMobileNo AS guestMobile,
     fb.iPax,
     fb.iBaggage,
-    fb.vInstructions,
+    fb.vRemarks,
     fb.iFStaffID,
     fb.vPickUpLocation AS fromLocation,
     fb.vDropLocation AS toLocation,
+    fb.vLatLong_From AS fromLatLong,
+    fb.vLatLong_To AS toLatLong,
     v.vRnum AS vehicleNo,
     vc.vName AS vehicleName,
     p.vName AS propertyName
@@ -100,6 +102,22 @@ $row = sql_fetch_assoc($res);
 $staffID = intval($row['iFStaffID']);
 $supervisorName   = GetXFromYID("SELECT vName FROM fleet_staff WHERE iFStaffID = $staffID");
 $supervisorMobile = GetXFromYID("SELECT vMobile FROM fleet_staff WHERE iFStaffID = $staffID");
+$fromLat = null;
+$fromLng = null;
+
+if (!empty($row["fromLatLong"]) && strpos($row["fromLatLong"], ",") !== false) {
+    list($fromLat, $fromLng) = explode(",", $row["fromLatLong"]);
+    $fromLat = trim($fromLat);
+    $fromLng = trim($fromLng);
+}
+$toLat = null;
+$toLng = null;
+
+if (!empty($row["toLatLong"]) && strpos($row["toLatLong"], ",") !== false) {
+    list($toLat, $toLng) = explode(",", $row["toLatLong"]);
+    $toLat = trim($toLat);
+    $toLng = trim($toLng);
+}
 
 $response = [
     "statusCode" => 200,
@@ -120,10 +138,18 @@ $response = [
             "from"         => $row["fromLocation"],
             "to"           => $row["toLocation"],
             "type"         => "guest",
-            "instru"       => $row["vInstructions"],
+            "instru"       => $row["vRemarks"],
             "supervisor"   => [
                 "name"   => $supervisorName,
                 "number" => $supervisorMobile
+            ],
+           "fromLoc" => [
+                "lat" => $fromLat,
+                "log" => $fromLng
+            ],
+            "toLoc" => [
+                "lat" => $toLat,
+                "log" => $toLng
             ]
         ]
     ]

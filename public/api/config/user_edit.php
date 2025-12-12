@@ -143,10 +143,23 @@ try {
 		];
 	
 		foreach ($fields_to_check as $db_field => $post_field) {
-			if (db_input($_POST[$post_field]) != db_output($original->$db_field)) {
-				$update_fields[] = "$db_field = '" . db_input($_POST[$post_field]) . "'";
+			$newValue = trim($_POST[$post_field] ?? '');
+		
+			if (in_array($db_field, ['iDepartmentID', 'iReportingID'])) {
+				// Integer fields
+				if ($newValue === '') {
+					$update_fields[] = "$db_field = NULL";
+				} elseif ($newValue != db_output($original->$db_field)) {
+					$update_fields[] = "$db_field = " . intval($newValue);
+				}
+			} else {
+				// Normal varchar fields
+				if ($newValue != db_output($original->$db_field)) {
+					$update_fields[] = "$db_field = '" . db_input($newValue) . "'";
+				}
 			}
 		}
+		
 	
 		if (!empty($_POST['txtpassword']) && htmlspecialchars_decode($_POST['txtpassword']) != db_output($original->vPassword)) {
 			$update_fields[] = "vPassword = '" . htmlspecialchars_decode($_POST['txtpassword']) . "'";

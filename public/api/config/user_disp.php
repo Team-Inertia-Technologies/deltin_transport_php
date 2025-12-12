@@ -40,15 +40,17 @@ try {
         $cond2 .= " AND (vName LIKE '%" . $keywords_escaped . "%' OR vUName LIKE '%" . $keywords_escaped . "%' OR vPhone LIKE '%" . $keywords_escaped . "%')";
     }
 
-    $USER_LEVEL_ARR = [];
-    $LEVELS = array('0' => 'Super Admin', '1' => 'Admin', '2' => 'Manager', '3' => 'Supervisor', '4' => 'Jr Supervisor');
-    
-    foreach ($LEVELS as $id => $name) {
-        $USER_LEVEL_ARR[] = [
-            "id" => (int)$id,
-            "name" => $name
-        ];
+    $query = "SELECT iLevelD, vName FROM levels WHERE cStatus='A' ORDER BY vName DESC";
+    $result = sql_query($query);
+    if (sql_num_rows($result)) {
+        while ($data = sql_fetch_assoc($result)) {
+            $levels[] = array(
+                "id" => (int)$data['iLevelD'],
+                "name" => $data['vName'],
+            );
+        }
     }
+
 
     $Status = [];
     $STATUS_ARR = array("A" => "Active", "I" => "Inactive", "P" => "Sent For Approval", "U" => "Pending For Activation");
@@ -78,6 +80,8 @@ try {
 
     $users = [];
     while ($row = sql_fetch_assoc($result)) {
+        $levelName = GetXFromYID("SELECT vName FROM levels WHERE iLevelD = " . intval($row['iLevel']));
+        $row['levelname'] = $levelName;
         $users[] = $row;
     }
     $response = array (
@@ -85,7 +89,7 @@ try {
             "message" => "Users Fetched Successfully",
             "users" => $users,
             "properties" => $PROPERTY_ARR,
-            "levels" => $USER_LEVEL_ARR,
+            "levels" => $levels,
             "status" => $Status,
             "departments" => $DEPT
         ),

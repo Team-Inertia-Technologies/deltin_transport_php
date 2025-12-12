@@ -53,7 +53,7 @@ SELECT
 FROM fleet_booking fb
 LEFT JOIN property p ON p.iPropertyID = fb.iPropertyID
 WHERE fb.iDriverID = $driverID
-AND fb.vPickUpTime >= NOW()
+AND fb.vPickUpTime >= NOW() AND fb.cType='N'
 ORDER BY fb.vPickUpTime ASC
 LIMIT 1
 ";
