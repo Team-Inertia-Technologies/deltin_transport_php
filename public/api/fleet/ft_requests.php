@@ -725,7 +725,7 @@ $cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true'
         ]);
         break;
 
-    // ===================== CASE: VEHICLE_DETAILS =====================
+    // ===================== CASE: SEARCH_VEHICLE =====================
     case 'SEARCH_VEHICLE':
         $keyword = db_input($_REQUEST['keyword'] ?? '');
         $categoryID = intval($_REQUEST['categoryID'] ?? 0);
@@ -808,9 +808,11 @@ $cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true'
                                LIMIT 1";
             $lastAssignedRes = sql_query($lastAssignedSql);
             $lastAssignedTime = null;
+            $lastAssigned=false;
             if (sql_num_rows($lastAssignedRes) > 0) {
                 $lastAssignedRow = sql_fetch_assoc($lastAssignedRes);
                 $lastAssignedTime = $lastAssignedRow['vPickUpTime'];
+                $lastAssigned=true;
             }
             
             // Get next trip time for this vehicle
@@ -841,14 +843,15 @@ $cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true'
                 'categoryId' => intval($vehicleRow['iCatID']),
                 'categoryName' => db_output2($vehicleRow['categoryName'] ?? ''),
                 'capacity' => intval($vehicleRow['iCapacity'] ?? 0),
-                'lastAssigned' => $lastAssignedTime, // Last time this vehicle was assigned
+                 'lastAssigned' => $lastAssigned,
+                'lastAssignedTime' => $lastAssignedTime, // Last time this vehicle was assigned
                 'alreadyAssigned' => $assignedVeh, // Whether this vehicle is currently assigned to this booking
                  'driverID' => $isAssigned ? db_output2($vehicleRow['iDriverID']) : 0,
                 'driverName' => $isAssigned ? db_output2($vehicleRow['driverName']) : '',
                 'driverMobile' => $isAssigned ? db_output2($vehicleRow['driverMobile']) : '',
               //  'assignedFrom' => $isAssigned ? $vehicleRow['dtAssigned_From'] : null,
                 'nextTripTime' => $nextTripTime,
-                "disponsal"=>false,
+                "disposal"=>false,
                 "status"=>'A', //static
                 // 'nextTripLocation' => $nextTripLocation,
                 // 'nextTripDestination' => $nextTripDestination
