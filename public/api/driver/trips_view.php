@@ -118,7 +118,7 @@ if (!empty($row["toLatLong"]) && strpos($row["toLatLong"], ",") !== false) {
     $toLat = trim($toLat);
     $toLng = trim($toLng);
 }
-
+$cType = isset($row["cType"]) ? trim($row["cType"]) : '';
 $response = [
     "statusCode" => 200,
     "message" => "Trip details fetched successfully",
@@ -151,8 +151,8 @@ $response = [
                 "lat" => $toLat,
                 "log" => $toLng
             ],
-            "tripStarted" => $row["cType"] === 'S' ? true : false,
-            "guestPicked" => $row["cType"] === 'G' ? true : false,
+            "tripStarted" => ($cType === 'S'),
+            "guestPicked" => ($cType === 'G'),
         ]
     ]
 ];
