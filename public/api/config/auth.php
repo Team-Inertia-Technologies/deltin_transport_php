@@ -190,9 +190,10 @@ if (true) {
 							"user_id" => $u_id,
 							"userName" => $u_name,
 							"userLevel" => isset($USER_LEVEL_ARR[$u_level]) ? $USER_LEVEL_ARR[$u_level] :'User',
-							"date" => date('d/m/Y H:i:s', strtotime($NOW))
+							"date" => date('d/m/Y H:i:s', strtotime($NOW)),
 							),
-							"token" => $token
+							"token" => $token,
+							"modules" => $MODULE_ACCESS_ARR,
 						),
 						"statusCode" => 200,
 					);
