@@ -66,6 +66,9 @@ if (true) {
 					
 					$MODULE_ACCESS_ARR = GetXArrFromYID('select m.vCode from module as m join module_level_assoc as ma on m.iModuleID=ma.iModuleID where ma.iLevelD='.$u_level.' and m.cStatus="A" and ma.cType="FL"', '1');
 					
+					// Get menu IDs for modules that user has access to
+					$MENU_ACCESS_ARR = GetXArrFromYID('select distinct(mma.iRefID) from module_menu_assoc as mma join module_level_assoc as mla on mma.iModuleID=mla.iModuleID where mla.iLevelD='.$u_level.' and mla.cType="FL" and mma.cRefType="M"', '1');
+					
 					/*if (!empty($USER_MODULE_ACCESS) && $USER_MODULE_ACCESS != '1') {
 						LogAttempt($username, 'F', 'Invalid Module Access Detected');
 						ForceOut(4);
@@ -164,6 +167,7 @@ if (true) {
 					$_SESSION[PROJ_SESSION_ID]->sess_active = 'Y';
 					$_SESSION[PROJ_SESSION_ID]->allow_vessel_close = 'N';
 					$_SESSION[PROJ_SESSION_ID]->module_access = $MODULE_ACCESS_ARR;
+					$_SESSION[PROJ_SESSION_ID]->menu_access = $MENU_ACCESS_ARR;
 
 					LogAttempt($username, 'S', 'Logged');
 
@@ -194,6 +198,7 @@ if (true) {
 							),
 							"token" => $token,
 							"modules" => $MODULE_ACCESS_ARR,
+							"menuIds" => $MENU_ACCESS_ARR,
 						),
 						"statusCode" => 200,
 					);
