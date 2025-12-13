@@ -64,7 +64,7 @@ if (true) {
 					$u_pass = htmlspecialchars_decode($u_pass);
 					//$USER_MODULE_ACCESS = GetIDString2('select distinct(iModuleID) from role_access where iRoleID=' . $u_level);
 					
-					$MODULE_ACCESS_ARR = GetXArrFromYID('select m.vCode from module as m join module_level_assoc as ma on m.iModuleID=ma.iModuleID where ma.iLevelD='.$u_level.' and m.cStatus="A" and ma.cType="FL"', '1');
+					$MODULE_ACCESS_ARR = GetXArrFromYID('select m.vCode from module as m join module_level_assoc as ma on m.iModuleID=ma.iModuleID where ma.iLevelD='.$u_level.' and m.cStatus="A" and ma.cType="FL"', '0');
 					
 					// Get menu IDs for modules that user has access to - only show menus where user has access to at least one module and menu is active
 					$MENU_ACCESS_ARR = GetXArrFromYID('select distinct(m.iMenuID) from menu as m join module_menu_assoc as mma on m.iMenuID=mma.iRefID join module_level_assoc as mla on mma.iModuleID=mla.iModuleID where mla.iLevelD='.$u_level.' and mla.cType="FL" and mma.cRefType="M" and m.cDisplayInMenu="Y" and m.cStatus="A"', '1');
