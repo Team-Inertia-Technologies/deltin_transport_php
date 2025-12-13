@@ -29,7 +29,7 @@ switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
     case 'LIST':
-        $sql = "SELECT iRouteID, vName, vDestination,iRank,cStatus FROM st_route WHERE cStatus = 'A' ORDER BY iRank";
+        $sql = "SELECT iRouteID, vName, vDestination,iRank,cStatus FROM st_route WHERE cStatus != 'X' ORDER BY iRank";
         $res = sql_query($sql);
 
         $rowData = [];
@@ -180,7 +180,7 @@ switch ($mode) {
 
         // Get route stops
         $stopsSql = "SELECT iStopID, vName, tOffsetFromStart, iRank FROM st_route_stops 
-                 WHERE iRouteID = $id AND cStatus = 'A' ORDER BY iRank";
+                 WHERE iRouteID = $id AND cStatus != 'X' ORDER BY iRank";
         $stopsRes = sql_query($stopsSql);
 
         $rdpList = [];
