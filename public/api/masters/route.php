@@ -29,7 +29,7 @@ switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
     case 'LIST':
-        $sql = "SELECT iRouteID, vName, vDestination,iRank FROM st_route WHERE cStatus = 'A' ORDER BY iRank";
+        $sql = "SELECT iRouteID, vName, vDestination,iRank,cStatus FROM st_route WHERE cStatus = 'A' ORDER BY iRank";
         $res = sql_query($sql);
 
         $rowData = [];
@@ -41,7 +41,8 @@ switch ($mode) {
                 "id" => (int) $row['iRouteID'],
                 "route" => db_output2($row['vName']),
                 "destination" => db_output2($row['vDestination']),
-                "rank" => db_output2($row['iRank'])
+                "rank" => intval($row['iRank']),
+                "status" => db_output2($row['status'])
             ];
 
             // For dropdown options
@@ -70,6 +71,11 @@ switch ($mode) {
         $dest = db_input($routeInfo['dest'] ?? '');
         $rdpList = $routeInfo['rdp'] ?? [];
         $cStatus = 'A'; // default active
+  if (checkUserModuleAccess($user_id, 'STAFF_ROUTE_APPROVE')) {
+            $cStatus = 'A'; // approved
+        } else {
+            $cStatus = 'D'; // draft
+        }
 
         // Basic validation
         if (empty($route) || empty($dest)) {
@@ -201,7 +207,7 @@ switch ($mode) {
                     'route' => db_output2($row['vName'] ?? ''),
                     'dest' => db_output2($row['vDestination'] ?? ''),
                     'rdp' => $rdpList,
-                    'cStatus' => $row['cStatus'] ?? 'A',
+                    'status' => $row['cStatus'] ?? 'D',
                     "message" => "Route details fetched successfully"
                 ]
             ]
@@ -418,28 +424,58 @@ switch ($mode) {
         ]);
         break;
     case 'APPROVE_ROUTE':
-
-        $iRouteID = $_REQUEST['iRouteID'] ?? [];
-       if (checkUserModuleAccess($user_id, 'STAFF_ROUTE_APPROVE')) {
-            // User has access
+        $iRouteID = intval($_REQUEST['iRouteID'] ?? 0);
+        
+        if ($iRouteID <= 0) {
             echo json_encode([
-                "data" => [
-                    "message" => "User has STAFF_ROUTE_APPROVE access",
-
+                "error" => [
+                    "message" => "Route ID is required for approval"
                 ],
-                "statusCode" => 200
+                "statusCode" => 400
             ]);
+            exit;
+        }
+
+        if (checkUserModuleAccess($user_id, 'STAFF_ROUTE_APPROVE')) {
+            // User has access - update route status to 'A' (approved)
+            $sql = "UPDATE st_route SET cStatus = 'A' WHERE iRouteID = $iRouteID";
+            $result = sql_query($sql);
+
+            if ($result && sql_affected_rows() > 0) {
+                // Log the approval operation
+               // LogMasterEdit($iRouteID, 'RTE', 'U', 'Route approved', '', $user_id);
+
+                echo json_encode([
+                    "data" => [
+                        "message" => "Route approved successfully",
+                        "iRouteID" => $iRouteID
+                    ],
+                    "statusCode" => 200
+                ]);
+            } else if ($result && sql_affected_rows() == 0) {
+                echo json_encode([
+                    "data" => [
+                        "message" => "Route not found or already approved"
+                    ],
+                    "statusCode" => 200
+                ]);
+            } else {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Failed to approve route"
+                    ],
+                    "statusCode" => 500
+                ]);
+            }
         } else {
             // User does not have access
             echo json_encode([
-                "data" => [
-                    "message" => "User does not have STAFF_ROUTE_APPROVE access",
-
+                "error" => [
+                    "message" => "No access - You don't have permission to approve routes"
                 ],
-                "statusCode" => 200
+                "statusCode" => 403
             ]);
         }
-  
         break;
 
     // ===================== DEFAULT =====================
