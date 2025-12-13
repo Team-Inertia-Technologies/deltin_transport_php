@@ -69,6 +69,31 @@ if (true) {
 					// Get menu IDs for modules that user has access to - only show menus where user has access to at least one module and menu is active
 					$MENU_ACCESS_ARR = GetXArrFromYID('select distinct(m.iMenuID) from menu as m join module_menu_assoc as mma on m.iMenuID=mma.iRefID join module_level_assoc as mla on mma.iModuleID=mla.iModuleID where mla.iLevelD='.$u_level.' and mla.cType="FL" and mma.cRefType="M" and m.cDisplayInMenu="Y" and m.cStatus="A"', '1');
 					
+					// Get complete menu details with hierarchical structure (parent first, then children)
+					$MENU_DETAILS = array();
+					if (!empty($MENU_ACCESS_ARR) && is_array($MENU_ACCESS_ARR)) {
+						$menu_ids = implode(',', $MENU_ACCESS_ARR);
+						$menu_query = "SELECT iMenuID, cType, iParentID, vTitle, vUrl, vCode, cHasSub, cDisplayInMenu, cStatus 
+									   FROM menu 
+									   WHERE iMenuID IN ($menu_ids) AND cDisplayInMenu='Y' AND cStatus='A' 
+									   ORDER BY iParentID ASC, iMenuID ASC";
+						$menu_result = sql_query($menu_query, 'AUTH.MENU');
+						
+						while ($menu_row = sql_fetch_assoc($menu_result)) {
+							$MENU_DETAILS[] = array(
+								'menuId' => (int)$menu_row['iMenuID'],
+								'type' => $menu_row['cType'],
+								'parentId' => (int)$menu_row['iParentID'],
+								'title' => $menu_row['vTitle'],
+								'url' => $menu_row['vUrl'],
+								'code' => $menu_row['vCode'],
+								'hasSub' => $menu_row['cHasSub'],
+								'displayInMenu' => $menu_row['cDisplayInMenu'],
+								'status' => $menu_row['cStatus']
+							);
+						}
+					}
+					
 					/*if (!empty($USER_MODULE_ACCESS) && $USER_MODULE_ACCESS != '1') {
 						LogAttempt($username, 'F', 'Invalid Module Access Detected');
 						ForceOut(4);
@@ -168,6 +193,7 @@ if (true) {
 					$_SESSION[PROJ_SESSION_ID]->allow_vessel_close = 'N';
 					$_SESSION[PROJ_SESSION_ID]->module_access = $MODULE_ACCESS_ARR;
 					$_SESSION[PROJ_SESSION_ID]->menu_access = $MENU_ACCESS_ARR;
+					$_SESSION[PROJ_SESSION_ID]->menu_details = $MENU_DETAILS;
 
 					LogAttempt($username, 'S', 'Logged');
 
@@ -199,6 +225,7 @@ if (true) {
 							"token" => $token,
 							"modules" => $MODULE_ACCESS_ARR,
 							"menuIds" => $MENU_ACCESS_ARR,
+							"menuDetails" => $MENU_DETAILS,
 						),
 						"statusCode" => 200,
 					);
