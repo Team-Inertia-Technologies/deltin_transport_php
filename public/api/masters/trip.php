@@ -402,6 +402,24 @@ $tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tri
             // Get driver ID from current row
             $driverID = (int) ($row['iDriverID'] ?? 0);
 
+            // Get all drivers for this specific vehicle's vendor
+            $vhDriver = [];
+            if ($vendorID > 0) {
+                $vendorDriversSql = "SELECT d.iDriverID, d.vName as drName, d.cStatus
+                                   FROM driver d
+                                   WHERE d.cStatus = 'A' AND d.iVendorID = $vendorID
+                                   ORDER BY d.vName";
+                $vendorDriversRes = sql_query($vendorDriversSql);
+
+                while ($driverRow = sql_fetch_assoc($vendorDriversRes)) {
+                    $vhDriver[] = [
+                        "id" => (int) $driverRow['iDriverID'],
+                        "drName" => db_output2($driverRow['drName']),
+                        "active" => $driverRow['cStatus']
+                    ];
+                }
+            }
+
             // Add trip details for main trip_details array
             $vehicles[] = [
                 "tripID" => (int) $row['iTripID'],
@@ -416,7 +434,8 @@ $tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tri
                 "requestedPax" => (int) ($row['requestedPax'] ?? 0),
                 "availedPax" => (int) ($row['availedPax'] ?? 0),
                 "tripStatus" => $tripStatus,
-                "tripStatusText" => $tripStatusText
+                "tripStatusText" => $tripStatusText,
+                "vhDriver" => $vhDriver  // Array of all drivers for this vehicle's vendor
             ];
         }
 
@@ -644,8 +663,8 @@ $tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tri
         }
         $CANCELATION_STATUS = array("NS" => "No Show", "XP" => "Cancel with payment", "XN" => "Cancel without payment", "X" => "Remove");
         $cancelOpt = [['id' => 0, 'name' => 'Choose']];
-        foreach ($cancelOpt as $id => $name) {
-            $bookedForOpt[] = ['id' => $id, 'name' => $name];
+        foreach ($CANCELATION_STATUS as $id => $name) {
+            $cancelOpt[] = ['id' => $id, 'name' => $name];
         }
         echo json_encode([
             "data" => [
@@ -658,7 +677,7 @@ $tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tri
                 "modeOpt" => $modeOpt,
                 "vendorOpt" => $vendorOpt,
                 "stops" => $stops,
-                "cancelOpt" => $CANCELATION_STATUS
+                "cancelOpt" => $cancelOpt
             ],
             "statusCode" => 200
         ]);
