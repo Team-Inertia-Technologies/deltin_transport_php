@@ -1423,7 +1423,7 @@ $tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tri
         // Update trip status with reason
         $updateSql = "UPDATE st_trips SET 
                         cStatus = '" . db_input($status) . "',
-                        vReason = '" . db_input($reason) . "',
+                        vCancellationReason = '" . db_input($reason) . "',
                         iStatusChangedBy = $user_id
                       WHERE iTripID = $iTripID";
 

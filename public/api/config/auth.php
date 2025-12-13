@@ -66,8 +66,8 @@ if (true) {
 					
 					$MODULE_ACCESS_ARR = GetXArrFromYID('select m.vCode from module as m join module_level_assoc as ma on m.iModuleID=ma.iModuleID where ma.iLevelD='.$u_level.' and m.cStatus="A" and ma.cType="FL"', '1');
 					
-					// Get menu IDs for modules that user has access to
-					$MENU_ACCESS_ARR = GetXArrFromYID('select distinct(mma.iRefID) from module_menu_assoc as mma join module_level_assoc as mla on mma.iModuleID=mla.iModuleID where mla.iLevelD='.$u_level.' and mla.cType="FL" and mma.cRefType="M"', '1');
+					// Get menu IDs for modules that user has access to - only show menus where user has access to at least one module and menu is active
+					$MENU_ACCESS_ARR = GetXArrFromYID('select distinct(m.iMenuID) from menu as m join module_menu_assoc as mma on m.iMenuID=mma.iRefID join module_level_assoc as mla on mma.iModuleID=mla.iModuleID where mla.iLevelD='.$u_level.' and mla.cType="FL" and mma.cRefType="M" and m.cDisplayInMenu="Y" and m.cStatus="A"', '1');
 					
 					/*if (!empty($USER_MODULE_ACCESS) && $USER_MODULE_ACCESS != '1') {
 						LogAttempt($username, 'F', 'Invalid Module Access Detected');
