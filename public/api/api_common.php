@@ -462,6 +462,51 @@ function logQRScanError($staffId, $description, $status = 'E')
     return $result ? true : false;
 }
 
+/**
+ * Check if user has access to a specific module
+ * @param int $user_id - User ID
+ * @param string $module_code - Module code to check access for
+ * @return bool - True if user has access, false otherwise
+ */
+function checkUserModuleAccess($user_id, $module_code)
+{
+    $user_id = intval($user_id);
+    $module_code = db_input($module_code);
+    
+    if ($user_id <= 0 || empty($module_code)) {
+        return false;
+    }
+    
+    // Get user level first
+    $user_level_query = "SELECT iLevel FROM users WHERE iUserID = $user_id AND cStatus = 'A'";
+    $user_level_result = sql_query($user_level_query);
+    
+    if (sql_num_rows($user_level_result) == 0) {
+        return false;
+    }
+    
+    $user_row = sql_fetch_assoc($user_level_result);
+    $user_level = intval($user_row['iLevel']);
+    
+    // Check if user has access to the module based on their level
+    $access_query = "SELECT COUNT(*) as access_count 
+                     FROM module as m 
+                     JOIN module_level_assoc as ma ON m.iModuleID = ma.iModuleID 
+                     WHERE ma.iLevelD = $user_level 
+                     AND m.vCode = '$module_code' 
+                     AND m.cStatus = 'A' 
+                     AND ma.cType = 'FL'";
+    
+    $access_result = sql_query($access_query);
+    
+    if (sql_num_rows($access_result) > 0) {
+        $access_row = sql_fetch_assoc($access_result);
+        return intval($access_row['access_count']) > 0;
+    }
+    
+    return false;
+}
+
 // function sendFcmNotification($deviceToken, $name, $pic, $body, $RM_ID, $senderID)
 // {
 //     // Initialize Google Client

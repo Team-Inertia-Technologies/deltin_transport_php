@@ -419,23 +419,26 @@ switch ($mode) {
     case 'APPROVE_ROUTE':
 
         $iRouteID = $_REQUEST['iRouteID'] ?? [];
-        if (in_array('STAFF_ROUTE_APPROVE', $sess_module_access)) {
+       if (checkUserModuleAccess($user_id, 'STAFF_ROUTE_APPROVE')) {
+            // User has access
             echo json_encode([
                 "data" => [
-                    "message" => "session yes",
+                    "message" => "User has STAFF_ROUTE_APPROVE access",
 
                 ],
                 "statusCode" => 200
             ]);
         } else {
+            // User does not have access
             echo json_encode([
                 "data" => [
-                    "message" => "session no",
+                    "message" => "User does not have STAFF_ROUTE_APPROVE access",
 
                 ],
                 "statusCode" => 200
             ]);
         }
+  
         break;
 
     // ===================== DEFAULT =====================
