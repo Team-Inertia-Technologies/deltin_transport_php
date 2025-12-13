@@ -42,7 +42,7 @@ switch ($mode) {
                 "route" => db_output2($row['vName']),
                 "destination" => db_output2($row['vDestination']),
                 "rank" => intval($row['iRank']),
-                "status" => db_output2($row['status'])
+                "status" => db_output2($row['cStatus'])
             ];
 
             // For dropdown options
