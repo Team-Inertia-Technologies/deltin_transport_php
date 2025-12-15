@@ -29,7 +29,7 @@ switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
     case 'LIST':
-        $sql = "SELECT iRouteID, vName, vDestination,iRank,cStatus FROM st_route WHERE cStatus = 'A' ORDER BY iRank";
+        $sql = "SELECT iRouteID, vName, vDestination,iRank,cStatus FROM st_route WHERE cStatus != 'X' ORDER BY iRank";
         $res = sql_query($sql);
 
         $rowData = [];
