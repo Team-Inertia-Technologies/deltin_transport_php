@@ -23,7 +23,7 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-
+$NOW=NOW;
 switch ($mode) {
 
     // ===================== CASE: LIST =====================
@@ -269,7 +269,7 @@ switch ($mode) {
                 // generate guest PK and insert
                 $guest_id = NextID('iGuestID', 'guest');
                 $guestInsertSql = "INSERT INTO guest (iGuestID, vName, vMobileNo, dtCreated, cStatus)
-                                   VALUES ($guest_id, '" . db_input($vName) . "', '" . db_input($vMobileNo) . "', NOW(), 'A')";
+                                   VALUES ($guest_id, '" . db_input($vName) . "', '" . db_input($vMobileNo) . "', '$NOW', 'A')";
                 $okGuest = sql_query($guestInsertSql);
                 if (!$okGuest) {
                     echo json_encode([
@@ -812,7 +812,7 @@ switch ($mode) {
             $lastAssignedSql = "SELECT vPickUpTime FROM fleet_booking 
                                WHERE iVehicleID = $vehicleID 
                                AND cStatus = 'A' 
-                               AND vPickUpTime <= NOW() 
+                               AND vPickUpTime <= '$NOW' 
                                ORDER BY vPickUpTime DESC 
                                LIMIT 1";
             $lastAssignedRes = sql_query($lastAssignedSql);
@@ -829,7 +829,7 @@ switch ($mode) {
                            FROM fleet_booking 
                            WHERE iVehicleID = $vehicleID 
                            AND cStatus = 'A' 
-                           AND vPickUpTime > NOW() 
+                           AND vPickUpTime > '$NOW' 
                            ORDER BY vPickUpTime ASC 
                            LIMIT 1";
             $nextTripRes = sql_query($nextTripSql);

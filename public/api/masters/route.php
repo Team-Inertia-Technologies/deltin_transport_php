@@ -24,7 +24,7 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-
+$NOW=NOW;
 switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
@@ -136,7 +136,7 @@ switch ($mode) {
             if ($cStatus == 'D') {
                 $iRLogID = NextID('iRLogID', 'st_route_log');
                 $logSql = "INSERT INTO st_route_log (iRLogID, iRouteID, iAddedBy, dtAdded, cStatus) 
-                          VALUES ($iRLogID, $iRouteID, $user_id, NOW(), 'D')";
+                          VALUES ($iRLogID, $iRouteID, $user_id, '$NOW', 'D')";
                 sql_query($logSql);
             }
 
@@ -332,7 +332,7 @@ switch ($mode) {
             if (!checkUserModuleAccess($user_id, 'STAFF_ROUTE_APPROVE')) {
                 $iRLogID = NextID('iRLogID', 'st_route_log');
                 $logSql = "INSERT INTO st_route_log (iRLogID, iRouteID, iAddedBy, dtAdded, cStatus) 
-                          VALUES ($iRLogID, $id, $user_id, NOW(), 'D')";
+                          VALUES ($iRLogID, $id, $user_id, '$NOW', 'D')";
                 sql_query($logSql);
             }
 
@@ -467,7 +467,7 @@ switch ($mode) {
                 // Update st_route_log table with approval details
                 $updateLogSql = "UPDATE st_route_log SET 
                                 iApprovedBy = $user_id, 
-                                dtApproved = NOW(), 
+                                dtApproved = '$NOW', 
                                 cStatus = 'A' 
                                 WHERE iRouteID = $iRouteID AND cStatus = 'D'";
                 sql_query($updateLogSql);

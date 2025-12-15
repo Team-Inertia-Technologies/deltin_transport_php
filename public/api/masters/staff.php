@@ -23,7 +23,7 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-
+$NOW=NOW;
 switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
@@ -627,7 +627,7 @@ switch ($mode) {
             r.dtIn AS enteredTime,
             v.vRnum AS vehiNum,
             CASE 
-                WHEN CONCAT(r.dPickup, ' ', r.tPickup) >= NOW() THEN 'UPCOMING'
+                WHEN CONCAT(r.dPickup, ' ', r.tPickup) >= '$NOW' THEN 'UPCOMING'
                 ELSE 'PAST'
             END AS sendStatus
         FROM st_request r
