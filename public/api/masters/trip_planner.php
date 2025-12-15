@@ -23,7 +23,7 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-$NOW=NOW;
+$NOW = NOW;
 switch ($mode) {
 
     // ===================== CASE 1: LIST_PLANNER =====================
@@ -54,7 +54,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
         while ($row = sql_fetch_assoc($res)) {
             $routeID = $row['iRouteID'];
             $dtTrip = $row['dtTrip'];
-            
+
             if (!isset($routeData[$routeID])) {
                 $routeData[$routeID] = [
                     'route' => $row['route'],
@@ -62,11 +62,11 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                     'dates' => []
                 ];
             }
-            
+
             if (!isset($routeData[$routeID]['dates'][$dtTrip])) {
                 $routeData[$routeID]['dates'][$dtTrip] = [];
             }
-            
+
             $routeData[$routeID]['dates'][$dtTrip][] = $row;
         }
 
@@ -75,7 +75,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
         // Second pass: group by unique timing and status combinations
         foreach ($routeData as $routeID => $routeInfo) {
             $dateGroups = [];
-            
+
             // Group dates by their timing and status patterns
             foreach ($routeInfo['dates'] as $date => $trips) {
                 $timingPattern = [];
@@ -87,10 +87,10 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                 sort($timingPattern); // Sort to ensure consistent pattern matching
                 $uniqueStatuses = array_unique($statusPattern);
                 sort($uniqueStatuses);
-                
+
                 // Create pattern key with both timing and status
                 $patternKey = implode('|', $timingPattern) . '::' . implode('|', $uniqueStatuses);
-                
+
                 if (!isset($dateGroups[$patternKey])) {
                     $dateGroups[$patternKey] = [
                         'dates' => [],
@@ -98,22 +98,22 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                         'statuses' => $uniqueStatuses
                     ];
                 }
-                
+
                 $dateGroups[$patternKey]['dates'][] = $date;
                 $dateGroups[$patternKey]['trips'] = [...$dateGroups[$patternKey]['trips'], ...$trips];
             }
-            
+
             // Create separate groups for each timing and status pattern
             foreach ($dateGroups as $patternKey => $groupData) {
                 sort($groupData['dates']); // Sort dates
                 $fromDate = min($groupData['dates']);
                 $toDate = max($groupData['dates']);
-                
+
                 // Determine overall set status
                 $allStatuses = $groupData['statuses'];
                 $overallStatus = '';
                 $overallStatusCode = '';
-                
+
                 if (count($allStatuses) == 1) {
                     $overallStatusCode = $allStatuses[0];
                 } else {
@@ -130,7 +130,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                         $overallStatusCode = 'Mixed';
                     }
                 }
-                
+
                 // Convert overall status to readable format
                 switch ($overallStatusCode) {
                     case 'A':
@@ -149,7 +149,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                         $overallStatus = 'Unknown';
                         break;
                 }
-                
+
                 // Extract unique timings from trips
                 $uniqueTimings = [];
                 foreach ($groupData['trips'] as $trip) {
@@ -158,10 +158,10 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                         $uniqueTimings[] = $timeKey;
                     }
                 }
-                
+
                 // Sort timings
                 sort($uniqueTimings);
-                
+
                 // Count total trips for this set
                 $totalTrips = count($groupData['trips']);
 
@@ -181,7 +181,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
         }
 
         // Sort by route and from date
-        usort($rowData, function($a, $b) {
+        usort($rowData, function ($a, $b) {
             if ($a['routeID'] == $b['routeID']) {
                 return strtotime(str_replace('/', '-', $b['fromDate'])) - strtotime(str_replace('/', '-', $a['fromDate']));
             }
@@ -214,7 +214,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
 
         // Extract just the date part from dtAdded (in case it includes time)
         $dateOnly = date('Y-m-d', strtotime($dtAdded));
-        
+
         // Build WHERE conditions for specific dtAdded date
         $whereConditions = [
             "t.cStatus != 'X'",
@@ -297,7 +297,15 @@ ORDER BY TIME(t.dtTrip), r.vName;
         $toDate = $_REQUEST['toDate'] ?? '';
         $timings = $_REQUEST['timings'] ?? [];
         $currentStatus = $_REQUEST['currentStatus'] ?? '';
-
+        if (!checkUserModuleAccess($user_id, 'STAFF_TRIP_APPROVE')) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Access denied. You don't have permission to approve trips."
+                ],
+                "statusCode" => 403
+            ]);
+            exit;
+        }
         // Validate required parameters
         if ($routeID <= 0) {
             echo json_encode([
@@ -360,7 +368,7 @@ ORDER BY TIME(t.dtTrip), r.vName;
                         AND t.cStatus != 'X'";
 
         $findTripsRes = sql_query($findTripsSql);
-        
+
         if (sql_num_rows($findTripsRes) == 0) {
             echo json_encode([
                 "error" => [
@@ -385,7 +393,7 @@ ORDER BY TIME(t.dtTrip), r.vName;
 
         if (sql_query($updateSql)) {
             $affectedRows = sql_affected_rows();
-            
+
             if ($affectedRows > 0) {
                 echo json_encode([
                     "data" => [

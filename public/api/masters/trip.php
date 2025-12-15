@@ -23,7 +23,7 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-$NOW=NOW;
+$NOW = NOW;
 switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
@@ -393,12 +393,12 @@ switch ($mode) {
                     "vehicleCapacity" => (int) ($row['vehicleCapacity'] ?? 0)
                 ];
             }
-$tripStatusText="";
-$tripStatus=$row['tripStatus'];
-if($tripStatus !=' A' || $tripStatus!=' D' ){
-$tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tripStatus]:"";
+            $tripStatusText = "";
+            $tripStatus = $row['tripStatus'];
+            if ($tripStatus != ' A' || $tripStatus != ' D') {
+                $tripStatusText = isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tripStatus] : "";
 
-}
+            }
             // Get driver ID from current row
             $driverID = (int) ($row['iDriverID'] ?? 0);
 
@@ -876,7 +876,11 @@ $tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tri
 
         $errors = [];
         $insertValues = [];
-
+        if (checkUserModuleAccess($user_id, 'STAFF_TRIP_APPROVE')) {
+            $cStatus = 'A'; // approved
+        } else {
+            $cStatus = 'D'; // draft
+        }
         // Generate date range
         $dateRange = [];
         $currentDate = clone $fromDateTime;
@@ -944,7 +948,7 @@ $tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tri
                 // If no vehicles provided, create a trip entry with default vehicle ID (0)
                 if (empty($vehicles)) {
                     // Create trip entry with default vehicle details - can be updated later
-                    $insertValues[] = "($currentTripID, $groupID, $routeID, '" . db_input($tripDateTime) . "', 0, 0, 0, $user_id, 1, '$NOW', 'A')";
+                    $insertValues[] = "($currentTripID, $groupID, $routeID, '" . db_input($tripDateTime) . "', 0, 0, 0, $user_id, 1, '$NOW', '$cStatus')";
                     $currentTripID++; // Increment for next record
                 } else {
                     // Process each vehicle for this trip and date
@@ -958,7 +962,7 @@ $tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tri
 
                         // Only validate vehicle ID if it's provided (not 0)
                         if ($vehID > 0) {
-                            $insertValues[] = "($currentTripID, $groupID, $routeID, '" . db_input($tripDateTime) . "', $vehID, $driverID, $vehicleCapacity,$user_id, 1, '$NOW', 'A')";
+                            $insertValues[] = "($currentTripID, $groupID, $routeID, '" . db_input($tripDateTime) . "', $vehID, $driverID, $vehicleCapacity,$user_id, 1, '$NOW', '$cStatus')";
                             $currentTripID++; // Increment for next record
                         } else {
                             // Skip invalid vehicle entries but don't fail the entire operation
@@ -1435,7 +1439,7 @@ $tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tri
         if (sql_query($updateSql)) {
             if (sql_affected_rows() > 0) {
                 $statusText = isset($STAFF_TRIP_STATUS[$status]) ? $STAFF_TRIP_STATUS[$status] : $status;
-                
+
                 echo json_encode([
                     "data" => [
                         "message" => "Trip status changed successfully",
