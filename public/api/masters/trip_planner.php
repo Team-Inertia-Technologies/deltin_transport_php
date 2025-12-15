@@ -23,7 +23,7 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-
+$NOW=NOW;
 switch ($mode) {
 
     // ===================== CASE 1: LIST_PLANNER =====================
@@ -150,34 +150,20 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                         break;
                 }
                 
-                // Group trips by timing (remove individual status from vehicles)
-                $timings = [];
+                // Extract unique timings from trips
+                $uniqueTimings = [];
                 foreach ($groupData['trips'] as $trip) {
                     $timeKey = $trip['tripTime'];
-                    
-                    if (!isset($timings[$timeKey])) {
-                        $timings[$timeKey] = [
-                            "tripTime" => $trip['tripTime'] ? date('g:i A', strtotime($trip['tripTime'])) : '',
-                            "vehicles" => []
-                        ];
+                    if (!in_array($timeKey, $uniqueTimings)) {
+                        $uniqueTimings[] = $timeKey;
                     }
-
-                    $timings[$timeKey]["vehicles"][] = [
-                        "iTripID" => (int) $trip['iTripID'],
-                        "dtTrip" => date('d/m/Y', strtotime($trip['dtTrip'])),
-                        "vehicleID" => (int) $trip['iVehicleID'],
-                        "vehicleRegNo" => db_output2($trip['vehicleRegNo'] ?? ''),
-                        "vehicleName" => db_output2($trip['vehicleName'] ?? '')
-                    ];
                 }
-
-                // Convert timings to indexed array and sort by time
-                ksort($timings);
-                $timingsArray = array_values($timings);
                 
-                // Extract timing values for the timings array (for APPROVE_SET compatibility)
-                $timingValues = array_keys($timings);
-                sort($timingValues); // Ensure consistent order
+                // Sort timings
+                sort($uniqueTimings);
+                
+                // Count total trips for this set
+                $totalTrips = count($groupData['trips']);
 
                 $rowData[] = [
                     "routeID" => (int) $routeID,
@@ -188,9 +174,8 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                     "dayCount" => count($groupData['dates']),
                     "status" => $overallStatus,
                     "statusCode" => $overallStatusCode,
-                    "timings" => $timingValues, // Array format for APPROVE_SET compatibility
-                    "timingDetails" => $timingsArray, // Detailed timing info with vehicles
-                    "totalTrips" => array_sum(array_map(fn($timing) => count($timing["vehicles"]), $timingsArray))
+                    "timings" => $uniqueTimings, // Array format for APPROVE_SET compatibility
+                    "totalTrips" => $totalTrips
                 ];
             }
         }
@@ -389,11 +374,9 @@ ORDER BY TIME(t.dtTrip), r.vName;
         $tripData = sql_fetch_assoc($findTripsRes);
         $tripCount = $tripData['tripCount'];
 
-        // Update all matching trips to 'A' (Active/Approved)
         $updateSql = "UPDATE st_trips t SET 
                         t.cStatus = 'A',
-                        t.iStatusChangedBy = $user_id,
-                        t.dtStatusChanged = NOW()
+                        t.iTripApprovedBy = $user_id
                       WHERE t.iRouteID = $routeID
                         AND DATE(t.dtTrip) BETWEEN '$fromDateFormatted' AND '$toDateFormatted'
                         AND $timingClause
@@ -412,9 +395,9 @@ ORDER BY TIME(t.dtTrip), r.vName;
                         "toDate" => $toDate,
                         "timings" => $timings,
                         "previousStatus" => $currentStatus,
-                        "newStatus" => "A",
-                        "tripsUpdated" => $affectedRows,
-                        "expectedTrips" => $tripCount
+                        "newStatus" => "A"
+                        // "tripsUpdated" => $affectedRows,
+                        // "expectedTrips" => $tripCount
                     ],
                     "statusCode" => 200
                 ]);
