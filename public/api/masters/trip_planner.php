@@ -145,9 +145,6 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                     case 'D':
                         $overallStatus = 'Draft';
                         break;
-                    case 'Mixed':
-                        $overallStatus = 'Mixed Status';
-                        break;
                     default:
                         $overallStatus = 'Unknown';
                         break;
@@ -177,6 +174,10 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                 // Convert timings to indexed array and sort by time
                 ksort($timings);
                 $timingsArray = array_values($timings);
+                
+                // Extract timing values for the timings array (for APPROVE_SET compatibility)
+                $timingValues = array_keys($timings);
+                sort($timingValues); // Ensure consistent order
 
                 $rowData[] = [
                     "routeID" => (int) $routeID,
@@ -187,9 +188,8 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                     "dayCount" => count($groupData['dates']),
                     "status" => $overallStatus,
                     "statusCode" => $overallStatusCode,
-                    "statusDetails" => count($allStatuses) > 1 ? $allStatuses : null,
-                    "timingPattern" => explode('::', $patternKey)[0],
-                    "timings" => $timingsArray,
+                    "timings" => $timingValues, // Array format for APPROVE_SET compatibility
+                    "timingDetails" => $timingsArray, // Detailed timing info with vehicles
                     "totalTrips" => array_sum(array_map(fn($timing) => count($timing["vehicles"]), $timingsArray))
                 ];
             }
@@ -305,72 +305,136 @@ ORDER BY TIME(t.dtTrip), r.vName;
 
 
 
-    // ===================== CASE MARK_TRIP_AS_COMPLETE =====================
-    case 'MARK_TRIP_AS_COMPLETE':
-        $iTripID = intval($_REQUEST['iTripID'] ?? 0);
+    // ===================== CASE APPROVE_TRIP_PLANNER =====================
+    case 'APPROVE_TRIP_PLANNER':
+        $routeID = intval($_REQUEST['routeID'] ?? 0);
+        $fromDate = $_REQUEST['fromDate'] ?? '';
+        $toDate = $_REQUEST['toDate'] ?? '';
+        $timings = $_REQUEST['timings'] ?? [];
+        $currentStatus = $_REQUEST['currentStatus'] ?? '';
 
-        // Validate required parameter
-        if ($iTripID <= 0) {
+        // Validate required parameters
+        if ($routeID <= 0) {
             echo json_encode([
                 "error" => [
-                    "message" => "Missing or invalid iTripID parameter"
+                    "message" => "Missing or invalid routeID parameter"
                 ],
                 "statusCode" => 400
             ]);
             exit;
         }
 
-        // Check if trip exists and is active
-        $checkSql = "SELECT iTripID, iGrpID FROM st_trips WHERE iTripID = $iTripID AND cStatus != 'X'";
-        $checkRes = sql_query($checkSql);
-
-        if (sql_num_rows($checkRes) == 0) {
+        if (empty($fromDate) || empty($toDate)) {
             echo json_encode([
                 "error" => [
-                    "message" => "Trip not found or not active"
+                    "message" => "Missing fromDate or toDate parameter"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if (empty($timings) || !is_array($timings)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing or invalid timings parameter (should be array)"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if (empty($currentStatus)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing currentStatus parameter"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Convert date format from d/m/Y to Y-m-d if needed
+        $fromDateFormatted = date('Y-m-d', strtotime(str_replace('/', '-', $fromDate)));
+        $toDateFormatted = date('Y-m-d', strtotime(str_replace('/', '-', $toDate)));
+
+        // Create timing condition for SQL
+        $timingConditions = [];
+        foreach ($timings as $timing) {
+            $timingConditions[] = "TIME(t.dtTrip) = '" . db_input($timing) . "'";
+        }
+        $timingClause = '(' . implode(' OR ', $timingConditions) . ')';
+
+        // Find matching trips in the set
+        $findTripsSql = "SELECT t.iTripID, t.cStatus, COUNT(*) as tripCount
+                        FROM st_trips t
+                        WHERE t.iRouteID = $routeID
+                        AND DATE(t.dtTrip) BETWEEN '$fromDateFormatted' AND '$toDateFormatted'
+                        AND $timingClause
+                        AND t.cStatus = '" . db_input($currentStatus) . "'
+                        AND t.cStatus != 'X'";
+
+        $findTripsRes = sql_query($findTripsSql);
+        
+        if (sql_num_rows($findTripsRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "No matching trips found for the specified set"
                 ],
                 "statusCode" => 404
             ]);
             exit;
         }
 
-        $tripRow = sql_fetch_assoc($checkRes);
-        $iGrpID = $tripRow['iGrpID'];
+        $tripData = sql_fetch_assoc($findTripsRes);
+        $tripCount = $tripData['tripCount'];
 
-        // Mark trip as complete (status = 'C')
-        $completeSql = "UPDATE st_trips SET 
-                          cStatus = 'C',iStatusChangedBy=$user_id
-                        WHERE iTripID = $iTripID";
+        // Update all matching trips to 'A' (Active/Approved)
+        $updateSql = "UPDATE st_trips t SET 
+                        t.cStatus = 'A',
+                        t.iStatusChangedBy = $user_id,
+                        t.dtStatusChanged = NOW()
+                      WHERE t.iRouteID = $routeID
+                        AND DATE(t.dtTrip) BETWEEN '$fromDateFormatted' AND '$toDateFormatted'
+                        AND $timingClause
+                        AND t.cStatus = '" . db_input($currentStatus) . "'
+                        AND t.cStatus != 'X'";
 
-        if (sql_query($completeSql)) {
-            if (sql_affected_rows() > 0) {
+        if (sql_query($updateSql)) {
+            $affectedRows = sql_affected_rows();
+            
+            if ($affectedRows > 0) {
                 echo json_encode([
                     "data" => [
-                        "message" => "Trip marked as complete successfully",
-                        "iTripID" => $iTripID,
-                        "iGrpID" => intval($iGrpID)
+                        "message" => "Trip set approved successfully",
+                        "routeID" => $routeID,
+                        "fromDate" => $fromDate,
+                        "toDate" => $toDate,
+                        "timings" => $timings,
+                        "previousStatus" => $currentStatus,
+                        "newStatus" => "A",
+                        "tripsUpdated" => $affectedRows,
+                        "expectedTrips" => $tripCount
                     ],
                     "statusCode" => 200
                 ]);
             } else {
                 echo json_encode([
                     "error" => [
-                        "message" => "Failed to mark trip as complete"
+                        "message" => "No trips were updated. Set may have already been approved or conditions don't match."
                     ],
-                    "statusCode" => 500
+                    "statusCode" => 400
                 ]);
             }
         } else {
             echo json_encode([
                 "error" => [
-                    "message" => "Database error occurred while marking trip as complete"
+                    "message" => "Database error occurred while approving trip set"
                 ],
                 "statusCode" => 500
             ]);
         }
         break;
-
-  
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
