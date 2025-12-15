@@ -47,7 +47,7 @@ SELECT
     v.vName AS vehicleName,
     v.vRnum AS vehicleNumber,
     v.iVendorID AS vehicleVendorID,
-    v.iCatID AS vehicleCategoryID,
+    v.iCatID AS vehicleCategoryID
 FROM vehicle v
 INNER JOIN driver_vehicle_assoc vda ON vda.iVehicleID = v.iVehicleID
 WHERE vda.iDriverID = $driverID
