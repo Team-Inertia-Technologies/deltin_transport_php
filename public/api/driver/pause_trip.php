@@ -60,7 +60,10 @@ $driverID = intval($userid);
 
 
 // -------------------- UPDATE TRIP STATUS TO STARTED --------------------
+$log_id = NextID('iLogID', 'booking_log');
+$NOW = NOW;
 $query = "UPDATE fleet_booking SET cType='P' WHERE iFleet_BookingID='$booking_id' AND iDriverID='$driverID'";
+sql_query("INSERT INTO booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, '$booking_id', 'P', 'Trip Paused', '$NOW', '$driverID', 'A')", 'TRIP.LOG');
 $result = sql_query($query, 'TRIP.START');
 $NOW = NOW;
 $log_id = NextID('iLogID', 'trip_pause_log');
