@@ -121,6 +121,50 @@ switch ($mode) {
             "statusCode" => 200
         ]);
         break;
+		
+    case 'ACTIVITY_TIMELINE':
+	
+			global $FL_LOG_STATUS_ARR;
+			$LOG_DATA_ARR = array();
+			
+			$DRIVER_ARR = array();
+			$qd = "select iDriverID, vName from driver order by vName";
+			$rd = sql_query($qd, "supervisor_dashboard.38");
+			if(sql_num_rows($rd)){
+				while($drow = sql_fetch_assoc($rd)){
+					$DRIVER_ARR[$drow['iDriverID']] = array("ID"=>$drow['iDriverID'], "NAME"=>$drow['vName']);
+				}
+			}			
+			$PAUSE_TYPE_ARR = GetXArrFromYID("select iReasonID, vName from pause_reasons where cStatus = 'A'", 3);
+			$q = "select bl.iFleetBookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID from booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleetBookingID where bl.cRefType <> 'P' order by bl.dtAdded DESC";
+			$r = sql_query($q, "");
+			
+			if(sql_num_rows($r)){
+				while($row = sql_fetch_assoc($r)){
+					$LOG_DATA_ARR[] = array("ID"=>$row['iFleetBookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME']);
+				}
+			}
+			
+			$q1 = "select pl.iFleetBookingID, pl.iPauseTypeID, pl.vNotes, pl.dtPauseTime, fb.vName, pl.iDriverID from trip_pause_log pl join fleet_booking fb on pl.iFleet_BookingID = fb.iFleetBookingID where 1 order by bl.dtPauseTime DESC";
+			$r1 = sql_query($q1, "");
+			
+			if(sql_num_rows($r1)){
+				while($row1 = sql_fetch_assoc($r1)){
+					$LOG_DATA_ARR[] = array("ID"=>$row1['iFleetBookingID'], "DATETIME"=>$row1['dtPauseTime'], "STATUS"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "NOTES"=>$row1['vNotes'], "GUEST"=>$row1['vName'], "DRIVER"=>$DRIVER_ARR[$row1['iDriverID']]['NAME']);
+				}
+			}			
+	
+			usort($LOG_DATA_ARR, function ($a, $b) {
+				return strtotime($b['DATETIME']) <=> strtotime($a['DATETIME']);
+			});	
+        }
+        echo json_encode([
+            "data" => [
+                "rowData" => $LOG_DATA_ARR
+            ],
+            "statusCode" => 200
+        ]);
+        break;		
 
     // ===================== CASE: ADD =====================
     case 'ADD_BOOKING':
