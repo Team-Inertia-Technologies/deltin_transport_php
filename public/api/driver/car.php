@@ -44,12 +44,13 @@ $driverID = intval($userid);
 $sql = "
 SELECT 
     v.iVehicleID,
-    v.vName AS vehicleName,
+    vc.vName AS vehicleName,
     v.vRnum AS vehicleNumber,
     v.iVendorID AS vehicleVendorID,
     v.iCatID AS vehicleCategoryID
 FROM vehicle v
 INNER JOIN driver_vehicle_assoc vda ON vda.iVehicleID = v.iVehicleID
+INNER JOIN vehicle_category vc ON vc.iVCatID = v.iCatID
 WHERE vda.iDriverID = $driverID
 AND v.cStatus = 'A'
 ";
