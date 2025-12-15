@@ -57,7 +57,7 @@ AND v.cStatus = 'A'
 $r = sql_query($sql, 'DRIVER.CAR');
 $car = sql_fetch_assoc($r);
 
-$category = GetXFromYID("SELECT vName FROM vehicle_category WHERE iCatID = " . intval($car['vehicleCategoryID']), 'vehicle.CATEGORY');
+$category = GetXFromYID("SELECT vName FROM vehicle_category WHERE iVCatID = " . intval($car['vehicleCategoryID']), 'vehicle.CATEGORY');
 $vendor = GetXFromYID("SELECT vName FROM vendor WHERE iVendorID = " . intval($car['vehicleVendorID']), 'vehicle.VENDOR');
 
 // -------------------- FETCH DRIVER NOTES --------------------
