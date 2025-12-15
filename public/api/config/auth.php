@@ -200,6 +200,7 @@ if (true) {
 					$q = "update users set dtLastLogin='" . NOW . "', vLastLoginIP='" . $_SERVER['REMOTE_ADDR'] . "', vToken='$randomtoken', cActive='Y' where iUserID=$u_id";
 					$r = sql_query($q, 'AUTH.78');
 					$token = EncodeParam($u_id);
+					$userlevel = GetXFromYID('select vName from levels where iLevelD=' . $u_level);
 					$browser = '';
 					$browser2 = getBrowser();
 					if (!empty($browser2) && count($browser2))
@@ -219,7 +220,7 @@ if (true) {
 							"userInfo" => array(
 							"user_id" => $u_id,
 							"userName" => $u_name,
-							"userLevel" => isset($USER_LEVEL_ARR[$u_level]) ? $USER_LEVEL_ARR[$u_level] :'User',
+							"userLevel" => $userlevel,
 							"date" => date('d/m/Y H:i:s', strtotime($NOW)),
 							),
 							"token" => $token,
