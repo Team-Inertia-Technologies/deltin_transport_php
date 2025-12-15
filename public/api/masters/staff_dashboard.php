@@ -117,9 +117,9 @@ switch ($mode) {
             // Check if trip is over (past time on same date or past date)
             if ($date < $currentDate || ($date == $currentDate && $tripTime < $currentTime)) {
                 if ($tripStatus === 'C') {
-                    $status = "success";
+                    $status = "complete";
                 } else {
-                    $status = "complete"; 
+                    $status = "success";
                 }
             }
             // Check if requested pax exceeds vehicle capacity
@@ -188,7 +188,8 @@ switch ($mode) {
 
         echo json_encode([
             "data" => [
-"date" => date('d-m-y', strtotime($DATE)),
+                //"date" => date('d-m-y', strtotime($DATE)),0
+                "date" => $DATE,
                 "time" => $CURRENTTIME,
             ],
             "statusCode" => 200
