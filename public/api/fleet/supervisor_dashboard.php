@@ -145,7 +145,7 @@ switch ($mode) {
 				}
 			}
 			
-			$q1 = "select pl.iFleetBookingID, pl.iPauseTypeID, pl.vNotes, pl.dtPauseTime, fb.vName, pl.iDriverID from trip_pause_log pl join fleet_booking fb on pl.iFleet_BookingID = fb.iFleetBookingID where 1 order by bl.dtPauseTime DESC";
+			$q1 = "select pl.iFleetBookingID, pl.iPauseTypeID, pl.vNotes, pl.dtPauseTime, fb.vName, pl.iDriverID from trip_pause_log pl join fleet_booking fb on pl.iFleet_BookingID = fb.iFleetBookingID where 1 order by pl.dtPauseTime DESC";
 			$r1 = sql_query($q1, "");
 			
 			if(sql_num_rows($r1)){
