@@ -225,6 +225,7 @@ if (true) {
 							"token" => $token,
 							"modules" => $MODULE_ACCESS_ARR,
 							"menuIds" => $MENU_ACCESS_ARR,
+							"menu_details"=> $MENU_DETAILS
 						),
 						"statusCode" => 200,
 					);

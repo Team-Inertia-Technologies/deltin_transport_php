@@ -23,7 +23,7 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-
+$NOW=NOW;
 switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
@@ -944,7 +944,7 @@ $tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tri
                 // If no vehicles provided, create a trip entry with default vehicle ID (0)
                 if (empty($vehicles)) {
                     // Create trip entry with default vehicle details - can be updated later
-                    $insertValues[] = "($currentTripID, $groupID, $routeID, '" . db_input($tripDateTime) . "', 0, 0, 0, $user_id, 1, NOW(), 'A')";
+                    $insertValues[] = "($currentTripID, $groupID, $routeID, '" . db_input($tripDateTime) . "', 0, 0, 0, $user_id, 1, '$NOW', 'A')";
                     $currentTripID++; // Increment for next record
                 } else {
                     // Process each vehicle for this trip and date
@@ -958,7 +958,7 @@ $tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tri
 
                         // Only validate vehicle ID if it's provided (not 0)
                         if ($vehID > 0) {
-                            $insertValues[] = "($currentTripID, $groupID, $routeID, '" . db_input($tripDateTime) . "', $vehID, $driverID, $vehicleCapacity,$user_id, 1, NOW(), 'A')";
+                            $insertValues[] = "($currentTripID, $groupID, $routeID, '" . db_input($tripDateTime) . "', $vehID, $driverID, $vehicleCapacity,$user_id, 1, '$NOW', 'A')";
                             $currentTripID++; // Increment for next record
                         } else {
                             // Skip invalid vehicle entries but don't fail the entire operation
@@ -1169,7 +1169,7 @@ $tripStatusText=isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tri
                                         $vehicleCapacity,
                                         $user_id,
                                         1,
-                                        NOW(),
+                                        '$NOW',
                                         'A'
                                       )";
 
