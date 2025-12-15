@@ -38,7 +38,7 @@ if (!sql_num_rows($r)) {
 
 $user = sql_fetch_assoc($r);
 
-// -------------------- FETCH DRIVER CAR DETAILS --------------------
+
 // -------------------- FETCH DRIVER CAR DETAILS --------------------
 $driverID = intval($userid);
 $sql = "
@@ -49,9 +49,9 @@ SELECT
     v.iVendorID AS vehicleVendorID,
     v.iCatID AS vehicleCategoryID,
 FROM vehicle v
-INNER JOIN vehicle_driver_assoc vda ON vda.iVehicleID = v.iVehicleID
+INNER JOIN driver_vehicle_assoc vda ON vda.iVehicleID = v.iVehicleID
 WHERE vda.iDriverID = $driverID
-AND v.eStatus = 'Active'
+AND v.cStatus = 'A'
 ";
 
 $r = sql_query($sql, 'DRIVER.CAR');
