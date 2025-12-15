@@ -53,6 +53,7 @@ SELECT
     fb.iPax,
     fb.iBaggage,
 	fb.cStatus,
+    fb.cType,
 	fb.fRate,
 	fb.vDropTime,
     fb.vPickUpLocation AS fromLocation,
@@ -84,19 +85,27 @@ $trips = [];
 
 while ($row = sql_fetch_assoc($res)) {
 
+    $cType = isset($row['cType']) ? trim($row['cType']) : '';
+    if ($cType === 'C') {
+        $status = 'Completed';
+    } elseif ($cType === 'P') {
+        $status = 'Paused';
+    } else {
+        $status = '';
+    }
 
     $trips[] = [
-        "status" => $row["cStatus"],
-        "name"    => $row["guestName"],
-        "mobile"  => $row["guestMobile"],
-        "pax" => intval($row["iPax"]),
-        "bags" => intval($row["iBaggage"]),
-        "from" => $row["fromLocation"],
-        "to" => $row["toLocation"],
-		"pickupDatetime" => $row["vPickUpTime"],
-		"dropDateTime" => $row["vDropTime"],
-		"ratings" => intval($row["fRate"]),
-        "type" => 'guest',
+        "status" => $status,
+        "name"   => $row["guestName"],
+        "mobile" => $row["guestMobile"],
+        "pax"    => intval($row["iPax"]),
+        "bags"   => intval($row["iBaggage"]),
+        "from"   => $row["fromLocation"],
+        "to"     => $row["toLocation"],
+        "pickupDatetime" => $row["vPickUpTime"],
+        "dropDateTime"   => $row["vDropTime"],
+        "ratings"       => intval($row["fRate"]),
+        "type"           => "guest",
     ];
 }
 
