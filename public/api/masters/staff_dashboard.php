@@ -72,6 +72,7 @@ switch ($mode) {
                     t.iTripID,
                     t.iGrpID,
                     t.dtTrip,
+                    t.cStatus,
                     r.vName as routeName,
                     r.vDestination as destination,
                     t.iCapacity,
@@ -107,14 +108,19 @@ switch ($mode) {
                 ];
             }
 
-            // Determine status based on time and capacity
+            // Determine status based on time, capacity and cStatus
             $status = "pending"; // Default status
             $totalRequestedPax = (int) ($row['requestedPax'] ?? 0);
             $vehicleCapacity = (int) ($row['vehicleCapacity'] ?? 0);
+            $tripStatus = $row['cStatus'] ?? '';
 
             // Check if trip is over (past time on same date or past date)
             if ($date < $currentDate || ($date == $currentDate && $tripTime < $currentTime)) {
-                $status = "success";
+                if ($tripStatus === 'C') {
+                    $status = "success";
+                } else {
+                    $status = "complete"; 
+                }
             }
             // Check if requested pax exceeds vehicle capacity
             else if ($totalRequestedPax > $vehicleCapacity) {
@@ -182,7 +188,7 @@ switch ($mode) {
 
         echo json_encode([
             "data" => [
-                "date" => $DATE,
+"date" => date('d-m-y', strtotime($DATE)),
                 "time" => $CURRENTTIME,
             ],
             "statusCode" => 200

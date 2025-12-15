@@ -69,7 +69,7 @@ if (true) {
 					// Get menu IDs for modules that user has access to - only show menus where user has access to at least one module and menu is active
 					$MENU_ACCESS_ARR = GetXArrFromYID('select distinct(m.iMenuID) from menu as m join module_menu_assoc as mma on m.iMenuID=mma.iRefID join module_level_assoc as mla on mma.iModuleID=mla.iModuleID where mla.iLevelD='.$u_level.' and mla.cType="FL" and mma.cRefType="M" and m.cDisplayInMenu="Y" and m.cStatus="A"', '1');
 					
-					// Get complete menu details with hierarchical structure (parent first, then children)
+		
 					$MENU_DETAILS = array();
 					if (!empty($MENU_ACCESS_ARR) && is_array($MENU_ACCESS_ARR)) {
 						$menu_ids = implode(',', $MENU_ACCESS_ARR);
@@ -79,19 +79,37 @@ if (true) {
 									   ORDER BY iParentID ASC, iMenuID ASC";
 						$menu_result = sql_query($menu_query, 'AUTH.MENU');
 						
+						$all_menus = array();
 						while ($menu_row = sql_fetch_assoc($menu_result)) {
-							$MENU_DETAILS[] = array(
+							$all_menus[] = array(
 								'menuId' => (int)$menu_row['iMenuID'],
-								'type' => $menu_row['cType'],
 								'parentId' => (int)$menu_row['iParentID'],
 								'title' => $menu_row['vTitle'],
 								'url' => $menu_row['vUrl'],
 								'code' => $menu_row['vCode'],
-								'hasSub' => $menu_row['cHasSub'],
-								'displayInMenu' => $menu_row['cDisplayInMenu'],
-								'status' => $menu_row['cStatus']
+								'hasSub' => $menu_row['cHasSub']
 							);
 						}
+						
+						// Build hierarchical structure - parents with sub_menu arrays
+						$menu_map = array();
+						foreach ($all_menus as $menu) {
+							if ($menu['parentId'] == 0) {
+								// This is a parent menu
+								$menu['sub_menu'] = array();
+								$menu_map[$menu['menuId']] = $menu;
+							}
+						}
+						
+						// Add sub_menu to their parents
+						foreach ($all_menus as $menu) {
+							if ($menu['parentId'] != 0 && isset($menu_map[$menu['parentId']])) {
+								$menu_map[$menu['parentId']]['sub_menu'][] = $menu;
+							}
+						}
+						
+						// Convert to indexed array for response
+						$MENU_DETAILS = array_values($menu_map);
 					}
 					
 					/*if (!empty($USER_MODULE_ACCESS) && $USER_MODULE_ACCESS != '1') {
