@@ -89,7 +89,7 @@ switch ($mode) {
                 'id' => intval($row['iFleet_BookingID']),
                 'fullName' => db_output2($row['vName'] ?? ''),
                 'phone' => db_output2($row['vMobileNo'] ?? ''),
-                'from' => $FLEET_BOOKING_FOR[$row['cBookingFor']] ?? '',
+                'for' => $FLEET_BOOKING_FOR[$row['cBookingFor']] ?? '',
                 'location' => db_output2($row['vPickUpLocation'] ?? ''),
                 'destination' => db_output2($row['vDropLocation'] ?? ''),
                 'pickupTime' => $row['vPickUpTime'] ?? '',
