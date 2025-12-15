@@ -28,98 +28,105 @@ switch ($mode) {
 
     // ===================== CASE 1: LIST_PLANNER =====================
     case 'LIST_PLANNER':
-        // Get all trips with individual trip details
+        // First get route and date range groups
         $sql = "SELECT 
-    t.iTripID,
-    DATE(t.dtTrip) AS dtTrip,
-    TIME(t.dtTrip) AS tripTime,
     t.iRouteID,
     r.vName AS route,
     r.vDestination AS destination,
-    t.iVehicleID,
-    v.vRnum AS vehicleRegNo,
-    v.vName AS vehicleName,
-    t.cStatus AS status
+    MIN(DATE(t.dtTrip)) AS fromDate,
+    MAX(DATE(t.dtTrip)) AS toDate,
+    COUNT(DISTINCT DATE(t.dtTrip)) AS dayCount
 FROM st_trips t
 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
-LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID
 WHERE t.cStatus != 'X'
-ORDER BY DATE(t.dtTrip) DESC, t.iRouteID, TIME(t.dtTrip);
+GROUP BY t.iRouteID, r.vName, r.vDestination
+ORDER BY MIN(DATE(t.dtTrip)) DESC, r.vName;
 ";
 
         $res = sql_query($sql);
-        $groupedData = [];
-
-        // Process and group the results hierarchically
-        while ($row = sql_fetch_assoc($res)) {
-            // Convert status code to readable format
-            switch ($row['status']) {
-                case 'A':
-                    $statusText = 'Active';
-                    break;
-                case 'C':
-                    $statusText = 'Completed';
-                    break;
-                case 'P':
-                    $statusText = 'Pending';
-                    break;
-                case 'D':
-                    $statusText = 'Draft';
-                    break;
-                case 'X':
-                    $statusText = 'Cancelled';
-                    break;
-                default:
-                    $statusText = 'Unknown';
-                    break;
-            }
-
-            $tripDate = $row['dtTrip'];
-            $routeID = $row['iRouteID'];
-            $groupKey = $tripDate . '_' . $routeID;
-
-            // Initialize group if not exists
-            if (!isset($groupedData[$groupKey])) {
-                $groupedData[$groupKey] = [
-                    "dtTrip" => date('d/m/Y', strtotime($tripDate)),
-                    "routeID" => (int) $routeID,
-                    "route" => db_output2($row['route'] ?? ''),
-                    "destination" => db_output2($row['destination'] ?? ''),
-                    "fromDate" => date('d/m/Y', strtotime($tripDate)),
-                    "toDate" => date('d/m/Y', strtotime($tripDate)),
-                    "trips" => []
-                ];
-            } else {
-                // Update date range if needed
-                $existingFromDate = DateTime::createFromFormat('d/m/Y', $groupedData[$groupKey]["fromDate"]);
-                $existingToDate = DateTime::createFromFormat('d/m/Y', $groupedData[$groupKey]["toDate"]);
-                $currentDate = DateTime::createFromFormat('Y-m-d', $tripDate);
-                
-                if ($currentDate < $existingFromDate) {
-                    $groupedData[$groupKey]["fromDate"] = date('d/m/Y', strtotime($tripDate));
-                }
-                if ($currentDate > $existingToDate) {
-                    $groupedData[$groupKey]["toDate"] = date('d/m/Y', strtotime($tripDate));
-                }
-            }
-
-            // Add individual trip to the group
-            $groupedData[$groupKey]["trips"][] = [
-                "iTripID" => (int) $row['iTripID'],
-                "tripTime" => $row['tripTime'] ? date('g:i A', strtotime($row['tripTime'])) : '',
-                "vehicleID" => (int) $row['iVehicleID'],
-                "vehicleRegNo" => db_output2($row['vehicleRegNo'] ?? ''),
-                "vehicleName" => db_output2($row['vehicleName'] ?? ''),
-                "status" => $statusText,
-                "statusCode" => $row['status']
-            ];
-        }
-
-        // Convert to indexed array and add trip counts
         $rowData = [];
-        foreach ($groupedData as $group) {
-            $group["tripCount"] = count($group["trips"]);
-            $rowData[] = $group;
+
+        // Process each route group
+        while ($row = sql_fetch_assoc($res)) {
+            $routeID = $row['iRouteID'];
+            $fromDate = $row['fromDate'];
+            $toDate = $row['toDate'];
+
+            // Get all timings and vehicles for this route within the date range
+            $tripsSql = "SELECT 
+        t.iTripID,
+        DATE(t.dtTrip) AS dtTrip,
+        TIME(t.dtTrip) AS tripTime,
+        t.iVehicleID,
+        v.vRnum AS vehicleRegNo,
+        t.cStatus AS status
+    FROM st_trips t
+    LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID
+    WHERE t.cStatus != 'X' 
+        AND t.iRouteID = $routeID
+        AND DATE(t.dtTrip) BETWEEN '$fromDate' AND '$toDate'
+    ORDER BY TIME(t.dtTrip), DATE(t.dtTrip);
+    ";
+
+            $tripsRes = sql_query($tripsSql);
+            $timings = [];
+
+            // Group by timing and collect vehicles
+            while ($tripRow = sql_fetch_assoc($tripsRes)) {
+                // Convert status code to readable format
+                switch ($tripRow['status']) {
+                    case 'A':
+                        $statusText = 'Active';
+                        break;
+                    case 'C':
+                        $statusText = 'Completed';
+                        break;
+                    case 'P':
+                        $statusText = 'Pending';
+                        break;
+                    case 'D':
+                        $statusText = 'Draft';
+                        break;
+                    case 'X':
+                        $statusText = 'Cancelled';
+                        break;
+                    default:
+                        $statusText = 'Unknown';
+                        break;
+                }
+
+                $timeKey = $tripRow['tripTime'];
+                
+                if (!isset($timings[$timeKey])) {
+                    $timings[$timeKey] = [
+                        "tripTime" => $tripRow['tripTime'] ? date('g:i A', strtotime($tripRow['tripTime'])) : '',
+                        "vehicles" => []
+                    ];
+                }
+
+                $timings[$timeKey]["vehicles"][] = [
+                    "iTripID" => (int) $tripRow['iTripID'],
+                    "dtTrip" => date('d/m/Y', strtotime($tripRow['dtTrip'])),
+                    "vehicleID" => (int) $tripRow['iVehicleID'],
+                    "vehicleRegNo" => db_output2($tripRow['vehicleRegNo'] ?? ''),
+                    "status" => $statusText,
+                    "statusCode" => $tripRow['status']
+                ];
+            }
+
+            // Convert timings to indexed array
+            $timingsArray = array_values($timings);
+
+            $rowData[] = [
+                "routeID" => (int) $routeID,
+                "route" => db_output2($row['route'] ?? ''),
+                "destination" => db_output2($row['destination'] ?? ''),
+                "fromDate" => date('d/m/Y', strtotime($fromDate)),
+                "toDate" => date('d/m/Y', strtotime($toDate)),
+                "dayCount" => (int) $row['dayCount'],
+                "timings" => $timingsArray,
+                "totalTrips" => array_sum(array_map(function($timing) { return count($timing["vehicles"]); }, $timingsArray))
+            ];
         }
 
         echo json_encode([
