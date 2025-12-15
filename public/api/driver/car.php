@@ -61,14 +61,6 @@ $category = GetXFromYID("SELECT vName FROM vehicle_category WHERE iVCatID = " . 
 $vendor = GetXFromYID("SELECT vName FROM vendor WHERE iVendorID = " . intval($car['vehicleVendorID']), 'vehicle.VENDOR');
 
 // -------------------- FETCH DRIVER NOTES --------------------
-$notesQuery = "SELECT dtCreated AS dateTime, cType AS reviewType, vText AS reviewText FROM driver_notes WHERE iDriverID = $driverID AND iVehicleID = " . intval($car['iVehicleID']) . " ORDER BY dtCreated DESC";
-$notes = [];
-
-while ($row = sql_fetch_assoc($noteResult)) {
-    $notes[] = $row;
-}
-
-// -------------------- FETCH DRIVER NOTES --------------------
 $notesQuery = "
     SELECT 
         dtCreated AS dateTime, 
