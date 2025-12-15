@@ -141,7 +141,7 @@ switch ($mode) {
 			
 			if(sql_num_rows($r)){
 				while($row = sql_fetch_assoc($r)){
-					$LOG_DATA_ARR[] = array("ID"=>$row['iFleetBookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME']);
+					$LOG_DATA_ARR[] = array("ID"=>$row['iFleetBookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME'] ?? '');
 				}
 			}
 			
@@ -150,7 +150,7 @@ switch ($mode) {
 			
 			if(sql_num_rows($r1)){
 				while($row1 = sql_fetch_assoc($r1)){
-					$LOG_DATA_ARR[] = array("ID"=>$row1['iFleetBookingID'], "DATETIME"=>$row1['dtPauseTime'], "STATUS"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "NOTES"=>$row1['vNotes'], "GUEST"=>$row1['vName'], "DRIVER"=>$DRIVER_ARR[$row1['iDriverID']]['NAME']);
+					$LOG_DATA_ARR[] = array("ID"=>$row1['iFleetBookingID'], "DATETIME"=>$row1['dtPauseTime'], "STATUS"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "NOTES"=>$row1['vNotes'], "GUEST"=>$row1['vName'], "DRIVER"=>$DRIVER_ARR[$row1['iDriverID']]['NAME'] ?? '');
 				}
 			}			
 	
