@@ -43,7 +43,7 @@ switch ($mode) {
 			}
 		}
 		$VEHICLE_ARR = array();
-		$qv = "select iVehicleID, vRnum, iCatID from driver order by vName";
+		$qv = "select iVehicleID, vRnum, iCatID from vehicle order by vName";
 		$rv = sql_query($qv, "supervisor_dashboard.38");
 		if(sql_num_rows($rv)){
 			while($vrow = sql_fetch_assoc($rv)){
@@ -52,7 +52,7 @@ switch ($mode) {
 		}		
 
         // Fetch booking data
-        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickupLocation, vDropLocation, vPickupTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions from fleet_booking order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions from fleet_booking order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         $bookingRes = sql_query($bookingSql);
         
         $rowData = [];
@@ -70,7 +70,7 @@ switch ($mode) {
 				$bg_vehicle_assignment = "rgb(219, 255, 209)";
 				$color_vehicle_assignment = "rgb(0, 161, 75)";
 			}	
-
+			$border = "rgb(255, 87, 51)";
 			if(!empty($row['iDriverID']) || !(empty($row['iVehicleID']))){
 				$border = "rgb(255, 152, 0)";
 			}
@@ -104,8 +104,14 @@ switch ($mode) {
                 'disposal' => db_output2($row['cDisposal'] ?? ''),
                 'instructions' => db_output2($row['vInstructions'] ?? ''),
                 'driver' => (isset($row['iDriverID']) && !empty($row['iDriverID']))?$DRIVER_ARR[$row['iDriverID']]['NAME']:"Not Assigned",
-                'vehicle' => (isset($row['iVehicle']) && !empty($row['iVehicleID']))?db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']]." ".$VEHICLE_ARR[$row['iVehicleID']]['REG']:"Not Assigned",
-				'style' => array("border"=>$border, "bg_driver_assignment"=>$bg_driver_assignment, "color_driver_assignment"->$color_driver_assignment, "bg_vehicle_assignment"=>$bg_vehicle_assignment, "color_vehicle_assignement"=>$color_vehicle_assignement)
+                'vehicle' => ((isset($row['iVehicleID']) && !empty($row['iVehicleID'])))?db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']]." ".$VEHICLE_ARR[$row['iVehicleID']]['REG']:"Not Assigned",
+				'style' => array(
+					"border" => $border,
+					"bg_driver_assignment" => $bg_driver_assignment,
+					"color_driver_assignment" => $color_driver_assignment,
+					"bg_vehicle_assignment" => $bg_vehicle_assignment,
+					"color_vehicle_assignment" => $color_vehicle_assignment
+				)
             ];
         }
         echo json_encode([
