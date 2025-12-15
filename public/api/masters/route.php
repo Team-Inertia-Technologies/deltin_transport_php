@@ -70,8 +70,8 @@ switch ($mode) {
         $route = db_input($routeInfo['route'] ?? '');
         $dest = db_input($routeInfo['dest'] ?? '');
         $rdpList = $routeInfo['rdp'] ?? [];
-        $cStatus = 'A'; // default active
-  if (checkUserModuleAccess($user_id, 'STAFF_ROUTE_APPROVE')) {
+        // Check if user has approval rights
+        if (checkUserModuleAccess($user_id, 'STAFF_ROUTE_APPROVE')) {
             $cStatus = 'A'; // approved
         } else {
             $cStatus = 'D'; // draft
@@ -131,6 +131,14 @@ switch ($mode) {
 
             // Log the add operation (similar to vehicle.php)
             LogMasterEdit($iRouteID, 'RTE', 'I', $route, '', $user_id);
+
+            // If status is 'D' (draft), also log to st_route_log table
+            if ($cStatus == 'D') {
+                $iRLogID = NextID('iRLogID', 'st_route_log');
+                $logSql = "INSERT INTO st_route_log (iRLogID, iRouteID, iAddedBy, dtAdded, cStatus) 
+                          VALUES ($iRLogID, $iRouteID, $user_id, NOW(), 'D')";
+                sql_query($logSql);
+            }
 
             echo json_encode([
                 "data" => [
@@ -244,9 +252,15 @@ switch ($mode) {
             exit;
         }
 
+        // Check if user has approval rights - if not, set status to 'D'
+        $updateStatus = '';
+        if (!checkUserModuleAccess($user_id, 'STAFF_ROUTE_APPROVE')) {
+            $updateStatus = ", cStatus = 'D'";
+        }
+
         // Update main route
-        $sql = "UPDATE st_route SET vName = '" . db_input($route) . "', vDestination = '" . db_input($dest) . "' 
-            WHERE iRouteID = $id AND cStatus = 'A'";
+        $sql = "UPDATE st_route SET vName = '" . db_input($route) . "', vDestination = '" . db_input($dest) . "' $updateStatus
+            WHERE iRouteID = $id";
 
         $result = sql_query($sql);
 
@@ -313,6 +327,14 @@ switch ($mode) {
 
             // Log the update operation (similar to vehicle.php)
             LogMasterEdit($id, 'RTE', 'U', $route, '', $user_id);
+
+            // If user doesn't have approval rights, log to st_route_log table
+            if (!checkUserModuleAccess($user_id, 'STAFF_ROUTE_APPROVE')) {
+                $iRLogID = NextID('iRLogID', 'st_route_log');
+                $logSql = "INSERT INTO st_route_log (iRLogID, iRouteID, iAddedBy, dtAdded, cStatus) 
+                          VALUES ($iRLogID, $id, $user_id, NOW(), 'D')";
+                sql_query($logSql);
+            }
 
             echo json_encode([
                 "data" => [
@@ -442,8 +464,16 @@ switch ($mode) {
             $result = sql_query($sql);
 
             if ($result && sql_affected_rows() > 0) {
+                // Update st_route_log table with approval details
+                $updateLogSql = "UPDATE st_route_log SET 
+                                iApprovedBy = $user_id, 
+                                dtApproved = NOW(), 
+                                cStatus = 'A' 
+                                WHERE iRouteID = $iRouteID AND cStatus = 'D'";
+                sql_query($updateLogSql);
+
                 // Log the approval operation
-               // LogMasterEdit($iRouteID, 'RTE', 'U', 'Route approved', '', $user_id);
+                LogMasterEdit($iRouteID, 'RTE', 'U', 'Route approved', '', $user_id);
 
                 echo json_encode([
                     "data" => [

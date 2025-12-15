@@ -748,9 +748,9 @@ switch ($mode) {
         foreach ($VEHICLE_DRIVER_TYPE as $id => $name) {
             $vehicleTypeOpt[] = ['id' => intval($id), 'name' => $name];
         }
-          $tripStatusOpts = [['id' => 0, 'name' => 'All']];
+         
         foreach ($FLEET_TRIP_STATUS as $id => $name) {
-            $tripStatusOpts[] = ['id' => intval($id), 'name' => $name];
+            $tripStatusOpts[] = ['id' => $id, 'name' => $name];
         }
         $vehicleCategories = [];
         while ($categoryRow = sql_fetch_assoc($vehicleCategoryRes)) {
