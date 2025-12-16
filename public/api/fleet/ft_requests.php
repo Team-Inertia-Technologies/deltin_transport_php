@@ -154,13 +154,23 @@ switch ($mode) {
                 fb.iPax,
                 fb.iBaggage,
                 fb.iBookedBy,
+                fb.iDriverID,
+                fb.iVehicleID,
                 s.vName as bookedByName,
                 p.vName as propertyName,
-                vc.vName as vehicleCatName
+                vc.vName as vehicleCatName,
+                d.vName as driverName,
+                d.vMobileNum as driverPhone,
+                d.iType as driverType,
+                v.vRnum as vehicleRegNo,
+                vcat.vName as assignedVehicleCategoryName
             FROM fleet_booking fb
             LEFT JOIN fleet_staff s ON fb.iBookedBy = s.iFStaffID
             LEFT JOIN property p ON fb.iPropertyID = p.iPropertyID
             LEFT JOIN vehicle_category vc ON fb.iVehicleCatID = vc.iVCatID
+            LEFT JOIN driver d ON fb.iDriverID = d.iDriverID AND d.cStatus = 'A'
+            LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
+            LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID AND vcat.cStatus = 'A'
             WHERE fb.cStatus = 'A'
             ORDER BY fb.vPickUpTime DESC
         ";
@@ -168,6 +178,19 @@ switch ($mode) {
         
         $rowData = [];
         while ($row = sql_fetch_assoc($bookingRes)) {
+            // Get driver type name from VEHICLE_DRIVER_TYPE array
+            $driverTypeID = intval($row['driverType'] ?? 0);
+            $driverTypeName = isset($VEHICLE_DRIVER_TYPE[$driverTypeID]) ? $VEHICLE_DRIVER_TYPE[$driverTypeID] : '';
+            
+            // Format vehicle details
+            $vehicleDetails = '';
+            if (!empty($row['vehicleRegNo'])) {
+                $vehicleDetails = db_output2($row['vehicleRegNo']);
+                if (!empty($row['assignedVehicleCategoryName'])) {
+                    $vehicleDetails .= ' (' . db_output2($row['assignedVehicleCategoryName']) . ')';
+                }
+            }
+            
             $rowData[] = [
                 'id' => intval($row['iFleet_BookingID']),
                 'fullName' => db_output2($row['vName'] ?? ''),
@@ -180,10 +203,10 @@ switch ($mode) {
                 'paxs' => strval($row['iPax'] ?? '0'),
                 'bags' => strval($row['iBaggage'] ?? '0'),
                 'bookedBy' => db_output2($row['bookedByName'] ?? ''),
-                'pickupByName' => '',
-                'pickupByPhone' => '',
-                'pickupByType' => '',
-                'vehicleDetails' => '',
+                'pickupByName' => db_output2($row['driverName'] ?? ''),
+                'pickupByPhone' => db_output2($row['driverPhone'] ?? ''),
+                'pickupByType' => $driverTypeName,
+                'vehicleDetails' => $vehicleDetails,
                 'vehicleType' => db_output2($row['vehicleCatName'] ?? ''),
             ];
         }

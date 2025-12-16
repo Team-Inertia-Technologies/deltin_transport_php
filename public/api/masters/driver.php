@@ -105,7 +105,7 @@ switch ($mode) {
                 'fullName' => db_output2($row['vName']),
                 'mobileNumber' => db_output2($row['vMobileNum']),
                 'owner' => db_output2($row['vendor_name'] ?? ''),
-                'iType' => $driverTypeID,
+                'type' => $driverTypeID,
                 'driverType' => $driverTypeName,
                 'status' =>'A'
                // 'vehicleAssigned' => $vehicleAssigned
