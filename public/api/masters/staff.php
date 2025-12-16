@@ -615,6 +615,37 @@ switch ($mode) {
             exit;
         }
 
+        // Get filter parameters
+        $statusFilter = isset($_REQUEST['statusFilter']) ? $_REQUEST['statusFilter'] : 'A'; // A=All, E=Entered, NE=Not Entered
+        $dateFrom = isset($_REQUEST['dateFrom']) ? $_REQUEST['dateFrom'] : ''; // From date (YYYY-MM-DD)
+        $dateTo = isset($_REQUEST['dateTo']) ? $_REQUEST['dateTo'] : ''; // To date (YYYY-MM-DD)
+        
+        // Build WHERE conditions
+        $whereConditions = ["r.iStaffID = $iStaffID", "r.cStatus = 'A'"];
+        
+        // Add status filter condition
+        if ($statusFilter === 'E') {
+            // Entered - has dtIn (entered time)
+            $whereConditions[] = "r.dtIn IS NOT NULL";
+        } elseif ($statusFilter === 'NE') {
+            // Not Entered - no dtIn (entered time)
+            $whereConditions[] = "r.dtIn IS NULL";
+        }
+        // For 'A' (All), no additional condition needed
+        
+        // Add date range filter conditions (only if provided)
+        if (!empty($dateFrom) && !empty($dateTo)) {
+            // Both from and to dates provided
+            $whereConditions[] = "r.dPickup BETWEEN '$dateFrom' AND '$dateTo'";
+        } elseif (!empty($dateFrom)) {
+            // Only from date provided
+            $whereConditions[] = "r.dPickup >= '$dateFrom'";
+        } elseif (!empty($dateTo)) {
+            // Only to date provided
+            $whereConditions[] = "r.dPickup <= '$dateTo'";
+        }
+        // If no date filters provided, show all records (no additional date condition)
+
         $overviewSql = "
         SELECT 
             r.iTrReqID,
@@ -635,8 +666,7 @@ switch ($mode) {
         INNER JOIN st_route_stops rs ON r.iStopID = rs.iStopID
         INNER JOIN st_trips t ON r.iTripID = t.iTripID
         LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID
-        WHERE r.iStaffID = $iStaffID 
-        AND r.cStatus = 'A'
+        WHERE " . implode(' AND ', $whereConditions) . "
         ORDER BY sendStatus DESC, r.iTrReqID DESC
     ";
 
@@ -644,7 +674,7 @@ switch ($mode) {
         //$overviewResCount= sql_num_rows($overviewRes);
         $rowData = [];
         while ($row = sql_fetch_assoc($overviewRes)) {
-            $rowData[] = [
+            $rowItem = [
                 "requestId"   => (int)$row['iTrReqID'],
                 "staffid"     => (int)$row['staffid'],
                 "date"        => date('j M Y', strtotime($row['date'])),
@@ -653,9 +683,15 @@ switch ($mode) {
                 "pickup"      => db_output2($row['pickup']),
                 "pickupTime"  => date('H:i', strtotime($row['pickupTime'])),
                 "enteredTime" => $row['enteredTime'] ? date('H:i', strtotime($row['enteredTime'])) : "",
-                "vehiNum"     => db_output2($row['vehiNum']),
                 "status"  => $row['sendStatus']
             ];
+            
+            // Only include vehicle number if it exists and is not empty
+            if (!empty($row['vehiNum'])) {
+                $rowItem["vehiNum"] = db_output2($row['vehiNum']);
+            }
+            
+            $rowData[] = $rowItem;
         }
 
         echo json_encode([

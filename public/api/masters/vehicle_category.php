@@ -72,14 +72,15 @@ switch ($mode) {
                 'statusOptions' => [
                     ['id' => 'A', 'title' => 'Active'],
                     ['id' => 'I', 'title' => 'Inactive']
-                ]
+                ],
+                'serviceOffered' => $SERVICE_OFFERED
             ]
         ]);
         break;
 
     // ===================== CASE 2: LIST =====================
     case 'LIST':
-        $sql = "SELECT iVCatID, iCapacity, vName, iRank, cStatus 
+        $sql = "SELECT iVCatID, iCapacity, vName, iRank, cStatus, cType 
                 FROM vehicle_category 
                 WHERE cStatus IN ('A', 'I') 
                 ORDER BY iRank ASC, vName ASC";
@@ -93,6 +94,8 @@ switch ($mode) {
                 'capacity' => intval($row['iCapacity']),
              //   'rank' => intval($row['iRank']),
                 'status' => $row['cStatus'],
+                'serviceType' => $row['cType'],
+                'serviceTypeText' => $SERVICE_OFFERED[$row['cType']] ?? ''
                // 'statusText' => $row['cStatus'] == 'A' ? 'Active' : 'Inactive'
             ];
             $rowData[] = $category;
@@ -102,7 +105,8 @@ switch ($mode) {
             "statusCode" => 200,
             "message" => "Vehicle category list fetched successfully",
             "data" => [
-                "rowData" => $rowData
+                "rowData" => $rowData,
+                "serviceOffered" => $SERVICE_OFFERED
             ]
         ]);
         break;
@@ -120,7 +124,7 @@ switch ($mode) {
             exit;
         }
 
-        $sql = "SELECT iVCatID, iCapacity, vName, iRank, cStatus 
+        $sql = "SELECT iVCatID, iCapacity, vName, iRank, cStatus, cType 
                 FROM vehicle_category 
                 WHERE iVCatID = $id";
         $res = sql_query($sql);
@@ -146,12 +150,15 @@ switch ($mode) {
                     'categoryName' => db_output2($row['vName']),
                     'capacity' => intval($row['iCapacity']),
                     'rank' => intval($row['iRank']),
-                    'status' => $row['cStatus']
+                    'status' => $row['cStatus'],
+                    'serviceType' => $row['cType'],
+                    'serviceTypeText' => $SERVICE_OFFERED[$row['cType']] ?? ''
                 ],
                 'statusOptions' => [
                     ['id' => 'A', 'title' => 'Active'],
                     ['id' => 'I', 'title' => 'Inactive']
-                ]
+                ],
+                'serviceOffered' => $SERVICE_OFFERED
             ]
         ]);
         break;
@@ -161,6 +168,7 @@ switch ($mode) {
         $id = intval($_REQUEST['iVCatID'] ?? 0);
         $categoryName = db_input($_REQUEST['categoryName'] ?? '');
         $capacity = intval($_REQUEST['capacity'] ?? 0);
+        $serviceType = db_input($_REQUEST['serviceType'] ?? 'B');
        // $rank = intval($_REQUEST['rank'] ?? 0);
        $rank =1;
       //  $status = db_input($_REQUEST['status'] ?? 'A');
@@ -198,6 +206,17 @@ switch ($mode) {
             exit;
         }
 
+        // Validate service type
+        if (!array_key_exists($serviceType, $SERVICE_OFFERED)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Invalid service type. Must be F (Fleet), B (Bus), or T (Both)"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
         // // Validate status
         // if (!in_array($status, ['A', 'I'])) {
         //     echo json_encode([
@@ -211,7 +230,8 @@ switch ($mode) {
 
         $sql = "UPDATE vehicle_category SET 
                     vName = '" . db_input($categoryName) . "',
-                    iCapacity = $capacity
+                    iCapacity = $capacity,
+                    cType = '" . db_input($serviceType) . "'
                 WHERE iVCatID = $id";
 
         $result = sql_query($sql);
@@ -222,7 +242,8 @@ switch ($mode) {
 
             echo json_encode([
                 "data" => [
-                    "message" => "Vehicle category updated successfully"
+                    "message" => "Vehicle category updated successfully",
+                    "serviceOffered" => $SERVICE_OFFERED
                 ],
                 "token" => $Token,
                 "statusCode" => 200
@@ -230,7 +251,8 @@ switch ($mode) {
         } else if ($result && sql_affected_rows() == 0) {
             echo json_encode([
                 "data" => [
-                    "message" => "No changes made to vehicle category"
+                    "message" => "No changes made to vehicle category",
+                    "serviceOffered" => $SERVICE_OFFERED
                 ],
                 "token" => $Token,
                 "statusCode" => 200
@@ -249,6 +271,7 @@ switch ($mode) {
     case 'ADD_CATEGORY':
         $categoryName = db_input($_REQUEST['categoryName'] ?? '');
         $capacity = intval($_REQUEST['capacity'] ?? 0);
+        $serviceType = db_input($_REQUEST['serviceType'] ?? 'B');
         $rank = 1;
         $status = 'A';
 
@@ -275,6 +298,17 @@ switch ($mode) {
             exit;
         }
 
+        // Validate service type
+        if (!array_key_exists($serviceType, $SERVICE_OFFERED)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Invalid service type. Must be F (Fleet), B (Bus), or T (Both)"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
         // Validate status
         // if (!in_array($status, ['A', 'I'])) {
         //     echo json_encode([
@@ -288,8 +322,8 @@ switch ($mode) {
 
         $iVCatID = NextID('iVCatID', 'vehicle_category');
 
-        $sql = "INSERT INTO vehicle_category (iVCatID, iCapacity, vName, iRank, cStatus) 
-                VALUES ($iVCatID, $capacity, '" . db_input($categoryName) . "', $rank, '" . db_input($status) . "')";
+        $sql = "INSERT INTO vehicle_category (iVCatID, iCapacity, vName, iRank, cStatus, cType) 
+                VALUES ($iVCatID, $capacity, '" . db_input($categoryName) . "', $rank, '" . db_input($status) . "', '" . db_input($serviceType) . "')";
 
         if (sql_query($sql)) {
             // Log the add operation
@@ -298,7 +332,10 @@ switch ($mode) {
             echo json_encode([
                 "statusCode" => 200,
                 "message" => "Vehicle category added successfully",
-                "data" => ["iVCatID" => $iVCatID]
+                "data" => [
+                    "iVCatID" => $iVCatID,
+                    "serviceOffered" => $SERVICE_OFFERED
+                ]
             ]);
         } else {
             echo json_encode([
@@ -349,12 +386,18 @@ switch ($mode) {
 
             echo json_encode([
                 "statusCode" => 200,
-                "message" => "Vehicle category deleted successfully"
+                "message" => "Vehicle category deleted successfully",
+                "data" => [
+                    "serviceOffered" => $SERVICE_OFFERED
+                ]
             ]);
         } else if ($result && sql_affected_rows() == 0) {
             echo json_encode([
                 "statusCode" => 200,
-                "message" => "Vehicle category not found or already deleted"
+                "message" => "Vehicle category not found or already deleted",
+                "data" => [
+                    "serviceOffered" => $SERVICE_OFFERED
+                ]
             ]);
         } else {
             echo json_encode([

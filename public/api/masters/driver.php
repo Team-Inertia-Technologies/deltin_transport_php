@@ -96,13 +96,18 @@ switch ($mode) {
             //     }
             // }
 
+            // Get driver type name from VEHICLE_DRIVER_TYPE array
+            $driverTypeID = intval($row['iType'] ?? 0);
+            $driverTypeName = isset($VEHICLE_DRIVER_TYPE[$driverTypeID]) ? $VEHICLE_DRIVER_TYPE[$driverTypeID] : '';
+
             $driver = [
                 'id' => intval($row['iDriverID']),
                 'fullName' => db_output2($row['vName']),
                 'mobileNumber' => db_output2($row['vMobileNum']),
                 'owner' => db_output2($row['vendor_name'] ?? ''),
-                'type' => db_output2($row['iType'] ?? ''),
-                 'status' =>'A'
+                'iType' => $driverTypeID,
+                'driverType' => $driverTypeName,
+                'status' =>'A'
                // 'vehicleAssigned' => $vehicleAssigned
             ];
             $rowData[] = $driver;

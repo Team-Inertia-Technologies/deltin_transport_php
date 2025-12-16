@@ -137,7 +137,7 @@ switch ($mode) {
     // ===================== CASE 2: LIST =====================
     case 'LIST':
 
-        $sql = "SELECT v.iVehicleID, v.iVendorID, v.iSeats,vRnum,
+        $sql = "SELECT v.iVehicleID, v.iVendorID, v.iSeats, v.vRnum, v.iType,
                        v.fRate, vn.vName as vendor_name, c.iCapacity as capacity,c.vName as catName 
                 FROM vehicle v
                 LEFT JOIN vendor vn ON v.iVendorID = vn.iVendorID AND vn.cStatus = 'A'
@@ -167,6 +167,10 @@ switch ($mode) {
                 }
             }
 
+            // Get driver type name from VEHICLE_DRIVER_TYPE array
+            $driverTypeID = intval($row['iType'] ?? 0);
+            $driverTypeName = isset($VEHICLE_DRIVER_TYPE[$driverTypeID]) ? $VEHICLE_DRIVER_TYPE[$driverTypeID] : '';
+
             $vehicle = [
                 'id' => $row['iVehicleID'],
                 'vehicleNumber' => db_output2($row['vRnum']),
@@ -175,6 +179,8 @@ switch ($mode) {
                 // 'rate' => $row['fRate'],
                 'vehicleOwnerID' => $row['iVendorID'],
                 'vehicleOwner' => db_output2($row['vendor_name'] ?? ''),
+                'iType' => $driverTypeID,
+                'driverType' => $driverTypeName,
                 'availabilityID' => $availability,
                 'availability' => $availabilityNames
             ];
