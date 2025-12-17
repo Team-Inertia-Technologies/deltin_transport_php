@@ -1172,7 +1172,7 @@ switch ($mode) {
 
         $tripData = sql_fetch_assoc($tripDataRes);
 
-        // Fetch booking log data with trip stages including pause reasons
+        // First get all booking log entries
         $bookingLogSql = "
             SELECT 
                 bl.iLogID,
@@ -1181,18 +1181,9 @@ switch ($mode) {
                 bl.dtAdded,
                 bl.iUserID as driverID,
                 d.vName as driverName,
-                d.vMobileNum as driverMobile,
-                tpl.iPauseTypeID,
-                tpl.vNotes as pauseNotes,
-                tpl.dtPauseTime,
-                pr.vName as pauseReason
+                d.vMobileNum as driverMobile
             FROM booking_log bl
             LEFT JOIN driver d ON bl.iUserID = d.iDriverID AND d.cStatus = 'A'
-            LEFT JOIN trip_pause_log tpl ON bl.iFleet_BookingID = tpl.iFleet_BookingID 
-                AND bl.iUserID = tpl.iDriverID 
-                AND bl.cRefType = 'P'
-                AND ABS(TIMESTAMPDIFF(SECOND, bl.dtAdded, tpl.dtPauseTime)) <= 60
-            LEFT JOIN pause_reasons pr ON tpl.iPauseTypeID = pr.iReasonID AND pr.cStatus = 'A'
             WHERE bl.iFleet_BookingID = $iFleet_BookingID
             ORDER BY bl.dtAdded ASC
         ";
@@ -1216,14 +1207,31 @@ switch ($mode) {
                     $description = "$driverName picked up $passengerName";
                     break;
                 case 'P':
-                    // Include pause reason if available
-                    $pauseReason = db_output2($logRow['pauseReason'] ?? '');
-                    $pauseNotes = db_output2($logRow['pauseNotes'] ?? '');
+                    // For pause entries, get the closest matching pause reason
+                    $pauseReasonSql = "
+                        SELECT pr.vName as pauseReason, tpl.vNotes as pauseNotes
+                        FROM trip_pause_log tpl
+                        LEFT JOIN pause_reasons pr ON tpl.iPauseTypeID = pr.iReasonID AND pr.cStatus = 'A'
+                        WHERE tpl.iFleet_BookingID = $iFleet_BookingID 
+                        AND tpl.iDriverID = " . intval($logRow['driverID']) . "
+                        AND ABS(TIMESTAMPDIFF(SECOND, '" . db_input($logRow['dtAdded']) . "', tpl.dtPauseTime)) <= 60
+                        ORDER BY ABS(TIMESTAMPDIFF(SECOND, '" . db_input($logRow['dtAdded']) . "', tpl.dtPauseTime)) ASC
+                        LIMIT 1
+                    ";
+                    $pauseReasonRes = sql_query($pauseReasonSql);
                     
-                    if (!empty($pauseReason)) {
-                        $description = "$driverName paused the trip due to $pauseReason";
-                        if (!empty($pauseNotes)) {
-                            $description .= " ($pauseNotes)";
+                    if (sql_num_rows($pauseReasonRes) > 0) {
+                        $pauseRow = sql_fetch_assoc($pauseReasonRes);
+                        $pauseReason = db_output2($pauseRow['pauseReason'] ?? '');
+                        $pauseNotes = db_output2($pauseRow['pauseNotes'] ?? '');
+                        
+                        if (!empty($pauseReason)) {
+                            $description = "$driverName paused the trip due to $pauseReason";
+                            if (!empty($pauseNotes)) {
+                                $description .= " ($pauseNotes)";
+                            }
+                        } else {
+                            $description = "$driverName paused the trip";
                         }
                     } else {
                         $description = "$driverName paused the trip";
@@ -1245,15 +1253,7 @@ switch ($mode) {
                 'stageCode' => $stageStatus,
                 'stageName' => $stageName,
                 'description' => $description,
-                'dateTime' => !empty($logRow['dtAdded']) ? date('d/m/Y H:i', strtotime($logRow['dtAdded'])) : '',
-                'timestamp' => $logRow['dtAdded'],
-                'driverID' => intval($logRow['driverID'] ?? 0),
-                'driverName' => $driverName,
-                'driverMobile' => db_output2($logRow['driverMobile'] ?? ''),
-                'passengerName' => $passengerName,
-                'pauseReason' => db_output2($logRow['pauseReason'] ?? ''),
-                'pauseNotes' => db_output2($logRow['pauseNotes'] ?? ''),
-                'pauseTypeID' => intval($logRow['iPauseTypeID'] ?? 0)
+                'dateTime' => !empty($logRow['dtAdded']) ? date('d/m/Y H:i', strtotime($logRow['dtAdded'])) : ''
             ];
         }
 
