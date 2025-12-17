@@ -38,7 +38,7 @@ switch ($mode) {
         $VEH_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
         // $STAFF_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
         $STAFF_DEPT = GetXArrFromYID("SELECT iDepartmentID, vName from department where cStatus='A' ORDER BY vName", "3");
-        $STAFF_ARR = sql_query("SELECT iFStaffID, vName, iDepartmentID from fleet_staff where cStatus='A' ORDER BY vName");
+        $STAFF_ARR = sql_query("SELECT iFStaffID, vName, iDepartmentID, iUserID from fleet_staff where cStatus='A' ORDER BY vName");
         $GUEST_ARR = sql_query("SELECT iGuestID, vName, vMobileNo from guest where cStatus='A' ORDER BY vName");
 
         $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
@@ -112,10 +112,19 @@ switch ($mode) {
         }
         $staffOpt = [];
         while ($row = sql_fetch_assoc($STAFF_ARR)) {
+            // Check if staff member is logged in user
+            $staffUserID = intval($row['iUserID'] ?? 0);
+            $isLoggedin = false;
+            
+            if ($staffUserID > 0 && $staffUserID == $user_id) {
+                $isLoggedin = true;
+            }
+            
             $staffOpt[] = [
                 'id' => intval($row['iFStaffID']),
                 'name' => $row['vName'],
-                'departmentId' => intval($row['iDepartmentID'])
+                'departmentId' => intval($row['iDepartmentID']),
+                'isLoggedin' => $isLoggedin
             ];
         }
         $guestOpts = [];
@@ -1093,6 +1102,127 @@ switch ($mode) {
 
 
 
+
+    // ===================== CASE: SEND_TRIP_DATA =====================
+    case 'SEND_TRIP_DATA':
+        $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
+
+        if ($iFleet_BookingID <= 0) {
+            echo json_encode([
+                "error" => ["message" => "bookingId missing or invalid"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Fetch comprehensive trip data for sending
+        $tripDataSql = "
+            SELECT 
+                fb.iFleet_BookingID,
+                fb.vName as passengerName,
+                fb.vMobileNo as passengerMobile,
+                fb.cBookingFor,
+                fb.vPickUpLocation,
+                fb.vDropLocation,
+                fb.vPickUpTime,
+                fb.tReturnTime,
+                fb.vInstructions,
+                fb.vRemarks,
+                fb.iPax,
+                fb.iBaggage,
+                fb.cType as tripStatus,
+                fbc.vName as bookingCategoryName,
+                p.vName as propertyName,
+                s.vName as bookedByName,
+                s.vMobileNum as bookedByMobile,
+                vc.vName as vehicleCategoryName,
+                v.vRnum as vehicleRegNo,
+                vcat.vName as assignedVehicleCategoryName,
+                dr.vName as driverName,
+                dr.vMobileNum as driverMobile,
+                dr.iType as driverType,
+                g.vName as guestName,
+                g.vMobileNo as guestMobile,
+                fs.vName as staffName,
+                d.vName as departmentName
+            FROM fleet_booking fb
+            LEFT JOIN fleet_bookingcategory fbc ON fb.iFleet_BKCatID = fbc.iFleet_BkCatID
+            LEFT JOIN property p ON fb.iPropertyID = p.iPropertyID
+            LEFT JOIN fleet_staff s ON fb.iBookedBy = s.iFStaffID
+            LEFT JOIN vehicle_category vc ON fb.iVehicleCatID = vc.iVCatID
+            LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
+            LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID AND vcat.cStatus = 'A'
+            LEFT JOIN driver dr ON fb.iDriverID = dr.iDriverID AND dr.cStatus = 'A'
+            LEFT JOIN guest g ON fb.iGuestID = g.iGuestID AND g.cStatus = 'A'
+            LEFT JOIN fleet_staff fs ON fb.iFStaffID = fs.iFStaffID AND fs.cStatus = 'A'
+            LEFT JOIN department d ON fs.iDepartmentID = d.iDepartmentID AND d.cStatus = 'A'
+            WHERE fb.iFleet_BookingID = $iFleet_BookingID AND fb.cStatus = 'A'
+            LIMIT 1
+        ";
+
+        $tripDataRes = sql_query($tripDataSql);
+
+        if (sql_num_rows($tripDataRes) == 0) {
+            echo json_encode([
+                "error" => ["message" => "Trip data not found"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $tripData = sql_fetch_assoc($tripDataRes);
+
+        // Format the trip completion data similar to the image structure
+        $completedTripData = [
+            'tripStatus' => 'Completed Trip',
+            'fullName' => db_output2($tripData['passengerName'] ?? ''),
+            'guestStaffType' => $tripData['cBookingFor'] === 'G' ? 'Guest' : 'Staff',
+            'passengerMobile' => db_output2($tripData['passengerMobile'] ?? ''),
+            'bags' => sprintf('%02d', intval($tripData['iBaggage'] ?? 0)),
+            'pax' => sprintf('%02d', intval($tripData['iPax'] ?? 0)),
+            'bookedBy' => db_output2($tripData['bookedByName'] ?? ''),
+            'category' => db_output2($tripData['bookingCategoryName'] ?? ''),
+            'pickupDateTime' => !empty($tripData['vPickUpTime']) ? date('d/m/Y, H:i', strtotime($tripData['vPickUpTime'])) : '',
+            'dropDateTime' => !empty($tripData['tReturnTime']) ? date('d/m/Y, H:i', strtotime($tripData['tReturnTime'])) : '',
+            'pickupFrom' => db_output2($tripData['vPickUpLocation'] ?? ''),
+            'dropTo' => db_output2($tripData['vDropLocation'] ?? ''),
+            'pickedupBy' => [
+                'name' => db_output2($tripData['driverName'] ?? ''),
+                'mobile' => db_output2($tripData['driverMobile'] ?? ''),
+                'type' => isset($VEHICLE_DRIVER_TYPE[intval($tripData['driverType'] ?? 0)]) ? 
+                         $VEHICLE_DRIVER_TYPE[intval($tripData['driverType'])] : 'Driver'
+            ],
+            'vehicle' => [
+                'type' => db_output2($tripData['assignedVehicleCategoryName'] ?? $tripData['vehicleCategoryName'] ?? ''),
+                'regNo' => db_output2($tripData['vehicleRegNo'] ?? ''),
+                'fullDetails' => db_output2($tripData['vehicleRegNo'] ?? '') . ' | ' . 
+                               db_output2($tripData['assignedVehicleCategoryName'] ?? $tripData['vehicleCategoryName'] ?? '')
+            ],
+            'tripPaused' => '02', // Static value as shown in image
+            'remarks' => db_output2($tripData['vRemarks'] ?? 'N/A'),
+            'instructions' => db_output2($tripData['vInstructions'] ?? 'N/A'),
+            'bookingId' => intval($tripData['iFleet_BookingID']),
+            'propertyName' => db_output2($tripData['propertyName'] ?? ''),
+            'departmentName' => db_output2($tripData['departmentName'] ?? '')
+        ];
+
+        // Additional metadata for the trip
+        $tripMetadata = [
+            'generatedAt' => date('Y-m-d H:i:s'),
+            'generatedBy' => $user_id,
+            'tripCompletionStatus' => isset($FLEET_TRIP_STATUS[$tripData['tripStatus']]) ? 
+                                    $FLEET_TRIP_STATUS[$tripData['tripStatus']] : 'Unknown'
+        ];
+
+        echo json_encode([
+            "data" => [
+                "tripData" => $completedTripData,
+                "metadata" => $tripMetadata,
+                "message" => "Trip data retrieved successfully for sending"
+            ],
+            "statusCode" => 200
+        ]);
+        break;
 
     // ===================== DEFAULT =====================
     default:
