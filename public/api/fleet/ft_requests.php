@@ -1172,7 +1172,7 @@ switch ($mode) {
 
         $tripData = sql_fetch_assoc($tripDataRes);
 
-        // Fetch booking log data with trip stages
+        // Fetch booking log data with trip stages including pause reasons
         $bookingLogSql = "
             SELECT 
                 bl.iLogID,
@@ -1181,9 +1181,18 @@ switch ($mode) {
                 bl.dtAdded,
                 bl.iUserID as driverID,
                 d.vName as driverName,
-                d.vMobileNum as driverMobile
+                d.vMobileNum as driverMobile,
+                tpl.iPauseTypeID,
+                tpl.vNotes as pauseNotes,
+                tpl.dtPauseTime,
+                pr.vName as pauseReason
             FROM booking_log bl
             LEFT JOIN driver d ON bl.iUserID = d.iDriverID AND d.cStatus = 'A'
+            LEFT JOIN trip_pause_log tpl ON bl.iFleet_BookingID = tpl.iFleet_BookingID 
+                AND bl.iUserID = tpl.iDriverID 
+                AND bl.cRefType = 'P'
+                AND ABS(TIMESTAMPDIFF(SECOND, bl.dtAdded, tpl.dtPauseTime)) <= 60
+            LEFT JOIN pause_reasons pr ON tpl.iPauseTypeID = pr.iReasonID AND pr.cStatus = 'A'
             WHERE bl.iFleet_BookingID = $iFleet_BookingID
             ORDER BY bl.dtAdded ASC
         ";
@@ -1207,7 +1216,18 @@ switch ($mode) {
                     $description = "$driverName picked up $passengerName";
                     break;
                 case 'P':
-                    $description = "$driverName paused the trip";
+                    // Include pause reason if available
+                    $pauseReason = db_output2($logRow['pauseReason'] ?? '');
+                    $pauseNotes = db_output2($logRow['pauseNotes'] ?? '');
+                    
+                    if (!empty($pauseReason)) {
+                        $description = "$driverName paused the trip due to $pauseReason";
+                        if (!empty($pauseNotes)) {
+                            $description .= " ($pauseNotes)";
+                        }
+                    } else {
+                        $description = "$driverName paused the trip";
+                    }
                     break;
                 case 'R':
                     $description = "$driverName resumed back the trip";
@@ -1230,58 +1250,22 @@ switch ($mode) {
                 'driverID' => intval($logRow['driverID'] ?? 0),
                 'driverName' => $driverName,
                 'driverMobile' => db_output2($logRow['driverMobile'] ?? ''),
-                'passengerName' => $passengerName
+                'passengerName' => $passengerName,
+                'pauseReason' => db_output2($logRow['pauseReason'] ?? ''),
+                'pauseNotes' => db_output2($logRow['pauseNotes'] ?? ''),
+                'pauseTypeID' => intval($logRow['iPauseTypeID'] ?? 0)
             ];
         }
 
-        // Calculate trip statistics from log data
-        $tripStats = [
-            'totalStages' => count($tripStages),
-            'isStarted' => false,
-            'isPickedUp' => false,
-            'isPaused' => false,
-            'isResumed' => false,
-            'isCompleted' => false,
-            'pauseCount' => 0,
-            'resumeCount' => 0
-        ];
-
+        // Calculate simple pause count for display
+        $pauseCount = 0;
         foreach ($tripStages as $stage) {
-            switch ($stage['stageCode']) {
-                case 'S':
-                    $tripStats['isStarted'] = true;
-                    break;
-                case 'G':
-                    $tripStats['isPickedUp'] = true;
-                    break;
-                case 'P':
-                    $tripStats['isPaused'] = true;
-                    $tripStats['pauseCount']++;
-                    break;
-                case 'R':
-                    $tripStats['isResumed'] = true;
-                    $tripStats['resumeCount']++;
-                    break;
-                case 'C':
-                    $tripStats['isCompleted'] = true;
-                    break;
+            if ($stage['stageCode'] === 'P') {
+                $pauseCount++;
             }
         }
 
-        // Create formatted vehicle history like in the image (reverse chronological order)
-        $vehicleHistory = [];
-        $reversedStages = array_reverse($tripStages);
-        
-        foreach ($reversedStages as $stage) {
-            $vehicleHistory[] = [
-                'stageTitle' => $stage['stageName'],
-                'description' => $stage['description'],
-                'dateTime' => $stage['dateTime'],
-                'stageCode' => $stage['stageCode'],
-                'driverName' => $stage['driverName'],
-                'passengerName' => $stage['passengerName']
-            ];
-        }
+
 
         // Format the trip completion data similar to the image structure
         $completedTripData = [
@@ -1309,7 +1293,7 @@ switch ($mode) {
                 'fullDetails' => db_output2($tripData['vehicleRegNo'] ?? '') . ' | ' . 
                                db_output2($tripData['assignedVehicleCategoryName'] ?? $tripData['vehicleCategoryName'] ?? '')
             ],
-            'tripPaused' => sprintf('%02d', $tripStats['pauseCount']), // Dynamic pause count from log data
+            'tripPaused' => sprintf('%02d', $pauseCount),
             'remarks' => db_output2($tripData['vRemarks'] ?? 'N/A'),
             'instructions' => db_output2($tripData['vInstructions'] ?? 'N/A'),
             'bookingId' => intval($tripData['iFleet_BookingID']),
@@ -1317,22 +1301,10 @@ switch ($mode) {
             'departmentName' => db_output2($tripData['departmentName'] ?? '')
         ];
 
-        // Additional metadata for the trip
-        $tripMetadata = [
-            'generatedAt' => date('Y-m-d H:i:s'),
-            'generatedBy' => $user_id,
-            'tripCompletionStatus' => isset($FLEET_TRIP_STATUS[$tripData['tripStatus']]) ? 
-                                    $FLEET_TRIP_STATUS[$tripData['tripStatus']] : 'Unknown'
-        ];
-
         echo json_encode([
             "data" => [
                 "tripData" => $completedTripData,
-                "tripStages" => $tripStages,
-                "vehicleHistory" => $vehicleHistory,
-                "tripStats" => $tripStats,
-                "metadata" => $tripMetadata,
-                "message" => "Trip data with booking log retrieved successfully for sending"
+                "tripStages" => $tripStages
             ],
             "statusCode" => 200
         ]);
