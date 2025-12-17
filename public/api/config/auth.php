@@ -73,7 +73,7 @@ if (true) {
 					$MENU_DETAILS = array();
 					if (!empty($MENU_ACCESS_ARR) && is_array($MENU_ACCESS_ARR)) {
 						$menu_ids = implode(',', $MENU_ACCESS_ARR);
-						$menu_query = "SELECT iMenuID, cType, iParentID, vTitle, vUrl, vCode, cHasSub, cDisplayInMenu, cStatus 
+						$menu_query = "SELECT iMenuID, cType, iParentID, vTitle, vUrl, vCode,vIcon,vIconPack, cHasSub, cDisplayInMenu, cStatus 
 									   FROM menu 
 									   WHERE iMenuID IN ($menu_ids) AND cDisplayInMenu='Y' AND cStatus='A' 
 									   ORDER BY iParentID ASC, iMenuID ASC";
@@ -87,6 +87,8 @@ if (true) {
 								'title' => $menu_row['vTitle'],
 								'url' => $menu_row['vUrl'],
 								'code' => $menu_row['vCode'],
+								'iconPack' => $menu_row['vIconPack'],
+								'icon' => $menu_row['vIcon'],
 								'hasSub' => $menu_row['cHasSub']
 							);
 						}

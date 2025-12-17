@@ -100,13 +100,15 @@ switch ($mode) {
             ];
             $rowData[] = $category;
         }
-
+  foreach ($SERVICE_OFFERED as $id => $name) {
+            $serviceOffered[] = ['id' =>$id, 'name' => $name];
+        }
         echo json_encode([
             "statusCode" => 200,
             "message" => "Vehicle category list fetched successfully",
             "data" => [
                 "rowData" => $rowData,
-                "serviceOffered" => $SERVICE_OFFERED
+                "serviceOffered" => $serviceOffered
             ]
         ]);
         break;
@@ -140,7 +142,9 @@ switch ($mode) {
         }
 
         $row = sql_fetch_assoc($res);
-
+  foreach ($SERVICE_OFFERED as $id => $name) {
+            $serviceOffered[] = ['id' =>$id, 'name' => $name];
+        }
         echo json_encode([
             "statusCode" => 200,
             "message" => "Vehicle category details fetched successfully",
@@ -158,7 +162,7 @@ switch ($mode) {
                     ['id' => 'A', 'title' => 'Active'],
                     ['id' => 'I', 'title' => 'Inactive']
                 ],
-                'serviceOffered' => $SERVICE_OFFERED
+                'serviceOffered' => $serviceOffered
             ]
         ]);
         break;
@@ -242,8 +246,7 @@ switch ($mode) {
 
             echo json_encode([
                 "data" => [
-                    "message" => "Vehicle category updated successfully",
-                    "serviceOffered" => $SERVICE_OFFERED
+                    "message" => "Vehicle category updated successfully"
                 ],
                 "token" => $Token,
                 "statusCode" => 200
@@ -251,8 +254,7 @@ switch ($mode) {
         } else if ($result && sql_affected_rows() == 0) {
             echo json_encode([
                 "data" => [
-                    "message" => "No changes made to vehicle category",
-                    "serviceOffered" => $SERVICE_OFFERED
+                    "message" => "No changes made to vehicle category"
                 ],
                 "token" => $Token,
                 "statusCode" => 200
@@ -333,8 +335,7 @@ switch ($mode) {
                 "statusCode" => 200,
                 "message" => "Vehicle category added successfully",
                 "data" => [
-                    "iVCatID" => $iVCatID,
-                    "serviceOffered" => $SERVICE_OFFERED
+                    "iVCatID" => $iVCatID
                 ]
             ]);
         } else {
@@ -386,17 +387,17 @@ switch ($mode) {
 
             echo json_encode([
                 "statusCode" => 200,
-                "message" => "Vehicle category deleted successfully",
+               
                 "data" => [
-                    "serviceOffered" => $SERVICE_OFFERED
+                     "message" => "Vehicle category deleted successfully"
                 ]
             ]);
         } else if ($result && sql_affected_rows() == 0) {
             echo json_encode([
                 "statusCode" => 200,
-                "message" => "Vehicle category not found or already deleted",
+                
                 "data" => [
-                    "serviceOffered" => $SERVICE_OFFERED
+                    "message" => "Vehicle category not found or already deleted"
                 ]
             ]);
         } else {
