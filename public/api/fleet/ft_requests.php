@@ -1134,7 +1134,7 @@ switch ($mode) {
                 fbc.vName as bookingCategoryName,
                 p.vName as propertyName,
                 s.vName as bookedByName,
-                s.vMobileNum as bookedByMobile,
+                s.vMobile as bookedByMobile,
                 vc.vName as vehicleCategoryName,
                 v.vRnum as vehicleRegNo,
                 vcat.vName as assignedVehicleCategoryName,
