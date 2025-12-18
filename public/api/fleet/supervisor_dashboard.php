@@ -175,6 +175,7 @@ switch ($mode) {
 				"avaiDriver" => $AVAILABLE_DRIVER_COUNT,
 				"totalVehi" => $TOTAL_VEHICLE_COUNT,
 				"avaiVehi" => $AVAILABLE_VEHICLE_COUNT,
+				"optArrs" => $optArr
             ],
             "statusCode" => 200
         ]);
