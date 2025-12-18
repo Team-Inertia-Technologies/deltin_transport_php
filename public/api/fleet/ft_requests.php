@@ -37,8 +37,8 @@ switch ($mode) {
         $MAX_BAG = GetXFromYID("SELECT vValue from sys_settings where vCode = 'FT_BK_MAX_BAG'");
         $VEH_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
         // $STAFF_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
-        $STAFF_DEPT = GetXArrFromYID("SELECT iDepartmentID, vName from department where cStatus='A' ORDER BY vName", "3");
-        $STAFF_ARR = sql_query("SELECT iFStaffID, vName, iDepartmentID, iUserID from fleet_staff where cStatus='A' ORDER BY iRank");
+        $STAFF_DEPT = GetXArrFromYID("SELECT iDepartmentID, vName from department where cStatus='A' ORDER BY iRank", "3");
+        $STAFF_ARR = sql_query("SELECT iFStaffID, vName, iDepartmentID, iUserID from fleet_staff where cStatus='A' ORDER BY vName");
         $GUEST_ARR = sql_query("SELECT iGuestID, vName, vMobileNo from guest where cStatus='A' ORDER BY vName");
 
         $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
