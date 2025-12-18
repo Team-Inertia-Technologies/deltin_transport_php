@@ -30,6 +30,7 @@ switch ($mode) {
     case 'REQUEST_STREAM':
 	
 		$FLEET_STAFF_ARR = GetXArrFromYID("select iFStaffID, vName from fleet_staff order by vName", 3);
+		$FLEET_CATEGORY_ARR = GetXArrFromYID("select iFleet_BkCatID, vName from fleet_bookingcategory order by vName", 3);
 		$PROPERTY_ARR = GetXArrFromYID("select iPropertyID, vName from property order by iRank", 3);
 		$VEHICLE_CAT_ARR = GetXArrFromYID("select iVCatID, vName from vehicle_category order by iRank", 3);
 		$TRAVEL_PURPOSE_ARR = GetXArrFromYID("select iFleet_TrvPurID, vName from fleet_travel_purpose order by iRank", 3);
@@ -52,7 +53,7 @@ switch ($mode) {
 		}		
 
         // Fetch booking data
-        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions from fleet_booking order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID from fleet_booking order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         $bookingRes = sql_query($bookingSql);
         
         $rowData = [];
@@ -82,36 +83,46 @@ switch ($mode) {
 			if(empty($row['iDriverID']) && empty($row['iVehicleID'])){
 				$border = "rgb(255, 87, 51)";
 			}
+			$is_staff = false;
+			$is_guest = false;
+			if($row['cBookingFor'] == 'S'){
+				$is_staff = true;	
+			}
+			
+			if($row['cBookingFor'] == 'G'){
+				$is_guest = true;	
+			}		
 
-	
+			$is_disposal = false;
+			if($row['cDisposal'] == 'Y'){
+				$is_disposal = true;	
+			}	
 			
             $rowData[] = [
                 'id' => intval($row['iFleet_BookingID']),
-                'fullName' => db_output2($row['vName'] ?? ''),
-                'phone' => db_output2($row['vMobileNo'] ?? ''),
-                'for' => $FLEET_BOOKING_FOR[$row['cBookingFor']] ?? '',
-                'location' => db_output2($row['vPickUpLocation'] ?? ''),
-                'destination' => db_output2($row['vDropLocation'] ?? ''),
-                'pickupTime' => $row['vPickUpTime'] ?? '',
+                'passengerName' => db_output2($row['vName'] ?? ''),
+                'mobNum' => db_output2($row['vMobileNo'] ?? ''),
+                'staff' => $is_staff,
+                'guest' => $is_guest,
+                'from' => db_output2($row['vPickUpLocation'] ?? ''),
+                'to' => db_output2($row['vDropLocation'] ?? ''),
+                'time' => $row['vPickUpTime'] ?? '',
                 'typeStatus' => '',
-                'paxs' => strval($row['iPax'] ?? '0'),
+                'pax' => strval($row['iPax'] ?? '0'),
                 'bags' => strval($row['iBaggage'] ?? '0'),
-                'bookedBy' => db_output2($FLEET_STAFF_ARR[$row['iBookedBy']] ?? ''),
+                'bookedByName' => db_output2($FLEET_STAFF_ARR[$row['iBookedBy']] ?? ''),
+				'bookingCat' => db_output2($FLEET_CATEGORY_ARR[$row['iFleet_BKCatID']] ?? ''),
                 'property' => db_output2($PROPERTY_ARR[$row['iPropertyID']] ?? ''),
                 'vehicle_category' => db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']] ?? ''),
-                'travel_purpose' => db_output2($TRAVEL_PURPOSE_ARR[$row['iFleet_TrvPurID']] ?? ''),
-                'travel_type' => db_output2($TRAVEL_TYPE_ARR[$row['iFleet_TrvTypeID']] ?? ''),
-                'disposal' => db_output2($row['cDisposal'] ?? ''),
-                'instructions' => db_output2($row['vInstructions'] ?? ''),
-                'driver' => (isset($row['iDriverID']) && !empty($row['iDriverID']))?$DRIVER_ARR[$row['iDriverID']]['NAME']:"Not Assigned",
-                'vehicle' => ((isset($row['iVehicleID']) && !empty($row['iVehicleID'])))?db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']]." ".$VEHICLE_ARR[$row['iVehicleID']]['REG']:"Not Assigned",
-				'style' => array(
-					"border" => $border,
-					"bg_driver_assignment" => $bg_driver_assignment,
-					"color_driver_assignment" => $color_driver_assignment,
-					"bg_vehicle_assignment" => $bg_vehicle_assignment,
-					"color_vehicle_assignment" => $color_vehicle_assignment
-				)
+                'travelPurpose' => db_output2($TRAVEL_PURPOSE_ARR[$row['iFleet_TrvPurID']] ?? ''),
+                'travelType' => db_output2($TRAVEL_TYPE_ARR[$row['iFleet_TrvTypeID']] ?? ''),
+                'isDisposal' => $is_disposal,
+                'instruction' => db_output2($row['vInstructions'] ?? ''),
+                'driverAssigned' => (isset($row['iDriverID']) && !empty($row['iDriverID']))?true:false,
+                'driverName' => (isset($row['iDriverID']) && !empty($row['iDriverID']))?$DRIVER_ARR[$row['iDriverID']]['NAME']:"",
+				'vehicleAssigned' => (isset($row['iVehicleID']) && !empty($row['iVehicleID']))?true:false,
+                'vehicle' => ((isset($row['iVehicleID']) && !empty($row['iVehicleID'])))?db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']]." ".$VEHICLE_ARR[$row['iVehicleID']]['REG']:"",
+				'borderColor' => $border
             ];
         }
         echo json_encode([
