@@ -235,7 +235,8 @@ switch ($mode) {
                 'location' => db_output2($row['vPickUpLocation'] ?? ''),
                 'destination' => db_output2($row['vDropLocation'] ?? ''),
                 'pickupTime' => !empty($row['vPickUpTime']) ? date('d/m/Y', strtotime($row['vPickUpTime'])) : '',
-                'tripStatus' => $tripStatusName,
+                'tripStatus' => $tripStatusCode,
+                'tripStatusText' => $tripStatusName,
                 'startTime' => $startTime,
                 'endTime' => $endTime,
                 'paxs' => strval($row['iPax'] ?? '0'),
@@ -729,9 +730,8 @@ switch ($mode) {
             $pickupDateTime = date('d-m-Y H:i', strtotime($booking['vPickUpTime']));
         }
 
-        // Fetch vehicle history for this booking (excluding current request)
-        $vehicleHistorySql = "
-           SELECT vc.vName as vehicleCategory, v.vRnum as regNo, fb.vPickUpTime as travelDateTime FROM fleet_booking fb LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID WHERE fb.iFleet_BookingID != $iFleet_BookingID AND fb.cStatus = 'A' ORDER BY fb.vPickUpTime DESC;
+  $vehicleHistorySql = "
+           SELECT vc.vName as vehicleCategory, v.vRnum as regNo, fb.vPickUpTime as travelDateTime FROM fleet_booking fb LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID WHERE fb.iFleet_BookingID = $iFleet_BookingID AND fb.cStatus = 'A' ORDER BY fb.vPickUpTime DESC;
         ";
         $vehicleHistoryRes = sql_query($vehicleHistorySql);
         $vehicleHistory = [];
