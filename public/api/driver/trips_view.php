@@ -66,7 +66,7 @@ SELECT
     fb.iPax,
     fb.iBaggage,
     fb.vRemarks,
-    fb.iFStaffID,
+    fb.iBookedBy,
     fb.cType,
     fb.vPickUpLocation AS fromLocation,
     fb.vDropLocation AS toLocation,
@@ -100,7 +100,7 @@ if (!sql_num_rows($res)) {
 }
 
 $row = sql_fetch_assoc($res);
-$staffID = intval($row['iFStaffID']);
+$staffID = intval($row['iBookedBy']);
 $supervisorName   = GetXFromYID("SELECT vName FROM fleet_staff WHERE iFStaffID = $staffID");
 $supervisorMobile = GetXFromYID("SELECT vMobile FROM fleet_staff WHERE iFStaffID = $staffID");
 $fromLat = null;
