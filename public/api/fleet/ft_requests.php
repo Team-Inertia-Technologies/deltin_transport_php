@@ -32,13 +32,13 @@ switch ($mode) {
         $BOOKING_CAT = GetXArrFromYID("SELECT iFleet_BkCatID, vName from fleet_bookingcategory where cStatus='A' ORDER BY iRank", "3");
         $TRAVEL_PURPOSE = GetXArrFromYID("SELECT iFleet_TrvPurID, vName from fleet_travelpurpose where cStatus='A' ORDER BY iRank", "3");
         $TRAVEL_TYPE = sql_query("SELECT iFleet_TrvTypeID, iFleet_TrvPurID, vName from fleet_traveltype where cStatus='A' ORDER BY iRank", "TRAVEL_TYPE");
-        $PROPERTY_ARR = GetXArrFromYID("SELECT iPropertyID, vName from property where cStatus='A' ORDER BY vName", "3");
+        $PROPERTY_ARR = GetXArrFromYID("SELECT iPropertyID, vName from property where cStatus='A' ORDER BY iRank", "3");
         $MAX_PAX = GetXFromYID("SELECT vValue from sys_settings where vCode = 'FT_BK_MAX_PAX'");
         $MAX_BAG = GetXFromYID("SELECT vValue from sys_settings where vCode = 'FT_BK_MAX_BAG'");
         $VEH_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
         // $STAFF_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
         $STAFF_DEPT = GetXArrFromYID("SELECT iDepartmentID, vName from department where cStatus='A' ORDER BY vName", "3");
-        $STAFF_ARR = sql_query("SELECT iFStaffID, vName, iDepartmentID, iUserID from fleet_staff where cStatus='A' ORDER BY vName");
+        $STAFF_ARR = sql_query("SELECT iFStaffID, vName, iDepartmentID, iUserID from fleet_staff where cStatus='A' ORDER BY iRank");
         $GUEST_ARR = sql_query("SELECT iGuestID, vName, vMobileNo from guest where cStatus='A' ORDER BY vName");
 
         $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
@@ -165,6 +165,7 @@ switch ($mode) {
                 fb.iBookedBy,
                 fb.iDriverID,
                 fb.iVehicleID,
+                fb.cType as tripStatus,
                 s.vName as bookedByName,
                 p.vName as propertyName,
                 vc.vName as vehicleCatName,
@@ -187,6 +188,8 @@ switch ($mode) {
 
         $rowData = [];
         while ($row = sql_fetch_assoc($bookingRes)) {
+            $bookingID = intval($row['iFleet_BookingID']);
+            
             // Get driver type name from VEHICLE_DRIVER_TYPE array
             $driverTypeID = intval($row['driverType'] ?? 0);
             $driverTypeName = isset($VEHICLE_DRIVER_TYPE[$driverTypeID]) ? $VEHICLE_DRIVER_TYPE[$driverTypeID] : '';
@@ -200,15 +203,41 @@ switch ($mode) {
                 }
             }
 
+            // Get trip status name from FLEET_TRIP_STATUS array
+            $tripStatusCode = $row['tripStatus'] ?? 'N';
+            $tripStatusName = isset($FLEET_TRIP_STATUS[$tripStatusCode]) ? $FLEET_TRIP_STATUS[$tripStatusCode] : 'Not started';
+
+            // Get start time and end time from booking_log
+            $startTime = '';
+            $endTime = '';
+            
+            // Get trip start time (when cRefType = 'S')
+            $startTimeSql = "SELECT dtAdded FROM booking_log WHERE iFleet_BookingID = $bookingID AND cRefType = 'S' ORDER BY dtAdded ASC LIMIT 1";
+            $startTimeRes = sql_query($startTimeSql);
+            if (sql_num_rows($startTimeRes) > 0) {
+                $startTimeRow = sql_fetch_assoc($startTimeRes);
+                $startTime = !empty($startTimeRow['dtAdded']) ? date('d/m/Y H:i', strtotime($startTimeRow['dtAdded'])) : '';
+            }
+            
+            // Get trip end time (when cRefType = 'C')
+            $endTimeSql = "SELECT dtAdded FROM booking_log WHERE iFleet_BookingID = $bookingID AND cRefType = 'C' ORDER BY dtAdded DESC LIMIT 1";
+            $endTimeRes = sql_query($endTimeSql);
+            if (sql_num_rows($endTimeRes) > 0) {
+                $endTimeRow = sql_fetch_assoc($endTimeRes);
+                $endTime = !empty($endTimeRow['dtAdded']) ? date('d/m/Y H:i', strtotime($endTimeRow['dtAdded'])) : '';
+            }
+
             $rowData[] = [
-                'id' => intval($row['iFleet_BookingID']),
+                'id' => $bookingID,
                 'fullName' => db_output2($row['vName'] ?? ''),
                 'phone' => db_output2($row['vMobileNo'] ?? ''),
                 'from' => strtolower($row['cBookingFor'] ?? ''),
                 'location' => db_output2($row['vPickUpLocation'] ?? ''),
                 'destination' => db_output2($row['vDropLocation'] ?? ''),
                 'pickupTime' => !empty($row['vPickUpTime']) ? date('d/m/Y', strtotime($row['vPickUpTime'])) : '',
-                'typeStatus' => '',
+                'tripStatus' => $tripStatusName,
+                'startTime' => $startTime,
+                'endTime' => $endTime,
                 'paxs' => strval($row['iPax'] ?? '0'),
                 'bags' => strval($row['iBaggage'] ?? '0'),
                 'bookedBy' => db_output2($row['bookedByName'] ?? ''),
@@ -700,9 +729,9 @@ switch ($mode) {
             $pickupDateTime = date('d-m-Y H:i', strtotime($booking['vPickUpTime']));
         }
 
-        // Fetch vehicle history for this booking
+        // Fetch vehicle history for this booking (excluding current request)
         $vehicleHistorySql = "
-           SELECT vc.vName as vehicleCategory, v.vRnum as regNo, fb.vPickUpTime as travelDateTime FROM fleet_booking fb LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID WHERE fb.iFleet_BookingID = $iFleet_BookingID AND fb.cStatus = 'A' ORDER BY fb.vPickUpTime DESC;
+           SELECT vc.vName as vehicleCategory, v.vRnum as regNo, fb.vPickUpTime as travelDateTime FROM fleet_booking fb LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID WHERE fb.iFleet_BookingID != $iFleet_BookingID AND fb.cStatus = 'A' ORDER BY fb.vPickUpTime DESC;
         ";
         $vehicleHistoryRes = sql_query($vehicleHistorySql);
         $vehicleHistory = [];
@@ -775,7 +804,6 @@ switch ($mode) {
         $categoryID = intval($_REQUEST['categoryID'] ?? 0);
         $typeID = intval($_REQUEST['typeID'] ?? 0);
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
-        // Get vehicle categories array
         $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
         $vehicleCategoryRes = sql_query($vehicleCategorySql);
 
@@ -813,7 +841,6 @@ switch ($mode) {
 
         $whereClause = implode(' AND ', $whereConditions);
 
-        // Get vehicles array with category, registration number, and assignment status
         $vehicleSql = "SELECT v.iVehicleID, v.vRnum, v.iCatID, v.iType as vehicletype, 
                               vc.vName as categoryName, vc.iCapacity,
                               dva.iDriverID, dva.dtAssigned_From, dva.dtAssigned_To,
@@ -832,7 +859,7 @@ switch ($mode) {
             $vehicleID = intval($vehicleRow['iVehicleID']);
             $isAssigned = !empty($vehicleRow['iDriverID']);
 
-            // Check if this vehicle is already assigned to the current trip/booking
+           
             $assignedVeh = false;
             $tripAssignmentSql = "SELECT iVehicleID FROM fleet_booking 
                                  WHERE iFleet_BookingID = $iFleet_BookingID 
@@ -858,8 +885,6 @@ switch ($mode) {
                 $lastAssignedTime = $lastAssignedRow['vPickUpTime'];
                 $lastAssigned = true;
             }
-
-            // Get next trip time for this vehicle
             $nextTripSql = "SELECT vPickUpTime
                            FROM fleet_booking 
                            WHERE iVehicleID = $vehicleID 
