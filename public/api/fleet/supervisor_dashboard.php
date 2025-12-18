@@ -26,7 +26,7 @@ if (sql_num_rows($userCheckRes) == 0) {
 
 switch ($mode) {
 
-    // ===================== CASE: LIST =====================
+    // ===================== CASE: REQUEST_STREAM =====================
     case 'REQUEST_STREAM':
 	
 		$FLEET_STAFF_ARR = GetXArrFromYID("select iFStaffID, vName from fleet_staff order by vName", 3);
@@ -121,6 +121,64 @@ switch ($mode) {
             "statusCode" => 200
         ]);
         break;
+	// ===================== CASE: REQUEST_STREAM END =====================		
+		
+	// ===================== CASE: DASHBOARD_COMPONENTS =====================	
+    case 'DASHBOARD_COMPONENTS':
+	
+		$VEH_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
+		$TODAY = date('Y-m-d');
+		$TOTAL_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where cStatus = 'A' and cServiceType = ('F','B')");
+		$TOTAL_DRIVER_COUNT = GetXFromYID("select count(*) from driver where cStatus = 'A' and dExpiry > '$TODAY'");
+		
+		$AVAILABLE_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where iVehicleID NOT IN (select iVehicleID from fleet_booking where cType NOT IN ('C','N'))");
+		$AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where iDriverID NOT IN (select iDriverID from fleet_booking where cType NOT IN ('C','N'))");
+		
+        $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
+        foreach ($FLEET_BOOKING_FOR as $id => $name) {
+            $bookedForOpt[] = ['id' => $id, 'name' => $name];
+        }
+		
+        $requestTypeArr = [['id' => 0, 'name' => 'All']];
+        foreach ($REQUEST_TYPE_ARR as $id => $name) {
+            $requestTypeArr[] = ['id' => $id, 'name' => $name];
+        }	
+		
+        $vehiCatOpt = [['id' => 0, 'name' => 'Choose']];
+        foreach ($VEH_CAT as $id => $name) {
+            $vehiCatOpt[] = ['id' => intval($id), 'name' => $name];
+        }
+		
+		$vehiTypeArr = [['id' => 0, 'name' => 'All']];
+        foreach ($VEHICLE_DRIVER_TYPE as $id => $name) {
+            $vehiTypeArr[] = ['id' => intval($id), 'name' => $name];
+        }
+		
+		$vehiStatusArr = [['id' => 0, 'name' => 'All']];
+		foreach ($VEHICLE_STATUS_ARR as $id => $name) {
+			$vehiStatusArr[] = ['id' => intval($id), 'name' => $name];
+		}			
+		
+        $optArr = [
+		    "requestTypeArr" => $requestTypeArr,
+            "bookedForArr" => $bookedForOpt,
+            "vehiCatArr" => $vehiCatOpt,
+            "vehiTypeArr" => $vehiTypeArr,
+            "driverTypeArr" => $vehiTypeArr,
+            "vehiStatusArr" => $vehiStatusArr
+        ];		
+		
+
+        echo json_encode([
+            "data" => [
+				"totalDriver" => $TOTAL_DRIVER_COUNT,
+				"avaiDriver" => $AVAILABLE_DRIVER_COUNT,
+				"totalVehi" => $TOTAL_VEHICLE_COUNT,
+				"avaiVehi" => $AVAILABLE_VEHICLE_COUNT,
+            ],
+            "statusCode" => 200
+        ]);
+        break;		
 		
     case 'ACTIVITY_TIMELINE':
 	
