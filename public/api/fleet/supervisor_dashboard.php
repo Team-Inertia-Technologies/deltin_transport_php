@@ -29,6 +29,32 @@ switch ($mode) {
     // ===================== CASE: REQUEST_STREAM =====================
     case 'REQUEST_STREAM':
 	
+		$cond = "";
+		
+		$searchtxt = $_REQUEST['searchtxt'] ?? '';
+		$type = $_REQUEST['type'] ?? '';
+		$bookedFor = $_REQUEST['bookedFor'] ?? '';
+		
+		if(!empty($searchtxt)){
+			$cond .= " and ((vName like '%$searchtxt%') or (vMobileNo like '%$searchtxt%') or (vPickUpLocation like '%$searchtxt%') or (vPickUpLocation like '%$vDropLocation%'))";
+		}
+		
+		if(!empty($bookedFor)){
+			$cond .= " and cBookedFor = '$bookedFor'";
+		}
+		
+		if(!empty($type)){
+			if($type == 'D'){
+				$cond .= " and (NOW() > trip_datetime - INTERVAL 2 HOUR) and (iDriverID = 0 or iVehicleID = 0)";
+			}
+			if($type == 'U'){
+				$cond .= " and (iDriverID = '0' or iVehicleID = '0')";
+			}
+			if($type == 'A'){
+				$cond .= " and (iDriverID <> '0' and iVehicleID <> '0')";
+			}			
+		}		
+		
 		$FLEET_STAFF_ARR = GetXArrFromYID("select iFStaffID, vName from fleet_staff order by vName", 3);
 		$FLEET_CATEGORY_ARR = GetXArrFromYID("select iFleet_BkCatID, vName from fleet_bookingcategory order by vName", 3);
 		$PROPERTY_ARR = GetXArrFromYID("select iPropertyID, vName from property order by iRank", 3);
@@ -53,7 +79,7 @@ switch ($mode) {
 		}		
 
         // Fetch booking data
-        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID from fleet_booking order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID from fleet_booking where 1 $cond order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         $bookingRes = sql_query($bookingSql);
         
         $rowData = [];
