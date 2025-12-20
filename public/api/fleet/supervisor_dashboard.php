@@ -25,6 +25,68 @@ if (sql_num_rows($userCheckRes) == 0) {
 }
 
 switch ($mode) {
+	
+	
+		
+	// ===================== CASE: DASHBOARD_COMPONENTS =====================	
+    case 'DASHBOARD_COMPONENTS':
+	
+		$VEH_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
+		$TODAY = date('Y-m-d');
+		$TOTAL_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where cStatus = 'A' and cServiceType IN ('F','B')");
+		$TOTAL_DRIVER_COUNT = GetXFromYID("select count(*) from driver where cStatus = 'A' and dExpiry > '$TODAY'");
+		
+		$AVAILABLE_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where iVehicleID NOT IN (select iVehicleID from fleet_booking where cType NOT IN ('C','N') and iVehicleID IS NOT NULL)");
+		$AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where iDriverID NOT IN (select iDriverID from fleet_booking where cType NOT IN ('C','N') and iDriverID IS NOT NULL)");
+		
+        $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
+        foreach ($FLEET_BOOKING_FOR as $id => $name) {
+            $bookedForOpt[] = ['id' => $id, 'name' => $name];
+        }
+		
+        $requestTypeArr = [['id' => 0, 'name' => 'All']];
+        foreach ($REQUEST_TYPE_ARR as $id => $name) {
+            $requestTypeArr[] = ['id' => $id, 'name' => $name];
+        }	
+		
+        $vehiCatOpt = [['id' => 0, 'name' => 'Choose']];
+        foreach ($VEH_CAT as $id => $name) {
+            $vehiCatOpt[] = ['id' => intval($id), 'name' => $name];
+        }
+		
+		$vehiTypeArr = [['id' => 0, 'name' => 'All']];
+        foreach ($VEHICLE_DRIVER_TYPE as $id => $name) {
+            $vehiTypeArr[] = ['id' => $id, 'name' => $name];
+        }
+		
+		$vehiStatusArr = [['id' => 0, 'name' => 'All']];
+		foreach ($VEHICLE_STATUS_ARR as $id => $name) {
+			$vehiStatusArr[] = ['id' => $id, 'name' => $name];
+		}			
+		
+        $optArr = [
+		    "requestTypeArr" => $requestTypeArr,
+            "bookedForArr" => $bookedForOpt,
+            "vehiCatArr" => $vehiCatOpt,
+            "vehiTypeArr" => $vehiTypeArr,
+            "driverTypeArr" => $vehiTypeArr,
+            "vehiStatusArr" => $vehiStatusArr
+        ];		
+		
+
+        echo json_encode([
+            "data" => [
+				"totalDriver" => $TOTAL_DRIVER_COUNT,
+				"avaiDriver" => $AVAILABLE_DRIVER_COUNT,
+				"totalVehi" => $TOTAL_VEHICLE_COUNT,
+				"avaiVehi" => $AVAILABLE_VEHICLE_COUNT,
+				"optArrs" => $optArr
+            ],
+            "statusCode" => 200
+        ]);
+        break;	
+
+	// ===================== CASE: DASHBOARD_COMPONENTS END =====================		
 
     // ===================== CASE: REQUEST_STREAM =====================
     case 'REQUEST_STREAM':
@@ -36,7 +98,7 @@ switch ($mode) {
 		$bookedFor = $_REQUEST['bookedFor'] ?? '';
 		
 		if(!empty($searchtxt)){
-			$cond .= " and ((vName like '%$searchtxt%') or (vMobileNo like '%$searchtxt%') or (vPickUpLocation like '%$searchtxt%') or (vPickUpLocation like '%$vDropLocation%'))";
+			$cond .= " and ((vName like '%$searchtxt%') or (vMobileNo like '%$searchtxt%') or (vPickUpLocation like '%$searchtxt%') or (vDropLocation like '%$searchtxt%'))";
 		}
 		
 		if(!empty($bookedFor)){
@@ -159,65 +221,180 @@ switch ($mode) {
         ]);
         break;
 	// ===================== CASE: REQUEST_STREAM END =====================		
-		
-	// ===================== CASE: DASHBOARD_COMPONENTS =====================	
-    case 'DASHBOARD_COMPONENTS':
 	
-		$VEH_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
-		$TODAY = date('Y-m-d');
-		$TOTAL_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where cStatus = 'A' and cServiceType IN ('F','B')");
-		$TOTAL_DRIVER_COUNT = GetXFromYID("select count(*) from driver where cStatus = 'A' and dExpiry > '$TODAY'");
+	// ===================== CASE: ASSIGN_API ======================		
+    case 'ASSIGN_API':
+	
+		$cond = "";
 		
-		$AVAILABLE_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where iVehicleID NOT IN (select iVehicleID from fleet_booking where cType NOT IN ('C','N') and iVehicleID IS NOT NULL)");
-		$AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where iDriverID NOT IN (select iDriverID from fleet_booking where cType NOT IN ('C','N') and iDriverID IS NOT NULL)");
+		$searchtxt = $_REQUEST['searchtxt'] ?? '';
+		$type = $_REQUEST['type'] ?? '';
+		$bookedFor = $_REQUEST['bookedFor'] ?? '';
+		$pickup = $_REQUEST['pickup'] ?? '';
+		$drop = $_REQUEST['drop'] ?? '';
 		
-        $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
-        foreach ($FLEET_BOOKING_FOR as $id => $name) {
-            $bookedForOpt[] = ['id' => $id, 'name' => $name];
-        }
+		$VEHI_TYPE_ARR = array();
 		
-        $requestTypeArr = [['id' => 0, 'name' => 'All']];
-        foreach ($REQUEST_TYPE_ARR as $id => $name) {
-            $requestTypeArr[] = ['id' => $id, 'name' => $name];
-        }	
+		$q = "select * from vehicle where 1";
+		$r = sql_query($q, "supervisor_dashboard.238");
 		
-        $vehiCatOpt = [['id' => 0, 'name' => 'Choose']];
-        foreach ($VEH_CAT as $id => $name) {
-            $vehiCatOpt[] = ['id' => intval($id), 'name' => $name];
-        }
+		if(sql_num_rows($r)){
+			
+			while($vrow = sql_fetch_assoc($r)){
+				
+				$VEHI_TYPE_ARR[$vrow['iVehicleID']] = array("TYPE"=>$vrow['iType']);
+				
+			}
+			
+		}
 		
-		$vehiTypeArr = [['id' => 0, 'name' => 'All']];
-        foreach ($VEHICLE_DRIVER_TYPE as $id => $name) {
-            $vehiTypeArr[] = ['id' => $id, 'name' => $name];
-        }
+		if(!empty($searchtxt)){
+			$cond .= " and ((vName like '%$searchtxt%') or (vMobileNo like '%$searchtxt%'))";
+		}
 		
-		$vehiStatusArr = [['id' => 0, 'name' => 'All']];
-		foreach ($VEHICLE_STATUS_ARR as $id => $name) {
-			$vehiStatusArr[] = ['id' => $id, 'name' => $name];
-		}			
+		if(!empty($bookedFor)){
+			$cond .= " and cBookedFor = '$bookedFor'";
+		}
 		
-        $optArr = [
-		    "requestTypeArr" => $requestTypeArr,
-            "bookedForArr" => $bookedForOpt,
-            "vehiCatArr" => $vehiCatOpt,
-            "vehiTypeArr" => $vehiTypeArr,
-            "driverTypeArr" => $vehiTypeArr,
-            "vehiStatusArr" => $vehiStatusArr
-        ];		
-		
+		if(!empty($type)){
+			if($type == 'D'){
+				$cond .= " and (NOW() > trip_datetime - INTERVAL 2 HOUR) and (iDriverID = 0 or iVehicleID = 0)";
+			}
+			if($type == 'U'){
+				$cond .= " and (iDriverID = '0' or iVehicleID = '0')";
+			}
+			if($type == 'A'){
+				$cond .= " and (iDriverID <> '0' and iVehicleID <> '0')";
+			}			
+		}	
 
+		if(!empty($pickup)){
+			$cond .= " and (vPickUpLocation like '%$searchtxt%')";			
+		}
+
+		if(!empty($drop)){
+			$cond .= " and (vDropLocation like '%$searchtxt%')";
+		}	
+		
+        $bookingSql = "select iFleet_BookingID, iVehicleCatID, vPickUpLocation, vDropLocation, vLatLong_From, vLatLong_To, vInstructions, vRemarks, tReturnTime, iVehicleID from fleet_booking where 1 $cond order by vPickupTime ASC";
+        $bookingRes = sql_query($bookingSql);		
+
+        $rowData = [];
+        while ($row = sql_fetch_assoc($bookingRes)) {
+			
+			$from_latlong_arr = explode(",",$row['vLatLong_From']);
+			$to_latlong_arr = explode(",",$row['vLatLong_To']);
+			
+            $rowData[] = [
+                'requestId' => intval($row['iFleet_BookingID']),
+                'vehiCatId' => $row['iVehicleCatID'] ?? 0,
+                'vehiTypeId' => $VEHI_TYPE_ARR[$row['iVehicleID']]['TYPE'] ?? 0,
+				'pickUpLoc' => array('lat'=>$from_latlong_arr[0], 'log'=>$from_latlong_arr[1], 'loc'=>$row['vPickUpLocation']),
+				'pickUpLoc' => array('lat'=>$to_latlong_arr[0], 'log'=>$to_latlong_arr[1], 'loc'=>$row['vDropLocation']),
+                'returnTime' => $row['tReturnTime'],
+                'remark1' => db_output2($row['vInstructions'] ?? ''),
+                'remark2' => db_output2($row['vRemarks'] ?? ''),
+            ];
+        }
         echo json_encode([
             "data" => [
-				"totalDriver" => $TOTAL_DRIVER_COUNT,
-				"avaiDriver" => $AVAILABLE_DRIVER_COUNT,
-				"totalVehi" => $TOTAL_VEHICLE_COUNT,
-				"avaiVehi" => $AVAILABLE_VEHICLE_COUNT,
-				"optArrs" => $optArr
+                "rowData" => $rowData
             ],
             "statusCode" => 200
         ]);
-        break;		
+        break;
+	// ===================== CASE: ASSIGN_API END =====================	
+	
+	
+	// ===================== CASE: VEHICLE_COMPOENT ======================		
+    case 'VEHICLE_COMPOENT':
+	
+		$cond = "";
 		
+		$searchtxt = $_REQUEST['searchtxt'] ?? '';
+		$type = $_REQUEST['type'] ?? '';
+		$category = $_REQUEST['category'] ?? '';
+		$status = $_REQUEST['status'] ?? '';
+		
+		$VEHI_TYPE_ARR = array();
+		
+		$q = "select * from vehicle where 1";
+		$r = sql_query($q, "supervisor_dashboard.238");
+		
+		if(sql_num_rows($r)){
+			
+			while($vrow = sql_fetch_assoc($r)){
+				
+				$VEHI_TYPE_ARR[$vrow['iVehicleID']] = array("TYPE"=>$vrow['iType']);
+				
+			}
+			
+		}
+		
+		if(!empty($searchtxt)){
+			$cond .= " and ((vc.vName like '%$searchtxt%') or (d.vMobileNo like '%$searchtxt%') or (d.vName like '%$searchtxt%') or (v.vRnum like '%$searchtxt%'))";
+		}
+		
+		if(!empty($bookedFor)){
+			$cond .= " and cBookedFor = '$bookedFor'";
+		}
+		
+		if(!empty($type)){
+			if($type == 'D'){
+				$cond .= " and (NOW() > trip_datetime - INTERVAL 2 HOUR) and (iDriverID = 0 or iVehicleID = 0)";
+			}
+			if($type == 'U'){
+				$cond .= " and (iDriverID = '0' or iVehicleID = '0')";
+			}
+			if($type == 'A'){
+				$cond .= " and (iDriverID <> '0' and iVehicleID <> '0')";
+			}			
+		}	
+
+		if(!empty($pickup)){
+			$cond .= " and (vPickUpLocation like '%$searchtxt%')";			
+		}
+
+		if(!empty($drop)){
+			$cond .= " and (vDropLocation like '%$searchtxt%')";
+		}	
+		
+        $bookingSql = "SELECT fb.iFleet_BookingID AS iFleet_BookingID, v.vRnum AS vRnum, v.iType AS iType, vc.iVCatID AS iVCatID, vc.vName AS vCatName, vc.iCapacity AS iCapacity, CASE WHEN MAX(last_fb.vPickupTime) IS NOT NULL THEN TRUE ELSE FALSE END AS lastAssigned, MAX(last_fb.vPickupTime) AS lastAssignedTime, CASE WHEN fb.iFleet_BookingID IS NOT NULL THEN TRUE ELSE FALSE END AS alreadyAssigned, fb.iDriverID AS driverID, d.vName AS driverName, d.vMobileNum AS driverMobile, MIN(next_fb.vPickupTime) AS nextTripTime, fb.cDisposal AS disposal FROM vehicle v JOIN vehicle_category vc ON vc.iVCatID = v.iCatID LEFT JOIN fleet_booking fb ON fb.iVehicleID = v.iVehicleID AND fb.cStatus = 'A' LEFT JOIN driver d ON d.iDriverID = fb.iDriverID LEFT JOIN fleet_booking last_fb ON last_fb.iVehicleID = v.iVehicleID AND last_fb.vPickupTime < NOW() AND last_fb.cStatus = 'A' LEFT JOIN fleet_booking next_fb ON next_fb.iVehicleID = v.iVehicleID AND next_fb.vPickupTime > NOW() AND next_fb.cStatus = 'A' GROUP BY v.iVehicleID ORDER BY v.vRnum";
+        $bookingRes = sql_query($bookingSql);		
+
+        $rowData = [];
+        while ($row = sql_fetch_assoc($bookingRes)) {
+			
+
+			
+            $rowData[] = [
+                'id' => intval($row['iFleet_BookingID']),
+                'regNo' => $row['vRnum'] ?? "",
+                'vehicleType' => $row['iType'] ?? 0,
+				'categoryId' => $row['iVCatID'] ?? 0,
+				'categoryName' => $row['vCatName'],
+                'capacity' => $row['iCapacity'],
+                'lastAssigned' => (!empty($row['lastAssignedTime']))?true:false,
+                'lastAssignedTime' => $row['lastAssignedTime'] ?? ''
+                'alreadyAssigned' => (!empty($row['alreadyAssigned']))?true:false,
+                'driverID' => $row['driverID'] ?? 0,
+                'driverName' => db_output2($row['driverName'] ?? ''),
+                'driverMobile' => db_output2($row['driverMobile'] ?? ''),
+                'nextTripTime' => $row['nextTripTime'] ?? '',
+                'disposal' => ($row['disposal'] == 'Y')?true:false,
+            ];
+        }
+        echo json_encode([
+            "data" => [
+                "requestsArr" => $rowData
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+	// ===================== CASE: VEHICLE_COMPOENT END =====================		
+	
+	
+	// ===================== CASE: ACTIVITY_TIMELINE ======================		
     case 'ACTIVITY_TIMELINE':
 	
 			global $FL_LOG_STATUS_ARR;
@@ -261,6 +438,8 @@ switch ($mode) {
             "statusCode" => 200
         ]);
         break;		
+		
+	// ===================== CASE: ACTIVITY_TIMELINE END =====================			
 
     // ===================== CASE: ADD =====================
     case 'ADD_BOOKING':
