@@ -1067,10 +1067,7 @@ switch ($mode) {
         $dtNow = NOW;
         $updateSql = "UPDATE fleet_booking SET 
                      iVehicleID = $iVehicleID,
-                     iDriverID = $iDriverID,
-                     vRemarks = '" . db_input($vRemarks) . "',
-                     dtUpdated = '" . db_input($dtNow) . "',
-                     iUpdated_UserID = $user_id
+                     iDriverID = $iDriverID
                      WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A'";
 
         $updateResult = sql_query($updateSql);
