@@ -944,13 +944,13 @@ function db_input2($string)
 
 function db_output($string)
 {
-	$string = trim($string);
+	$string = trim($string ?? '');
 	return htmlspecialchars($string, ENT_QUOTES);
 }
 
 function db_output2($string)
 {
-	$string = trim($string);
+	$string = trim($string ?? '');
 	//if(!get_magic_quotes_gpc()) $string = stripslashes($string);
 	$string = stripslashes($string);
 	return htmlspecialchars_decode($string, ENT_QUOTES);
