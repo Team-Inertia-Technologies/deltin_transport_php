@@ -340,6 +340,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
         $fromDate = $_REQUEST['fromDate'] ?? '';
         $toDate = $_REQUEST['toDate'] ?? '';
         $timings = $_REQUEST['timings'] ?? [];
+        $currentStatus = $_REQUEST['currentStatus'] ?? '';
         
         if (!checkUserModuleAccess($user_id, 'STAFF_TRIP_APPROVE')) {
             echo json_encode([
@@ -418,8 +419,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                         WHERE t.iRouteID = $routeID
                         AND DATE(t.dtTrip) BETWEEN '$fromDateFormatted' AND '$toDateFormatted'
                         AND $timingClause
-                        AND t.cStatus = '" . db_input($currentStatus) . "'
-                        AND t.cStatus != 'X'";
+                        AND t.cStatus = '" . db_input($currentStatus) . "'";
 
         $findTripsRes = sql_query($findTripsSql);
 
