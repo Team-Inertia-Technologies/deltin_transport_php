@@ -599,11 +599,11 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                 "fromDate" => date('d/m/Y', strtotime($newFromDate)),
                 "toDate" => date('d/m/Y', strtotime($newToDate)),
                 //"dayCount" => $originalDays,
-                "timings" => $timings,
+              //  "timings" => $timings,
                 "timingsWithAssignments" => $timingsWithAssignments,
                 // "previousStatus" => $currentStatus,
                 // "newStatus" => "A",
-                "tripsUpdated" => $affectedRows,
+               // "tripsUpdated" => $affectedRows,
                 // ADD_ONLOAD style data
                 "rdOpt" => $rdOpt,
                 "vehiOpt" => $vehiOpt,

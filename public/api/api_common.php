@@ -507,6 +507,81 @@ function checkUserModuleAccess($user_id, $module_code)
     return false;
 }
 
+/**
+ * Check for duplicate trips and eliminate them
+ * @param int $routeID - Route ID
+ * @param string $tripDateTime - Trip date and time (Y-m-d H:i:s format)
+ * @return array - Array with eliminated trip IDs and count
+ */
+function checkAndEliminateDuplicateTrips($routeID, $tripDateTime)
+{
+    $routeID = intval($routeID);
+    $tripDateTime = db_input($tripDateTime);
+    
+    if ($routeID <= 0 || empty($tripDateTime)) {
+        return [
+            'eliminated_count' => 0,
+            'eliminated_trips' => [],
+            'message' => 'Invalid parameters'
+        ];
+    }
+    
+    // Find existing trips for the same route, date and time
+    $duplicateCheckSql = "SELECT iTripID, iGrpID 
+                         FROM st_trips 
+                         WHERE iRouteID = $routeID 
+                         AND dtTrip = '$tripDateTime' 
+                         AND cStatus != 'X'";
+    
+    $duplicateRes = sql_query($duplicateCheckSql);
+    
+    if (sql_num_rows($duplicateRes) == 0) {
+        return [
+            'eliminated_count' => 0,
+            'eliminated_trips' => [],
+            'message' => 'No duplicate trips found'
+        ];
+    }
+    
+    $eliminatedTrips = [];
+    $eliminatedCount = 0;
+    
+    // Mark duplicate trips as deleted (cStatus = 'X')
+    while ($row = sql_fetch_assoc($duplicateRes)) {
+        $tripID = intval($row['iTripID']);
+        $grpID = intval($row['iGrpID']);
+        
+        // Update trip status to 'X' (deleted)
+        $deleteSql = "UPDATE st_trips 
+                     SET cStatus = 'X', 
+                         dtModified = '" . NOW . "' 
+                     WHERE iTripID = $tripID";
+        
+        if (sql_query($deleteSql)) {
+            $eliminatedTrips[] = [
+                'tripID' => $tripID,
+                'grpID' => $grpID
+            ];
+            $eliminatedCount++;
+            
+            // Also delete any related staff requests for this trip
+            $deleteRequestsSql = "UPDATE st_request 
+                                 SET cStatus = 'X', 
+                                     dtModified = '" . NOW . "' 
+                                 WHERE iTripID = $tripID";
+            sql_query($deleteRequestsSql);
+        }
+    }
+    
+    return [
+        'eliminated_count' => $eliminatedCount,
+        'eliminated_trips' => $eliminatedTrips,
+        'message' => $eliminatedCount > 0 ? 
+            "Eliminated $eliminatedCount duplicate trip(s)" : 
+            "No trips were eliminated"
+    ];
+}
+
 // function sendFcmNotification($deviceToken, $name, $pic, $body, $RM_ID, $senderID)
 // {
 //     // Initialize Google Client

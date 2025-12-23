@@ -937,6 +937,12 @@ switch ($mode) {
             foreach ($dateRange as $date) {
                 $tripDateTime = $date . ' ' . $cleanTime;
 
+                // Check for duplicate trips and eliminate them before creating new ones
+                $duplicateResult = checkAndEliminateDuplicateTrips($routeID, $tripDateTime);
+                if ($duplicateResult['eliminated_count'] > 0) {
+                    $errors[] = $duplicateResult['message'] . " for " . $tripDateTime;
+                }
+
                 // Check if we already have a group ID for this date/time combination
                 if (!isset($dateTimeGroupMap[$tripDateTime])) {
                     $dateTimeGroupMap[$tripDateTime] = $currentGrpID;
