@@ -68,7 +68,6 @@ switch ($mode) {
             ];
         }
 
-        // Get routes and stops for dropdowns
         $routeStopsQuery = "SELECT r.iRouteID, r.vName as routeName, s.iStopID, s.vName as stopName 
                             FROM st_route r 
                             LEFT JOIN st_route_stops s ON r.iRouteID = s.iRouteID 

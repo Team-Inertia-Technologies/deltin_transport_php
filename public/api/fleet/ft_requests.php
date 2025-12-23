@@ -267,7 +267,6 @@ switch ($mode) {
     // ===================== CASE: ADD =====================
     case 'ADD_BOOKING':
 
-        // sanitize and collect inputs
         $cBookingFor = db_input($_REQUEST['bookedFor'] ?? '');
         $iBookedBy = db_input($_REQUEST['bookedBy'] ?? '');
         $iFleet_TrvPurID = intval($_REQUEST['travelPurpose'] ?? 0);

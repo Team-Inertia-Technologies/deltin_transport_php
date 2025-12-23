@@ -546,7 +546,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
             }
 
             $timingsWithAssignments[] = [
-                "time" => $timing,
+                "time" => (new DateTime($timing))->format('H:i'),
                 "vehicle" => $assignments
             ];
         }
