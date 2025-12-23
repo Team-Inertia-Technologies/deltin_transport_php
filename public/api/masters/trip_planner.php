@@ -534,12 +534,12 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
             
             while ($assignmentRow = sql_fetch_assoc($assignmentsRes)) {
                 $assignments[] = [
-                    "vehicleID" => (int) ($assignmentRow['iVehicleID'] ?? 0),
-                    "vehicleNumber" => db_output2($assignmentRow['vehicleNumber'] ?? ''),
-                    "vehicleCapacity" => (int) ($assignmentRow['vehicleCapacity'] ?? 0),
+                    "vhId" => (int) ($assignmentRow['iVehicleID'] ?? 0),
+                    "vhNum" => db_output2($assignmentRow['vehicleNumber'] ?? ''),
+                    "vhCap" => (int) ($assignmentRow['vehicleCapacity'] ?? 0),
                     "vendorID" => (int) ($assignmentRow['iVendorID'] ?? 0),
-                   // "vendorName" => db_output2($assignmentRow['vendorName'] ?? ''),
-                    "driverID" => (int) ($assignmentRow['iDriverID'] ?? 0),
+                    "vhOwner" => db_output2($assignmentRow['vendorName'] ?? ''),
+                    "driverId" => (int) ($assignmentRow['iDriverID'] ?? 0),
                  //   "driverName" => db_output2($assignmentRow['driverName'] ?? ''),
                     "driverMobile" => db_output2($assignmentRow['driverMobile'] ?? '')
                 ];
