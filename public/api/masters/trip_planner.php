@@ -588,7 +588,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                 "vhNum" => db_output2($tableRow['vRnum'] ?? ''),
                 "vhCap" => (int) ($tableRow['iCapacity'] ?? 0),
                 "vhOwner" => db_output2($tableRow['vOwner'] ?? ''),
-                "driverId" => $vhDriver
+                "vhDriver" => $vhDriver
             ];
         }
 

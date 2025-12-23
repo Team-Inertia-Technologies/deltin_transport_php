@@ -508,26 +508,26 @@ function checkUserModuleAccess($user_id, $module_code)
 }
 
 /**
- * Check for duplicate trips and eliminate them
+ * Check if a trip already exists for the same route, date and time
  * @param int $routeID - Route ID
  * @param string $tripDateTime - Trip date and time (Y-m-d H:i:s format)
- * @return array - Array with eliminated trip IDs and count
+ * @return array - Array with duplicate check result
  */
-function checkAndEliminateDuplicateTrips($routeID, $tripDateTime)
+function checkDuplicateTrip($routeID, $tripDateTime)
 {
     $routeID = intval($routeID);
     $tripDateTime = db_input($tripDateTime);
     
     if ($routeID <= 0 || empty($tripDateTime)) {
         return [
-            'eliminated_count' => 0,
-            'eliminated_trips' => [],
+            'duplicate_exists' => false,
+            'existing_trips' => [],
             'message' => 'Invalid parameters'
         ];
     }
     
     // Find existing trips for the same route, date and time
-    $duplicateCheckSql = "SELECT iTripID, iGrpID 
+    $duplicateCheckSql = "SELECT iTripID, iGrpID, dtTrip 
                          FROM st_trips 
                          WHERE iRouteID = $routeID 
                          AND dtTrip = '$tripDateTime' 
@@ -537,48 +537,26 @@ function checkAndEliminateDuplicateTrips($routeID, $tripDateTime)
     
     if (sql_num_rows($duplicateRes) == 0) {
         return [
-            'eliminated_count' => 0,
-            'eliminated_trips' => [],
+            'duplicate_exists' => false,
+            'existing_trips' => [],
             'message' => 'No duplicate trips found'
         ];
     }
     
-    $eliminatedTrips = [];
-    $eliminatedCount = 0;
+    $existingTrips = [];
     
-    // Mark duplicate trips as deleted (cStatus = 'X')
     while ($row = sql_fetch_assoc($duplicateRes)) {
-        $tripID = intval($row['iTripID']);
-        $grpID = intval($row['iGrpID']);
-        
-        // Update trip status to 'X' (deleted)
-        $deleteSql = "UPDATE st_trips 
-                     SET cStatus = 'X', 
-                         dtModified = '" . NOW . "' 
-                     WHERE iTripID = $tripID";
-        
-        if (sql_query($deleteSql)) {
-            $eliminatedTrips[] = [
-                'tripID' => $tripID,
-                'grpID' => $grpID
-            ];
-            $eliminatedCount++;
-            
-            // Also delete any related staff requests for this trip
-            $deleteRequestsSql = "UPDATE st_request 
-                                 SET cStatus = 'X', 
-                                     dtModified = '" . NOW . "' 
-                                 WHERE iTripID = $tripID";
-            sql_query($deleteRequestsSql);
-        }
+        $existingTrips[] = [
+            'tripID' => intval($row['iTripID']),
+            'grpID' => intval($row['iGrpID']),
+            'tripDateTime' => $row['dtTrip']
+        ];
     }
     
     return [
-        'eliminated_count' => $eliminatedCount,
-        'eliminated_trips' => $eliminatedTrips,
-        'message' => $eliminatedCount > 0 ? 
-            "Eliminated $eliminatedCount duplicate trip(s)" : 
-            "No trips were eliminated"
+        'duplicate_exists' => true,
+        'existing_trips' => $existingTrips,
+        'message' => 'Trip already exists for this route, date and time'
     ];
 }
 

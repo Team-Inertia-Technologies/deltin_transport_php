@@ -1,5 +1,5 @@
 <?php
-ini_set('display_errors', 1);
+// ini_set('display_errors', 1);
 
 include "../../includes/common_api.php";
 include "../api_common.php";
@@ -937,10 +937,11 @@ switch ($mode) {
             foreach ($dateRange as $date) {
                 $tripDateTime = $date . ' ' . $cleanTime;
 
-                // Check for duplicate trips and eliminate them before creating new ones
-                $duplicateResult = checkAndEliminateDuplicateTrips($routeID, $tripDateTime);
-                if ($duplicateResult['eliminated_count'] > 0) {
-                    $errors[] = $duplicateResult['message'] . " for " . $tripDateTime;
+                // Check if trip already exists for this route, date and time
+                $duplicateCheck = checkDuplicateTrip($routeID, $tripDateTime);
+                if ($duplicateCheck['duplicate_exists']) {
+                    $errors[] = "Skipped creating trip for " . $tripDateTime . " - " . $duplicateCheck['message'];
+                    continue; // Skip creating this trip and move to next date
                 }
 
                 // Check if we already have a group ID for this date/time combination
