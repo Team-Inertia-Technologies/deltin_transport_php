@@ -340,7 +340,6 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
         $fromDate = $_REQUEST['fromDate'] ?? '';
         $toDate = $_REQUEST['toDate'] ?? '';
         $timings = $_REQUEST['timings'] ?? [];
-        $currentStatus = $_REQUEST['currentStatus'] ?? '';
         
         if (!checkUserModuleAccess($user_id, 'STAFF_TRIP_APPROVE')) {
             echo json_encode([
@@ -436,38 +435,6 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
 
         $tripData = sql_fetch_assoc($findTripsRes);
         $tripCount = $tripData['tripCount'];
-
-        // Update the trips to approved status
-        $updateSql = "UPDATE st_trips t SET 
-                        t.cStatus = 'A',
-                        t.iTripApprovedBy = $user_id
-                      WHERE t.iRouteID = $routeID
-                        AND DATE(t.dtTrip) BETWEEN '$fromDateFormatted' AND '$toDateFormatted'
-                        AND $timingClause
-                        AND t.cStatus = '" . db_input($currentStatus) . "'
-                        AND t.cStatus != 'X'";
-
-        if (!sql_query($updateSql)) {
-            echo json_encode([
-                "error" => [
-                    "message" => "Database error occurred while approving trip set"
-                ],
-                "statusCode" => 500
-            ]);
-            exit;
-        }
-
-        $affectedRows = sql_affected_rows();
-
-        if ($affectedRows == 0) {
-            echo json_encode([
-                "error" => [
-                    "message" => "No trips were updated. Set may have already been approved or conditions don't match."
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
 
         // Get vehicle options like ADD_ONLOAD
         $vehicleSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity 
