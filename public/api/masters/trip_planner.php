@@ -197,99 +197,6 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
         ]);
         break;
 
-    // ===================== CASE 2: GET_TRIPS_BY_DATE =====================
-    case 'GET_TRIPS_BY_DATE':
-        $dtAdded = $_REQUEST['dtAdded'] ?? '';
-
-        // Validate required parameter
-        if (empty($dtAdded)) {
-            echo json_encode([
-                "error" => [
-                    "message" => "Missing dtAdded parameter"
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
-
-        // Extract just the date part from dtAdded (in case it includes time)
-        $dateOnly = date('Y-m-d', strtotime($dtAdded));
-
-        // Build WHERE conditions for specific dtAdded date
-        $whereConditions = [
-            "t.cStatus != 'X'",
-            "DATE(t.dtAdded) = '" . db_input($dateOnly) . "'"
-        ];
-
-        $whereClause = implode(' AND ', $whereConditions);
-
-        $sql = "SELECT 
-    t.iRouteID,
-    r.vName AS route,
-    r.vDestination AS destination,
-    TIME(t.dtTrip) AS tripTime,
-    DATE(t.dtTrip) AS fromDate,
-    DATE(t.dtTrip) AS toDate,
-    t.cStatus AS status,
-    MIN(DATE(t.dtTrip)) AS startDate,
-    MAX(DATE(t.dtTrip)) AS endDate
-FROM st_trips t
-LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
-WHERE $whereClause
-GROUP BY t.iRouteID, r.vName, r.vDestination, TIME(t.dtTrip), DATE(t.dtTrip), t.cStatus
-ORDER BY TIME(t.dtTrip), r.vName;
-";
-
-        $res = sql_query($sql);
-        $rowData = [];
-
-        // Process the query results grouped by timing
-        while ($row = sql_fetch_assoc($res)) {
-            // Convert status code to readable format
-            switch ($row['status']) {
-                case 'A':
-                    $statusText = 'Active';
-                    break;
-                case 'C':
-                    $statusText = 'Completed';
-                    break;
-                case 'D':
-                    $statusText = 'Draft';
-                    break;
-                case 'X':
-                    $statusText = 'Cancelled';
-                    break;
-                default:
-                    $statusText = 'Unknown';
-                    break;
-            }
-
-            $rowData[] = [
-                "routeID" => (int) $row['iRouteID'],
-                "route" => db_output2($row['route'] ?? ''),
-                "destination" => db_output2($row['destination'] ?? ''),
-                "tripTime" => date('g:i A', strtotime($row['tripTime'])),
-                "fromDate" => date('d/m/Y', strtotime($row['fromDate'])),
-                "toDate" => date('d/m/Y', strtotime($row['toDate'])),
-                "status" => $statusText,
-                "statusCode" => $row['status'],
-                "startDate" => date('d/m/Y', strtotime($row['startDate'])),
-                "endDate" => date('d/m/Y', strtotime($row['endDate']))
-            ];
-        }
-
-        echo json_encode([
-            "data" => [
-                "rowData" => $rowData,
-                "dtAdded" => $dtAdded,
-                "totalTrips" => count($rowData)
-            ],
-            "statusCode" => 200
-        ]);
-        break;
-
-
-
     // ===================== CASE APPROVE_TRIP_PLANNER =====================
     case 'APPROVE_TRIP_PLANNER':
         $routeID = intval($_REQUEST['routeID'] ?? 0);
@@ -426,6 +333,321 @@ ORDER BY TIME(t.dtTrip), r.vName;
             ]);
         }
         break;
+
+    // ===================== CASE APPROVE_TRIP_PLANNER_WITH_DATA =====================
+    case 'TRIP_PLANNER_EDIT':
+        $routeID = intval($_REQUEST['routeID'] ?? 0);
+        $fromDate = $_REQUEST['fromDate'] ?? '';
+        $toDate = $_REQUEST['toDate'] ?? '';
+        $timings = $_REQUEST['timings'] ?? [];
+        $currentStatus = $_REQUEST['currentStatus'] ?? '';
+        
+        if (!checkUserModuleAccess($user_id, 'STAFF_TRIP_APPROVE')) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Access denied. You don't have permission to approve trips."
+                ],
+                "statusCode" => 403
+            ]);
+            exit;
+        }
+        
+        // Validate required parameters
+        if ($routeID <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing or invalid routeID parameter"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if (empty($fromDate) || empty($toDate)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing fromDate or toDate parameter"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if (empty($timings) || !is_array($timings)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing or invalid timings parameter (should be array)"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if (empty($currentStatus)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing currentStatus parameter"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Convert date format from d/m/Y to Y-m-d if needed
+        $fromDateFormatted = date('Y-m-d', strtotime(str_replace('/', '-', $fromDate)));
+        $toDateFormatted = date('Y-m-d', strtotime(str_replace('/', '-', $toDate)));
+
+        // Calculate the new date range (one day after fromDate to calculated toDate)
+        $newFromDate = date('Y-m-d', strtotime($fromDateFormatted . ' +1 day'));
+        
+        // Calculate the number of days in the original request
+        $originalDays = (strtotime($toDateFormatted) - strtotime($fromDateFormatted)) / (60 * 60 * 24) + 1;
+        
+        // Calculate new toDate based on original duration
+        $newToDate = date('Y-m-d', strtotime($newFromDate . ' +' . ($originalDays - 1) . ' days'));
+
+        // Create timing condition for SQL
+        $timingConditions = [];
+        foreach ($timings as $timing) {
+            $timingConditions[] = "TIME(t.dtTrip) = '" . db_input($timing) . "'";
+        }
+        $timingClause = '(' . implode(' OR ', $timingConditions) . ')';
+
+        // Find matching trips in the set
+        $findTripsSql = "SELECT t.iTripID, t.cStatus, COUNT(*) as tripCount
+                        FROM st_trips t
+                        WHERE t.iRouteID = $routeID
+                        AND DATE(t.dtTrip) BETWEEN '$fromDateFormatted' AND '$toDateFormatted'
+                        AND $timingClause
+                        AND t.cStatus = '" . db_input($currentStatus) . "'
+                        AND t.cStatus != 'X'";
+
+        $findTripsRes = sql_query($findTripsSql);
+
+        if (sql_num_rows($findTripsRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "No matching trips found for the specified set"
+                ],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $tripData = sql_fetch_assoc($findTripsRes);
+        $tripCount = $tripData['tripCount'];
+
+        // Update the trips to approved status
+        $updateSql = "UPDATE st_trips t SET 
+                        t.cStatus = 'A',
+                        t.iTripApprovedBy = $user_id
+                      WHERE t.iRouteID = $routeID
+                        AND DATE(t.dtTrip) BETWEEN '$fromDateFormatted' AND '$toDateFormatted'
+                        AND $timingClause
+                        AND t.cStatus = '" . db_input($currentStatus) . "'
+                        AND t.cStatus != 'X'";
+
+        if (!sql_query($updateSql)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Database error occurred while approving trip set"
+                ],
+                "statusCode" => 500
+            ]);
+            exit;
+        }
+
+        $affectedRows = sql_affected_rows();
+
+        if ($affectedRows == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "No trips were updated. Set may have already been approved or conditions don't match."
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Get vehicle options like ADD_ONLOAD
+        $vehicleSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity 
+                      FROM vehicle v
+                      LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+                      WHERE v.cStatus = 'A'
+                      ORDER BY v.vRnum";
+        $vehicleRes = sql_query($vehicleSql);
+
+        $vehiOpt = [
+            ["id" => 0, "name" => "Choose"]
+        ];
+
+        while ($vehicleRow = sql_fetch_assoc($vehicleRes)) {
+            $capacity = $vehicleRow['iCapacity'] ?? 0;
+            $vehiOpt[] = [
+                "id" => (int) $vehicleRow['iVehicleID'],
+                "name" => $vehicleRow['vRnum'] . ' (' . $capacity . ')'
+            ];
+        }
+
+        // Get mode options from vehicle category table
+        $modeSql = "SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
+        $modeRes = sql_query($modeSql);
+
+        $modeOpt = [
+            ["id" => 0, "name" => "Choose"]
+        ];
+
+        while ($modeRow = sql_fetch_assoc($modeRes)) {
+            $modeOpt[] = [
+                "id" => (int) $modeRow['iVCatID'],
+                "name" => db_output2($modeRow['vName'])
+            ];
+        }
+
+        // Get vendor options (vehicle owners/drivers)
+        $vendorSql = "SELECT DISTINCT ven.iVendorID, ven.vName 
+                     FROM vendor ven 
+                     INNER JOIN vehicle v ON v.iVendorID = ven.iVendorID 
+                     WHERE v.cStatus = 'A' AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
+                     ORDER BY ven.vName";
+        $vendorRes = sql_query($vendorSql);
+
+        $vendorOpt = [
+            ["id" => 0, "name" => "Choose"]
+        ];
+
+        while ($vendorRow = sql_fetch_assoc($vendorRes)) {
+            $vendorOpt[] = [
+                "id" => (int) $vendorRow['iVendorID'],
+                "name" => $vendorRow['vName']
+            ];
+        }
+
+        // Get routes for rdOpt 
+        $routesSql = "SELECT iRouteID, vName, vDestination FROM st_route WHERE cStatus = 'A' ORDER BY iRank";
+        $routesRes = sql_query($routesSql);
+
+        $rdOpt = [];
+
+        while ($routeRow = sql_fetch_assoc($routesRes)) {
+            $rdOpt[] = [
+                "id" => (int) $routeRow['iRouteID'],
+                "route" => db_output2($routeRow['vName'] ?? ''),
+                "dest" => db_output2($routeRow['vDestination'] ?? '')
+            ];
+        }
+
+        // Get actual trip assignments for each timing
+        $timingsWithAssignments = [];
+        foreach ($timings as $timing) {
+            $tripAssignmentsSql = "SELECT DISTINCT
+                                    TIME(t.dtTrip) as tripTime,
+                                    t.iVehicleID,
+                                    v.vRnum as vehicleNumber,
+                                    vc.iCapacity as vehicleCapacity,
+                                    ven.iVendorID,
+                                    ven.vName as vendorName,
+                                    t.iDriverID,
+                                    d.vName as driverName,
+                                    d.vMobileNum as driverMobile
+                                FROM st_trips t
+                                LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
+                                LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+                                LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
+                                LEFT JOIN driver d ON t.iDriverID = d.iDriverID AND d.cStatus = 'A'
+                                WHERE t.iRouteID = $routeID
+                                AND DATE(t.dtTrip) BETWEEN '$fromDateFormatted' AND '$toDateFormatted'
+                                AND TIME(t.dtTrip) = '" . db_input($timing) . "'
+                                AND t.cStatus = 'A'
+                                AND t.cStatus != 'X'
+                                ORDER BY v.vRnum";
+            
+            $assignmentsRes = sql_query($tripAssignmentsSql);
+            $assignments = [];
+            
+            while ($assignmentRow = sql_fetch_assoc($assignmentsRes)) {
+                $assignments[] = [
+                    "vehicleID" => (int) ($assignmentRow['iVehicleID'] ?? 0),
+                    "vehicleNumber" => db_output2($assignmentRow['vehicleNumber'] ?? ''),
+                    "vehicleCapacity" => (int) ($assignmentRow['vehicleCapacity'] ?? 0),
+                    "vendorID" => (int) ($assignmentRow['iVendorID'] ?? 0),
+                   // "vendorName" => db_output2($assignmentRow['vendorName'] ?? ''),
+                    "driverID" => (int) ($assignmentRow['iDriverID'] ?? 0),
+                 //   "driverName" => db_output2($assignmentRow['driverName'] ?? ''),
+                    "driverMobile" => db_output2($assignmentRow['driverMobile'] ?? '')
+                ];
+            }
+            
+            $timingsWithAssignments[] = [
+                "time" => $timing,
+                "assignments" => $assignments
+            ];
+        }
+
+        // Get table array with vehicle details and vendor-specific drivers
+        $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, ven.vName as vOwner, ven.iVendorID
+                       FROM vehicle v
+                       LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+                       LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' and ven.cType IN ('B','T') 
+                       WHERE v.cStatus = 'A'
+                       ORDER BY v.vRnum";
+        $tableArrRes = sql_query($tableArrSql);
+
+        $tableArr = [];
+
+        while ($tableRow = sql_fetch_assoc($tableArrRes)) {
+            $vendorID = (int) ($tableRow['iVendorID'] ?? 0);
+
+            // Get drivers for this specific vendor only
+            $vhDriver = [];
+            if ($vendorID > 0) {
+                $vendorDriversSql = "SELECT d.iDriverID, d.vName as drName, d.cStatus
+                                   FROM driver d
+                                   WHERE d.cStatus = 'A' AND d.iVendorID = $vendorID
+                                   ORDER BY d.vName";
+                $vendorDriversRes = sql_query($vendorDriversSql);
+
+                while ($driverRow = sql_fetch_assoc($vendorDriversRes)) {
+                    $vhDriver[] = [
+                        "id" => (int) $driverRow['iDriverID'],
+                        "drName" => db_output2($driverRow['drName']),
+                        "active" => $driverRow['cStatus']
+                    ];
+                }
+            }
+
+            $tableArr[] = [
+                "id" => (int) $tableRow['iVehicleID'],
+                "vhNum" => db_output2($tableRow['vRnum'] ?? ''),
+                "vhCap" => (int) ($tableRow['iCapacity'] ?? 0),
+                "vhOwner" => db_output2($tableRow['vOwner'] ?? ''),
+                "vhDriver" => $vhDriver  // Vendor-specific driver list for each vehicle
+            ];
+        }
+
+        echo json_encode([
+            "data" => [
+                "message" => "Trip planner data fetched successfully",
+                "routeID" => $routeID,
+                "fromDate" => date('d/m/Y', strtotime($newFromDate)),
+                "toDate" => date('d/m/Y', strtotime($newToDate)),
+                //"dayCount" => $originalDays,
+                "timings" => $timings,
+                "timingsWithAssignments" => $timingsWithAssignments,
+                // "previousStatus" => $currentStatus,
+                // "newStatus" => "A",
+                "tripsUpdated" => $affectedRows,
+                // ADD_ONLOAD style data
+                "rdOpt" => $rdOpt,
+                "vehiOpt" => $vehiOpt,
+                "modeOpt" => $modeOpt,
+                "vendorOpt" => $vendorOpt,
+                "tableArr" => $tableArr
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
