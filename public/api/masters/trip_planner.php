@@ -341,7 +341,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
         $toDate = $_REQUEST['toDate'] ?? '';
         $timings = $_REQUEST['timings'] ?? [];
         $currentStatus = $_REQUEST['currentStatus'] ?? '';
-        
+
         if (!checkUserModuleAccess($user_id, 'STAFF_TRIP_APPROVE')) {
             echo json_encode([
                 "error" => [
@@ -351,7 +351,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
             ]);
             exit;
         }
-        
+
         // Validate required parameters
         if ($routeID <= 0) {
             echo json_encode([
@@ -399,10 +399,10 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
 
         // Calculate the new date range (one day after fromDate to calculated toDate)
         $newFromDate = date('Y-m-d', strtotime($fromDateFormatted . ' +1 day'));
-        
+
         // Calculate the number of days in the original request
         $originalDays = (strtotime($toDateFormatted) - strtotime($fromDateFormatted)) / (60 * 60 * 24) + 1;
-        
+
         // Calculate new toDate based on original duration
         $newToDate = date('Y-m-d', strtotime($newFromDate . ' +' . ($originalDays - 1) . ' days'));
 
@@ -528,10 +528,10 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                                 AND t.cStatus = 'A'
                                 AND t.cStatus != 'X'
                                 ORDER BY v.vRnum";
-            
+
             $assignmentsRes = sql_query($tripAssignmentsSql);
             $assignments = [];
-            
+
             while ($assignmentRow = sql_fetch_assoc($assignmentsRes)) {
                 $assignments[] = [
                     "vhId" => (int) ($assignmentRow['iVehicleID'] ?? 0),
@@ -540,11 +540,11 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                     "vendorID" => (int) ($assignmentRow['iVendorID'] ?? 0),
                     "vhOwner" => db_output2($assignmentRow['vendorName'] ?? ''),
                     "driverId" => (int) ($assignmentRow['iDriverID'] ?? 0),
-                 //   "driverName" => db_output2($assignmentRow['driverName'] ?? ''),
+                    //   "driverName" => db_output2($assignmentRow['driverName'] ?? ''),
                     "driverMobile" => db_output2($assignmentRow['driverMobile'] ?? '')
                 ];
             }
-            
+
             $timingsWithAssignments[] = [
                 "time" => $timing,
                 "vehicle" => $assignments
@@ -588,7 +588,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                 "vhNum" => db_output2($tableRow['vRnum'] ?? ''),
                 "vhCap" => (int) ($tableRow['iCapacity'] ?? 0),
                 "vhOwner" => db_output2($tableRow['vOwner'] ?? ''),
-                "driverId" => $vhDriver 
+                "driverId" => $vhDriver
             ];
         }
 
@@ -596,15 +596,14 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
             "data" => [
                 "message" => "Trip planner data fetched successfully",
                 "routeID" => $routeID,
-              "fromDate" => $fromDate,
-                    "toDate" =>$toDate,
+                "fromDate" => $newFromDate,
+                "toDate" => $newToDate,
                 //"dayCount" => $originalDays,
-              //  "timings" => $timings,
+                //  "timings" => $timings,
                 "timingsWithAssignments" => $timingsWithAssignments,
                 // "previousStatus" => $currentStatus,
                 // "newStatus" => "A",
-               // "tripsUpdated" => $affectedRows,
-                // ADD_ONLOAD style data
+                // "tripsUpdated" => $affectedRows,
                 "rdOpt" => $rdOpt,
                 "vehiOpt" => $vehiOpt,
                 "modeOpt" => $modeOpt,
