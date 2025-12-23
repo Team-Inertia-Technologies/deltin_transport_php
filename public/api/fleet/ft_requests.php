@@ -859,25 +859,48 @@ switch ($mode) {
 
         $whereClause = implode(' AND ', $whereConditions);
 
+        // First get all vehicles without driver info to avoid duplicates
         $vehicleSql = "SELECT v.iVehicleID, v.vRnum, v.iCatID, v.iType as vehicletype, 
-                              vc.vName as categoryName, vc.iCapacity,
-                              dva.iDriverID, dva.dtAssigned_From, dva.dtAssigned_To,
-                              d.vName as driverName, d.vMobileNum as driverMobile
+                              vc.vName as categoryName, vc.iCapacity
                        FROM vehicle v
                        LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                       LEFT JOIN driver_vehicle_assoc dva ON v.iVehicleID = dva.iVehicleID 
-                                 AND dva.cStatus = 'A' AND dva.dtAssigned_To IS NULL
-                       LEFT JOIN driver d ON dva.iDriverID = d.iDriverID AND d.cStatus = 'A'
                        WHERE $whereClause 
                        ORDER BY v.vRnum";
         $vehicleRes = sql_query($vehicleSql);
 
         $vehicles = [];
+        $currentlyAssigned = [];
+        $availableVehicles = [];
+        
         while ($vehicleRow = sql_fetch_assoc($vehicleRes)) {
             $vehicleID = intval($vehicleRow['iVehicleID']);
-            $isAssigned = !empty($vehicleRow['iDriverID']);
+            
+            // Get the latest driver assignment for this vehicle
+            $latestDriverSql = "SELECT dva.iDriverID, dva.dtAssigned_From, dva.dtAssigned_To,
+                                       d.vName as driverName, d.vMobileNum as driverMobile
+                                FROM driver_vehicle_assoc dva
+                                LEFT JOIN driver d ON dva.iDriverID = d.iDriverID AND d.cStatus = 'A'
+                                WHERE dva.iVehicleID = $vehicleID 
+                                AND dva.cStatus = 'A' 
+                                AND dva.dtAssigned_To IS NULL
+                                ORDER BY dva.dtAssigned_From DESC 
+                                LIMIT 1";
+            $latestDriverRes = sql_query($latestDriverSql);
+            
+            $isAssigned = false;
+            $driverID = 0;
+            $driverName = '';
+            $driverMobile = '';
+            
+            if (sql_num_rows($latestDriverRes) > 0) {
+                $driverRow = sql_fetch_assoc($latestDriverRes);
+                $isAssigned = true;
+                $driverID = intval($driverRow['iDriverID']);
+                $driverName = $driverRow['driverName'] ?? '';
+                $driverMobile = $driverRow['driverMobile'] ?? '';
+            }
 
-
+            // Check if this vehicle is currently assigned to the booking
             $assignedVeh = false;
             $tripAssignmentSql = "SELECT iVehicleID FROM fleet_booking 
                                  WHERE iFleet_BookingID = $iFleet_BookingID 
@@ -886,6 +909,19 @@ switch ($mode) {
             $tripAssignmentRes = sql_query($tripAssignmentSql);
             if (sql_num_rows($tripAssignmentRes) > 0) {
                 $assignedVeh = true;
+            }
+
+            // Skip vehicles that are previously allocated (but not currently assigned to this booking)
+            if (!$assignedVeh) {
+                $previouslyAllocatedSql = "SELECT iVehicleID FROM fleet_booking 
+                                          WHERE iVehicleID = $vehicleID 
+                                          AND cStatus = 'A' 
+                                          AND cType NOT IN ('C', 'X')
+                                          AND iFleet_BookingID != $iFleet_BookingID";
+                $previouslyAllocatedRes = sql_query($previouslyAllocatedSql);
+                if (sql_num_rows($previouslyAllocatedRes) > 0) {
+                    continue; // Skip this vehicle as it's previously allocated
+                }
             }
 
             // Get the last time this vehicle was assigned (most recent booking)
@@ -903,6 +939,7 @@ switch ($mode) {
                 $lastAssignedTime = $lastAssignedRow['vPickUpTime'];
                 $lastAssigned = true;
             }
+            
             $nextTripSql = "SELECT vPickUpTime
                            FROM fleet_booking 
                            WHERE iVehicleID = $vehicleID 
@@ -913,17 +950,12 @@ switch ($mode) {
             $nextTripRes = sql_query($nextTripSql);
 
             $nextTripTime = null;
-            $nextTripLocation = '';
-            $nextTripDestination = '';
-
             if (sql_num_rows($nextTripRes) > 0) {
                 $nextTripRow = sql_fetch_assoc($nextTripRes);
                 $nextTripTime = $nextTripRow['vPickUpTime'];
-                // $nextTripLocation = db_output2($nextTripRow['vPickUpLocation'] ?? '');
-                // $nextTripDestination = db_output2($nextTripRow['vDropLocation'] ?? '');
             }
 
-            $vehicles[] = [
+            $vehicleData = [
                 'id' => $vehicleID,
                 'regNo' => db_output2($vehicleRow['vRnum']),
                 'vehicletype' => intval($vehicleRow['vehicletype']),
@@ -931,19 +963,26 @@ switch ($mode) {
                 'categoryName' => db_output2($vehicleRow['categoryName'] ?? ''),
                 'capacity' => intval($vehicleRow['iCapacity'] ?? 0),
                 'lastAssigned' => $lastAssigned,
-                'lastAssignedTime' => $lastAssignedTime, // Last time this vehicle was assigned
-                'alreadyAssigned' => $assignedVeh, // Whether this vehicle is currently assigned to this booking
-                'driverID' => $isAssigned ? db_output2($vehicleRow['iDriverID']) : 0,
-                'driverName' => $isAssigned ? db_output2($vehicleRow['driverName']) : '',
-                'driverMobile' => $isAssigned ? db_output2($vehicleRow['driverMobile']) : '',
-                //  'assignedFrom' => $isAssigned ? $vehicleRow['dtAssigned_From'] : null,
+                'lastAssignedTime' => $lastAssignedTime,
+                'alreadyAssigned' => $assignedVeh,
+                'driverID' => $driverID,
+                'driverName' => db_output2($driverName),
+                'driverMobile' => db_output2($driverMobile),
                 'nextTripTime' => $nextTripTime,
                 "disposal" => false,
-                "status" => 'A', //static
-                // 'nextTripLocation' => $nextTripLocation,
-                // 'nextTripDestination' => $nextTripDestination
+                "status" => 'A'
             ];
+
+            // Separate currently assigned vehicles to show them first
+            if ($assignedVeh) {
+                $currentlyAssigned[] = $vehicleData;
+            } else {
+                $availableVehicles[] = $vehicleData;
+            }
         }
+        
+        // Merge arrays with currently assigned vehicles first
+        $vehicles = array_merge($currentlyAssigned, $availableVehicles);
 
         echo json_encode([
             "data" => [
