@@ -547,7 +547,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
             
             $timingsWithAssignments[] = [
                 "time" => $timing,
-                "assignments" => $assignments
+                "vehicle" => $assignments
             ];
         }
 
@@ -584,11 +584,11 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
             }
 
             $tableArr[] = [
-                "id" => (int) $tableRow['iVehicleID'],
+                "vhId" => (int) $tableRow['iVehicleID'],
                 "vhNum" => db_output2($tableRow['vRnum'] ?? ''),
                 "vhCap" => (int) ($tableRow['iCapacity'] ?? 0),
                 "vhOwner" => db_output2($tableRow['vOwner'] ?? ''),
-                "vhDriver" => $vhDriver  // Vendor-specific driver list for each vehicle
+                "driverId" => $vhDriver 
             ];
         }
 
@@ -596,8 +596,8 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
             "data" => [
                 "message" => "Trip planner data fetched successfully",
                 "routeID" => $routeID,
-                "fromDate" => date('d/m/Y', strtotime($newFromDate)),
-                "toDate" => date('d/m/Y', strtotime($newToDate)),
+              "fromDate" => $fromDate,
+                    "toDate" =>$toDate,
                 //"dayCount" => $originalDays,
               //  "timings" => $timings,
                 "timingsWithAssignments" => $timingsWithAssignments,
