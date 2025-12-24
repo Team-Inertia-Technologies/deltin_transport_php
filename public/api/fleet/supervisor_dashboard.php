@@ -321,7 +321,7 @@ switch ($mode) {
 	
 	
 	// ===================== CASE: VEHICLE_COMPOENT ======================		
-    case 'VEHICLE_COMPOENT':
+    case 'VEHICLE_COMPONENT':
 	
 		$cond = "";
 		
