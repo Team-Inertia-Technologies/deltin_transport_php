@@ -5,6 +5,7 @@ include "../includes/generic.inc.php"; // # common functions
 include "../includes/common.inc.php"; // # project specific functions
 include "../includes/sql.inc.php"; // # sql functions
 include "../includes/custom.php"; // custom functions created for this project
+include "../includes/fleet_log.inc.php"; // fleet logging functions
 
 require_once("api_common.php");
 

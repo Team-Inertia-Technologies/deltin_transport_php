@@ -91,8 +91,6 @@ switch ($mode) {
         foreach ($AREA_ARR_RAW as $id => $label) {
             $availableOpt[] = ['id' => intval($id), 'label' => $label];
         }
-
-        // Driver type options with "choose" option
         $driverTypeOpt = [['id' => 0, 'title' => 'Choose']];
         foreach ($VEHICLE_DRIVER_TYPE as $id => $title) {
             $driverTypeOpt[] = [
@@ -101,7 +99,6 @@ switch ($mode) {
             ];
         }
 
-        // Category options with "choose" option
         $categoryOpt = [['id' => 0, 'title' => 'Choose']];
         foreach ($VEHICLE_CATEGORY_ARR as $id => $title) {
             $categoryOpt[] = [
@@ -110,7 +107,6 @@ switch ($mode) {
             ];
         }
 
-        // Vendor options with "choose" option
         $vendorOpt = [['id' => 0, 'name' => 'Choose']];
         $vendorSql = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
         $vendorRes = sql_query($vendorSql);
@@ -246,7 +242,6 @@ switch ($mode) {
             $availableOpt[] = ['id' => intval($id), 'label' => $label];
         }
 
-        // Driver type options with "choose" option
         $driverTypeOpt = [['id' => 0, 'title' => 'Choose']];
         foreach ($VEHICLE_DRIVER_TYPE as $id => $title) {
             $driverTypeOpt[] = [
@@ -255,7 +250,6 @@ switch ($mode) {
             ];
         }
 
-        // Category options with "choose" option
         $categoryOpt = [['id' => 0, 'title' => 'Choose']];
         foreach ($VEHICLE_CATEGORY_ARR as $id => $title) {
             $categoryOpt[] = [
@@ -264,7 +258,6 @@ switch ($mode) {
             ];
         }
 
-        // Vendor options with "choose" option
         $vendorOpt = [['id' => 0, 'name' => 'Choose']];
         $vendorSql = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
         $vendorRes = sql_query($vendorSql);
@@ -304,7 +297,7 @@ switch ($mode) {
         break;
     // ===================== CASE 4: UPDATE_VEHICLE =====================
     case 'UPDATE_VEHICLE':
-        // Handle form data with the new structure (matching ADD_VEHICLE)
+        
         $id = intval($_REQUEST['iVehicleID'] ?? 0);
         $type = intval($_REQUEST['type'] ?? 0); // Driver type
         $category = intval($_REQUEST['category'] ?? 0); // Vehicle category
@@ -327,7 +320,6 @@ switch ($mode) {
             exit;
         }
 
-        // Basic validation
         if (empty($vehiNum)) {
             echo json_encode([
                 "error" => [
@@ -338,7 +330,6 @@ switch ($mode) {
             exit;
         }
 
-        // Validate category
         $categoryValidation = validateCategoryData($category);
         if (!$categoryValidation['valid']) {
             echo json_encode([
@@ -350,7 +341,6 @@ switch ($mode) {
             exit;
         }
 
-        // Validate vehicle registration number
         $validation = validateVehicleData($vehiNum, $id);
         if (!$validation['valid']) {
             echo json_encode([
@@ -470,7 +460,6 @@ switch ($mode) {
             exit;
         }
 
-        // Validate vehicle registration number
         $validation = validateVehicleData($vehiNum, 0);
         if (!$validation['valid']) {
             echo json_encode([
@@ -540,12 +529,11 @@ switch ($mode) {
             exit;
         }
 
-        // Update cStatus to 'X' instead of actual deletion
         $sql = "UPDATE vehicle SET cStatus = 'X' WHERE iVehicleID = $id AND cStatus != 'X'";
         $result = sql_query($sql);
 
         if ($result && sql_affected_rows() > 0) {
-            // Log the delete operation
+            
             LogMasterEdit($id, 'VHC', 'D', '', '', $user_id);
 
             echo json_encode([
@@ -585,7 +573,6 @@ switch ($mode) {
             exit;
         }
 
-        // Get vehicle basic details with category name
         $vehicleSql = "SELECT v.iVehicleID, v.vRnum, vc.vName as categoryName
                        FROM vehicle v
                        LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
@@ -604,7 +591,6 @@ switch ($mode) {
         
         $vehicleRow = sql_fetch_assoc($vehicleRes);
         
-        // Get currently assigned driver
         $currentDriverSql = "SELECT d.vName as driverName, d.vMobileNum as driverMobile
                              FROM driver_vehicle_assoc dva
                              LEFT JOIN driver d ON dva.iDriverID = d.iDriverID AND d.cStatus = 'A'
@@ -620,8 +606,7 @@ switch ($mode) {
             $currentDriver = $driverRow['driverName'];
             $currentDriverMobile = $driverRow['driverMobile'];
         }
-        
-        // Get trip history - previous trips (completed trips before current time)
+ 
         $currentDateTime = date('Y-m-d H:i:s');
         $previousTripsSql = "SELECT fb.vName as guestName, fb.iPax, fb.cBookingFor, fb.vPickUpTime
                              FROM fleet_booking fb
@@ -641,8 +626,7 @@ switch ($mode) {
                 'pickUpTime' => $tripRow['vPickUpTime']
             ];
         }
-        
-        // Get trip history - next trips (upcoming trips after current time)
+
         $nextTripsSql = "SELECT fb.vName as guestName, fb.iPax, fb.cBookingFor, fb.vPickUpTime
                          FROM fleet_booking fb
                          WHERE fb.iVehicleID = $vehicleID 

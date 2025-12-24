@@ -1,5 +1,5 @@
 <?php
-ini_set('display_errors', 1);
+//ini_set('display_errors', 1);
 
 include "../../includes/common_api.php";
 
@@ -121,7 +121,7 @@ switch ($mode) {
 		$FLEET_CATEGORY_ARR = GetXArrFromYID("select iFleet_BkCatID, vName from fleet_bookingcategory order by vName", 3);
 		$PROPERTY_ARR = GetXArrFromYID("select iPropertyID, vName from property order by iRank", 3);
 		$VEHICLE_CAT_ARR = GetXArrFromYID("select iVCatID, vName from vehicle_category order by iRank", 3);
-		$TRAVEL_PURPOSE_ARR = GetXArrFromYID("select iFleet_TrvPurID, vName from fleet_travel_purpose order by iRank", 3);
+		$TRAVEL_PURPOSE_ARR = GetXArrFromYID("select iFleet_TrvPurID, vName from fleet_travelpurpose order by iRank", 3);
 		$TRAVEL_TYPE_ARR = GetXArrFromYID("select iFleet_TrvTypeID, vName from fleet_traveltype order by iRank", 3);
 		$DRIVER_ARR = array();
 		$qd = "select iDriverID, vName from driver order by vName";
@@ -209,7 +209,7 @@ switch ($mode) {
                 'driverAssigned' => (isset($row['iDriverID']) && !empty($row['iDriverID']))?true:false,
                 'driverName' => (isset($row['iDriverID']) && !empty($row['iDriverID']))?$DRIVER_ARR[$row['iDriverID']]['NAME']:"",
 				'vehicleAssigned' => (isset($row['iVehicleID']) && !empty($row['iVehicleID']))?true:false,
-                'vehicle' => ((isset($row['iVehicleID']) && !empty($row['iVehicleID'])))?db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']]." ".$VEHICLE_ARR[$row['iVehicleID']]['REG']:"",
+				'vehicle' => (isset($row['iVehicleID']) && !empty($row['iVehicleID']))?db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']]." ".$VEHICLE_ARR[$row['iVehicleID']]['REG']):"",
 				'borderColor' => $border
             ];
         }
@@ -227,11 +227,12 @@ switch ($mode) {
 	
 		$cond = "";
 		
-		$searchtxt = $_REQUEST['searchtxt'] ?? '';
-		$type = $_REQUEST['type'] ?? '';
-		$bookedFor = $_REQUEST['bookedFor'] ?? '';
-		$pickup = $_REQUEST['pickup'] ?? '';
-		$drop = $_REQUEST['drop'] ?? '';
+		//$searchtxt = $_REQUEST['searchtxt'] ?? '';
+		//$type = $_REQUEST['type'] ?? '';
+		//$bookedFor = $_REQUEST['bookedFor'] ?? '';
+		//$pickup = $_REQUEST['pickup'] ?? '';
+		//$drop = $_REQUEST['drop'] ?? '';
+		$id = $_REQUEST['id'] ?? '';
 		
 		$VEHI_TYPE_ARR = array();
 		
@@ -247,8 +248,12 @@ switch ($mode) {
 			}
 			
 		}
+
+		if(!empty($id)){
+			$cond .= " and iFleet_BookingID = $id";
+		}
 		
-		if(!empty($searchtxt)){
+		/*if(!empty($searchtxt)){
 			$cond .= " and ((vName like '%$searchtxt%') or (vMobileNo like '%$searchtxt%'))";
 		}
 		
@@ -274,16 +279,25 @@ switch ($mode) {
 
 		if(!empty($drop)){
 			$cond .= " and (vDropLocation like '%$searchtxt%')";
-		}	
+		}*/	
 		
         $bookingSql = "select iFleet_BookingID, iVehicleCatID, vPickUpLocation, vDropLocation, vLatLong_From, vLatLong_To, vInstructions, vRemarks, tReturnTime, iVehicleID from fleet_booking where 1 $cond order by vPickupTime ASC";
         $bookingRes = sql_query($bookingSql);		
 
         $rowData = [];
         while ($row = sql_fetch_assoc($bookingRes)) {
-			
-			$from_latlong_arr = explode(",",$row['vLatLong_From']);
-			$to_latlong_arr = explode(",",$row['vLatLong_To']);
+			if(isset($row['vLatLong_From']) && !empty($row['vLatLong_From'])){
+				$from_latlong_arr = explode(",",$row['vLatLong_From']);
+			} else {
+				$from_latlong_arr[0] = '0';
+				$from_latlong_arr[1] = '0';
+			}
+			if(isset($row['vLatLong_To']) && !empty($row['vLatLong_To'])){
+				$to_latlong_arr = explode(",",$row['vLatLong_To']);
+			} else {
+				$to_latlong_arr[0] = '0';
+				$to_latlong_arr[1] = '0';				
+			}
 			
             $rowData[] = [
                 'requestId' => intval($row['iFleet_BookingID']),
@@ -365,7 +379,7 @@ switch ($mode) {
 				'categoryName' => $row['vCatName'],
                 'capacity' => $row['iCapacity'],
                 'lastAssigned' => (!empty($row['lastAssignedTime']))?true:false,
-                'lastAssignedTime' => $row['lastAssignedTime'] ?? ''
+                'lastAssignedTime' => $row['lastAssignedTime'] ?? '',
                 'alreadyAssigned' => (!empty($row['alreadyAssigned']))?true:false,
                 'driverID' => $row['driverID'] ?? 0,
                 'driverName' => db_output2($row['driverName'] ?? ''),

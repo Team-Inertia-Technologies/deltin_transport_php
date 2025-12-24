@@ -9,6 +9,7 @@ include "custom.php"; // # sql functions
 // include "dynamic.inc.php";
 include "dynamic_api.inc.php"; // # sql functions
 include "common.master.php";
+include "fleet_log.inc.php"; // fleet logging functions
 
 //include_once DOCROOT.'includes/libs/google_client/vendor/autoload.php';
 
