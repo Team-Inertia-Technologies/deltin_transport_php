@@ -47,7 +47,6 @@ if (!sql_num_rows($auth)) {
     ]);
     exit;
 }
-
 /* =========================================================
    DRIVER DETAILS
 ========================================================= */
@@ -59,7 +58,7 @@ SELECT
     d.vMobileNum,
     ve.vName AS vVendorName,
     v.vRnum AS vVehicleNo
-    vc.vName AS vehicleName,
+    vc.vName AS vehicleName
 FROM driver d
 LEFT JOIN driver_vehicle_assoc dva 
     ON dva.iDriverID = d.iDriverID
