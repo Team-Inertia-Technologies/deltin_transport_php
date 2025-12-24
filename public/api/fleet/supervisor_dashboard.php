@@ -430,7 +430,7 @@ switch ($mode) {
 					
 				}
 				$tripsArr = array();
-				$q2 = "SELECT fb.iFleet_BookingID, fb.vTitle, fb.vPickupLocation, fb.vDropLocation, fb.vName, vc.vName AS vehicleType, fb.iCapacity, fb.vPickupTime, fb.vDropTime, cBookingFor FROM fleet_booking fb JOIN vehicle_category vc ON vc.iVCatID = fb.iVehicleCatID WHERE fb.iVehicleID = $vehiId ORDER BY fb.dFrom DESC";
+				$q2 = "SELECT fb.iFleet_BookingID, fb.vPickupLocation, fb.vDropLocation, fb.vName, vc.vName AS vehicleType, fb.iCapacity, fb.vPickupTime, fb.vDropTime, cBookingFor FROM fleet_booking fb JOIN vehicle_category vc ON vc.iVCatID = fb.iVehicleCatID WHERE fb.iVehicleID = $vehiId ORDER BY fb.dFrom DESC";
 				$r2 = sql_query($q2, "supervisor_dashboard");
 
 				if(sql_num_rows($r2)){
