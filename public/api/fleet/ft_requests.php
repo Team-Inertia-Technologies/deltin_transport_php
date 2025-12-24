@@ -384,6 +384,9 @@ switch ($mode) {
             exit;
         }
 
+        // Log booking creation
+        LogBookingCreated($iFleet_BookingID1, $vName, $user_id);
+
         $responseIds = [$iFleet_BookingID1];
 
 
@@ -641,6 +644,9 @@ switch ($mode) {
             ]);
             exit;
         }
+
+        // Log booking update
+        LogBookingUpdated($iFleet_BookingID, $vName, 'Booking details updated', $user_id);
 
         echo json_encode([
             "data" => [
@@ -1135,6 +1141,9 @@ switch ($mode) {
             ]);
             exit;
         }
+
+        // Log vehicle allocation
+        LogVehicleAllocated($iFleet_BookingID, $iVehicleID, $iDriverID, $bookingData['vName'], $user_id);
 
         // $assocCheckSql = "SELECT iDVAssocID FROM driver_vehicle_assoc 
         //                  WHERE iDriverID = $iDriverID 
