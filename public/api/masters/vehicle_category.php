@@ -73,7 +73,7 @@ switch ($mode) {
                     ['id' => 'A', 'title' => 'Active'],
                     ['id' => 'I', 'title' => 'Inactive']
                 ],
-                'serviceOffered' => $SERVICE_OFFERED
+                'serviceOffered' => $VEHICLE_SERVICE_TYPE
             ]
         ]);
         break;
@@ -95,12 +95,12 @@ switch ($mode) {
              //   'rank' => intval($row['iRank']),
                 'status' => $row['cStatus'],
                 'serviceType' => $row['cType'],
-                'serviceTypeText' => $SERVICE_OFFERED[$row['cType']] ?? ''
+                'serviceTypeText' => $VEHICLE_SERVICE_TYPE[$row['cType']] ?? ''
                // 'statusText' => $row['cStatus'] == 'A' ? 'Active' : 'Inactive'
             ];
             $rowData[] = $category;
         }
-  foreach ($SERVICE_OFFERED as $id => $name) {
+  foreach ($VEHICLE_SERVICE_TYPE as $id => $name) {
             $serviceOffered[] = ['id' =>$id, 'name' => $name];
         }
         echo json_encode([
@@ -142,7 +142,7 @@ switch ($mode) {
         }
 
         $row = sql_fetch_assoc($res);
-  foreach ($SERVICE_OFFERED as $id => $name) {
+  foreach ($VEHICLE_SERVICE_TYPE as $id => $name) {
             $serviceOffered[] = ['id' =>$id, 'name' => $name];
         }
         echo json_encode([
@@ -156,7 +156,7 @@ switch ($mode) {
                     'rank' => intval($row['iRank']),
                     'status' => $row['cStatus'],
                     'serviceType' => $row['cType'],
-                    'serviceTypeText' => $SERVICE_OFFERED[$row['cType']] ?? ''
+                    'serviceTypeText' => $VEHICLE_SERVICE_TYPE[$row['cType']] ?? ''
                 ],
                 'statusOptions' => [
                     ['id' => 'A', 'title' => 'Active'],
@@ -211,7 +211,7 @@ switch ($mode) {
         }
 
         // Validate service type
-        if (!array_key_exists($serviceType, $SERVICE_OFFERED)) {
+        if (!array_key_exists($serviceType, $VEHICLE_SERVICE_TYPE)) {
             echo json_encode([
                 "error" => [
                     "message" => "Invalid service type. Must be F (Fleet), B (Bus), or T (Both)"
@@ -301,7 +301,7 @@ switch ($mode) {
         }
 
         // Validate service type
-        if (!array_key_exists($serviceType, $SERVICE_OFFERED)) {
+        if (!array_key_exists($serviceType, $VEHICLE_SERVICE_TYPE)) {
             echo json_encode([
                 "error" => [
                     "message" => "Invalid service type. Must be F (Fleet), B (Bus), or T (Both)"

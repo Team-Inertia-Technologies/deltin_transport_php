@@ -319,7 +319,7 @@ $KYC_VERIFY_TYPE_ARR = array('1' => 'pan', '2' => 'adh', '3' => 'dl', '4' => 'pp
 $KYC_VERIFY_TYPE_FLIP_ARR = array_flip(array_filter($KYC_VERIFY_TYPE_ARR));
 $BENEFICIARY_STAGE_ARR = array("P" => "Pending", "N" => "Notified", "V" => "Viewed", "A" => "Availed");
 
-$SERVICE_OFFERED= array("F" => "Fleet", "B" => "Bus", "T" => "Both");
+//$SERVICE_OFFERED= array("F" => "Fleet", "B" => "Bus", "T" => "Both");
 
 $VEHICLE_DRIVER_TYPE= array("1" => "Hired", "2" => "Contract" , "3"=>"Owned");
 $FLEET_BOOKING_FOR= array("S" => "Staff", "G" => "Guest" );

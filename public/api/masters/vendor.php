@@ -54,7 +54,7 @@ foreach ($STATE_ARR_RAW as $id => $label) {
 }
 
 $serviceOpt = [];
-foreach ($SERVICE_OFFERED as $id => $label) {
+foreach ($VEHICLE_SERVICE_TYPE as $id => $label) {
     $serviceOpt[] = ['id' => $id, 'title' => $label];
 }
 
