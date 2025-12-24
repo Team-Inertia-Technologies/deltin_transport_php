@@ -18,12 +18,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $request = json_decode(file_get_contents("php://input"));
 
 $token          = trim($request->token);
-$vehicle_status = trim($request->vehicle_status); // Y / N
-$station        = trim($request->station);
 $driverType     = intval($request->driverType ?? 0);
+$status         = trim($request->status ?? 'A');
 
 if (!$token) {
     http_response_code(400);
+    header('Content-Type: application/json');
     echo json_encode([
         "statusCode" => 400,
         "error" => ["message" => "Missing token"]
@@ -31,23 +31,10 @@ if (!$token) {
     exit;
 }
 
-$userid = DecodeParam($token);
 
-/* ---------- VERIFY DRIVER ---------- */
-$q = "SELECT iDriverID FROM driver WHERE iDriverID='$userid' AND cStatus='A'";
-$r = sql_query($q, 'AUTH');
-
-if (!sql_num_rows($r)) {
-    http_response_code(400);
-    echo json_encode([
-        "statusCode" => 400,
-        "error" => ["message" => "Invalid Token"]
-    ]);
-    exit;
-}
 
 /* ---------- BUILD FILTERS ---------- */
-$where = " WHERE dr.cStatus = 'A' ";
+$where = " WHERE d.cStatus = 'A' ";
 
 if ($vehicle_status === 'Y') {
     $where .= " AND dva.iDriverID IS NOT NULL";
@@ -118,6 +105,7 @@ $response = [
         ]
     ]
 ];
-
+http_response_code(200);
 echo json_encode($response);
+header('Content-Type: application/json');
 exit;
