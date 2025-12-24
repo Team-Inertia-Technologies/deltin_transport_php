@@ -63,11 +63,11 @@ $driverID = intval($userid);
 $log_id = NextID('iLogID', 'booking_log');
 $NOW = NOW;
 $query = "UPDATE fleet_booking SET cType='P' WHERE iFleet_BookingID='$booking_id' AND iDriverID='$driverID'";
-sql_query("INSERT INTO booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, '$booking_id', 'P', 'Trip Paused', '$NOW', '$driverID', 'A')", 'TRIP.LOG');
+sql_query("INSERT INTO booking_log (iLogID, iFleet_BookingID, iPauseTypeID, vNotes, dtPauseTime, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, '$booking_id', '$pauseId', $notes, '$NOW', 'P', 'Trip Paused', '$NOW', '$driverID', 'A')", 'TRIP.LOG');
 $result = sql_query($query, 'TRIP.START');
-$NOW = NOW;
-$log_id = NextID('iLogID', 'trip_pause_log');
-sql_query("INSERT INTO trip_pause_log (iLogID, iFleet_BookingID, iDriverID, iPauseTypeID, vNotes, dtPauseTime) VALUES ('$log_id','$booking_id', '$driverID', '$pauseId', $notes, '$NOW')", 'TRIP.PAUSE.LOG');
+//$NOW = NOW;
+//$log_id = NextID('iLogID', 'trip_pause_log');
+//sql_query("INSERT INTO trip_pause_log (iLogID, iFleet_BookingID, iDriverID, iPauseTypeID, vNotes, dtPauseTime) VALUES ('$log_id','$booking_id', '$driverID', '$pauseId', $notes, '$NOW')", 'TRIP.PAUSE.LOG');
 if (sql_affected_rows() > 0) {
     http_response_code(200);
     header('Content-Type: application/json');
