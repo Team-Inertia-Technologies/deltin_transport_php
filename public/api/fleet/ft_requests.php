@@ -227,7 +227,7 @@ switch ($mode) {
                 $endTimeRow = sql_fetch_assoc($endTimeRes);
                 $endTime = !empty($endTimeRow['dtAdded']) ? date('d/m/Y H:i', strtotime($endTimeRow['dtAdded'])) : '';
             }
-            if ($tripStatusCode == 'G' || $tripStatusCode == 'P' || $tripStatusCode == 'R' || $tripStatusCode == 'C') {
+            if ($tripStatusCode == 'G' || $tripStatusCode == 'P' || $tripStatusCode == 'R' || $tripStatusCode == 'C' || $tripStatusCode == 'S') {
                 $isTrip = 'Y';
             } else {
                 $isTrip = 'N';

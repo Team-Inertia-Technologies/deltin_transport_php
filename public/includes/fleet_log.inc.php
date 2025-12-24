@@ -14,8 +14,8 @@ function LogFleetBooking($iRefID, $cRefType, $vRefName = '', $vDesc = '', $cMode
     // Auto-detect user info if not provided
     if (empty($iUserID) && isset($sess_user_id) && is_numeric($sess_user_id)) {
         $iUserID = $sess_user_id;
-        $vUserName = $sess_user_name ?? '';
-        $iLocID = $sess_user_locid ?? 0;
+        $vUserName = !empty($sess_user_name) ? $sess_user_name : GetXFromYID("SELECT vName from users where iUserID = $iUserID");
+        $iLocID = 0;
     }
     
     // Default values if still empty
@@ -23,7 +23,6 @@ function LogFleetBooking($iRefID, $cRefType, $vRefName = '', $vDesc = '', $cMode
     if (empty($vUserName)) $vUserName = 'API User';
     if (empty($iLocID)) $iLocID = 0;
     
-    // Auto-generate reference name based on type if not provided
     if (empty($vRefName)) {
         if ($cRefType == 'B') { // Booking
             $vRefName = GetXFromYID("SELECT vName FROM fleet_booking WHERE iFleet_BookingID = $iRefID");
@@ -33,8 +32,7 @@ function LogFleetBooking($iRefID, $cRefType, $vRefName = '', $vDesc = '', $cMode
             $vRefName = GetXFromYID("SELECT vName FROM driver WHERE iDriverID = $iRefID");
         }
     }
-    
-    // Auto-generate description based on mode if not provided
+
     if (empty($vDesc)) {
         switch ($cMode) {
             case 'I':
