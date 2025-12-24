@@ -412,7 +412,7 @@ switch ($mode) {
 				
 				$driversArr = array();
 				
-				$q1 = "SELECT d.iDriverID, d.vName, d.vMobile, COUNT(fb.iFleetBookingID) AS totalTrips FROM fleet_booking fb JOIN driver d ON d.iDriverID = fb.iDriverID WHERE fb.iVehicleID = $vehiId GROUP BY d.iDriverID";
+				$q1 = "SELECT d.iDriverID, d.vName, d.vMobileNum, COUNT(fb.iFleetBookingID) AS totalTrips FROM fleet_booking fb JOIN driver d ON d.iDriverID = fb.iDriverID WHERE fb.iVehicleID = $vehiId GROUP BY d.iDriverID";
 				$r1 = sql_query($q1, "supervisor_dashboard.399");
 				
 				if(sql_num_rows($r1)){
@@ -422,7 +422,7 @@ switch ($mode) {
 						$driversArr[] = [
 							'id'    => $row1['iDriverID'],
 							'name'  => $row1['vName'],
-							'mob'   => $row1['vMobile'],
+							'mob'   => $row1['vMobileNum'],
 							'trips' => $row1['totalTrips']
 						];						
 						
