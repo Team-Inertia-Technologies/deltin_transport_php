@@ -67,7 +67,7 @@ SELECT
         ELSE 'Y'
     END AS vehicleAllocated
 
-FROM driver
+FROM driver d
 LEFT JOIN driver_vehicle_assoc dva ON dva.iDriverID = d.iDriverID
 LEFT JOIN vehicle v ON v.iVehicleID = dva.iVehicleID
 $where
