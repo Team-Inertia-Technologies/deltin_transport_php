@@ -701,8 +701,10 @@ switch ($mode) {
                     $user_id, '$cStatus')";
 
         if (sql_query($sql)) {
-            // Log the assignment operation
-            LogMasterEdit($iDVID, 'DVA', 'I', "Driver: " . $driverRow['vName'] . " -> Vehicle: " . $vehicleRow['vRnum'], '', $user_id);
+             $update_veh = "UPDATE driver
+                              SET iVehicleID = '$vehicleID'
+                              WHERE iDriverID = $driverID AND cStatus = 'A'";
+            sql_query($update_veh);
 
             echo json_encode([
                 "data" => [
