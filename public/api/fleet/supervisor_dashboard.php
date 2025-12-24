@@ -227,11 +227,12 @@ switch ($mode) {
 	
 		$cond = "";
 		
-		$searchtxt = $_REQUEST['searchtxt'] ?? '';
-		$type = $_REQUEST['type'] ?? '';
-		$bookedFor = $_REQUEST['bookedFor'] ?? '';
-		$pickup = $_REQUEST['pickup'] ?? '';
-		$drop = $_REQUEST['drop'] ?? '';
+		//$searchtxt = $_REQUEST['searchtxt'] ?? '';
+		//$type = $_REQUEST['type'] ?? '';
+		//$bookedFor = $_REQUEST['bookedFor'] ?? '';
+		//$pickup = $_REQUEST['pickup'] ?? '';
+		//$drop = $_REQUEST['drop'] ?? '';
+		$id = $_REQUEST['id'] ?? '';
 		
 		$VEHI_TYPE_ARR = array();
 		
@@ -247,8 +248,12 @@ switch ($mode) {
 			}
 			
 		}
+
+		if(!empty($id)){
+			$cond .= " and iFleet_BookingID = $id";
+		}
 		
-		if(!empty($searchtxt)){
+		/*if(!empty($searchtxt)){
 			$cond .= " and ((vName like '%$searchtxt%') or (vMobileNo like '%$searchtxt%'))";
 		}
 		
@@ -274,7 +279,7 @@ switch ($mode) {
 
 		if(!empty($drop)){
 			$cond .= " and (vDropLocation like '%$searchtxt%')";
-		}	
+		}*/	
 		
         $bookingSql = "select iFleet_BookingID, iVehicleCatID, vPickUpLocation, vDropLocation, vLatLong_From, vLatLong_To, vInstructions, vRemarks, tReturnTime, iVehicleID from fleet_booking where 1 $cond order by vPickupTime ASC";
         $bookingRes = sql_query($bookingSql);		
