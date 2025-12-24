@@ -326,7 +326,7 @@ $FLEET_BOOKING_FOR= array("S" => "Staff", "G" => "Guest" );
 $FLEET_TRAVEL_TYPE= array("1" => "One Way Trip", "2" => "Return Trip",  "3" => "Vehicle Disposal" );
 $VEHICLE_SERVICE_TYPE= array("F" => "Fleet", "S" => "Staff", "B" => "Both");
 
-$FLEET_TRIP_STATUS= array("N" => "Not started", "S" => "Enroute", "G"=>"Guest Picked Up", "P" => "Paused", "C" => "Completed");
+$FLEET_TRIP_STATUS= array("N" => "Not started", "S" => "Enroute", "G"=>"Guest Picked Up", "P" => "Paused","R"=>"Resumed", "C" => "Completed");
 
 $VEHICLE_STATUS_ARR = array("A"=>"Available", "R"=>"Returning", "E"=>"Enroute", "U"=>"Unavailable");
 
