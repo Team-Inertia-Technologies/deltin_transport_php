@@ -209,7 +209,7 @@ switch ($mode) {
                 'driverAssigned' => (isset($row['iDriverID']) && !empty($row['iDriverID']))?true:false,
                 'driverName' => (isset($row['iDriverID']) && !empty($row['iDriverID']))?$DRIVER_ARR[$row['iDriverID']]['NAME']:"",
 				'vehicleAssigned' => (isset($row['iVehicleID']) && !empty($row['iVehicleID']))?true:false,
-                'vehicle' => ((isset($row['iVehicleID']) && !empty($row['iVehicleID'])))?db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']]." ".$VEHICLE_ARR[$row['iVehicleID']]['REG']:"",
+				'vehicle' => (isset($row['iVehicleID']) && !empty($row['iVehicleID']))?db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']]." ".$VEHICLE_ARR[$row['iVehicleID']]['REG']):"",
 				'borderColor' => $border
             ];
         }
@@ -365,7 +365,7 @@ switch ($mode) {
 				'categoryName' => $row['vCatName'],
                 'capacity' => $row['iCapacity'],
                 'lastAssigned' => (!empty($row['lastAssignedTime']))?true:false,
-                'lastAssignedTime' => $row['lastAssignedTime'] ?? ''
+                'lastAssignedTime' => $row['lastAssignedTime'] ?? '',
                 'alreadyAssigned' => (!empty($row['alreadyAssigned']))?true:false,
                 'driverID' => $row['driverID'] ?? 0,
                 'driverName' => db_output2($row['driverName'] ?? ''),
