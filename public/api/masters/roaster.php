@@ -19,7 +19,7 @@ $request = json_decode(file_get_contents("php://input"));
 
 $token          = trim($request->token);
 $driverType     = intval($request->driverType ?? 0);
-$status         = trim($request->status ?? 'A');
+$vehicle_status         = trim($request->status ?? 'Y');
 
 if (!$token) {
     http_response_code(400);
