@@ -76,7 +76,7 @@ else
 	$txttype = $txtcatid = 0;
 }
 
-$RESPONSE = GetVehicle_BasedOnSearch2($txttype,$txtcatid,$txtpickup_time,$txtpickup_location);
+$RESPONSE = GetVehicle_BasedOnSearch2($txttype,$txtcatid,'Y');
 DFA($RESPONSE);
 exit;
 ?>
