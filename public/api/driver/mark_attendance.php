@@ -58,9 +58,10 @@ $driverID = intval($userid);
 
 
 // -------------------- UPDATE TRIP STATUS TO STARTED --------------------
-$id = NextID('iRoasterID', 'driver_roaster');
+$id = NextID('iLDID', 'log_driver_signin');
 $NOW = NOW;
-$query = "INSERT INTO driver_roaster (iRoasterID, iDriverID, dtEntered, cStatus) VALUES ($id, '$driverID', '$NOW', 'A')";
+$query = "UPDATE driver set dtLoggedIn = '$NOW' WHERE iDriverID = $driverID";
+sql_query("INSERT INTO log_driver_signin (iLDID, iDriverID, dtEntry, cType, cStatus) VALUES ($id, $driverID, '$NOW', 'IN', 'A')", 'DRIVER.ATTENDANCE');
 $result = sql_query($query, 'TRIP.START');
 if (sql_affected_rows() > 0) {
     http_response_code(200);
