@@ -59,11 +59,13 @@ SELECT
     d.vMobileNum,
     ve.vName AS vVendorName,
     v.vRnum AS vVehicleNo
+    vc.vName AS vehicleName,
 FROM driver d
 LEFT JOIN driver_vehicle_assoc dva 
     ON dva.iDriverID = d.iDriverID
 LEFT JOIN vehicle v 
     ON v.iVehicleID = dva.iVehicleID
+LEFT JOIN vehicle_category vc ON vc.iVCatID = v.iCatID
 LEFT JOIN vendor ve 
     ON ve.iVendorID = d.iVendorID
 WHERE d.iDriverID = $driverId
@@ -78,7 +80,8 @@ $driverDetails = [
     "status"     => $driverRow['cStatus'] ?? "",
     "mob"        => $driverRow['vMobileNum'] ?? "",
     "vendor"     => $driverRow['vVendorName'] ?? "",
-    "vehi"       => $driverRow['vVehicleNo'] ?? ""
+    "vehi"       => $driverRow['vVehicleNo'] ?? "",
+    "vehicleName"   => $driverRow['vehicleName'] ?? ""
 ];
 
 /* =========================================================
@@ -93,8 +96,9 @@ SELECT
     DATE_FORMAT(vPickUpTime,'%d/%m/%Y %H:%i') AS fromTime,
     DATE_FORMAT(vDropTime,'%d/%m/%Y %H:%i') AS toTime
 FROM fleet_booking
-WHERE iDriverID = $driverId
+WHERE iDriverID = $driverId AND cType IN ('C','N')
 ORDER BY vPickUpTime DESC
+LIMIT 2
 ";
 
 $tripRes = sql_query($tripSql, "TRIPS");
