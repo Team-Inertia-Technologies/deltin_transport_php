@@ -412,7 +412,7 @@ switch ($mode) {
 				
 				$driversArr = array();
 				
-				$q1 = "SELECT d.iDriverID, d.vName, d.vMobileNum, COUNT(fb.iFleetBookingID) AS totalTrips FROM fleet_booking fb JOIN driver d ON d.iDriverID = fb.iDriverID WHERE fb.iVehicleID = $vehiId GROUP BY d.iDriverID";
+				$q1 = "SELECT d.iDriverID, d.vName, d.vMobileNum, COUNT(fb.iFleet_BookingID) AS totalTrips FROM fleet_booking fb JOIN driver d ON d.iDriverID = fb.iDriverID WHERE fb.iVehicleID = $vehiId GROUP BY d.iDriverID";
 				$r1 = sql_query($q1, "supervisor_dashboard.399");
 				
 				if(sql_num_rows($r1)){
@@ -430,7 +430,7 @@ switch ($mode) {
 					
 				}
 				$tripsArr = array();
-				$q2 = "SELECT fb.iFleetBookingID, fb.vTitle, fb.vPickupLocation, fb.vDropLocation, fb.vName, vc.vName AS vehicleType, fb.iCapacity, fb.vPickupTime, fb.vDropTime, cBookingFor FROM fleet_booking fb JOIN vehicle_category vc ON vc.iVCatID = fb.iVehicleCatID WHERE fb.iVehicleID = $vehiId ORDER BY fb.dFrom DESC";
+				$q2 = "SELECT fb.iFleet_BookingID, fb.vTitle, fb.vPickupLocation, fb.vDropLocation, fb.vName, vc.vName AS vehicleType, fb.iCapacity, fb.vPickupTime, fb.vDropTime, cBookingFor FROM fleet_booking fb JOIN vehicle_category vc ON vc.iVCatID = fb.iVehicleCatID WHERE fb.iVehicleID = $vehiId ORDER BY fb.dFrom DESC";
 				$r2 = sql_query($q2, "supervisor_dashboard");
 
 				if(sql_num_rows($r2)){
@@ -465,22 +465,22 @@ switch ($mode) {
 					}
 				}			
 				$PAUSE_TYPE_ARR = GetXArrFromYID("select iReasonID, vName from pause_reasons where cStatus = 'A'", 3);
-				$q = "select bl.iFleetBookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID from booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleetBookingID where bl.cRefType <> 'P' order by bl.dtAdded DESC";
+				$q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID from booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where bl.cRefType <> 'P' order by bl.dtAdded DESC";
 				$r = sql_query($q, "");
 				
 				if(sql_num_rows($r)){
 					while($row = sql_fetch_assoc($r)){
-						//$LOG_DATA_ARR[] = array("ID"=>$row['iFleetBookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME'] ?? '');
+						//$LOG_DATA_ARR[] = array("ID"=>$row['iFleet_BookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME'] ?? '');
 						$LOG_DATA_ARR[] = array("code"=>$row['cRefType'], "status"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "message"=>$row['vRefName'], "dateTime"=>$row['dtAdded']);
 					}
 				}
 				
-				$q1 = "select pl.iFleetBookingID, pl.iPauseTypeID, pl.vNotes, pl.dtPauseTime, fb.vName, pl.iDriverID from trip_pause_log pl join fleet_booking fb on pl.iFleet_BookingID = fb.iFleetBookingID where 1 order by pl.dtPauseTime DESC";
+				$q1 = "select pl.iFleet_BookingID, pl.iPauseTypeID, pl.vNotes, pl.dtPauseTime, fb.vName, pl.iDriverID from trip_pause_log pl join fleet_booking fb on pl.iFleet_BookingID = fb.iFleet_BookingID where 1 order by pl.dtPauseTime DESC";
 				$r1 = sql_query($q1, "");
 				
 				if(sql_num_rows($r1)){
 					while($row1 = sql_fetch_assoc($r1)){
-						//$LOG_DATA_ARR[] = array("ID"=>$row1['iFleetBookingID'], "DATETIME"=>$row1['dtPauseTime'], "STATUS"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "NOTES"=>$row1['vNotes'], "GUEST"=>$row1['vName'], "DRIVER"=>$DRIVER_ARR[$row1['iDriverID']]['NAME'] ?? '');
+						//$LOG_DATA_ARR[] = array("ID"=>$row1['iFleet_BookingID'], "DATETIME"=>$row1['dtPauseTime'], "STATUS"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "NOTES"=>$row1['vNotes'], "GUEST"=>$row1['vName'], "DRIVER"=>$DRIVER_ARR[$row1['iDriverID']]['NAME'] ?? '');
 						$LOG_DATA_ARR[] = array("code"=>$row1['iPauseTypeID'], "status"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "message"=>$row1['vNotes'], "dateTime"=>$row1['dtPauseTime']);
 					}
 				}			
@@ -545,22 +545,22 @@ switch ($mode) {
 				}
 			}			
 			$PAUSE_TYPE_ARR = GetXArrFromYID("select iReasonID, vName from pause_reasons where cStatus = 'A'", 3);
-			$q = "select bl.iFleetBookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID from booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleetBookingID where bl.cRefType <> 'P' order by bl.dtAdded DESC";
+			$q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID from booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where bl.cRefType <> 'P' order by bl.dtAdded DESC";
 			$r = sql_query($q, "");
 			
 			if(sql_num_rows($r)){
 				while($row = sql_fetch_assoc($r)){
-					//$LOG_DATA_ARR[] = array("ID"=>$row['iFleetBookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME'] ?? '');
+					//$LOG_DATA_ARR[] = array("ID"=>$row['iFleet_BookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME'] ?? '');
 					$LOG_DATA_ARR[] = array("code"=>$row['cRefType'], "status"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "message"=>$row['vRefName'], "dateTime"=>$row['dtAdded']);
 				}
 			}
 			
-			$q1 = "select pl.iFleetBookingID, pl.iPauseTypeID, pl.vNotes, pl.dtPauseTime, fb.vName, pl.iDriverID from trip_pause_log pl join fleet_booking fb on pl.iFleet_BookingID = fb.iFleetBookingID where 1 order by pl.dtPauseTime DESC";
+			$q1 = "select pl.iFleet_BookingID, pl.iPauseTypeID, pl.vNotes, pl.dtPauseTime, fb.vName, pl.iDriverID from trip_pause_log pl join fleet_booking fb on pl.iFleet_BookingID = fb.iFleet_BookingID where 1 order by pl.dtPauseTime DESC";
 			$r1 = sql_query($q1, "");
 			
 			if(sql_num_rows($r1)){
 				while($row1 = sql_fetch_assoc($r1)){
-					//$LOG_DATA_ARR[] = array("ID"=>$row1['iFleetBookingID'], "DATETIME"=>$row1['dtPauseTime'], "STATUS"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "NOTES"=>$row1['vNotes'], "GUEST"=>$row1['vName'], "DRIVER"=>$DRIVER_ARR[$row1['iDriverID']]['NAME'] ?? '');
+					//$LOG_DATA_ARR[] = array("ID"=>$row1['iFleet_BookingID'], "DATETIME"=>$row1['dtPauseTime'], "STATUS"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "NOTES"=>$row1['vNotes'], "GUEST"=>$row1['vName'], "DRIVER"=>$DRIVER_ARR[$row1['iDriverID']]['NAME'] ?? '');
 					$LOG_DATA_ARR[] = array("code"=>$row1['iPauseTypeID'], "status"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "message"=>$row1['vNotes'], "dateTime"=>$row1['dtPauseTime']);
 				}
 			}			
