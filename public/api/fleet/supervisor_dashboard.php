@@ -365,7 +365,7 @@ switch ($mode) {
 				'categoryName' => $row['vCatName'],
                 'capacity' => $row['iCapacity'],
                 'lastAssigned' => (!empty($row['lastAssignedTime']))?true:false,
-                'lastAssignedTime' => $row['lastAssignedTime'] ?? ''
+                'lastAssignedTime' => $row['lastAssignedTime'] ?? '',
                 'alreadyAssigned' => (!empty($row['alreadyAssigned']))?true:false,
                 'driverID' => $row['driverID'] ?? 0,
                 'driverName' => db_output2($row['driverName'] ?? ''),
