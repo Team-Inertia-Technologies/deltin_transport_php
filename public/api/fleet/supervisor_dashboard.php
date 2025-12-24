@@ -1,5 +1,5 @@
 <?php
-ini_set('display_errors', 1);
+//ini_set('display_errors', 1);
 
 include "../../includes/common_api.php";
 
@@ -286,9 +286,18 @@ switch ($mode) {
 
         $rowData = [];
         while ($row = sql_fetch_assoc($bookingRes)) {
-			
-			$from_latlong_arr = explode(",",$row['vLatLong_From']);
-			$to_latlong_arr = explode(",",$row['vLatLong_To']);
+			if(isset($row['vLatLong_From']) && !empty($row['vLatLong_From'])){
+				$from_latlong_arr = explode(",",$row['vLatLong_From']);
+			} else {
+				$from_latlong_arr[0] = '0';
+				$from_latlong_arr[1] = '0';
+			}
+			if(isset($row['vLatLong_To']) && !empty($row['vLatLong_To'])){
+				$to_latlong_arr = explode(",",$row['vLatLong_To']);
+			} else {
+				$to_latlong_arr[0] = '0';
+				$to_latlong_arr[1] = '0';				
+			}
 			
             $rowData[] = [
                 'requestId' => intval($row['iFleet_BookingID']),
