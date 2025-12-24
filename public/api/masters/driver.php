@@ -789,19 +789,16 @@ switch ($mode) {
 
     // ===================== CASE 10: DRIVER_POPUP =====================
     case 'DRIVER_POPUP':
-        // Get filter parameters
         $keyword = db_input($_REQUEST['keyword'] ?? '');
         $type = intval($_REQUEST['type'] ?? 0);
 
-        // Build WHERE conditions
         $whereConditions = ["cStatus = 'A'"];
         
         // Add keyword search (search in driver name or mobile number)
         if (!empty($keyword)) {
             $whereConditions[] = "(UPPER(vName) LIKE UPPER('%$keyword%') OR vMobileNum LIKE '%$keyword%')";
         }
-        
-        // Add type filter
+
         if ($type > 0) {
             $whereConditions[] = "iType = $type";
         }
@@ -825,7 +822,6 @@ switch ($mode) {
             ];
         }
 
-        // Driver type options
         $driverTypeOpt = [];
         foreach ($VEHICLE_DRIVER_TYPE as $id => $title) {
             $driverTypeOpt[] = [

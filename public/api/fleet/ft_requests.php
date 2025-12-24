@@ -667,7 +667,6 @@ switch ($mode) {
             $tripStatusArr[] = ['id' => $id, 'name' => $name];
         }
 
-        // Fetch detailed booking information with all related data including vehicle and driver assignment
         $viewSql = "
             SELECT 
                 fb.iFleet_BookingID,
@@ -842,7 +841,7 @@ switch ($mode) {
             ];
         }
 
-        $whereConditions = ["v.cStatus = 'A'"];
+        $whereConditions = ["v.cStatus = 'A' AND vc.cType IN('B','F')"];
 
         // Add keyword search (search in vehicle registration number and category name)
         if (!empty($keyword)) {
@@ -860,7 +859,7 @@ switch ($mode) {
         $whereClause = implode(' AND ', $whereConditions);
 
         // First get all vehicles without driver info to avoid duplicates
-        $vehicleSql = "SELECT v.iVehicleID, v.vRnum, v.iCatID, v.iType as vehicletype, 
+        $vehicleSql = "SELECT v.iVehicleID, v.vRnum, v.iCatID, v.iType as vehicletype,vc.cType as vehicleCatType, 
                               vc.vName as categoryName, vc.iCapacity
                        FROM vehicle v
                        LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
