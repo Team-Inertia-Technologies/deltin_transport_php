@@ -121,7 +121,7 @@ switch ($mode) {
 		$FLEET_CATEGORY_ARR = GetXArrFromYID("select iFleet_BkCatID, vName from fleet_bookingcategory order by vName", 3);
 		$PROPERTY_ARR = GetXArrFromYID("select iPropertyID, vName from property order by iRank", 3);
 		$VEHICLE_CAT_ARR = GetXArrFromYID("select iVCatID, vName from vehicle_category order by iRank", 3);
-		$TRAVEL_PURPOSE_ARR = GetXArrFromYID("select iFleet_TrvPurID, vName from fleet_travel_purpose order by iRank", 3);
+		$TRAVEL_PURPOSE_ARR = GetXArrFromYID("select iFleet_TrvPurID, vName from fleet_travelpurpose order by iRank", 3);
 		$TRAVEL_TYPE_ARR = GetXArrFromYID("select iFleet_TrvTypeID, vName from fleet_traveltype order by iRank", 3);
 		$DRIVER_ARR = array();
 		$qd = "select iDriverID, vName from driver order by vName";
