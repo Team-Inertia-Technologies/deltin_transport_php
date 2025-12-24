@@ -2,9 +2,9 @@
 $NO_REDIRECT = 1;
 include "api_includes.php";
 
-function GetVehicle_BasedOnSearch2($txtpickup_time,$txtpickup_location,$txttype=0,$txtcatid=0)
+function GetVehicle_BasedOnSearch2_($txttype=0,$txtcatid=0,$show_currentstatus='N',$txtfrom_time='',$txtto_time='')
 {
-	$arr = array();
+	$arr = $arr2 = array();
 	$cond = '';
 	if(!empty($txttype)) $cond .= ' and v.iType='.$txttype;
 	if(!empty($txtcatid)) $cond .= ' and v.iCatID='.$txtcatid;
@@ -16,57 +16,51 @@ function GetVehicle_BasedOnSearch2($txtpickup_time,$txtpickup_location,$txttype=
 		while(list($iVehicleID,$vName,$vRnum,$iCatID,$iVendorID,$iType,$iSeats,$iDriverID,$D_VENDORID,$D_NAME,$vMobileNum,$vEmpCode) = sql_fetch_row($r))
 		{
 			if(!isset($arr[$iVehicleID])) $arr[$iVehicleID] = array();
-			$arr[$iVehicleID] = array('NAME'=>$vName, 'NUM'=>$vRnum, 'CAT_ID'=>$iCatID, 'VENDOR_ID'=>$iVendorID, 'TYPE_ID'=>$iType, 'SEATS'=>$iSeats, 'DRIVER_ID'=>$iDriverID, 'VENDOR_ID2'=>$D_VENDORID, 'DRIVER_NAME'=>$D_NAME, 'DRIVER_NUM'=>$vMobileNum, 'DRIVER_EMPCODE'=>$vEmpCode);
+			$arr[$iVehicleID] = array('NAME'=>$vName, 'NUM'=>$vRnum, 'CAT_ID'=>$iCatID, 'VENDOR_ID'=>$iVendorID, 'TYPE_ID'=>$iType, 'SEATS'=>$iSeats, 'DRIVER_ID'=>$iDriverID, 'VENDOR_ID2'=>$D_VENDORID, 'DRIVER_NAME'=>$D_NAME, 'DRIVER_NUM'=>$vMobileNum, 'DRIVER_EMPCODE'=>$vEmpCode, 'BOOKINGS'=>array());
+
+			if(!isset($arr2[$iVehicleID]))
+				$arr2[$iVehicleID] = $iVehicleID;
 		}
 	}
 
-
-	/*$q = 'select DISTINCT(v.iVehicleID), v.vName, v.vRnum, v.iCatID, v.iVendorID, v.iType, v.iSeats from vehicle as v left join fleet_booking as b on v.iVehicleID=b.iVehicleID and b.cStatus!="X" and ("'.$txtpickup_time.'" between b.vPickUpTime and b.vDropTime or (b.iFleet_LocationID_To='.$txtpickup_location.' and ABS(TIMESTAMPDIFF(MINUTE,b.vDropTime,"'.$txtpickup_time.'")) <= 15)) where v.cServiceType IN ("B","F") and v.cStatus="A"'.$cond;
-	$r = sql_query($q,'');
-	if(sql_num_rows($r))
+	if($show_currentstatus=='Y' && !empty($arr) && count($arr))
 	{
-		while(list($iVehicleID,$vName,$vRnum,$iCatID,$iVendorID,$iType,$iSeats) = sql_fetch_row($r))
+		if(empty($txtfrom_time)) $txtfrom_time = NOW;
+		if(empty($txtto_time)) $txtto_time = DateTimeAdd($txtfrom_time,0,0,0,1,0,0,'Y-m-d H:i:s');
+		
+		$q2 = 'select iFleet_BookingID, iFleet_LocationID_From, iFleet_LocationID_To, vPickUpLocation, vPickUpTime, vDropLocation, vDropTime, iDriverID, iVehicleID, cDisposal, cStatus from fleet_booking where iVehicleID IN ('.implode(',',array_keys($arr)).') and cStatus NOT IN ("X") and vPickUpTime < "'.$txtto_time.'" and vDropTime > "'.$txtfrom_time.'" order by iVehicleID, vPickUpTime';
+		$r2 = sql_query($q2,'');
+		if(sql_num_rows($r2))
 		{
-			if(!isset($arr[$iVehicleID])) $arr[$iVehicleID] = array();
-			$arr[$iVehicleID] = array('NAME'=>$vName, 'NUM'=>$vRnum, 'CAT_ID'=>$iCatID, 'VENDOR_ID'=>$iVendorID, 'TYPE_ID'=>$iType, 'SEATS'=>$iSeats);
+			while(list($iFleet_BookingID, $iFleet_LocationID_From, $iFleet_LocationID_To, $vPickUpLocation, $vPickUpTime, $vDropLocation, $vDropTime, $iDriverID, $iVehicleID, $cDisposal, $cStatus) = sql_fetch_row($r2))
+			{
+				if(isset($arr[$iVehicleID]))
+				{
+					array_push($arr[$iVehicleID]['BOOKINGS'],array('ID'=>$iFleet_BookingID, 'LOCATION_ID_FROM'=>$iFleet_LocationID_From, 'LOCATION_ID_TO'=>$iFleet_LocationID_To, 'PICKUP_LOCATION'=>$vPickUpLocation, 'PICKUP_TIME'=>$vPickUpTime, 'DROP_LOCATION'=>$vDropLocation, 'DROP_TIME'=>$vDropTime, 'DRIVER_ID'=>$iDriverID, 'DISPOSAL'=>$cDisposal, 'STATUS'=>$cStatus));
+					
+					unset($arr2[$iVehicleID]);
+				}
+			}
 		}
-	}*/
+		
+		if(!empty($arr2) && count($arr2))
+		{
+			$q3 = 'select iFleet_BookingID, iFleet_LocationID_From, iFleet_LocationID_To, vPickUpLocation, vPickUpTime, vDropLocation, vDropTime, iDriverID, iVehicleID, cDisposal, cStatus from ( select *, ROW_NUMBER() OVER ( PARTITION BY iVehicleID ORDER BY vPickUpTime ) AS rn FROM fleet_booking WHERE iVehicleID IN ('.implode(',',array_keys($arr2)).') AND cStatus NOT IN ("X") AND vPickUpTime > "'.$txtfrom_time.'" ) t WHERE rn = 1';
+			$r3 = sql_query($q3,'');
+			if(sql_num_rows($r3))
+			{
+				while(list($iFleet_BookingID, $iFleet_LocationID_From, $iFleet_LocationID_To, $vPickUpLocation, $vPickUpTime, $vDropLocation, $vDropTime, $iDriverID, $iVehicleID, $cDisposal, $cStatus) = sql_fetch_row($r3))
+				{
+					if(isset($arr[$iVehicleID]))
+					{
+						array_push($arr[$iVehicleID]['BOOKINGS'],array('ID'=>$iFleet_BookingID, 'LOCATION_ID_FROM'=>$iFleet_LocationID_From, 'LOCATION_ID_TO'=>$iFleet_LocationID_To, 'PICKUP_LOCATION'=>$vPickUpLocation, 'PICKUP_TIME'=>$vPickUpTime, 'DROP_LOCATION'=>$vDropLocation, 'DROP_TIME'=>$vDropTime, 'DRIVER_ID'=>$iDriverID, 'DISPOSAL'=>$cDisposal, 'STATUS'=>$cStatus));
+					}
+				}
+			}
+		}
+	}
 
 	return $arr;
-	
-	
-	/*SELECT DISTINCT
-		v.iVehicleID,
-		v.vName,
-		v.vRnum,
-		v.iCatID,
-		v.iType,
-		v.cStatus
-	FROM vehicle v
-	LEFT JOIN fleet_booking fb
-		ON fb.iVehicleID = v.iVehicleID
-		AND fb.cStatus IN ('A', 'C') -- Active / Confirmed bookings
-		AND (
-			-- Booking overlaps pickup time
-			:set_pickup_time BETWEEN fb.vPickUpTime AND fb.vDropTime
-			OR
-			-- Vehicle drops at pickup location within ±15 minutes
-			(
-				fb.iFleet_LocationID_To = :set_pickup_location
-				AND ABS(TIMESTAMPDIFF(
-					MINUTE,
-					fb.vDropTime,
-					:set_pickup_time
-				)) <= 15
-			)
-		)
-	WHERE
-		v.cStatus = COALESCE(:set_vehicle_status, v.cStatus)
-		AND v.iType   = COALESCE(:set_vehicle_type, v.iType)
-		AND v.iCatID  = COALESCE(:set_vehicle_category, v.iCatID)
-	
-		-- Exclude vehicles with conflicting bookings
-		AND fb.iFleet_BookingID IS NULL;*/
 }
 
 if(isset($_GET['sohel']))
