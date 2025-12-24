@@ -67,9 +67,10 @@ else
 {
 	$txtpickup_time = '2025-12-24 17:00:00';
 	$txtpickup_location = '1';
+	$txttype = $txtcatid = 0;
 }
 
-$RESPONSE = GetVehicle_BasedOnSearch2($txtpickup_time,$txtpickup_location,$txttype=0,$txtcatid=0)
+$RESPONSE = GetVehicle_BasedOnSearch2($txtpickup_time,$txtpickup_location,$txttype,$txtcatid);
 DFA($RESPONSE);
 exit;
 ?>
