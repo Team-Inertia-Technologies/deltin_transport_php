@@ -2,7 +2,7 @@
 //ini_set('display_errors', 1);
 
 include "../../includes/common_api.php";
-//include "../api_common.php";
+include "../api_common.php";
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
 
