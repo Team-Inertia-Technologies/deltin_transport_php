@@ -151,6 +151,43 @@ switch ($mode) {
             "guestOpts" => $guestOpts
         ];
 
+        // Add filter arrays
+        $filterArr = [
+            "tripStatusFilterOpt" => $tripStatusFilterOpt,
+            "bookedForFilterOpt" => $bookedForFilterOpt,
+            "tripTypeFilterOpt" => $tripTypeFilterOpt,
+            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt
+        ];
+
+        // Get filter parameters
+        $filterTripStatus = $_REQUEST['filterTripStatus'] ?? '';
+        $filterBookedFor = $_REQUEST['filterBookedFor'] ?? '';
+        $filterTripType = $_REQUEST['filterTripType'] ?? '';
+        $filterVehicleCategory = intval($_REQUEST['filterVehicleCategory'] ?? 0);
+
+        // Create filter option arrays
+        $tripStatusFilterOpt = [['id' => '', 'name' => 'All']];
+        foreach ($FLEET_TRIP_STATUS as $id => $name) {
+            $tripStatusFilterOpt[] = ['id' => $id, 'name' => $name];
+        }
+
+        $bookedForFilterOpt = [['id' => '', 'name' => 'All']];
+        foreach ($FLEET_BOOKING_FOR as $id => $name) {
+            $bookedForFilterOpt[] = ['id' => $id, 'name' => $name];
+        }
+
+        $tripTypeFilterOpt = [
+            ['id' => '', 'name' => 'All'],
+            ['id' => 'Assigned', 'name' => 'Assigned'],
+            ['id' => 'Unassigned', 'name' => 'Unassigned'],
+            ['id' => 'Delayed', 'name' => 'Delayed']
+        ];
+
+        $vehicleCategoryFilterOpt = [['id' => 0, 'name' => 'All']];
+        foreach ($VEH_CAT as $id => $name) {
+            $vehicleCategoryFilterOpt[] = ['id' => intval($id), 'name' => $name];
+        }
+
         // Check if user has FLEET_USER_SPECIFIC_REQ access
         $userSpecificAccess = checkUserModuleAccess($user_id, 'FLEET_USER_SPECIFIC_REQ');
         
@@ -158,6 +195,19 @@ switch ($mode) {
         $whereClause = "fb.cStatus = 'A'";
         if ($userSpecificAccess) {
             $whereClause .= " AND fb.iAdded_UserID = $user_id";
+        }
+
+        // Apply filters to WHERE clause
+        if (!empty($filterTripStatus)) {
+            $whereClause .= " AND fb.cType = '" . db_input($filterTripStatus) . "'";
+        }
+        
+        if (!empty($filterBookedFor)) {
+            $whereClause .= " AND fb.cBookingFor = '" . db_input($filterBookedFor) . "'";
+        }
+        
+        if ($filterVehicleCategory > 0) {
+            $whereClause .= " AND fb.iVehicleCatID = " . intval($filterVehicleCategory);
         }
 
         // Fetch booking data
@@ -197,6 +247,7 @@ switch ($mode) {
         $bookingRes = sql_query($bookingSql);
 
         $rowData = [];
+        $allRowData = []; // Store all data before tripType filtering
         while ($row = sql_fetch_assoc($bookingRes)) {
             $bookingID = intval($row['iFleet_BookingID']);
 
@@ -241,16 +292,41 @@ switch ($mode) {
             } else {
                 $isTrip = 'N';
             }
-            $rowData[] = [
+
+            // Determine tripType based on vehicle and driver assignment and pickup time
+            $tripType = 'Unassigned'; // Default
+            $hasVehicle = !empty($row['iVehicleID']) && intval($row['iVehicleID']) > 0;
+            $hasDriver = !empty($row['iDriverID']) && intval($row['iDriverID']) > 0;
+            $pickupTime = $row['vPickUpTime'] ?? '';
+            $currentTime = date('Y-m-d H:i:s');
+            
+            if ($hasVehicle && $hasDriver) {
+                $tripType = 'Assigned';
+            } else if (!$hasVehicle && !$hasDriver) {
+                // Check if it's delayed (pickup time passed and cType is still 'N')
+                if (!empty($pickupTime) && strtotime($pickupTime) < strtotime($currentTime) && $tripStatusCode == 'N') {
+                    $tripType = 'Delayed';
+                } else {
+                    $tripType = 'Unassigned';
+                }
+            } else {
+                // Partially assigned (either vehicle or driver but not both)
+                $tripType = 'Unassigned';
+            }
+
+            $rowDataItem = [
                 'id' => $bookingID,
                 'fullName' => db_output2($row['vName'] ?? ''),
                 'phone' => db_output2($row['vMobileNo'] ?? ''),
                 'from' => strtolower($row['cBookingFor'] ?? ''),
                 'location' => db_output2($row['vPickUpLocation'] ?? ''),
                 'destination' => db_output2($row['vDropLocation'] ?? ''),
-                'pickupTime' => !empty($row['vPickUpTime']) ? date('d/m/Y', strtotime($row['vPickUpTime'])) : '',
+                'pickupDate' => !empty($row['vPickUpTime']) ? date('d/m/Y', strtotime($row['vPickUpTime'])) : '',
+                'pickupTime' => !empty($row['vPickUpTime']) ? date('h:i a', strtotime($row['vPickUpTime'])) : '',
                 'tripStatus' => $tripStatusCode,
                 'tripStatusText' => $tripStatusName,
+                'tripType' => $tripType,
+                'cType' => $tripStatusCode, // Adding cType from booking table
                 'startTime' => $startTime,
                 'endTime' => $endTime,
                 'paxs' => strval($row['iPax'] ?? '0'),
@@ -263,11 +339,19 @@ switch ($mode) {
                 'vehicleType' => db_output2($row['vehicleCatName'] ?? ''),
                 'isTrip' => $isTrip
             ];
+
+            // Apply tripType filter (since it's calculated, not in DB)
+            if (!empty($filterTripType) && $tripType !== $filterTripType) {
+                continue; // Skip this record if it doesn't match the tripType filter
+            }
+
+            $rowData[] = $rowDataItem;
         }
         echo json_encode([
             "data" => [
                 "rowData" => $rowData,
-                "optArr" => $optArr
+                "optArr" => $optArr,
+                "filterArr" => $filterArr
             ],
             "statusCode" => 200
         ]);
