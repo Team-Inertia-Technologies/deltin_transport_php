@@ -148,7 +148,11 @@ switch ($mode) {
             "tripTypeArr" => $tripTypeArr,
             "staffDeptOpt" => $staffDeptOpt,
             "staffOpt" => $staffOpt,
-            "guestOpts" => $guestOpts
+            "guestOpts" => $guestOpts,
+            "tripStatusFilterOpt" => $tripStatusFilterOpt,
+            "bookedForFilterOpt" => $bookedForFilterOpt,
+            "tripTypeFilterOpt" => $tripTypeFilterOpt,
+            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt
         ];
 
         // Get filter parameters
@@ -158,35 +162,27 @@ switch ($mode) {
         $filterVehicleCategory = intval($_REQUEST['filterVehicleCategory'] ?? 0);
 
         // Create filter option arrays
-        $tripStatusFilterOpt = [['id' => '', 'name' => 'All Trip Status']];
+        $tripStatusFilterOpt = [['id' => '', 'name' => 'All']];
         foreach ($FLEET_TRIP_STATUS as $id => $name) {
             $tripStatusFilterOpt[] = ['id' => $id, 'name' => $name];
         }
 
-        $bookedForFilterOpt = [['id' => '', 'name' => 'All Booking Types']];
+        $bookedForFilterOpt = [['id' => '', 'name' => 'All']];
         foreach ($FLEET_BOOKING_FOR as $id => $name) {
             $bookedForFilterOpt[] = ['id' => $id, 'name' => $name];
         }
 
         $tripTypeFilterOpt = [
-            ['id' => '', 'name' => 'All Trip Types'],
+            ['id' => '', 'name' => 'All'],
             ['id' => 'Assigned', 'name' => 'Assigned'],
             ['id' => 'Unassigned', 'name' => 'Unassigned'],
             ['id' => 'Delayed', 'name' => 'Delayed']
         ];
 
-        $vehicleCategoryFilterOpt = [['id' => 0, 'name' => 'All Vehicle Categories']];
+        $vehicleCategoryFilterOpt = [['id' => 0, 'name' => 'All']];
         foreach ($VEH_CAT as $id => $name) {
             $vehicleCategoryFilterOpt[] = ['id' => intval($id), 'name' => $name];
         }
-
-        // Add filter arrays
-        $filterArr = [
-            "tripStatusFilterOpt" => $tripStatusFilterOpt,
-            "bookedForFilterOpt" => $bookedForFilterOpt,
-            "tripTypeFilterOpt" => $tripTypeFilterOpt,
-            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt
-        ];
 
         // Check if user has FLEET_USER_SPECIFIC_REQ access
         $userSpecificAccess = checkUserModuleAccess($user_id, 'FLEET_USER_SPECIFIC_REQ');
@@ -350,8 +346,7 @@ switch ($mode) {
         echo json_encode([
             "data" => [
                 "rowData" => $rowData,
-                "optArr" => $optArr,
-                "filterArr" => $filterArr
+                "optArr" => $optArr
             ],
             "statusCode" => 200
         ]);
