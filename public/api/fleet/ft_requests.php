@@ -151,6 +151,15 @@ switch ($mode) {
             "guestOpts" => $guestOpts
         ];
 
+        // Check if user has FLEET_USER_SPECIFIC_REQ access
+        $userSpecificAccess = checkUserModuleAccess($user_id, 'FLEET_USER_SPECIFIC_REQ');
+        
+        // Build WHERE clause based on user access
+        $whereClause = "fb.cStatus = 'A'";
+        if ($userSpecificAccess) {
+            $whereClause .= " AND fb.iAdded_UserID = $user_id";
+        }
+
         // Fetch booking data
         $bookingSql = "
             SELECT 
@@ -182,7 +191,7 @@ switch ($mode) {
             LEFT JOIN driver d ON fb.iDriverID = d.iDriverID AND d.cStatus = 'A'
             LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
             LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID AND vcat.cStatus = 'A'
-            WHERE fb.cStatus = 'A'
+            WHERE $whereClause
             ORDER BY fb.vPickUpTime DESC
         ";
         $bookingRes = sql_query($bookingSql);
@@ -890,40 +899,19 @@ switch ($mode) {
                 $assignedVeh = true;
             }
 
-            // Get last assigned time and next trip time from bookings
+            // Get next trip time from BOOKINGS array
             $lastAssignedTime = null;
             $lastAssigned = false;
             $nextTripTime = null;
             
+            // BOOKINGS array contains future trips, get the earliest one as next trip
             if (!empty($vehData['BOOKINGS'])) {
-                // Find the most recent past booking
-                $pastBookings = [];
-                $futureBookings = [];
-                
-                foreach ($vehData['BOOKINGS'] as $booking) {
-                    if (strtotime($booking['PICKUP_TIME']) <= time()) {
-                        $pastBookings[] = $booking;
-                    } else {
-                        $futureBookings[] = $booking;
-                    }
-                }
-                
-                if (!empty($pastBookings)) {
-                    // Sort by pickup time descending to get the most recent
-                    usort($pastBookings, function($a, $b) {
-                        return strtotime($b['PICKUP_TIME']) - strtotime($a['PICKUP_TIME']);
-                    });
-                    $lastAssignedTime = $pastBookings[0]['PICKUP_TIME'];
-                    $lastAssigned = true;
-                }
-                
-                if (!empty($futureBookings)) {
-                    // Sort by pickup time ascending to get the next trip
-                    usort($futureBookings, function($a, $b) {
-                        return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
-                    });
-                    $nextTripTime = $futureBookings[0]['PICKUP_TIME'];
-                }
+                // Sort by pickup time ascending to get the next trip
+                $bookings = $vehData['BOOKINGS'];
+                usort($bookings, function($a, $b) {
+                    return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
+                });
+                $nextTripTime = $bookings[0]['PICKUP_TIME'];
             }
 
             $vehicleDataFormatted = [
@@ -1315,7 +1303,7 @@ switch ($mode) {
             ]);
             exit;
         }
-
+$PAUSE_REASON_ARR=GetXArrFromYID("SELECT iReasonID,vName FROM pause_reasons","3");
         // Fetch comprehensive trip data for sending
         $tripDataSql = "
             SELECT 
@@ -1381,6 +1369,8 @@ switch ($mode) {
                 bl.cRefType,
                 bl.dtAdded,
                 bl.iUserID as driverID,
+                bl.iPauseTypeID,
+                bl.vNotes,
                 d.vName as driverName,
                 d.vMobileNum as driverMobile
             FROM fleet_booking_log bl
@@ -1408,34 +1398,37 @@ switch ($mode) {
                     $description = "$driverName picked up $passengerName";
                     break;
                 case 'P':
-                    // For pause entries, get the closest matching pause reason
-                    $pauseReasonSql = "
-                        SELECT pr.vName as pauseReason, tpl.vNotes as pauseNotes
-                        FROM trip_pause_log tpl
-                        LEFT JOIN pause_reasons pr ON tpl.iPauseTypeID = pr.iReasonID AND pr.cStatus = 'A'
-                        WHERE tpl.iFleet_BookingID = $iFleet_BookingID 
-                        AND tpl.iDriverID = " . intval($logRow['driverID']) . "
-                        AND ABS(TIMESTAMPDIFF(SECOND, '" . db_input($logRow['dtAdded']) . "', tpl.dtPauseTime)) <= 60
-                        ORDER BY ABS(TIMESTAMPDIFF(SECOND, '" . db_input($logRow['dtAdded']) . "', tpl.dtPauseTime)) ASC
-                        LIMIT 1
-                    ";
-                    $pauseReasonRes = sql_query($pauseReasonSql);
+                    // For pause entries, get pause reason and notes from fleet_booking_log
+                    $pauseReason = '';
+                    $pauseNotes = '';
+                    
+                    // Get pause reason from current log entry if iPauseTypeID exists
+                    if (!empty($logRow['iPauseTypeID']) && intval($logRow['iPauseTypeID']) > 0) {
+                        // $pauseReasonSql = "SELECT vName FROM pause_reasons WHERE iReasonID = " . intval($logRow['iPauseTypeID']) . " AND cStatus = 'A' LIMIT 1";
+                        // $pauseReasonRes = sql_query($pauseReasonSql);
+                         // if (sql_num_rows($pauseReasonRes) > 0) {
+                        //     $pauseReasonRow = sql_fetch_assoc($pauseReasonRes);
+                        //     $pauseReason = db_output2($pauseReasonRow['vName'] ?? '');
+                        // }
+                         $pauseReasonRes = isset($PAUSE_REASON_ARR[$logRow['iPauseTypeID']]) ? db_output2($PAUSE_REASON_ARR[$logRow['iPauseTypeID']]): '';
+                       
+                    }
+                    
+                    // Get pause notes from current log entry
+                    if (!empty($logRow['vNotes'])) {
+                        $pauseNotes = db_output2($logRow['vNotes']);
+                    }
 
-                    if (sql_num_rows($pauseReasonRes) > 0) {
-                        $pauseRow = sql_fetch_assoc($pauseReasonRes);
-                        $pauseReason = db_output2($pauseRow['pauseReason'] ?? '');
-                        $pauseNotes = db_output2($pauseRow['pauseNotes'] ?? '');
-
-                        if (!empty($pauseReason)) {
-                            $description = "$driverName paused the trip due to $pauseReason";
-                            if (!empty($pauseNotes)) {
-                                $description .= " ($pauseNotes)";
-                            }
-                        } else {
-                            $description = "$driverName paused the trip";
+                    if (!empty($pauseReason)) {
+                        $description = "$driverName paused the trip due to $pauseReason";
+                        if (!empty($pauseNotes)) {
+                            $description .= " ($pauseNotes)";
                         }
                     } else {
                         $description = "$driverName paused the trip";
+                        if (!empty($pauseNotes)) {
+                            $description .= " ($pauseNotes)";
+                        }
                     }
                     break;
                 case 'R':
@@ -1467,10 +1460,9 @@ switch ($mode) {
         }
 
 
-
-        // Format the trip completion data similar to the image structure
         $completedTripData = [
-            'tripStatus' => 'Completed Trip',
+            'tripStatus' => $tripData['tripStatus'],
+            'tripStatusText' => isset($FLEET_TRIP_STATUS[$tripData['tripStatus']]) ? $FLEET_TRIP_STATUS[$tripData['tripStatus']] :'',
             'fullName' => db_output2($tripData['passengerName'] ?? ''),
             'guestStaffType' => $tripData['cBookingFor'] === 'G' ? 'Guest' : 'Staff',
             'passengerMobile' => db_output2($tripData['passengerMobile'] ?? ''),
