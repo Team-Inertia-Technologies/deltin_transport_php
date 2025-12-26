@@ -74,13 +74,13 @@ $driverRes = sql_query($driverSql, "DRIVER.DETAILS");
 $driverRow = sql_fetch_array($driverRes);
 
 $driverDetails = [
-    "driverName" => $driverRow['vName'] ?? "",
+    "driverName" => db_output2($driverRow['vName'] ?? ""),
     "driverType" => intval($driverRow['iType'] ?? 0),
     "status"     => $driverRow['cStatus'] ?? "",
     "mob"        => $driverRow['vMobileNum'] ?? "",
-    "vendor"     => $driverRow['vVendorName'] ?? "",
-    "vehi"       => $driverRow['vVehicleNo'] ?? "",
-    "vehicleName"   => $driverRow['vehicleName'] ?? ""
+    "vendor"     => db_output2($driverRow['vVendorName'] ?? ""),
+    "vehiType"       => $driverRow['vVehicleNo'] ?? "",
+    "vehicleName"   => db_output2($driverRow['vehicleName'] ?? "")
 ];
 
 /* =========================================================
@@ -92,6 +92,8 @@ SELECT
     vDropLocation,
     vName AS GuestName,
     iPax,
+    cType,
+    iBookedBy,
     DATE_FORMAT(vPickUpTime,'%d/%m/%Y %H:%i') AS fromTime,
     DATE_FORMAT(vDropTime,'%d/%m/%Y %H:%i') AS toTime
 FROM fleet_booking
@@ -104,10 +106,13 @@ $tripRes = sql_query($tripSql, "TRIPS");
 
 $tripsArr = [];
 while ($t = sql_fetch_array($tripRes)) {
+    $title = ($t['cType'] == 'C') ? "Previous Trip" : "Next Trip";
     $tripsArr[] = [
+        "title" => $title,
         "from"     => $t['vPickUpLocation'],
         "to"       => $t['vDropLocation'],
-        "name"     => $t['GuestName'],
+        "name"     => db_output2($t['GuestName']),
+        "staff" => GetXFromYID("SELECT vName FROM fleet_staff WHERE iFStaffID=", $t['iBookedBy']),
         "capacity" => $t['iPax'],
         "fromTime" => $t['fromTime'],
         "toTime"   => $t['toTime']
