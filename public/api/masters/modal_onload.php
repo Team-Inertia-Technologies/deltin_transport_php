@@ -122,7 +122,7 @@ SELECT
     cRefType,
     vRefName,
     DATE_FORMAT(dtAdded,'%d/%m/%Y %H:%i') AS dateTime
-FROM booking_log
+FROM fleet_booking_log
 WHERE iUserID = $driverId
 ORDER BY dtAdded DESC
 ";
