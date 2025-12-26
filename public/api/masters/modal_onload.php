@@ -103,16 +103,16 @@ LIMIT 2
 ";
 
 $tripRes = sql_query($tripSql, "TRIPS");
-
 $tripsArr = [];
 while ($t = sql_fetch_array($tripRes)) {
     $title = ($t['cType'] == 'C') ? "Previous Trip" : "Next Trip";
+    $bookedBy = !empty($t['iBookedBy']) ? GetXFromYID("SELECT vName FROM fleet_staff WHERE iFStaffID = " . intval($t['iBookedBy'])) : "";
     $tripsArr[] = [
         "title" => $title,
         "from"     => $t['vPickUpLocation'],
         "to"       => $t['vDropLocation'],
         "name"     => db_output2($t['GuestName']),
-        "staff" => GetXFromYID("SELECT vName FROM fleet_staff WHERE iFStaffID=", $t['iBookedBy']),
+        "staff" => db_output2($bookedBy),
         "capacity" => $t['iPax'],
         "fromTime" => $t['fromTime'],
         "toTime"   => $t['toTime']
