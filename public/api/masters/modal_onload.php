@@ -57,7 +57,7 @@ SELECT
     d.cStatus,
     d.vMobileNum,
     ve.vName AS vVendorName,
-    v.vRnum AS vVehicleNo
+    v.vRnum AS vVehicleNo,
     vc.vName AS vehicleName
 FROM driver d
 LEFT JOIN driver_vehicle_assoc dva 
