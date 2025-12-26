@@ -210,7 +210,7 @@ switch ($mode) {
 
         // Optimized query with JOINs to get vendor and category data in single query
         $sql = "SELECT v.iVehicleID, v.vName, v.vRnum, v.iCatID, v.iVendorID, v.iSeats, v.iType,
-                       v.iFlt_StationID, v.dRegistration, v.dExpiry, v.vTouristPerNo, v.dTouristPerNoExpiry, v.cStatus, 
+                       v.dRegistration, v.dExpiry, v.vTouristPerNo, v.dTouristPerNoExpiry, v.cStatus, 
                        vn.vName as vendor_name, c.vName as category_name
                 FROM vehicle v
                 LEFT JOIN vendor vn ON v.iVendorID = vn.iVendorID AND vn.cStatus = 'A'

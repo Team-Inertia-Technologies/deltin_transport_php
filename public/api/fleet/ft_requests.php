@@ -285,7 +285,8 @@ switch ($mode) {
             $startTimeRes = sql_query($startTimeSql);
             if (sql_num_rows($startTimeRes) > 0) {
                 $startTimeRow = sql_fetch_assoc($startTimeRes);
-                $startTime = !empty($startTimeRow['dtAdded']) ? date('d/m/Y H:i', strtotime($startTimeRow['dtAdded'])) : '';
+                $startTime = !empty($startTimeRow['dtAdded']) ? date('d-m-Y H:i', strtotime($startTimeRow['dtAdded']))
+ : '';
             }
 
             // Get trip end time (when cRefType = 'C')
@@ -293,7 +294,7 @@ switch ($mode) {
             $endTimeRes = sql_query($endTimeSql);
             if (sql_num_rows($endTimeRes) > 0) {
                 $endTimeRow = sql_fetch_assoc($endTimeRes);
-                $endTime = !empty($endTimeRow['dtAdded']) ? date('d/m/Y H:i', strtotime($endTimeRow['dtAdded'])) : '';
+                $endTime = !empty($endTimeRow['dtAdded']) ? date('d-m-Y H:i', strtotime($startTimeRow['dtAdded'])) : '';
             }
             if ($tripStatusCode == 'G' || $tripStatusCode == 'P' || $tripStatusCode == 'R' || $tripStatusCode == 'C' || $tripStatusCode == 'S') {
                 $isTrip = 'Y';
