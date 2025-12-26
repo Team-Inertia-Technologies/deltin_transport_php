@@ -136,24 +136,6 @@ switch ($mode) {
                 'mobile' => $row['vMobileNo']
             ];
         }
-        $optArr = [
-            "bookedForOpt" => $bookedForOpt,
-            // "bookedByOpt" => $bookedByOpt,
-            "bookingCatOpt" => $bookingCatOpt,
-            "travelPurposeOpt" => $travelPurposeTypeOpt,
-            "propertyOpt" => $propertyOpt,
-            "paxOpt" => $paxOpt,
-            "baggageOpt" => $baggageOpt,
-            "vehiCatOpt" => $vehiCatOpt,
-            "tripTypeArr" => $tripTypeArr,
-            "staffDeptOpt" => $staffDeptOpt,
-            "staffOpt" => $staffOpt,
-            "guestOpts" => $guestOpts,
-            "tripStatusFilterOpt" => $tripStatusFilterOpt,
-            "bookedForFilterOpt" => $bookedForFilterOpt,
-            "tripTypeFilterOpt" => $tripTypeFilterOpt,
-            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt
-        ];
 
         // Get filter parameters
         $filterTripStatus = $_REQUEST['filterTripStatus'] ?? '';
@@ -183,6 +165,25 @@ switch ($mode) {
         foreach ($VEH_CAT as $id => $name) {
             $vehicleCategoryFilterOpt[] = ['id' => intval($id), 'name' => $name];
         }
+
+        $optArr = [
+            "bookedForOpt" => $bookedForOpt,
+            // "bookedByOpt" => $bookedByOpt,
+            "bookingCatOpt" => $bookingCatOpt,
+            "travelPurposeOpt" => $travelPurposeTypeOpt,
+            "propertyOpt" => $propertyOpt,
+            "paxOpt" => $paxOpt,
+            "baggageOpt" => $baggageOpt,
+            "vehiCatOpt" => $vehiCatOpt,
+            "tripTypeArr" => $tripTypeArr,
+            "staffDeptOpt" => $staffDeptOpt,
+            "staffOpt" => $staffOpt,
+            "guestOpts" => $guestOpts,
+            "tripStatusFilterOpt" => $tripStatusFilterOpt,
+            "bookedForFilterOpt" => $bookedForFilterOpt,
+            "tripTypeFilterOpt" => $tripTypeFilterOpt,
+            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt
+        ];
 
         // Check if user has FLEET_USER_SPECIFIC_REQ access
         $userSpecificAccess = checkUserModuleAccess($user_id, 'FLEET_USER_SPECIFIC_REQ');
