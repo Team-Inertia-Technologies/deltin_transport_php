@@ -827,8 +827,6 @@ switch ($mode) {
         $categoryID = intval($_REQUEST['categoryID'] ?? 0);
         $typeID = intval($_REQUEST['typeID'] ?? 0);
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
-        
-        // Get vehicle categories for dropdown options
         $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
         $vehicleCategoryRes = sql_query($vehicleCategorySql);
 
@@ -840,7 +838,6 @@ switch ($mode) {
         foreach ($FLEET_TRIP_STATUS as $id => $name) {
             $tripStatusOpts[] = ['id' => $id, 'name' => $name];
         }
-        
         $vehicleCategories = [];
         while ($categoryRow = sql_fetch_assoc($vehicleCategoryRes)) {
             $vehicleCategories[] = [
@@ -850,113 +847,6 @@ switch ($mode) {
             ];
         }
 
-        // Get vehicles using the generic function with current status
-        $vehicleData = GetVehicle_BasedOnSearch2($typeID, $categoryID, 'Y');
-        
-        $vehicles = [];
-        $currentlyAssigned = [];
-        $availableVehicles = [];
-        
-        foreach ($vehicleData as $vehicleID => $vehData) {
-            // Apply keyword filter if provided
-            if (!empty($keyword)) {
-                $keywordMatch = false;
-                if (stripos($vehData['NUM'], $keyword) !== false || 
-                    stripos($vehData['NAME'], $keyword) !== false) {
-                    $keywordMatch = true;
-                }
-                if (!$keywordMatch) continue;
-            }
-            
-            // Get vehicle category details
-            $categoryName = '';
-            $capacity = 0;
-            foreach ($vehicleCategories as $cat) {
-                if ($cat['id'] == $vehData['CAT_ID']) {
-                    $categoryName = $cat['name'];
-                    $capacity = $cat['capacity'];
-                    break;
-                }
-            }
-            
-            // Check if this vehicle is currently assigned to the booking
-            $assignedVeh = false;
-            $tripAssignmentSql = "SELECT iVehicleID FROM fleet_booking 
-                                 WHERE iFleet_BookingID = $iFleet_BookingID 
-                                 AND iVehicleID = $vehicleID 
-                                 AND cStatus = 'A'";
-            $tripAssignmentRes = sql_query($tripAssignmentSql);
-            if (sql_num_rows($tripAssignmentRes) > 0) {
-                $assignedVeh = true;
-            }
-
-            // Get last assigned time and next trip time from bookings
-            $lastAssignedTime = null;
-            $lastAssigned = false;
-            $nextTripTime = null;
-            
-            if (!empty($vehData['BOOKINGS'])) {
-                // Find the most recent past booking
-                $pastBookings = [];
-                $futureBookings = [];
-                
-                foreach ($vehData['BOOKINGS'] as $booking) {
-                    if (strtotime($booking['PICKUP_TIME']) <= time()) {
-                        $pastBookings[] = $booking;
-                    } else {
-                        $futureBookings[] = $booking;
-                    }
-                }
-                
-                if (!empty($pastBookings)) {
-                    // Sort by pickup time descending to get the most recent
-                    usort($pastBookings, function($a, $b) {
-                        return strtotime($b['PICKUP_TIME']) - strtotime($a['PICKUP_TIME']);
-                    });
-                    $lastAssignedTime = $pastBookings[0]['PICKUP_TIME'];
-                    $lastAssigned = true;
-                }
-                
-                if (!empty($futureBookings)) {
-                    // Sort by pickup time ascending to get the next trip
-                    usort($futureBookings, function($a, $b) {
-                        return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
-                    });
-                    $nextTripTime = $futureBookings[0]['PICKUP_TIME'];
-                }
-            }
-
-            $vehicleDataFormatted = [
-                'id' => intval($vehicleID),
-                'regNo' => db_output2($vehData['NUM']),
-                'vehicletype' => intval($vehData['TYPE_ID']),
-                'categoryId' => intval($vehData['CAT_ID']),
-                'categoryName' => db_output2($categoryName),
-                'capacity' => intval($capacity),
-                'lastAssigned' => $lastAssigned,
-                'lastAssignedTime' => $lastAssignedTime,
-                'alreadyAssigned' => $assignedVeh,
-                'driverID' => intval($vehData['DRIVER_ID'] ?? 0),
-                'driverName' => db_output2($vehData['DRIVER_NAME'] ?? ''),
-                'driverMobile' => db_output2($vehData['DRIVER_NUM'] ?? ''),
-                'nextTripTime' => $nextTripTime,
-                'disposal' => false,
-                'status' => 'A',
-                'bookings' => $vehData['BOOKINGS'] // Include booking details for reference
-            ];
-
-            // Separate currently assigned vehicles to show them first
-            if ($assignedVeh) {
-                $currentlyAssigned[] = $vehicleDataFormatted;
-            } else {
-                $availableVehicles[] = $vehicleDataFormatted;
-            }
-        }
-        
-        // Merge arrays with currently assigned vehicles first
-        $vehicles = array_merge($currentlyAssigned, $availableVehicles);
-
-        /* ===== COMMENTED OUT: Previous search implementation =====
         $whereConditions = ["v.cStatus = 'A' AND vc.cType IN('B','F')"];
 
         // Add keyword search (search in vehicle registration number and category name)
@@ -1098,7 +988,6 @@ switch ($mode) {
         
         // Merge arrays with currently assigned vehicles first
         $vehicles = array_merge($currentlyAssigned, $availableVehicles);
-        ===== END COMMENTED OUT SECTION ===== */
 
         echo json_encode([
             "data" => [
