@@ -151,14 +151,6 @@ switch ($mode) {
             "guestOpts" => $guestOpts
         ];
 
-        // Add filter arrays
-        $filterArr = [
-            "tripStatusFilterOpt" => $tripStatusFilterOpt,
-            "bookedForFilterOpt" => $bookedForFilterOpt,
-            "tripTypeFilterOpt" => $tripTypeFilterOpt,
-            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt
-        ];
-
         // Get filter parameters
         $filterTripStatus = $_REQUEST['filterTripStatus'] ?? '';
         $filterBookedFor = $_REQUEST['filterBookedFor'] ?? '';
@@ -166,27 +158,35 @@ switch ($mode) {
         $filterVehicleCategory = intval($_REQUEST['filterVehicleCategory'] ?? 0);
 
         // Create filter option arrays
-        $tripStatusFilterOpt = [['id' => '', 'name' => 'All']];
+        $tripStatusFilterOpt = [['id' => '', 'name' => 'All Trip Status']];
         foreach ($FLEET_TRIP_STATUS as $id => $name) {
             $tripStatusFilterOpt[] = ['id' => $id, 'name' => $name];
         }
 
-        $bookedForFilterOpt = [['id' => '', 'name' => 'All']];
+        $bookedForFilterOpt = [['id' => '', 'name' => 'All Booking Types']];
         foreach ($FLEET_BOOKING_FOR as $id => $name) {
             $bookedForFilterOpt[] = ['id' => $id, 'name' => $name];
         }
 
         $tripTypeFilterOpt = [
-            ['id' => '', 'name' => 'All'],
+            ['id' => '', 'name' => 'All Trip Types'],
             ['id' => 'Assigned', 'name' => 'Assigned'],
             ['id' => 'Unassigned', 'name' => 'Unassigned'],
             ['id' => 'Delayed', 'name' => 'Delayed']
         ];
 
-        $vehicleCategoryFilterOpt = [['id' => 0, 'name' => 'All']];
+        $vehicleCategoryFilterOpt = [['id' => 0, 'name' => 'All Vehicle Categories']];
         foreach ($VEH_CAT as $id => $name) {
             $vehicleCategoryFilterOpt[] = ['id' => intval($id), 'name' => $name];
         }
+
+        // Add filter arrays
+        $filterArr = [
+            "tripStatusFilterOpt" => $tripStatusFilterOpt,
+            "bookedForFilterOpt" => $bookedForFilterOpt,
+            "tripTypeFilterOpt" => $tripTypeFilterOpt,
+            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt
+        ];
 
         // Check if user has FLEET_USER_SPECIFIC_REQ access
         $userSpecificAccess = checkUserModuleAccess($user_id, 'FLEET_USER_SPECIFIC_REQ');
