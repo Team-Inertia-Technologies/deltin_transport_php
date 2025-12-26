@@ -50,7 +50,7 @@ if ($driverType > 0) {
 
 /* ---------- MAIN QUERY ---------- */
 $sql = "
-SELECT
+SELECT DISTINCT
     d.iDriverID AS iRoasterID,
     DATE_FORMAT(d.dtLoggedIn, '%d/%m/%Y %H:%i') AS dateTime,
     d.vName AS name,
@@ -71,7 +71,8 @@ FROM driver d
 LEFT JOIN driver_vehicle_assoc dva ON dva.iDriverID = d.iDriverID
 LEFT JOIN vehicle v ON v.iVehicleID = dva.iVehicleID
 $where
-ORDER BY d.dtLoggedIn DESC
+GROUP BY d.iDriverID
+ORDER BY d.dtLoggedIn DESC;
 ";
 
 $res = sql_query($sql, 'ROASTER.LIST');
@@ -81,7 +82,7 @@ while ($row = sql_fetch_array($res)) {
     $tripList[] = [
         "id" => intval($row['iRoasterID']),
         "dateTime" => $row['dateTime'],
-        "name" => $row['name'],
+        "name" => db_output2($row['name']),
         "mobile" => $row['mobile'],
         "vehicle" => $row['vehicle'] ?: "",
         "status" => $row['status'],
