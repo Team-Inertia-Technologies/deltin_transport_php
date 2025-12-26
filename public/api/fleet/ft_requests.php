@@ -142,6 +142,8 @@ switch ($mode) {
         $filterBookedFor = $_REQUEST['filterBookedFor'] ?? '';
         $filterTripType = $_REQUEST['filterTripType'] ?? '';
         $filterVehicleCategory = intval($_REQUEST['filterVehicleCategory'] ?? 0);
+        $filterFromDateTime = $_REQUEST['fromDateTime'] ?? '';
+        $filterToDateTime = $_REQUEST['toDateTime'] ?? '';
 
         // Create filter option arrays
         $tripStatusFilterOpt = [['id' => '', 'name' => 'All']];
@@ -187,7 +189,7 @@ switch ($mode) {
 
         // Check if user has FLEET_USER_SPECIFIC_REQ access
         $userSpecificAccess = checkUserModuleAccess($user_id, 'FLEET_USER_SPECIFIC_REQ');
-        
+
         // Build WHERE clause based on user access
         $whereClause = "fb.cStatus = 'A'";
         if ($userSpecificAccess) {
@@ -198,13 +200,22 @@ switch ($mode) {
         if (!empty($filterTripStatus)) {
             $whereClause .= " AND fb.cType = '" . db_input($filterTripStatus) . "'";
         }
-        
+
         if (!empty($filterBookedFor)) {
             $whereClause .= " AND fb.cBookingFor = '" . db_input($filterBookedFor) . "'";
         }
-        
+
         if ($filterVehicleCategory > 0) {
             $whereClause .= " AND fb.iVehicleCatID = " . intval($filterVehicleCategory);
+        }
+
+        // Apply datetime filters based on pickup datetime
+        if (!empty($filterFromDateTime)) {
+            $whereClause .= " AND fb.vPickUpTime >= '" . db_input($filterFromDateTime) . "'";
+        }
+
+        if (!empty($filterToDateTime)) {
+            $whereClause .= " AND fb.vPickUpTime <= '" . db_input($filterToDateTime) . "'";
         }
 
         // Fetch booking data
@@ -296,7 +307,7 @@ switch ($mode) {
             $hasDriver = !empty($row['iDriverID']) && intval($row['iDriverID']) > 0;
             $pickupTime = $row['vPickUpTime'] ?? '';
             $currentTime = date('Y-m-d H:i:s');
-            
+
             if ($hasVehicle && $hasDriver) {
                 $tripType = 'Assigned';
             } else if (!$hasVehicle && !$hasDriver) {
@@ -318,7 +329,7 @@ switch ($mode) {
                 'from' => strtolower($row['cBookingFor'] ?? ''),
                 'location' => db_output2($row['vPickUpLocation'] ?? ''),
                 'destination' => db_output2($row['vDropLocation'] ?? ''),
-                'pickupDate' => !empty($row['vPickUpTime']) ? date('d/m/Y', strtotime($row['vPickUpTime'])) : '',
+                'pickupDate' => !empty($row['vPickUpTime']) ? date('d-m-Y', strtotime($row['vPickUpTime'])) : '',
                 'pickupTime' => !empty($row['vPickUpTime']) ? date('h:i a', strtotime($row['vPickUpTime'])) : '',
                 'tripStatus' => $tripStatusCode,
                 'tripStatusText' => $tripStatusName,
@@ -916,7 +927,7 @@ switch ($mode) {
         $categoryID = intval($_REQUEST['categoryID'] ?? 0);
         $typeID = intval($_REQUEST['typeID'] ?? 0);
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
-        
+
         // Get vehicle categories for dropdown options
         $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
         $vehicleCategoryRes = sql_query($vehicleCategorySql);
@@ -929,7 +940,7 @@ switch ($mode) {
         foreach ($FLEET_TRIP_STATUS as $id => $name) {
             $tripStatusOpts[] = ['id' => $id, 'name' => $name];
         }
-        
+
         $vehicleCategories = [];
         while ($categoryRow = sql_fetch_assoc($vehicleCategoryRes)) {
             $vehicleCategories[] = [
@@ -941,22 +952,25 @@ switch ($mode) {
 
         // Get vehicles using the generic function with current status
         $vehicleData = GetVehicle_BasedOnSearch2($typeID, $categoryID, 'Y');
-        
+
         $vehicles = [];
         $currentlyAssigned = [];
         $availableVehicles = [];
-        
+
         foreach ($vehicleData as $vehicleID => $vehData) {
             // Apply keyword filter if provided
             if (!empty($keyword)) {
                 $keywordMatch = false;
-                if (stripos($vehData['NUM'], $keyword) !== false || 
-                    stripos($vehData['NAME'], $keyword) !== false) {
+                if (
+                    stripos($vehData['NUM'], $keyword) !== false ||
+                    stripos($vehData['NAME'], $keyword) !== false
+                ) {
                     $keywordMatch = true;
                 }
-                if (!$keywordMatch) continue;
+                if (!$keywordMatch)
+                    continue;
             }
-            
+
             // Get vehicle category details
             $categoryName = '';
             $capacity = 0;
@@ -967,7 +981,7 @@ switch ($mode) {
                     break;
                 }
             }
-            
+
             // Check if this vehicle is currently assigned to the booking
             $assignedVeh = false;
             $tripAssignmentSql = "SELECT iVehicleID FROM fleet_booking 
@@ -983,12 +997,12 @@ switch ($mode) {
             $lastAssignedTime = null;
             $lastAssigned = false;
             $nextTripTime = null;
-            
+
             // BOOKINGS array contains future trips, get the earliest one as next trip
             if (!empty($vehData['BOOKINGS'])) {
                 // Sort by pickup time ascending to get the next trip
                 $bookings = $vehData['BOOKINGS'];
-                usort($bookings, function($a, $b) {
+                usort($bookings, function ($a, $b) {
                     return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
                 });
                 $nextTripTime = $bookings[0]['PICKUP_TIME'];
@@ -1020,7 +1034,7 @@ switch ($mode) {
                 $availableVehicles[] = $vehicleDataFormatted;
             }
         }
-        
+
         // Merge arrays with currently assigned vehicles first
         $vehicles = array_merge($currentlyAssigned, $availableVehicles);
 
@@ -1054,10 +1068,10 @@ switch ($mode) {
         $vehicles = [];
         $currentlyAssigned = [];
         $availableVehicles = [];
-        
+
         while ($vehicleRow = sql_fetch_assoc($vehicleRes)) {
             $vehicleID = intval($vehicleRow['iVehicleID']);
-            
+
             // Get the latest driver assignment for this vehicle
             $latestDriverSql = "SELECT dva.iDriverID, dva.dtAssigned_From, dva.dtAssigned_To,
                                        d.vName as driverName, d.vMobileNum as driverMobile
@@ -1069,12 +1083,12 @@ switch ($mode) {
                                 ORDER BY dva.dtAssigned_From DESC 
                                 LIMIT 1";
             $latestDriverRes = sql_query($latestDriverSql);
-            
+
             $isAssigned = false;
             $driverID = 0;
             $driverName = '';
             $driverMobile = '';
-            
+
             if (sql_num_rows($latestDriverRes) > 0) {
                 $driverRow = sql_fetch_assoc($latestDriverRes);
                 $isAssigned = true;
@@ -1122,7 +1136,7 @@ switch ($mode) {
                 $lastAssignedTime = $lastAssignedRow['vPickUpTime'];
                 $lastAssigned = true;
             }
-            
+
             $nextTripSql = "SELECT vPickUpTime
                            FROM fleet_booking 
                            WHERE iVehicleID = $vehicleID 
@@ -1163,7 +1177,7 @@ switch ($mode) {
                 $availableVehicles[] = $vehicleData;
             }
         }
-        
+
         // Merge arrays with currently assigned vehicles first
         $vehicles = array_merge($currentlyAssigned, $availableVehicles);
         ===== END COMMENTED OUT SECTION ===== */
@@ -1383,7 +1397,7 @@ switch ($mode) {
             ]);
             exit;
         }
-$PAUSE_REASON_ARR=GetXArrFromYID("SELECT iReasonID,vName FROM pause_reasons","3");
+        $PAUSE_REASON_ARR = GetXArrFromYID("SELECT iReasonID,vName FROM pause_reasons", "3");
         // Fetch comprehensive trip data for sending
         $tripDataSql = "
             SELECT 
@@ -1481,19 +1495,19 @@ $PAUSE_REASON_ARR=GetXArrFromYID("SELECT iReasonID,vName FROM pause_reasons","3"
                     // For pause entries, get pause reason and notes from fleet_booking_log
                     $pauseReason = '';
                     $pauseNotes = '';
-                    
+
                     // Get pause reason from current log entry if iPauseTypeID exists
                     if (!empty($logRow['iPauseTypeID']) && intval($logRow['iPauseTypeID']) > 0) {
                         // $pauseReasonSql = "SELECT vName FROM pause_reasons WHERE iReasonID = " . intval($logRow['iPauseTypeID']) . " AND cStatus = 'A' LIMIT 1";
                         // $pauseReasonRes = sql_query($pauseReasonSql);
-                         // if (sql_num_rows($pauseReasonRes) > 0) {
+                        // if (sql_num_rows($pauseReasonRes) > 0) {
                         //     $pauseReasonRow = sql_fetch_assoc($pauseReasonRes);
                         //     $pauseReason = db_output2($pauseReasonRow['vName'] ?? '');
                         // }
-                         $pauseReasonRes = isset($PAUSE_REASON_ARR[$logRow['iPauseTypeID']]) ? db_output2($PAUSE_REASON_ARR[$logRow['iPauseTypeID']]): '';
-                       
+                        $pauseReasonRes = isset($PAUSE_REASON_ARR[$logRow['iPauseTypeID']]) ? db_output2($PAUSE_REASON_ARR[$logRow['iPauseTypeID']]) : '';
+
                     }
-                    
+
                     // Get pause notes from current log entry
                     if (!empty($logRow['vNotes'])) {
                         $pauseNotes = db_output2($logRow['vNotes']);
@@ -1542,7 +1556,7 @@ $PAUSE_REASON_ARR=GetXArrFromYID("SELECT iReasonID,vName FROM pause_reasons","3"
 
         $completedTripData = [
             'tripStatus' => $tripData['tripStatus'],
-            'tripStatusText' => isset($FLEET_TRIP_STATUS[$tripData['tripStatus']]) ? $FLEET_TRIP_STATUS[$tripData['tripStatus']] :'',
+            'tripStatusText' => isset($FLEET_TRIP_STATUS[$tripData['tripStatus']]) ? $FLEET_TRIP_STATUS[$tripData['tripStatus']] : '',
             'fullName' => db_output2($tripData['passengerName'] ?? ''),
             'guestStaffType' => $tripData['cBookingFor'] === 'G' ? 'Guest' : 'Staff',
             'passengerMobile' => db_output2($tripData['passengerMobile'] ?? ''),

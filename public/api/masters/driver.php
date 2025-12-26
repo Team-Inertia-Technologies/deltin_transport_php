@@ -76,7 +76,7 @@ switch ($mode) {
     case 'LIST':
         // Optimized query with JOINs to get vendor and vehicle data in single query
         $sql = "SELECT d.iDriverID, d.vName, d.vMobileNum, d.vEmpCode, d.iVendorID,  d.iType,
-                       d.iAreaID, d.iRank, d.cStatus, v.vName as vendor_name, d.iVehicleID,
+                        d.iRank, d.cStatus, v.vName as vendor_name, d.iVehicleID,
                        vh.vRnum, vh.iSeats
                 FROM driver d
                 LEFT JOIN vendor v ON d.iVendorID = v.iVendorID AND v.cStatus = 'A'
@@ -123,8 +123,8 @@ switch ($mode) {
 
     // ===================== CASE 2: ONLOAD =====================
     case 'ONLOAD':
-        // Available options (areas from gen_area table)
-        $AREA_ARR_RAW = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank", "3");
+        // Available options (areas from fleet_station table)
+        $AREA_ARR_RAW = GetXArrFromYID("SELECT iFlt_StationID, vName FROM fleet_station where cStatus='A' ORDER BY iRank", "3");
         $availableOpt = [];
         foreach ($AREA_ARR_RAW as $id => $label) {
             $availableOpt[] = ['id' => intval($id), 'label' => $label];
@@ -175,7 +175,7 @@ switch ($mode) {
 
         // Optimized query with JOIN to get vendor data and all new fields
         $sql = "SELECT d.iDriverID, d.vName, d.vMobileNum, d.vEmpCode, d.iVendorID, 
-                       d.iType, d.vBatchNo, d.dExpiry, d.iAreaID, d.iRank, d.cStatus, 
+                       d.iType, d.vBatchNo, d.dExpiry, d.iRank, d.cStatus, 
                        v.vName as vendor_name
                 FROM driver d
                 LEFT JOIN vendor v ON d.iVendorID = v.iVendorID AND v.cStatus = 'A'
@@ -194,16 +194,16 @@ switch ($mode) {
 
         $row = sql_fetch_assoc($res);
 
-        // Get availability areas for this driver from driver_area_assoc table
-        $areaSql = "SELECT iAreaID FROM driver_area_assoc WHERE iDriverID = $id";
+        // Get availability areas for this driver from driver_station_assoc table
+        $areaSql = "SELECT iFlt_StationID FROM driver_station_assoc WHERE iDriverID = $id";
         $areaRes = sql_query($areaSql);
 
         $selectedAvailOpt = [];
         while ($areaRow = sql_fetch_assoc($areaRes)) {
-            $selectedAvailOpt[] = intval($areaRow['iAreaID']);
+            $selectedAvailOpt[] = intval($areaRow['iFlt_StationID']);
         }
 
-        $AREA_ARR_RAW = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank", "3");
+        $AREA_ARR_RAW = GetXArrFromYID("SELECT iFlt_StationID, vName FROM fleet_station where cStatus='A' ORDER BY iRank", "3");
         $availableOpt = [];
         foreach ($AREA_ARR_RAW as $id => $label) {
             $availableOpt[] = ['id' => intval($id), 'label' => $label];
@@ -321,7 +321,7 @@ switch ($mode) {
 
         if ($result) {
             // Update availability areas - delete all existing associations first
-            $deleteAreaSql = "DELETE FROM driver_area_assoc WHERE iDriverID = $id";
+            $deleteAreaSql = "DELETE FROM driver_station_assoc WHERE iDriverID = $id";
             $deleteResult = sql_query($deleteAreaSql);
             
             // Insert new area associations - select all and add again
@@ -329,7 +329,7 @@ switch ($mode) {
                 foreach ($availability as $areaId) {
                     $areaId = intval($areaId);
                     if ($areaId > 0) {
-                        $areaSql = "INSERT INTO driver_area_assoc (iDriverID, iAreaID) VALUES ($id, $areaId)";
+                        $areaSql = "INSERT INTO driver_station_assoc (iDriverID, iFlt_StationID) VALUES ($id, $areaId)";
                         sql_query($areaSql);
                     }
                 }
@@ -346,14 +346,14 @@ switch ($mode) {
             ]);
         } else if ($result && sql_affected_rows() == 0) {
             // Update availability areas even if no driver changes were made
-            $deleteAreaSql = "DELETE FROM driver_area_assoc WHERE iDriverID = $id";
+            $deleteAreaSql = "DELETE FROM driver_station_assoc WHERE iDriverID = $id";
             sql_query($deleteAreaSql);
             
             if (is_array($availability) && !empty($availability)) {
                 foreach ($availability as $areaId) {
                     $areaId = intval($areaId);
                     if ($areaId > 0) {
-                        $areaSql = "INSERT INTO driver_area_assoc (iDriverID, iAreaID) VALUES ($id, $areaId)";
+                        $areaSql = "INSERT INTO driver_station_assoc (iDriverID, iFlt_StationID) VALUES ($id, $areaId)";
                         sql_query($areaSql);
                     }
                 }
@@ -447,7 +447,7 @@ switch ($mode) {
                 foreach ($availability as $areaId) {
                     $areaId = intval($areaId);
                     if ($areaId > 0) {
-                        $areaSql = "INSERT INTO driver_area_assoc (iDriverID, iAreaID) VALUES ($iDriverID, $areaId)";
+                        $areaSql = "INSERT INTO driver_station_assoc (iDriverID, iFlt_StationID) VALUES ($iDriverID, $areaId)";
                         sql_query($areaSql);
                     }
                 }

@@ -39,7 +39,7 @@ if (sql_num_rows($userCheckRes) == 0) {
     ]);
     exit;
 }
-$AREA_ARR_RAW = GetXArrFromYID("SELECT iAreaID, vName FROM gen_area where cStatus='A' ORDER BY iRank", "3");
+$AREA_ARR_RAW = GetXArrFromYID("SELECT iFlt_StationID, vName FROM fleet_station where cStatus='A' ORDER BY iRank", "3");
 $STATE_ARR_RAW = GetXArrFromYID("SELECT iStateID, vName FROM gen_state where cStatus='A' ORDER BY vName", "3");
 
 // Convert to id-label object format
@@ -114,9 +114,9 @@ switch ($mode) {
         while ($row = sql_fetch_assoc($res)) {
             $vendorID = intval($row['iVendorID']);
 
-            $areaSql = "SELECT vaa.iAreaID, ga.vName 
-                        FROM vendor_area_assoc vaa 
-                        LEFT JOIN gen_area ga ON vaa.iAreaID = ga.iAreaID AND ga.cStatus = 'A'
+            $areaSql = "SELECT vaa.iFlt_StationID, ga.vName 
+                        FROM vendor_station_assoc vaa 
+                        LEFT JOIN fleet_station ga ON vaa.iFlt_StationID = ga.iFlt_StationID AND ga.cStatus = 'A'
                         WHERE vaa.iVendorID = $vendorID 
                         ORDER BY ga.iRank";
             $areaRes = sql_query($areaSql);
@@ -124,7 +124,7 @@ switch ($mode) {
             $availabilityAreas = [];
             $availabilityNames = [];
             while ($areaRow = sql_fetch_assoc($areaRes)) {
-                $availabilityAreas[] = intval($areaRow['iAreaID']);
+                $availabilityAreas[] = intval($areaRow['iFlt_StationID']);
                 if (!empty($areaRow['vName'])) {
                     $availabilityNames[] = $areaRow['vName'];
                 }
@@ -201,12 +201,12 @@ switch ($mode) {
         $vendor = sql_fetch_assoc($res);
 
         // Fetch availability areas for this vendor
-        $areaSql = "SELECT iAreaID FROM vendor_area_assoc WHERE iVendorID = $id";
+        $areaSql = "SELECT iFlt_StationID FROM vendor_station_assoc WHERE iVendorID = $id";
         $areaRes = sql_query($areaSql);
 
         $availabilityAreas = [];
         while ($areaRow = sql_fetch_assoc($areaRes)) {
-            $availabilityAreas[] = intval($areaRow['iAreaID']);
+            $availabilityAreas[] = intval($areaRow['iFlt_StationID']);
         }
 
         // // Fetch active vehicles for this vendor
@@ -344,7 +344,7 @@ switch ($mode) {
 
         if ($result) {
             // Update availability areas - delete all existing associations first
-            $deleteAreaSql = "DELETE FROM vendor_area_assoc WHERE iVendorID = $id";
+            $deleteAreaSql = "DELETE FROM vendor_station_assoc WHERE iVendorID = $id";
             $deleteResult = sql_query($deleteAreaSql);
 
             // Insert new area associations - select all and add again
@@ -352,7 +352,7 @@ switch ($mode) {
                 foreach ($availability as $areaId) {
                     $areaId = intval($areaId);
                     if ($areaId > 0) {
-                        $areaSql = "INSERT INTO vendor_area_assoc (iVendorID, iAreaID) VALUES ($id, $areaId)";
+                        $areaSql = "INSERT INTO vendor_station_assoc (iVendorID, iFlt_StationID) VALUES ($id, $areaId)";
                         sql_query($areaSql);
                     }
                 }
@@ -369,7 +369,7 @@ switch ($mode) {
             ]);
         } else if ($result && sql_affected_rows() == 0) {
             // Update availability areas even if no vendor changes were made
-            $deleteAreaSql = "DELETE FROM vendor_area_assoc WHERE iVendorID = $id";
+            $deleteAreaSql = "DELETE FROM vendor_station_assoc WHERE iVendorID = $id";
             sql_query($deleteAreaSql);
 
             // Insert new area associations
@@ -377,7 +377,7 @@ switch ($mode) {
                 foreach ($availability as $areaId) {
                     $areaId = intval($areaId);
                     if ($areaId > 0) {
-                        $areaSql = "INSERT INTO vendor_area_assoc (iVendorID, iAreaID) VALUES ($id, $areaId)";
+                        $areaSql = "INSERT INTO vendor_station_assoc (iVendorID, iFlt_StationID) VALUES ($id, $areaId)";
                         sql_query($areaSql);
                     }
                 }
@@ -467,7 +467,7 @@ switch ($mode) {
                 foreach ($availability as $areaId) {
                     $areaId = intval($areaId);
                     if ($areaId > 0) {
-                        $areaSql = "INSERT INTO vendor_area_assoc (iVendorID, iAreaID) VALUES ($iVendorID, $areaId)";
+                        $areaSql = "INSERT INTO vendor_station_assoc (iVendorID, iFlt_StationID) VALUES ($iVendorID, $areaId)";
                         sql_query($areaSql);
                     }
                 }
