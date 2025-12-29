@@ -5516,7 +5516,7 @@ function GetVehicle_BasedOnSearch2($txttype=0,$txtcatid=0,$show_currentstatus='N
 	if(!empty($txttype)) $cond .= ' and v.iType='.$txttype;
 	if(!empty($txtcatid)) $cond .= ' and v.iCatID='.$txtcatid;
 
-	$q = 'select v.iVehicleID, v.vName, v.vRnum, v.iCatID, v.iVendorID, v.iType, v.iSeats, d.iDriverID, d.iVendorID as D_VENDORID, d.vName as D_NAME, d.vMobileNum, d.vEmpCode from vehicle as v left outer join driver as d on v.iVehicleID=d.iVehicleID and d.cStatus!="X" where v.cStatus!="X"'.$cond;
+	$q = 'select v.iVehicleID, v.vName, v.vRnum, v.iCatID, v.iVendorID, v.iType, v.iSeats, d.iDriverID, d.iVendorID as D_VENDORID, d.vName as D_NAME, d.vMobileNum, d.vEmpCode from vehicle as v left outer join driver as d on v.iVehicleID=d.iVehicleID and d.cStatus!="X" where v.cServiceType IN ("B","F") and v.cStatus!="X"'.$cond;
 	$r = sql_query($q,'');
 	if(sql_num_rows($r))
 	{
