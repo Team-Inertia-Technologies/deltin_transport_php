@@ -187,15 +187,23 @@ switch ($mode) {
             "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt
         ];
 
+
+        $whereClause = "fb.cStatus = 'A'";
+        
         // Check if user has FLEET_USER_SPECIFIC_REQ access
         $userSpecificAccess = checkUserModuleAccess($user_id, 'FLEET_USER_SPECIFIC_REQ');
 
-        // Build WHERE clause based on user access
-        $whereClause = "fb.cStatus = 'A'";
         if ($userSpecificAccess) {
             $whereClause .= " AND fb.iAdded_UserID = $user_id";
         }
 
+        $staffReqAccess = checkUserModuleAccess($user_id, 'FLEET_STAFF_REQ');
+        $guestReqAccess = checkUserModuleAccess($user_id, 'FLEET_GUEST_REQ');
+        if ($staffReqAccess && !$guestReqAccess) {
+            $whereClause .= " AND fb.iFStaffID > 0";
+        } else if (!$staffReqAccess && $guestReqAccess) {
+            $whereClause .= " AND fb.iGuestID > 0";
+        }
         // Apply filters to WHERE clause
         if (!empty($filterTripStatus)) {
             $whereClause .= " AND fb.cType = '" . db_input($filterTripStatus) . "'";
@@ -291,7 +299,7 @@ switch ($mode) {
             if (sql_num_rows($startTimeRes) > 0) {
                 $startTimeRow = sql_fetch_assoc($startTimeRes);
                 $startTime = !empty($startTimeRow['dtAdded']) ? date('d-m-Y H:i', strtotime($startTimeRow['dtAdded']))
- : '';
+                    : '';
             }
 
             // Get trip end time (when cRefType = 'C')
@@ -1324,11 +1332,12 @@ switch ($mode) {
             exit;
         }
 
-        // Update the booking with vehicle and driver assignment
         $dtNow = NOW;
         $updateSql = "UPDATE fleet_booking SET 
                      iVehicleID = $iVehicleID,
-                     iDriverID = $iDriverID
+                     iDriverID = $iDriverID,
+                     iVehAssignedBy = $user_id,
+                      	dtVehAssigned = '$dtNow'
                      WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A'";
 
         $updateResult = sql_query($updateSql);
@@ -1511,7 +1520,6 @@ switch ($mode) {
                         //     $pauseReason = db_output2($pauseReasonRow['vName'] ?? '');
                         // }
                         $pauseReasonRes = isset($PAUSE_REASON_ARR[$logRow['iPauseTypeID']]) ? db_output2($PAUSE_REASON_ARR[$logRow['iPauseTypeID']]) : '';
-
                     }
 
                     // Get pause notes from current log entry
