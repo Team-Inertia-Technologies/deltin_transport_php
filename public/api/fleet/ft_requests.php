@@ -1514,8 +1514,8 @@ switch ($mode) {
                         $pauseNotes = db_output2($logRow['vNotes']);
                     }
 
-                    if (!empty($pauseReason)) {
-                        $description = "$driverName paused the trip due to $pauseReason";
+                    if (!empty($pauseReasonRes)) {
+                        $description = "$driverName paused the trip due to $pauseReasonRes";
                         if (!empty($pauseNotes)) {
                             $description .= " ($pauseNotes)";
                         }
