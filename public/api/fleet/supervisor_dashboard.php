@@ -465,7 +465,7 @@ switch ($mode) {
 					}
 				}			
 				$PAUSE_TYPE_ARR = GetXArrFromYID("select iReasonID, vName from pause_reasons where cStatus = 'A'", 3);
-				$q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID from booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where bl.cRefType <> 'P' and fb.iVehicleID = $vehiId order by bl.dtAdded DESC";
+				$q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where bl.cRefType <> 'P' and fb.iVehicleID = $vehiId order by bl.dtAdded DESC";
 				$r = sql_query($q, "");
 				
 				if(sql_num_rows($r)){
@@ -545,7 +545,7 @@ switch ($mode) {
 				}
 			}			
 			$PAUSE_TYPE_ARR = GetXArrFromYID("select iReasonID, vName from pause_reasons where cStatus = 'A'", 3);
-			$q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID from booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where bl.cRefType <> 'P' order by bl.dtAdded DESC";
+			$q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where bl.cRefType <> 'P' order by bl.dtAdded DESC";
 			$r = sql_query($q, "");
 			
 			if(sql_num_rows($r)){
