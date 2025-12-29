@@ -930,7 +930,7 @@ switch ($mode) {
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
 
         // Get vehicle categories for dropdown options
-        $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
+        $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cType IN ('B','F') AND cStatus = 'A' ORDER BY vName";
         $vehicleCategoryRes = sql_query($vehicleCategorySql);
 
         $vehicleTypeOpt = [['id' => 0, 'name' => 'All']];
