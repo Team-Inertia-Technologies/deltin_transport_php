@@ -203,6 +203,8 @@ switch ($mode) {
             $whereClause .= " AND fb.iFStaffID > 0";
         } else if (!$staffReqAccess && $guestReqAccess) {
             $whereClause .= " AND fb.iGuestID > 0";
+        }else if (!$staffReqAccess && !$guestReqAccess) {
+            $whereClause .= " AND fb.iGuestID = 0 AND fb.iFStaffID = 0";
         }
         // Apply filters to WHERE clause
         if (!empty($filterTripStatus)) {
