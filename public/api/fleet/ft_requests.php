@@ -488,13 +488,13 @@ switch ($mode) {
         // Log booking creation
         LogBookingCreated($iFleet_BookingID1, $vName, $user_id);
 
-        $responseIds = [$iFleet_BookingID1];
+        $responseId = $iFleet_BookingID1;
 
 
         echo json_encode([
             "data" => [
                 "message" => "Booking added successfully",
-                "bookingIds" => $responseIds
+                "bookingId" => $responseId
             ],
             "statusCode" => 200
         ]);
