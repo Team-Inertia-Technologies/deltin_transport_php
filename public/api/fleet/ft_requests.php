@@ -250,7 +250,12 @@ switch ($mode) {
             LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
             LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID AND vcat.cStatus = 'A'
             WHERE $whereClause
-            ORDER BY fb.vPickUpTime DESC
+            ORDER BY 
+                CASE 
+                    WHEN fb.cType IN ('G', 'P', 'R', 'S') THEN 0 
+                    ELSE 1 
+                END,
+                fb.vPickUpTime ASC
         ";
         $bookingRes = sql_query($bookingSql);
 
@@ -879,20 +884,20 @@ switch ($mode) {
 
         $requestDetails = [
             'bookingId' => intval($booking['iFleet_BookingID']),
-            'passengerName' => $passengerName,
+            'passengerName' => db_output2($passengerName),
             'mobile' => $passengerMobile,
             'guestStaffType' => $guestStaffType,
-            'bookingCategory' => $booking['bookingCategoryName'] ?? 'N/A',
-            'propertyValue' => $booking['propertyName'] ?? 'N/A',
-            'pickupFrom' => $booking['vPickUpLocation'] ?? '',
-            'dropTo' => $booking['vDropLocation'] ?? '',
+            'bookingCategory' => db_output2($booking['bookingCategoryName']) ?? 'N/A',
+            'propertyValue' => db_output2($booking['propertyName']) ?? 'N/A',
+            'pickupFrom' => db_output2($booking['vPickUpLocation']) ?? '',
+            'dropTo' => db_output2($booking['vDropLocation']) ?? '',
             'dateTime' => $pickupDateTime,
             'instructions' => db_output2($booking['vInstructions']) ?? '',
-            'remarks' => $booking['vRemarks'] ?? '',
+            'remarks' => db_output2($booking['vRemarks']) ?? '',
             'passengers' => intval($booking['iPax'] ?? 0),
             'baggage' => intval($booking['iBaggage'] ?? 0),
-            'bookedBy' => $booking['bookedByName'] ?? 'N/A',
-            'vehicleCategory' => $booking['vehicleCategoryName'] ?? 'N/A',
+            'bookedBy' => db_output2($booking['bookedByName']) ?? 'N/A',
+            'vehicleCategory' => db_output2($booking['vehicleCategoryName']) ?? 'N/A',
             'travelPurpose' => $booking['travelPurposeName'] ?? 'N/A',
             'travelType' => $booking['travelTypeName'] ?? 'N/A',
             'departmentName' => $booking['departmentName'] ?? '',
