@@ -90,9 +90,9 @@ if (!empty($nextTrip)) {
 }
 
 if(empty($nextTrip)) {
-	http_response_code(400);
+	http_response_code(404);
 	header('Content-Type: application/json');
-	echo json_encode(['statusCode' => 400, 'message' => 'No upcoming trips found.']);
+	echo json_encode(['statusCode' => 404, 'message' => 'No upcoming trips found.', 'nextTrip' => NULL ]);
 	exit;
 } else
 {
