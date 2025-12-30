@@ -107,7 +107,8 @@ switch ($mode) {
 		
 		if(!empty($type)){
 			if($type == 'D'){
-				$cond .= " and (NOW() > trip_datetime - INTERVAL 2 HOUR) and (iDriverID = 0 or iVehicleID = 0)";
+				//$cond .= " and (NOW() > vPickUpTime - INTERVAL 2 HOUR) and (iDriverID = 0 or iVehicleID = 0)";
+				$cond .= " and vPickUpTime IS NOT NULL AND vPickUpTime <> '' AND vPickUpTime < NOW() AND cType = 'N'";
 			}
 			if($type == 'U'){
 				$cond .= " and (iDriverID = '0' or iVehicleID = '0')";
@@ -141,7 +142,7 @@ switch ($mode) {
 		}		
 
         // Fetch booking data
-        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID from fleet_booking where 1 $cond order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType from fleet_booking where 1 $cond order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         $bookingRes = sql_query($bookingSql);
         
         $rowData = [];
@@ -160,8 +161,12 @@ switch ($mode) {
 				$color_vehicle_assignment = "rgb(0, 161, 75)";
 			}	
 			$border = "rgb(255, 87, 51)";
+			
+			$type_status = 'U';
+			
 			if(!empty($row['iDriverID']) || !(empty($row['iVehicleID']))){
 				$border = "rgb(255, 152, 0)";
+				$type_status = 'A';
 			}
 			
 			if(!empty($row['iDriverID']) && !(empty($row['iVehicleID']))){
@@ -185,6 +190,11 @@ switch ($mode) {
 			if($row['cDisposal'] == 'Y'){
 				$is_disposal = true;	
 			}	
+			$currentTime = date('Y-m-d H:i:s');
+			if (!empty($row['vPickUpTime']) && strtotime($row['vPickUpTime']) < strtotime($currentTime) && $row['cType'] == 'N') {
+                    $type_status = 'D';
+            }
+			
 			
             $rowData[] = [
                 'id' => intval($row['iFleet_BookingID']),
@@ -196,10 +206,12 @@ switch ($mode) {
                 'to' => db_output2($row['vDropLocation'] ?? ''),
                 'time' => $row['vPickUpTime'] ?? '',
                 'typeStatus' => '',
+				'type'=> $type_status,
                 'pax' => strval($row['iPax'] ?? '0'),
                 'bags' => strval($row['iBaggage'] ?? '0'),
                 'bookedByName' => db_output2($FLEET_STAFF_ARR[$row['iBookedBy']] ?? ''),
 				'bookingCat' => db_output2($FLEET_CATEGORY_ARR[$row['iFleet_BKCatID']] ?? ''),
+				'bookedFor' => db_output2($row['cBookingFor'] ?? ''),
                 'property' => db_output2($PROPERTY_ARR[$row['iPropertyID']] ?? ''),
                 'vehicle_category' => db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']] ?? ''),
                 'travelPurpose' => db_output2($TRAVEL_PURPOSE_ARR[$row['iFleet_TrvPurID']] ?? ''),
@@ -363,7 +375,8 @@ switch ($mode) {
 			$cond .= " and fb.cType = '$status'";			
 		}
 		
-        $bookingSql = "SELECT fb.iFleet_BookingID AS iFleet_BookingID, v.vRnum AS vRnum, v.iType AS iType, vc.iVCatID AS iVCatID, vc.vName AS vCatName, vc.iCapacity AS iCapacity, CASE WHEN MAX(last_fb.vPickupTime) IS NOT NULL THEN TRUE ELSE FALSE END AS lastAssigned, MAX(last_fb.vPickupTime) AS lastAssignedTime, CASE WHEN fb.iFleet_BookingID IS NOT NULL THEN TRUE ELSE FALSE END AS alreadyAssigned, fb.iDriverID AS driverID, d.vName AS driverName, d.vMobileNum AS driverMobile, MIN(next_fb.vPickupTime) AS nextTripTime, fb.cDisposal AS disposal FROM vehicle v JOIN vehicle_category vc ON vc.iVCatID = v.iCatID LEFT JOIN fleet_booking fb ON fb.iVehicleID = v.iVehicleID AND fb.cStatus = 'A' LEFT JOIN driver d ON d.iDriverID = fb.iDriverID LEFT JOIN fleet_booking last_fb ON last_fb.iVehicleID = v.iVehicleID AND last_fb.vPickupTime < NOW() AND last_fb.cStatus = 'A' LEFT JOIN fleet_booking next_fb ON next_fb.iVehicleID = v.iVehicleID AND next_fb.vPickupTime > NOW() AND next_fb.cStatus = 'A' where 1 $cond GROUP BY fb.iVehicleID ORDER BY v.vRnum";
+        //$bookingSql = "SELECT fb.iFleet_BookingID AS iFleet_BookingID, v.vRnum AS vRnum, v.iType AS iType, vc.iVCatID AS iVCatID, vc.vName AS vCatName, vc.iCapacity AS iCapacity, CASE WHEN MAX(last_fb.vPickupTime) IS NOT NULL THEN TRUE ELSE FALSE END AS lastAssigned, MAX(last_fb.vPickupTime) AS lastAssignedTime, CASE WHEN fb.iFleet_BookingID IS NOT NULL THEN TRUE ELSE FALSE END AS alreadyAssigned, fb.iDriverID AS driverID, d.vName AS driverName, d.vMobileNum AS driverMobile, d.iType as driverType, MIN(next_fb.vPickupTime) AS nextTripTime, fb.cDisposal AS disposal FROM vehicle v JOIN vehicle_category vc ON vc.iVCatID = v.iCatID LEFT JOIN fleet_booking fb ON fb.iVehicleID = v.iVehicleID AND fb.cStatus = 'A' LEFT JOIN driver d ON d.iDriverID = fb.iDriverID LEFT JOIN fleet_booking last_fb ON last_fb.iVehicleID = v.iVehicleID AND last_fb.vPickupTime < NOW() AND last_fb.cStatus = 'A' LEFT JOIN fleet_booking next_fb ON next_fb.iVehicleID = v.iVehicleID AND next_fb.vPickupTime > NOW() AND next_fb.cStatus = 'A' where 1 $cond GROUP BY fb.iVehicleID ORDER BY v.vRnum";
+		$bookingSql = "SELECT fb.iFleet_BookingID AS iFleet_BookingID, v.vRnum AS vRnum, v.iType AS iType, vc.iVCatID AS iVCatID, vc.vName AS vCatName, vc.iCapacity AS iCapacity, CASE WHEN MAX(last_fb.vPickupTime) IS NOT NULL THEN TRUE ELSE FALSE END AS lastAssigned, MAX(last_fb.vPickupTime) AS lastAssignedTime, CASE WHEN fb.iFleet_BookingID IS NOT NULL THEN TRUE ELSE FALSE END AS alreadyAssigned, fb.iDriverID AS driverID, d.vName AS driverName, d.vMobileNum AS driverMobile, d.iType AS driverType, MIN(next_fb.vPickupTime) AS nextTripTime, fb.cDisposal AS disposal, latest_fb.cType AS latestBookingType FROM vehicle v JOIN vehicle_category vc ON vc.iVCatID = v.iCatID LEFT JOIN fleet_booking fb ON fb.iVehicleID = v.iVehicleID AND fb.cStatus = 'A' LEFT JOIN driver d ON d.iDriverID = fb.iDriverID LEFT JOIN fleet_booking last_fb ON last_fb.iVehicleID = v.iVehicleID AND last_fb.vPickupTime < NOW() AND last_fb.cStatus = 'A' LEFT JOIN fleet_booking next_fb ON next_fb.iVehicleID = v.iVehicleID AND next_fb.vPickupTime > NOW() AND next_fb.cStatus = 'A' LEFT JOIN ( SELECT fb1.iVehicleID, fb1.cType, fb1.vPickupTime FROM fleet_booking fb1 INNER JOIN ( SELECT iVehicleID, MAX(vPickupTime) AS maxPickup FROM fleet_booking WHERE cStatus = 'A' GROUP BY iVehicleID ) fb2 ON fb1.iVehicleID = fb2.iVehicleID AND fb1.vPickupTime = fb2.maxPickup ) latest_fb ON latest_fb.iVehicleID = v.iVehicleID WHERE 1 $cond GROUP BY v.iVehicleID ORDER BY v.vRnum"
         $bookingRes = sql_query($bookingSql);		
 
         $rowData = [];
@@ -375,6 +388,7 @@ switch ($mode) {
                 'id' => intval($row['iFleet_BookingID']),
                 'regNo' => $row['vRnum'] ?? "",
                 'vehicleType' => $row['iType'] ?? 0,
+				'vehiStatus' => $row['latestBookingType'] ?? 0,
 				'categoryId' => $row['iVCatID'] ?? 0,
 				'categoryName' => $row['vCatName'],
                 'capacity' => $row['iCapacity'],
@@ -384,6 +398,7 @@ switch ($mode) {
                 'driverID' => $row['driverID'] ?? 0,
                 'driverName' => db_output2($row['driverName'] ?? ''),
                 'driverMobile' => db_output2($row['driverMobile'] ?? ''),
+                'driverType' => db_output2($row['driverType'] ?? ''),
                 'nextTripTime' => $row['nextTripTime'] ?? '',
                 'disposal' => ($row['disposal'] == 'Y')?true:false,
             ];
