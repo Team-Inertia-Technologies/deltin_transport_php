@@ -166,15 +166,17 @@ switch ($mode) {
 			
 			if(!empty($row['iDriverID']) || !(empty($row['iVehicleID']))){
 				$border = "rgb(255, 152, 0)";
-				$type_status = 'A';
+				$type_status = 'U';
 			}
 			
 			if(!empty($row['iDriverID']) && !(empty($row['iVehicleID']))){
 				$border = "rgb(76, 175, 80)";
+				$type_status = 'A';
 			}			
 			
 			if(empty($row['iDriverID']) && empty($row['iVehicleID'])){
 				$border = "rgb(255, 87, 51)";
+				$type_status = 'A';
 			}
 			$is_staff = false;
 			$is_guest = false;
