@@ -42,6 +42,7 @@ $driverID = intval($userid);
 $sql = "
 SELECT 
 	fb.iFleet_BookingID,
+    fb.cBookingFor,
 	fb.vPickUpTime,
 	fb.vName AS name,
 	fb.vMobileNo AS mobile,
@@ -86,7 +87,7 @@ if (!empty($nextTrip)) {
     }
     $nextTrip['time'] = $formattedTime;
     $nextTrip['duration'] = $durationText;
-    $nextTrip['type'] = "guest";
+    $nextTrip['type'] = $nextTrip["cBookingFor"] == 'G' ? 'Guest' : 'Staff';
 }
 
 if(empty($nextTrip)) {

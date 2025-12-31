@@ -47,6 +47,7 @@ $driverID = intval($userid);
 $sql = "
 SELECT 
     fb.iFleet_BookingID,
+    fb.cBookingFor,
     fb.vPickUpTime,
     fb.vName AS guestName,
     fb.vMobileNo AS guestMobile,
@@ -105,7 +106,7 @@ while ($row = sql_fetch_assoc($res)) {
         "pickupDatetime" => $row["vPickUpTime"],
         "dropDateTime"   => $row["vDropTime"],
         "ratings"       => intval($row["fRate"]),
-        "type"           => "guest",
+        "type"           => $row["cBookingFor"] == 'G' ? 'Guest' : 'Staff',
     ];
 }
 

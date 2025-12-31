@@ -67,6 +67,7 @@ SELECT
     fb.iBaggage,
     fb.vRemarks,
     fb.iBookedBy,
+    fb.cBookingFor,
     fb.cType,
     fb.vPickUpLocation AS fromLocation,
     fb.vDropLocation AS toLocation,
@@ -138,7 +139,7 @@ $response = [
             "bags"         => intval($row["iBaggage"]),
             "from"         => $row["fromLocation"],
             "to"           => $row["toLocation"],
-            "type"         => "guest",
+            "type"         => $row["cBookingFor"] == 'G' ? 'Guest' : 'Staff',
             "instru"       => $row["vRemarks"],
             "supervisor"   => [
                 "name"   => $supervisorName,

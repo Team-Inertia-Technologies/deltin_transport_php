@@ -46,6 +46,7 @@ $sql = "
 SELECT 
     fb.iFleet_BookingID,
     fb.vPickUpTime,
+    fb.cBookingFor,
     fb.vName AS guestName,
     fb.vMobileNo AS guestMobile,
     fb.iPax,
@@ -104,7 +105,7 @@ while ($row = sql_fetch_assoc($res)) {
         "bags"       => intval($row["iBaggage"]),
         "from" => $row["fromLocation"],
         "to"   => $row["toLocation"],
-        "type" => 'guest',
+        "type" => $row["cBookingFor"] == 'G' ? 'Guest' : 'Staff',
         "active" => true,
     ];
 }
