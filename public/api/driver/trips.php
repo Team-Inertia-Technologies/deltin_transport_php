@@ -1,6 +1,6 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../../includes/common_api.php";
 date_default_timezone_set('Asia/Calcutta');
@@ -88,7 +88,7 @@ $vehicle = [
     "number" => ""
 ];
 
-$settingsQuery = "SELECT vCode, vValue FROM sys_setting WHERE vCode IN ('PING_DRIVER_LOCATION', 'DRIVERLOC_PING_DURATION')";
+$settingsQuery = "SELECT vCode, vValue FROM sys_settings WHERE vCode IN ('PING_DRIVER_LOCATION', 'DRIVERLOC_PING_DURATION')";
 $settingsResult = sql_query($settingsQuery);
 
 $settings = [];
