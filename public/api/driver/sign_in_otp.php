@@ -116,17 +116,6 @@ if ($mode == 'LOGIN') {
 		$staff_query = "SELECT iDriverID, vName FROM driver WHERE vMobileNum='$mobile' AND cStatus='A'";
 		$staff_result = sql_query($staff_query, "Get staff details");
        
-        $settingsQuery = "SELECT vCode, vValue FROM sys_setting WHERE vCode IN ('PING_DRIVER_LOCATION', 'DRIVERLOC_PING_DURATION')";
-        $settingsResult = sql_query($settingsQuery);
-
-        $settings = [];
-        while ($row = sql_fetch_assoc($settingsResult)) {
-        $settings[$row['vCode']] = $row['vValue'];
-        }
-
-        $pingDriverLocation = $settings['PING_DRIVER_LOCATION'] ?? 'N';
-        $pingDuration = $settings['DRIVERLOC_PING_DURATION'] ?? null;
-
 		if (sql_num_rows($staff_result)) {
 			[$staffId, $staffName] = sql_fetch_row($staff_result);
 
@@ -135,10 +124,6 @@ if ($mode == 'LOGIN') {
                 'name'  => db_output($staffName),
                 'pic'   => '',
             ];
-
-            if ($pingDriverLocation === 'Y') {
-                $USER_DATA['driver_location_ping_seconds'] = (int)$pingDuration;
-            }
 
 			// Log the signin
 			sql_query("INSERT INTO st_log_signin (dDate, cRefType, iRefID, dtEntry, vIPAddress, vBrowser, cStatus) VALUES ('" . TODAY . "', 'S', '$staffId', '" . NOW . "', '" . ($_SERVER['REMOTE_ADDR'] ?? '') . "', '" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "', 'A')", "Log staff signin");

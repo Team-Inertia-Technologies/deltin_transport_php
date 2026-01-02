@@ -88,6 +88,23 @@ $vehicle = [
     "number" => ""
 ];
 
+$settingsQuery = "SELECT vCode, vValue FROM sys_setting WHERE vCode IN ('PING_DRIVER_LOCATION', 'DRIVERLOC_PING_DURATION')";
+$settingsResult = sql_query($settingsQuery);
+
+$settings = [];
+while ($row = sql_fetch_assoc($settingsResult)) {
+$settings[$row['vCode']] = $row['vValue'];
+}
+
+$pingDriverLocation = $settings['PING_DRIVER_LOCATION'] ?? 'N';
+$pingDuration = $settings['DRIVERLOC_PING_DURATION'] ?? null;
+
+if ($pingDriverLocation === 'Y') {
+    $pingDuration = (int)$pingDuration;
+} else {
+    $pingDuration = null;
+}
+
 while ($row = sql_fetch_assoc($res)) {
 
     if ($vehicle["number"] === "" && !empty($row["vehicleNo"])) {
@@ -129,7 +146,8 @@ $response = [
     "message" => "Trips fetched successfully",
     "data" => [
         "car" => $vehicle,
-        "requests"   => $trips
+        "requests"   => $trips,
+        "location_ping_seconds" => $pingDuration
     ]
 ];
 
