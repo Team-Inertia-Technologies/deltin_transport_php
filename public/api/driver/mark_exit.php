@@ -27,13 +27,13 @@ $vehicle_status = trim($request->vehicle_status);
 $station = trim($request->station);
 
 
-if (!$token) {
+if (!$token || !$VehicleID) {
     http_response_code(400);
     header('Content-Type: application/json');
     echo json_encode([
         "statusCode" => 400,
         "error" => [
-            "message" => "Missing token"
+            "message" => "Missing token or vehicle_id."
         ]
     ]);
     exit;
