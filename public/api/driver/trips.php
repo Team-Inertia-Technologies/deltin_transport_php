@@ -53,6 +53,7 @@ SELECT
     fb.iBaggage,
     fb.vPickUpLocation AS fromLocation,
     fb.vDropLocation AS toLocation,
+    v.iVehicleID,
     v.vRnum AS vehicleNo,
     vc.vName AS vehicleName,
     p.vName AS propertyName
@@ -84,6 +85,7 @@ if (!$res) {
 
 $trips = [];
 $vehicle = [
+    "id" => "",
     "name" => "",
     "number" => ""
 ];
@@ -108,6 +110,7 @@ if ($pingDriverLocation === 'Y') {
 while ($row = sql_fetch_assoc($res)) {
 
     if ($vehicle["number"] === "" && !empty($row["vehicleNo"])) {
+        $vehicle["id"]     = $row["iVehicleID"];
         $vehicle["name"] = $row["vehicleName"];
         $vehicle["number"]  = $row["vehicleNo"];
        
