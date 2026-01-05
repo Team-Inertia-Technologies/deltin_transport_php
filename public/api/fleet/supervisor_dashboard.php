@@ -387,7 +387,7 @@ switch ($mode) {
 
 			
             $rowData[] = [
-                'id' => intval($row['iFleet_BookingID']),
+                'id' => intval($row['iVehicleID']),
                 'regNo' => $row['vRnum'] ?? "",
                 'vehicleType' => $row['iType'] ?? 0,
 				'vehiStatus' => $row['latestBookingType'] ?? 0,
