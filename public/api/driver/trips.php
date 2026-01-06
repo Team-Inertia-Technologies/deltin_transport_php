@@ -90,7 +90,7 @@ $vehicle = [
     "number" => ""
 ];
 
-$vehicle_id = GetXFromYID("SELECT iVehicleID FROM driver_vehicle_assoc WHERE iDriverID = $driverI AND cStatus='A' LIMIT 1", 'TRIPS.VEHICLE');
+$vehicle_id = GetXFromYID("SELECT iVehicleID FROM driver_vehicle_assoc WHERE iDriverID = $driverID AND cStatus='A' LIMIT 1", 'TRIPS.VEHICLE');
 $settingsQuery = "SELECT vCode, vValue FROM sys_settings WHERE vCode IN ('PING_DRIVER_LOCATION', 'DRIVERLOC_PING_DURATION')";
 $settingsResult = sql_query($settingsQuery);
 
