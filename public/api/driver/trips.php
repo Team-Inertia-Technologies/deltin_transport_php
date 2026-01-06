@@ -109,7 +109,7 @@ if ($pingDriverLocation === 'Y') {
 
 while ($row = sql_fetch_assoc($res)) {
 
-    $vehicle_id = $row["iVehicleID"];
+    $vehicle_id = GetXFromYID("SELECT iVehicleID FROM driver_vehicle_assoc WHERE iDriverID = $driverID LIMIT 1", 'TRIPS.VEHICLE');
 
     if ($vehicle["number"] === "" && !empty($row["vehicleNo"])) {
         $vehicle["id"]     = $row["iVehicleID"];
