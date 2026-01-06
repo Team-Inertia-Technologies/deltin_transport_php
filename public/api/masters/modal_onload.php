@@ -97,11 +97,16 @@ SELECT
     DATE_FORMAT(vPickUpTime,'%d/%m/%Y %H:%i') AS fromTime,
     DATE_FORMAT(vDropTime,'%d/%m/%Y %H:%i') AS toTime
 FROM fleet_booking
-WHERE iDriverID = $driverId AND cType IN ('C','N')
-ORDER BY vPickUpTime DESC
-LIMIT 2
+WHERE iDriverID = $driverId
+  AND cType IN ('N','C')
+ORDER BY 
+    CASE 
+        WHEN cType = 'N' THEN 1
+        WHEN cType = 'C' THEN 2
+    END,
+    vPickUpTime DESC
+LIMIT 1
 ";
-
 $tripRes = sql_query($tripSql, "TRIPS");
 $tripsArr = [];
 while ($t = sql_fetch_array($tripRes)) {
