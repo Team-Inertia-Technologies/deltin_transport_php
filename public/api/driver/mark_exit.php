@@ -1,6 +1,6 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../../includes/common_api.php";
 date_default_timezone_set('Asia/Calcutta');
@@ -24,6 +24,7 @@ $request = json_decode($postdata);
 $token      = trim($request->token);
 $VehicleID  = trim($request->vehicle_id);
 $vehicle_status = trim($request->vehicle_status);
+$vehicle_status = ($vehicle_status === 'atStation') ? 'Y' : 'N';
 $station = trim($request->station);
 
 
