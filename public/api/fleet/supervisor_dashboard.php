@@ -378,7 +378,7 @@ switch ($mode) {
 		}
 		
         //$bookingSql = "SELECT fb.iFleet_BookingID AS iFleet_BookingID, v.vRnum AS vRnum, v.iType AS iType, vc.iVCatID AS iVCatID, vc.vName AS vCatName, vc.iCapacity AS iCapacity, CASE WHEN MAX(last_fb.vPickupTime) IS NOT NULL THEN TRUE ELSE FALSE END AS lastAssigned, MAX(last_fb.vPickupTime) AS lastAssignedTime, CASE WHEN fb.iFleet_BookingID IS NOT NULL THEN TRUE ELSE FALSE END AS alreadyAssigned, fb.iDriverID AS driverID, d.vName AS driverName, d.vMobileNum AS driverMobile, d.iType as driverType, MIN(next_fb.vPickupTime) AS nextTripTime, fb.cDisposal AS disposal FROM vehicle v JOIN vehicle_category vc ON vc.iVCatID = v.iCatID LEFT JOIN fleet_booking fb ON fb.iVehicleID = v.iVehicleID AND fb.cStatus = 'A' LEFT JOIN driver d ON d.iDriverID = fb.iDriverID LEFT JOIN fleet_booking last_fb ON last_fb.iVehicleID = v.iVehicleID AND last_fb.vPickupTime < NOW() AND last_fb.cStatus = 'A' LEFT JOIN fleet_booking next_fb ON next_fb.iVehicleID = v.iVehicleID AND next_fb.vPickupTime > NOW() AND next_fb.cStatus = 'A' where 1 $cond GROUP BY fb.iVehicleID ORDER BY v.vRnum";
-		$bookingSql = "SELECT fb.iVehicleID, fb.iFleet_BookingID AS iFleet_BookingID, v.vRnum AS vRnum, v.iType AS iType, vc.iVCatID AS iVCatID, vc.vName AS vCatName, vc.iCapacity AS iCapacity, CASE WHEN MAX(last_fb.vPickupTime) IS NOT NULL THEN TRUE ELSE FALSE END AS lastAssigned, MAX(last_fb.vPickupTime) AS lastAssignedTime, CASE WHEN fb.iFleet_BookingID IS NOT NULL THEN TRUE ELSE FALSE END AS alreadyAssigned, fb.iDriverID AS driverID, d.vName AS driverName, d.vMobileNum AS driverMobile, d.iType AS driverType, MIN(next_fb.vPickupTime) AS nextTripTime, fb.cDisposal AS disposal, latest_fb.cType AS latestBookingType FROM vehicle v JOIN vehicle_category vc ON vc.iVCatID = v.iCatID LEFT JOIN fleet_booking fb ON fb.iVehicleID = v.iVehicleID AND fb.cStatus = 'A' LEFT JOIN driver d ON d.iDriverID = fb.iDriverID LEFT JOIN fleet_booking last_fb ON last_fb.iVehicleID = v.iVehicleID AND last_fb.vPickupTime < NOW() AND last_fb.cStatus = 'A' LEFT JOIN fleet_booking next_fb ON next_fb.iVehicleID = v.iVehicleID AND next_fb.vPickupTime > NOW() AND next_fb.cStatus = 'A' LEFT JOIN ( SELECT fb1.iVehicleID, fb1.cType, fb1.vPickupTime FROM fleet_booking fb1 INNER JOIN ( SELECT iVehicleID, MAX(vPickupTime) AS maxPickup FROM fleet_booking WHERE cStatus = 'A' GROUP BY iVehicleID ) fb2 ON fb1.iVehicleID = fb2.iVehicleID AND fb1.vPickupTime = fb2.maxPickup ) latest_fb ON latest_fb.iVehicleID = v.iVehicleID WHERE 1 $cond GROUP BY fb.iVehicleID ORDER BY v.vRnum";
+		$bookingSql = "SELECT fb.iVehicleID, fb.iFleet_BookingID AS iFleet_BookingID, v.vRnum AS vRnum, v.iType AS iType, vc.iVCatID AS iVCatID, vc.vName AS vCatName, vc.iCapacity AS iCapacity, CASE WHEN MAX(last_fb.vPickupTime) IS NOT NULL THEN TRUE ELSE FALSE END AS lastAssigned, MAX(last_fb.vPickupTime) AS lastAssignedTime, CASE WHEN fb.iFleet_BookingID IS NOT NULL THEN TRUE ELSE FALSE END AS alreadyAssigned, fb.iDriverID AS driverID, d.vName AS driverName, d.vMobileNum AS driverMobile, d.iType AS driverType, MIN(next_fb.vPickupTime) AS nextTripTime, fb.cDisposal AS disposal, latest_fb.cType AS latestBookingType FROM vehicle v JOIN vehicle_category vc ON vc.iVCatID = v.iCatID LEFT JOIN fleet_booking fb ON fb.iVehicleID = v.iVehicleID AND fb.cStatus = 'A' LEFT JOIN driver d ON d.iDriverID = fb.iDriverID LEFT JOIN fleet_booking last_fb ON last_fb.iVehicleID = v.iVehicleID AND last_fb.vPickupTime < NOW() AND last_fb.cStatus = 'A' LEFT JOIN fleet_booking next_fb ON next_fb.iVehicleID = v.iVehicleID AND next_fb.vPickupTime > NOW() AND next_fb.cStatus = 'A' LEFT JOIN ( SELECT fb1.iVehicleID, fb1.cType, fb1.vPickupTime FROM fleet_booking fb1 INNER JOIN ( SELECT iVehicleID, MAX(vPickupTime) AS maxPickup FROM fleet_booking WHERE cStatus = 'A' GROUP BY iVehicleID ) fb2 ON fb1.iVehicleID = fb2.iVehicleID AND fb1.vPickupTime = fb2.maxPickup ) latest_fb ON latest_fb.iVehicleID = v.iVehicleID WHERE 1 and fb.iVehicleID <> 0 $cond GROUP BY fb.iVehicleID ORDER BY v.vRnum";
         $bookingRes = sql_query($bookingSql);		
 
         $rowData = [];
@@ -447,26 +447,44 @@ switch ($mode) {
 					
 				}
 				$tripsArr = array();
-				$q2 = "SELECT fb.iFleet_BookingID, fb.vPickupLocation, fb.vDropLocation, fb.vName, vc.vName AS vehicleType, vc.iCapacity, fb.vPickupTime, fb.vDropTime, cBookingFor FROM fleet_booking fb JOIN vehicle_category vc ON vc.iVCatID = fb.iVehicleCatID WHERE fb.iVehicleID = $vehiId ORDER BY fb.vPickupTime DESC";
-				$r2 = sql_query($q2, "supervisor_dashboard");
+				//$q2 = "SELECT fb.iFleet_BookingID, fb.vPickupLocation, fb.vDropLocation, fb.vName, vc.vName AS vehicleType, vc.iCapacity, fb.vPickupTime, fb.vDropTime, cBookingFor FROM fleet_booking fb JOIN vehicle_category vc ON vc.iVCatID = fb.iVehicleCatID WHERE fb.iVehicleID = $vehiId ORDER BY fb.vPickupTime DESC";
+				//$r2 = sql_query($q2, "supervisor_dashboard");
+				$currentPickupTime = date('Y-m-d H:i:s');
+				$qPrev = "
+				SELECT fb.iFleet_BookingID, fb.vPickupLocation, fb.vDropLocation, fb.vName,
+					   vc.vName AS vehicleType, vc.iCapacity, fb.vPickupTime, fb.vDropTime, fb.cBookingFor
+				FROM fleet_booking fb
+				JOIN vehicle_category vc ON vc.iVCatID = fb.iVehicleCatID
+				WHERE fb.iVehicleID = $vehiId
+				  AND fb.vPickupTime < '$currentPickupTime'
+				ORDER BY fb.vPickupTime DESC
+				LIMIT 1
+				";			
 
-				if(sql_num_rows($r2)){
-					
-					while($row2 = sql_fetch_assoc($r2)){
-						
+				$qNext = "
+				SELECT fb.iFleet_BookingID, fb.vPickupLocation, fb.vDropLocation, fb.vName,
+					   vc.vName AS vehicleType, vc.iCapacity, fb.vPickupTime, fb.vDropTime, fb.cBookingFor
+				FROM fleet_booking fb
+				JOIN vehicle_category vc ON vc.iVCatID = fb.iVehicleCatID
+				WHERE fb.iVehicleID = $vehiId
+				  AND fb.vPickupTime > '$currentPickupTime'
+				ORDER BY fb.vPickupTime ASC
+				LIMIT 1
+				";				
+				foreach ([$qPrev, $qNext] as $query) {
+					$res = sql_query($query, "supervisor_dashboard");
+					if ($row = sql_fetch_assoc($res)) {
 						$tripsArr[] = [
-							'title'     => "",
-							'from'      => $row2['vPickupLocation'],
-							'to'        => $row2['vDropLocation'],
-							'name'      => $row2['vName'],
-							'type'      => $row2['cBookingFor'],
-							'capacity'  => $row2['iCapacity'],
-							'fromTime'  => date('H:i:s', strtotime($row2['vPickupTime'])),
-							'toTime'    => date('H:i:s', strtotime($row2['vDropTime'])),
-						];						
-						
+							'title'     => '',
+							'from'      => $row['vPickupLocation'],
+							'to'        => $row['vDropLocation'],
+							'name'      => $row['vName'],
+							'type'      => $row['cBookingFor'],
+							'capacity'  => $row['iCapacity'],
+							'fromTime'  => date('H:i:s', strtotime($row['vPickupTime'])),
+							'toTime'    => date('H:i:s', strtotime($row['vDropTime'])),
+						];
 					}
-					
 				}	
 				
 				//HISTORY
