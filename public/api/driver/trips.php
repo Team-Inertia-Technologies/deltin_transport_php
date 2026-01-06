@@ -109,6 +109,8 @@ if ($pingDriverLocation === 'Y') {
 
 while ($row = sql_fetch_assoc($res)) {
 
+    $vehicle_id = $row["iVehicleID"];
+
     if ($vehicle["number"] === "" && !empty($row["vehicleNo"])) {
         $vehicle["id"]     = $row["iVehicleID"];
         $vehicle["name"] = $row["vehicleName"];
@@ -138,7 +140,9 @@ if (empty($trips)) {
         "message" => "No trips found for this driver.",
         "data" => [
             "car" => (object)[],
-            "requests" => []
+            "requests" => [],
+            "vehicle_id" => $vehicle_id,
+            "location_ping_seconds" => $pingDuration
         ]
     ]);
     exit;
