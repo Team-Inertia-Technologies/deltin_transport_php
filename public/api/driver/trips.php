@@ -90,6 +90,7 @@ $vehicle = [
     "number" => ""
 ];
 
+$vehicle_id = GetXFromYID("SELECT iVehicleID FROM driver_vehicle_assoc WHERE iDriverID = $driverI AND cStatus='A' LIMIT 1", 'TRIPS.VEHICLE');
 $settingsQuery = "SELECT vCode, vValue FROM sys_settings WHERE vCode IN ('PING_DRIVER_LOCATION', 'DRIVERLOC_PING_DURATION')";
 $settingsResult = sql_query($settingsQuery);
 
@@ -108,8 +109,6 @@ if ($pingDriverLocation === 'Y') {
 }
 
 while ($row = sql_fetch_assoc($res)) {
-
-    $vehicle_id = GetXFromYID("SELECT iVehicleID FROM driver_vehicle_assoc WHERE iDriverID = $driverID LIMIT 1", 'TRIPS.VEHICLE');
 
     if ($vehicle["number"] === "" && !empty($row["vehicleNo"])) {
         $vehicle["id"]     = $row["iVehicleID"];
