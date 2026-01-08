@@ -81,9 +81,8 @@ switch ($mode) {
                     v.vRnum as vehicleNumber,
                     vc.iCapacity as vehicleCapacity
                 FROM st_trips t
-                LEFT OUTER JOIN st_trip_vehicle_assoc tv ON t.iTripID = tv.iTripID
                 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
-                LEFT JOIN vehicle v ON tv.iVehicleID = v.iVehicleID
+                LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                 LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                 WHERE $whereClause
                 ORDER BY t.dtTrip, t.iGrpID";

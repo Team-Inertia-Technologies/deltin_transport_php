@@ -332,12 +332,14 @@ function checkVehicleAvailability($vehicleId, $datetime)
     $minWindow = date('Y-m-d H:i:s', strtotime("-{$window} minutes", $reqTimestamp));
     $maxWindow = date('Y-m-d H:i:s', strtotime("+{$window} minutes", $reqTimestamp));
 
-    // dtTrip will be a datetime (YYYY-mm-dd HH:ii:ss)
-    $tripSql = "SELECT iTripID, dtTrip 
-                FROM st_trips 
-                WHERE iVehicleID = $vehicleId 
-                AND cStatus = 'A'
-                AND dtTrip BETWEEN '$minWindow' AND '$maxWindow'";
+    // Check vehicle availability using association table
+    $tripSql = "SELECT t.iTripID, t.dtTrip 
+                FROM st_trips t
+                INNER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID
+                WHERE tva.iVehicleID = $vehicleId 
+                AND tva.cStatus = 'A'
+                AND t.cStatus = 'A'
+                AND t.dtTrip BETWEEN '$minWindow' AND '$maxWindow'";
 
     $tripRes = sql_query($tripSql);
 
@@ -527,7 +529,7 @@ function checkDuplicateTrip($routeID, $tripDateTime)
     }
     
     // Find existing trips for the same route, date and time
-    $duplicateCheckSql = "SELECT iTripID, iGrpID, dtTrip 
+    $duplicateCheckSql = "SELECT iTripID, dtTrip 
                          FROM st_trips 
                          WHERE iRouteID = $routeID 
                          AND dtTrip = '$tripDateTime' 
@@ -548,7 +550,6 @@ function checkDuplicateTrip($routeID, $tripDateTime)
     while ($row = sql_fetch_assoc($duplicateRes)) {
         $existingTrips[] = [
             'tripID' => intval($row['iTripID']),
-            'grpID' => intval($row['iGrpID']),
             'tripDateTime' => $row['dtTrip']
         ];
     }
