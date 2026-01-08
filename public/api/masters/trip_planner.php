@@ -36,13 +36,14 @@ switch ($mode) {
     t.iRouteID,
     r.vName AS route,
     r.vDestination AS destination,
-    t.iVehicleID,
+    tva.iVehicleID,
     v.vRnum AS vehicleRegNo,
     v.vName AS vehicleName,
     t.cStatus AS status
 FROM st_trips t
+ LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID AND v.cStatus = 'A'
 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
-LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID
+LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID
 WHERE t.cStatus != 'X'
 ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
 ";
@@ -509,19 +510,20 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
         foreach ($timings as $timing) {
             $tripAssignmentsSql = "SELECT DISTINCT
                                     TIME(t.dtTrip) as tripTime,
-                                    t.iVehicleID,
+                                    tva.iVehicleID,
                                     v.vRnum as vehicleNumber,
                                     vc.iCapacity as vehicleCapacity,
                                     ven.iVendorID,
                                     ven.vName as vendorName,
-                                    t.iDriverID,
+                                    tva.iDriverID,
                                     d.vName as driverName,
                                     d.vMobileNum as driverMobile
                                 FROM st_trips t
-                                LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
+                                LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID AND v.cStatus = 'A'
+                                LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                                 LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                                 LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
-                                LEFT JOIN driver d ON t.iDriverID = d.iDriverID AND d.cStatus = 'A'
+                                LEFT JOIN driver d ON tva.iDriverID = d.iDriverID AND d.cStatus = 'A'
                                 WHERE t.iRouteID = $routeID
                                 AND DATE(t.dtTrip) BETWEEN '$fromDateFormatted' AND '$toDateFormatted'
                                 AND TIME(t.dtTrip) = '" . db_input($timing) . "'

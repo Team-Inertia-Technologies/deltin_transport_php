@@ -64,7 +64,7 @@ switch ($mode) {
                     tva.iDriverID,
                     d.vName as driverName
                 FROM st_trips t
-                LEFT JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID AND tva.cStatus = 'A'
+                LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID AND tva.cStatus = 'A'
                 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
                 LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                 LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
@@ -465,7 +465,7 @@ switch ($mode) {
                                     req.dtIn
                                 FROM st_request req
                                 INNER JOIN staff st ON req.iStaffID = st.iStaffID AND st.cStatus = 'A'
-                                LEFT JOIN st_trip_vehicle_assoc tva ON req.iTripID = tva.iTripID AND tva.cStatus = 'A'
+                                LEFT OUTER JOIN st_trip_vehicle_assoc tva ON req.iTripID = tva.iTripID AND tva.cStatus = 'A'
                                 LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                                 WHERE req.iTripID = $iTripID 
                                 AND req.iStopID = $stopID 
@@ -691,7 +691,7 @@ switch ($mode) {
                              
                         FROM st_trips t
                         LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
-                        LEFT JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID AND tva.cStatus = 'A'
+                        LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID 
                         LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                         LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                         LEFT JOIN st_route_stops s ON r.iRouteID = s.iRouteID AND s.cStatus = 'A'
@@ -806,7 +806,7 @@ switch ($mode) {
                             r.vDestination as destination,
                             
                             -- Vehicle Info
-                            t.iVehicleID,
+                            tva.iVehicleID,
                             v.vRnum as vehicleNumber,
                             vc.iCapacity as vehicleCapacity,
                             
@@ -833,7 +833,8 @@ switch ($mode) {
                              
                         FROM st_trips t
                         LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
-                        LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
+                        LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID AND v.cStatus = 'A'
+                        LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                         LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                         LEFT JOIN st_route_stops s ON r.iRouteID = s.iRouteID AND s.cStatus = 'A'
                         LEFT JOIN st_request req ON t.iTripID = req.iTripID AND req.iStopID = s.iStopID AND req.cStatus = 'A'
