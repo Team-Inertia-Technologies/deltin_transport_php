@@ -310,40 +310,40 @@ break;
             $finalTripID = $tripID;
 
             // Get the group ID for this trip
-            $grpSql = "SELECT iGrpID FROM st_trips WHERE iTripID = $tripID AND cStatus = 'A'";
-            $grpRes = sql_query($grpSql);
+            // $grpSql = "SELECT iGrpID FROM st_trips WHERE iTripID = $tripID AND cStatus = 'A'";
+            // $grpRes = sql_query($grpSql);
 
-            if (sql_num_rows($grpRes) > 0) {
-                $grpData = sql_fetch_assoc($grpRes);
-                $grpID = (int) $grpData['iGrpID'];
+            // if (sql_num_rows($grpRes) > 0) {
+            //     $grpData = sql_fetch_assoc($grpRes);
+            //     $grpID = (int) $grpData['iGrpID'];
 
-                // Get all trips in this group with their current capacity status
-                $groupTripsSql = "SELECT iTripID, iCapacity, iRequested 
-                                 FROM st_trips 
-                                 WHERE iGrpID = $grpID AND cStatus = 'A' 
-                                 ORDER BY iTripID";
-                $groupTripsRes = sql_query($groupTripsSql);
+            //     // Get all trips in this group with their current capacity status
+            //     $groupTripsSql = "SELECT iTripID, iCapacity, iRequested 
+            //                      FROM st_trips 
+            //                      WHERE iGrpID = $grpID AND cStatus = 'A' 
+            //                      ORDER BY iTripID";
+            //     $groupTripsRes = sql_query($groupTripsSql);
 
-                $availableTrip = null;
-                $lastTrip = null;
+            //     $availableTrip = null;
+            //     $lastTrip = null;
 
-                while ($groupTripRow = sql_fetch_assoc($groupTripsRes)) {
-                    $currentTripID = (int) $groupTripRow['iTripID'];
-                    $capacity = (int) $groupTripRow['iCapacity'];
-                    $requested = (int) $groupTripRow['iRequested'];
+            //     while ($groupTripRow = sql_fetch_assoc($groupTripsRes)) {
+            //         $currentTripID = (int) $groupTripRow['iTripID'];
+            //         $capacity = (int) $groupTripRow['iCapacity'];
+            //         $requested = (int) $groupTripRow['iRequested'];
 
-                    $lastTrip = $currentTripID; // Keep track of last trip
+            //         $lastTrip = $currentTripID; // Keep track of last trip
 
-                    // Check if this trip has available capacity
-                    if ($requested < $capacity) {
-                        $availableTrip = $currentTripID;
-                        break; // Found available trip, use it
-                    }
-                }
+            //         // Check if this trip has available capacity
+            //         if ($requested < $capacity) {
+            //             $availableTrip = $currentTripID;
+            //             break; // Found available trip, use it
+            //         }
+            //     }
 
-                // Use available trip if found, otherwise use the last trip in group
-                $finalTripID = $availableTrip ?? $lastTrip ?? $tripID;
-            }
+            //     // Use available trip if found, otherwise use the last trip in group
+            //     $finalTripID = $availableTrip ?? $lastTrip ?? $tripID;
+            // }
 
             // Insert request
             $currentDateTime = date('Y-m-d H:i:s');

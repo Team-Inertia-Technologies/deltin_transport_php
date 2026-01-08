@@ -1038,7 +1038,7 @@ switch ($mode) {
                 }
 
               
-                $insertValues[] = "($currentTripID, $routeID, '" . db_input($tripDateTime) . "', 0, $user_id, 1, '$NOW', '$cStatus')";
+                $insertValues[] = "($currentTripID,$currentTripID, $routeID, '" . db_input($tripDateTime) . "', 0, $user_id, 1, '$NOW', '$cStatus')";
                 
                 // Store vehicle associations for later insertion into association table
                 if (!empty($vehicles)) {
@@ -1074,6 +1074,7 @@ switch ($mode) {
 
             $insertSql = "INSERT INTO st_trips (
                 iTripID,
+                iGrpID,
                 iRouteID, 
                 dtTrip, 
                 iCapacity, 
