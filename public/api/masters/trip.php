@@ -1145,7 +1145,7 @@ switch ($mode) {
     // ===================== CASE UPDATE_TRIP =====================
     case 'UPDATE_TRIP':
 
-    $iTripID = intval($_REQUEST['iTripID'] ?? 0);
+    $iTripID = intval($_REQUEST['tripID'] ?? 0);
     $trip_details = $_REQUEST['trip_details'] ?? [];
 
     if ($iTripID <= 0 || empty($trip_details)) {
