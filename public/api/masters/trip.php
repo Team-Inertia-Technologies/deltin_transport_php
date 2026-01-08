@@ -1245,11 +1245,11 @@ switch ($mode) {
         }
 
         // Determine which to deactivate
-        $toDeactivate = array_diff($existingTVAIDs, $incomingTVAIDs);
-        if (!empty($toDeactivate)) {
-            sql_query("UPDATE st_trip_vehicle_assoc SET cStatus='X' 
-                        WHERE iTVAID IN (" . implode(',', $toDeactivate) . ")");
-        }
+        // $toDeactivate = array_diff(array: $existingTVAIDs, $incomingTVAIDs);
+        // if (!empty($toDeactivate)) {
+        //     sql_query("UPDATE st_trip_vehicle_assoc SET cStatus='X' 
+        //                 WHERE iTVAID IN (" . implode(',', $toDeactivate) . ")");
+        // }
 
         // Process inserts/updates
         foreach ($trip_details as $trip) {
