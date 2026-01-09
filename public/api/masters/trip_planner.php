@@ -41,7 +41,7 @@ switch ($mode) {
     v.vName AS vehicleName,
     t.cStatus AS status
 FROM st_trips t
- LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID AND v.cStatus = 'A'
+ LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID
 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
 LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID
 WHERE t.cStatus != 'X'
@@ -519,7 +519,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                                     d.vName as driverName,
                                     d.vMobileNum as driverMobile
                                 FROM st_trips t
-                                LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID AND v.cStatus = 'A'
+                                LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID
                                 LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                                 LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                                 LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
