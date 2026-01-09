@@ -350,8 +350,21 @@ switch ($mode) {
 		
 		$searchtxt = $_REQUEST['searchtxt'] ?? '';
 		$type = $_REQUEST['type'] ?? '';
+		$drivertype = $_REQUEST['drivertype'] ?? '';
 		$category = $_REQUEST['category'] ?? '';
 		$status = $_REQUEST['status'] ?? '';
+		
+		$vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cType IN ('F') AND cStatus = 'A' ORDER BY vName";
+        $vehicleCategoryRes = sql_query($vehicleCategorySql);
+		
+        $vehicleCategories = [];
+        while ($categoryRow = sql_fetch_assoc($vehicleCategoryRes)) {
+            $vehicleCategories[] = [
+                'id' => intval($categoryRow['iVCatID']),
+                'name' => db_output2($categoryRow['vName']),
+                'capacity' => intval($categoryRow['iCapacity'])
+            ];
+        }		
 		
 		$VEHI_TYPE_ARR = array();
 		
@@ -378,9 +391,15 @@ switch ($mode) {
 		
 		if(!empty($type)){
 
-			$cond .= " and d.iType = '$type'";
+			$cond .= " and v.iType = '$type'";
 			
-		}	
+		}
+
+		if(!empty($drivertype)){
+
+			$cond .= " and d.iType = '$drivertype'";
+			
+		}		
 
 		if(!empty($status)){
 			$cond .= " and fb.cType = '$status'";			
