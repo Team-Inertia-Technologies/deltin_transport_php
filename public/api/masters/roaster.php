@@ -17,21 +17,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 $request = json_decode(file_get_contents("php://input"));
 
-$token          = trim($request->token);
-$driverType     = intval($request->driverType ?? 0);
-$vehicle_status         = trim($request->status ?? 'Y');
+$token              = trim($request->token ?? '');
+$driverType         = intval($request->driverType ?? 0);
+$vehicle_status     = trim($request->status ?? 'Y');
+$showLoggedInOnly   = trim($request->showLoggedInOnly ?? 'Y');
 
 if (!$token) {
     http_response_code(400);
-    header('Content-Type: application/json');
     echo json_encode([
         "statusCode" => 400,
         "error" => ["message" => "Missing token"]
     ]);
     exit;
 }
-
-
 
 /* ---------- BUILD FILTERS ---------- */
 $where = " WHERE d.cStatus = 'A' ";
@@ -48,14 +46,19 @@ if ($driverType > 0) {
     $where .= " AND d.iType = $driverType";
 }
 
+if ($showLoggedInOnly === 'Y') {
+    $where .= " AND d.dtLoggedIn IS NOT NULL";
+}
+
 /* ---------- MAIN QUERY ---------- */
 $sql = "
 SELECT DISTINCT
     d.iDriverID AS iRoasterID,
-    DATE_FORMAT(d.dtLoggedIn, '%d/%m/%Y %H:%i') AS dateTime,
+    d.dtLoggedIn,
     d.vName AS name,
     d.vMobileNum AS mobile,
     v.vRnum AS vehicle,
+    vc.vName AS vehicleName,
 
     CASE 
         WHEN dva.iDriverID IS NULL THEN 'Unassigned'
@@ -70,27 +73,41 @@ SELECT DISTINCT
 FROM driver d
 LEFT JOIN driver_vehicle_assoc dva ON dva.iDriverID = d.iDriverID
 LEFT JOIN vehicle v ON v.iVehicleID = dva.iVehicleID
+LEFT JOIN vehicle_category vc ON vc.iVehicleCategoryId = v.iVehicleCategoryId
 $where
 GROUP BY d.iDriverID
-ORDER BY d.dtLoggedIn DESC;
+ORDER BY d.dtLoggedIn DESC
 ";
 
 $res = sql_query($sql, 'ROASTER.LIST');
 
 $tripList = [];
-while ($row = sql_fetch_array($res)) {
+$today = date('Y-m-d');
+
+while ($row = sql_fetch_assoc($res)) {
+
+    $dateTime = "";
+    if (!empty($row['dtLoggedIn'])) {
+        $loggedDate = date('Y-m-d', strtotime($row['dtLoggedIn']));
+        if ($loggedDate === $today) {
+            $dateTime = date('H:i', strtotime($row['dtLoggedIn']));
+        } else {
+            $dateTime = date('d/m/Y H:i', strtotime($row['dtLoggedIn']));
+        }
+    }
+
     $tripList[] = [
-        "id" => intval($row['iRoasterID']),
-        "dateTime" => $row['dateTime'],
-        "name" => db_output2($row['name']),
-        "mobile" => $row['mobile'],
-        "vehicle" => $row['vehicle'] ?: "",
-        "status" => $row['status'],
+        "id"               => intval($row['iRoasterID']),
+        "dateTime"         => $dateTime,
+        "name"             => db_output2($row['name']),
+        "mobile"           => $row['mobile'],
+        "vehicle"          => $row['vehicle'] ?: "",
+        "vehicleName"      => db_output2($row['vehicleName'] ?: ""),
+        "status"           => $row['status'],
         "vehicleAllocated" => $row['vehicleAllocated']
     ];
 }
 
-/* ---------- STATIC FILTER OPTIONS ---------- */
 $response = [
     "statusCode" => 200,
     "data" => [
@@ -103,10 +120,15 @@ $response = [
             ["id" => 1, "name" => "Hired"],
             ["id" => 2, "name" => "Contract"],
             ["id" => 3, "name" => "Self"]
+        ],
+        "loginFilterOpt" => [
+            ["id" => "N", "name" => "All Drivers"],
+            ["id" => "Y", "name" => "Logged In Only"]
         ]
     ]
 ];
+
 http_response_code(200);
-echo json_encode($response);
 header('Content-Type: application/json');
+echo json_encode($response);
 exit;
