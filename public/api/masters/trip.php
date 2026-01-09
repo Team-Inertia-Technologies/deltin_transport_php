@@ -311,7 +311,7 @@ switch ($mode) {
                     d.vMobileNum as driverMobile,
                     t.iRequested as requestedPax,
                     t.iAvaialed as availedPax,
-                    t.cStatus as tripStatus,
+                    tva.cStatus as tripStatus,
                     r.iRank,
                     tva.vCancellationReason,
                     tva.cStatus as vehicleAssignStatus,
@@ -360,7 +360,8 @@ switch ($mode) {
 
             // Process vehicle assignments
             $vehicleID = (int) ($row['iVehicleID'] ?? 0);
-            if ($vehicleID > 0 && $row['vehicleAssignStatus'] == 'A') {
+            // if ($vehicleID > 0 && $row['vehicleAssignStatus'] == 'A') {
+              if ($vehicleID > 0 ) {
                 $vendorID = (int) ($row['iVendorID'] ?? 0);
                 $driverID = (int) ($row['iDriverID'] ?? 0);
 
@@ -636,10 +637,10 @@ switch ($mode) {
         $maxWindowTS = strtotime("+{$window} minutes", $currentTripTS);
         $maxWindow = date('Y-m-d H:i:s', $maxWindowTS);
 
-        $addVehButton = false;
+        $addVehButton = true;
 
         if (strtotime($NOW) >= $maxWindowTS) {
-            $addVehButton = true;
+            $addVehButton = false;
         }
 
 
