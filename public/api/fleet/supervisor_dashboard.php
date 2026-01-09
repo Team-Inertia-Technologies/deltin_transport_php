@@ -149,7 +149,7 @@ switch ($mode) {
 		}		
 
         // Fetch booking data
-        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType from fleet_booking where 1 $cond order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType from fleet_booking where 1 $cond and cType <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         $bookingRes = sql_query($bookingSql);
         
         $rowData = [];
@@ -564,7 +564,7 @@ switch ($mode) {
 				FROM fleet_booking fb
 				JOIN vehicle_category vc ON vc.iVCatID = fb.iVehicleCatID
 				WHERE fb.iVehicleID = $vehiId
-				  AND fb.vPickupTime > '$currentPickupTime'
+				  AND fb.vPickupTime > '$currentPickupTime' and fb.cType <> 'C'
 				ORDER BY fb.vPickupTime ASC
 				LIMIT 1
 				";				
