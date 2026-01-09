@@ -109,7 +109,7 @@ switch ($mode) {
 		}
 		
 		if(!empty($bookedFor)){
-			$cond .= " and cBookedFor = '$bookedFor'";
+			$cond .= " and cBookingFor = '$bookedFor'";
 		}
 		
 		if(!empty($type)){
