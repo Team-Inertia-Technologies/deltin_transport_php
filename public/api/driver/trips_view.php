@@ -66,7 +66,7 @@ SELECT
     fb.iPax,
     fb.iBaggage,
     fb.vRemarks,
-    fb.iBookedBy,
+    fb.iVehAssignedBy,
     fb.cBookingFor,
     fb.cType,
     fb.vPickUpLocation AS fromLocation,
