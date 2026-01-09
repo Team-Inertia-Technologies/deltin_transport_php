@@ -39,6 +39,10 @@ switch ($mode) {
 		$AVAILABLE_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where iVehicleID NOT IN (select iVehicleID from fleet_booking where cType NOT IN ('C','N') and iVehicleID IS NOT NULL)");
 		$AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where iDriverID NOT IN (select iDriverID from fleet_booking where cType NOT IN ('C','N') and iDriverID IS NOT NULL)");
 		
+		$refreshRequestStreamTime = GetXFromYID("select vValue from sys_settings where vCode = 'REQSTREAM_PING_DURATION'");
+		$refreshVehicleComponentTime = GetXFromYID("select vValue from sys_settings where vCode = 'VEHICLECOMPONENT_PING_DURATION'");
+		$refreshActivityTimelineTime = GetXFromYID("select vValue from sys_settings where vCode = 'ACTIVITYTIMELINE_PING_DURATION'");
+		
         $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
         foreach ($FLEET_BOOKING_FOR as $id => $name) {
             $bookedForOpt[] = ['id' => $id, 'name' => $name];
@@ -70,7 +74,10 @@ switch ($mode) {
             "vehiCatArr" => $vehiCatOpt,
             "vehiTypeArr" => $vehiTypeArr,
             "driverTypeArr" => $vehiTypeArr,
-            "vehiStatusArr" => $vehiStatusArr
+            "vehiStatusArr" => $vehiStatusArr,
+            "refreshRequestStreamTime" => (int)$refreshRequestStreamTime,
+            "refreshVehicleComponentTime" => (int)$refreshVehicleComponentTime,
+            "refreshActivityTimelineTime" => (int)$refreshActivityTimelineTime
         ];		
 		
 
