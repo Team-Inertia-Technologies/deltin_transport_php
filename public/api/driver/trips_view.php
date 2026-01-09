@@ -101,9 +101,9 @@ if (!sql_num_rows($res)) {
 }
 
 $row = sql_fetch_assoc($res);
-$staffID = intval($row['iBookedBy']);
-$supervisorName   = GetXFromYID("SELECT vName FROM fleet_staff WHERE iFStaffID = $staffID");
-$supervisorMobile = GetXFromYID("SELECT vMobile FROM fleet_staff WHERE iFStaffID = $staffID");
+$staffID = intval($row['iVehAssignedBy']);
+$supervisorName   = GetXFromYID("SELECT vName FROM users WHERE iUserID = $staffID");
+$supervisorMobile = GetXFromYID("SELECT vPhone FROM users WHERE iUserID = $staffID");
 $fromLat = null;
 $fromLng = null;
 
