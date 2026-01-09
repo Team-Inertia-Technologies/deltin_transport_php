@@ -385,11 +385,11 @@ switch ($mode) {
 
         foreach ($vehicleData as $vehicleID => $vehData) {
             // Apply keyword filter if provided
-            if (!empty($keyword)) {
+            if (!empty($searchtxt)) {
                 $keywordMatch = false;
                 if (
-                    stripos($vehData['NUM'], $keyword) !== false ||
-                    stripos($vehData['NAME'], $keyword) !== false
+                    stripos($vehData['NUM'], $searchtxt) !== false ||
+                    stripos($vehData['NAME'], $searchtxt) !== false
                 ) {
                     $keywordMatch = true;
                 }
@@ -411,7 +411,7 @@ switch ($mode) {
             // Check if this vehicle is currently assigned to the booking
             $assignedVeh = false;
             $tripAssignmentSql = "SELECT iVehicleID FROM fleet_booking 
-                                 WHERE iFleet_BookingID = $iFleet_BookingID 
+                                 WHERE 1 
                                  AND iVehicleID = $vehicleID 
                                  AND cStatus = 'A'";
             $tripAssignmentRes = sql_query($tripAssignmentSql);
@@ -450,7 +450,7 @@ switch ($mode) {
                 'nextTripTime' => $nextTripTime,
                 'disposal' => false,
                 'status' => 'A',
-                'bookings' => $vehData['BOOKINGS'] // Include booking details for reference
+                //'bookings' => $vehData['BOOKINGS'] // Include booking details for reference
             ];
 
             // Separate currently assigned vehicles to show them first
