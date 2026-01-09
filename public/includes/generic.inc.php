@@ -5516,14 +5516,14 @@ function GetVehicle_BasedOnSearch2($txttype=0,$txtcatid=0,$show_currentstatus='N
 	if(!empty($txttype)) $cond .= ' and v.iType='.$txttype;
 	if(!empty($txtcatid)) $cond .= ' and v.iCatID='.$txtcatid;
 
-	$q = 'select v.iVehicleID, v.vName, v.vRnum, v.iCatID, v.iVendorID, v.iType, v.iSeats, d.iDriverID, d.iVendorID as D_VENDORID, d.vName as D_NAME, d.vMobileNum, d.vEmpCode from vehicle as v left outer join driver as d on v.iVehicleID=d.iVehicleID and d.cStatus!="X" where v.cServiceType IN ("B","F") and v.cStatus!="X"'.$cond;
+	$q = 'select v.iVehicleID, v.vName, v.vRnum, v.iCatID, v.iVendorID, v.iType, v.iSeats, d.iDriverID, d.iVendorID as D_VENDORID, d.vName as D_NAME, d.vMobileNum, d.vEmpCode, d.iType as D_TYPE from vehicle as v left outer join driver as d on v.iVehicleID=d.iVehicleID and d.cStatus!="X" where v.cServiceType IN ("B","F") and v.cStatus!="X"'.$cond;
 	$r = sql_query($q,'');
 	if(sql_num_rows($r))
 	{
-		while(list($iVehicleID,$vName,$vRnum,$iCatID,$iVendorID,$iType,$iSeats,$iDriverID,$D_VENDORID,$D_NAME,$vMobileNum,$vEmpCode) = sql_fetch_row($r))
+		while(list($iVehicleID,$vName,$vRnum,$iCatID,$iVendorID,$iType,$iSeats,$iDriverID,$D_VENDORID,$D_NAME,$vMobileNum,$vEmpCode,$iDriverType) = sql_fetch_row($r))
 		{
 			if(!isset($arr[$iVehicleID])) $arr[$iVehicleID] = array();
-			$arr[$iVehicleID] = array('NAME'=>$vName, 'NUM'=>$vRnum, 'CAT_ID'=>$iCatID, 'VENDOR_ID'=>$iVendorID, 'TYPE_ID'=>$iType, 'SEATS'=>$iSeats, 'DRIVER_ID'=>$iDriverID, 'VENDOR_ID2'=>$D_VENDORID, 'DRIVER_NAME'=>$D_NAME, 'DRIVER_NUM'=>$vMobileNum, 'DRIVER_EMPCODE'=>$vEmpCode, 'BOOKINGS'=>array());
+			$arr[$iVehicleID] = array('NAME'=>$vName, 'NUM'=>$vRnum, 'CAT_ID'=>$iCatID, 'VENDOR_ID'=>$iVendorID, 'TYPE_ID'=>$iType, 'SEATS'=>$iSeats, 'DRIVER_ID'=>$iDriverID, 'VENDOR_ID2'=>$D_VENDORID, 'DRIVER_NAME'=>$D_NAME, 'DRIVER_NUM'=>$vMobileNum, 'DRIVER_EMPCODE'=>$vEmpCode, 'DRIVER_TYPE'=>$iDriverType, 'BOOKINGS'=>array());
 
 			if(!isset($arr2[$iVehicleID]))
 				$arr2[$iVehicleID] = $iVehicleID;

@@ -133,11 +133,11 @@ switch ($mode) {
 			}
 		}
 		$VEHICLE_ARR = array();
-		$qv = "select iVehicleID, vRnum, iCatID from vehicle order by vName";
+		$qv = "select iVehicleID, vRnum, iCatID, iType from vehicle order by vName";
 		$rv = sql_query($qv, "supervisor_dashboard.38");
 		if(sql_num_rows($rv)){
 			while($vrow = sql_fetch_assoc($rv)){
-				$VEHICLE_ARR[$vrow['iVehicleID']] = array("ID"=>$vrow['iVehicleID'], "REG"=>$vrow['vRnum'], "CAT"=>$vrow['iCatID']);
+				$VEHICLE_ARR[$vrow['iVehicleID']] = array("ID"=>$vrow['iVehicleID'], "REG"=>$vrow['vRnum'], "CAT"=>$vrow['iCatID'], "TYPE"=>$vrow['iType']);
 			}
 		}		
 
@@ -215,7 +215,7 @@ switch ($mode) {
 				'bookingCat' => db_output2($FLEET_CATEGORY_ARR[$row['iFleet_BKCatID']] ?? ''),
 				'bookedFor' => db_output2($row['cBookingFor'] ?? ''),
                 'property' => db_output2($PROPERTY_ARR[$row['iPropertyID']] ?? ''),
-                'vehicle_category' => db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']] ?? ''),
+                'vehicle_category' => $row['iVehicleCatID'] ?? '',
                 'travelPurpose' => db_output2($TRAVEL_PURPOSE_ARR[$row['iFleet_TrvPurID']] ?? ''),
                 'travelType' => db_output2($TRAVEL_TYPE_ARR[$row['iFleet_TrvTypeID']] ?? ''),
                 'isDisposal' => $is_disposal,
@@ -224,6 +224,7 @@ switch ($mode) {
                 'driverName' => (isset($row['iDriverID']) && !empty($row['iDriverID']))?$DRIVER_ARR[$row['iDriverID']]['NAME']:"",
 				'vehicleAssigned' => (isset($row['iVehicleID']) && !empty($row['iVehicleID']))?true:false,
 				'vehicle' => (isset($row['iVehicleID']) && !empty($row['iVehicleID']))?db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']]." ".$VEHICLE_ARR[$row['iVehicleID']]['REG']):"",
+				'vehicleType' => $VEHICLE_ARR[$row['iVehicleID']]['TYPE'],
 				'borderColor' => $border
             ];
         }
