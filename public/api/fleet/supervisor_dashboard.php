@@ -213,7 +213,7 @@ switch ($mode) {
                 'guest' => $is_guest,
                 'from' => db_output2($row['vPickUpLocation'] ?? ''),
                 'to' => db_output2($row['vDropLocation'] ?? ''),
-                'time' => $row['vPickUpTime'] ?? '',
+                'time' => date('d/m/Y H:i', strtotime($row['vPickUpTime'])) ?? '',
                 'typeStatus' => '',
 				'type'=> $type_status,
                 'pax' => strval($row['iPax'] ?? '0'),
@@ -327,7 +327,7 @@ switch ($mode) {
                 'vehiTypeId' => $VEHI_TYPE_ARR[$row['iVehicleID']]['TYPE'] ?? 0,
 				'pickUpLoc' => array('lat'=>$from_latlong_arr[0], 'log'=>$from_latlong_arr[1], 'loc'=>$row['vPickUpLocation']),
 				'pickUpLoc' => array('lat'=>$to_latlong_arr[0], 'log'=>$to_latlong_arr[1], 'loc'=>$row['vDropLocation']),
-                'returnTime' => $row['tReturnTime'],
+                'returnTime' => date('d/m/Y H:i', strtotime($row['tReturnTime'])),
                 'remark1' => db_output2($row['vInstructions'] ?? ''),
                 'remark2' => db_output2($row['vRemarks'] ?? ''),
             ];
@@ -603,7 +603,7 @@ switch ($mode) {
 				if(sql_num_rows($r)){
 					while($row = sql_fetch_assoc($r)){
 						//$LOG_DATA_ARR[] = array("ID"=>$row['iFleet_BookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME'] ?? '');
-						$LOG_DATA_ARR[] = array("code"=>$row['cRefType'], "status"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "message"=>$row['vRefName'], "dateTime"=>$row['dtAdded']);
+						$LOG_DATA_ARR[] = array("code"=>$row['cRefType'], "status"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "message"=>$row['vRefName'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row['dtAdded']));
 					}
 				}
 				
@@ -613,7 +613,7 @@ switch ($mode) {
 				if(sql_num_rows($r1)){
 					while($row1 = sql_fetch_assoc($r1)){
 						//$LOG_DATA_ARR[] = array("ID"=>$row1['iFleet_BookingID'], "DATETIME"=>$row1['dtPauseTime'], "STATUS"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "NOTES"=>$row1['vNotes'], "GUEST"=>$row1['vName'], "DRIVER"=>$DRIVER_ARR[$row1['iDriverID']]['NAME'] ?? '');
-						$LOG_DATA_ARR[] = array("code"=>$row1['iPauseTypeID'], "status"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "message"=>$row1['vNotes'], "dateTime"=>$row1['dtPauseTime']);
+						$LOG_DATA_ARR[] = array("code"=>$row1['iPauseTypeID'], "status"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "message"=>$row1['vNotes'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row1['dtPauseTime']));
 					}
 				}			
 		
@@ -683,7 +683,7 @@ switch ($mode) {
 			if(sql_num_rows($r)){
 				while($row = sql_fetch_assoc($r)){
 					//$LOG_DATA_ARR[] = array("ID"=>$row['iFleet_BookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME'] ?? '');
-					$LOG_DATA_ARR[] = array("code"=>$row['cRefType'], "status"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "message"=>$row['vRefName'], "dateTime"=>$row['dtAdded']);
+					$LOG_DATA_ARR[] = array("code"=>$row['cRefType'], "status"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "message"=>$row['vRefName'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row['dtAdded']));
 				}
 			}
 			
@@ -693,7 +693,7 @@ switch ($mode) {
 			if(sql_num_rows($r1)){
 				while($row1 = sql_fetch_assoc($r1)){
 					//$LOG_DATA_ARR[] = array("ID"=>$row1['iFleet_BookingID'], "DATETIME"=>$row1['dtPauseTime'], "STATUS"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "NOTES"=>$row1['vNotes'], "GUEST"=>$row1['vName'], "DRIVER"=>$DRIVER_ARR[$row1['iDriverID']]['NAME'] ?? '');
-					$LOG_DATA_ARR[] = array("code"=>$row1['iPauseTypeID'], "status"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "message"=>$row1['vNotes'], "dateTime"=>$row1['dtPauseTime']);
+					$LOG_DATA_ARR[] = array("code"=>$row1['iPauseTypeID'], "status"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "message"=>$row1['vNotes'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row1['dtPauseTime']));
 				}
 			}			
 	
