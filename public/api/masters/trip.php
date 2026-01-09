@@ -630,6 +630,14 @@ switch ($mode) {
         foreach ($CANCELATION_STATUS as $id => $name) {
             $cancelOpt[] = ['id' => $id, 'name' => $name];
         }
+         $window = intval(GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'QR_SCAN_WINDOW_POST'"));
+ $maxWindow = date('Y-m-d H:i:s', strtotime("+{$window} minutes", $currentTripDateTime));
+ $addVehButton=false;
+if($NOW>=$maxWindow)
+{
+ $addVehButton=true;
+}
+ 
         echo json_encode([
             "data" => [
                 "iTripID" => $iTripID,
@@ -641,7 +649,8 @@ switch ($mode) {
                 "modeOpt" => $modeOpt,
                 "vendorOpt" => $vendorOpt,
                 "stops" => $stops,
-                "cancelOpt" => $cancelOpt
+                "cancelOpt" => $cancelOpt,
+                "addVehButton" => $addVehButton
             ],
             "statusCode" => 200
         ]);
@@ -1403,6 +1412,7 @@ switch ($mode) {
     // ===================== CASE MARK_TRIP_AS_COMPLETE =====================
     case 'MARK_TRIP_AS_COMPLETE':
         $iTripID = intval($_REQUEST['iTripID'] ?? 0);
+         $iTVAID = intval($_REQUEST['iTVAID'] ?? 0);
 
         // Validate required parameter
         if ($iTripID <= 0) {
@@ -1416,7 +1426,7 @@ switch ($mode) {
         }
 
         // Check if trip exists and is active
-        $checkSql = "SELECT iTripID FROM st_trips WHERE iTripID = $iTripID AND cStatus != 'X'";
+        $checkSql = "SELECT iTripID FROM st_trips WHERE iTripID = $iTripID";
         $checkRes = sql_query($checkSql);
 
         if (sql_num_rows($checkRes) == 0) {
@@ -1430,12 +1440,18 @@ switch ($mode) {
         }
 
         // Mark trip as complete (status = 'C')
-        $completeSql = "UPDATE st_trips SET 
+        $completeSql = "UPDATE st_trip_vehicle_assoc SET 
                           cStatus = 'C',
                           iStatusChangedBy = $user_id
-                        WHERE iTripID = $iTripID";
+                        WHERE iTVAID = $iTVAID AND iTripID=$iTripID";
 
         if (sql_query($completeSql)) {
+            $checkifAllComplete=GetXFromYID("SELECT count(*) from st_trip_vehicle_assoc where iTripID=$iTripID AND cStatus='A'");
+            if($checkifAllComplete==0){
+                sql_query("UPDATE st_trips SET cStatus = 'C' WHERE iTripID=$iTripID");
+            }
+
+
             if (sql_affected_rows() > 0) {
                 echo json_encode([
                     "data" => [
@@ -1467,6 +1483,7 @@ switch ($mode) {
         $iTripID = intval($_REQUEST['iTripID'] ?? 0);
         $status = $_REQUEST['status'] ?? '';
         $reason = $_REQUEST['reason'] ?? '';
+        $iTVAID = intval($_REQUEST['iTVAID'] ?? 0);
 
         // Validate required parameters
         if ($iTripID <= 0) {
@@ -1541,11 +1558,11 @@ switch ($mode) {
         $currentStatus = $tripRow['cStatus'];
 
         // Update trip status with reason
-        $updateSql = "UPDATE st_trips SET 
+        $updateSql = "UPDATE st_trip_vehicle_assoc SET 
                         cStatus = '" . db_input($status) . "',
                         vCancellationReason = '" . db_input($reason) . "',
                         iStatusChangedBy = $user_id
-                      WHERE iTripID = $iTripID";
+                      WHERE iTripID = $iTripID AND iTVAID=$iTVAID";
 
         if (sql_query($updateSql)) {
             if (sql_affected_rows() > 0) {
