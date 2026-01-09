@@ -448,6 +448,7 @@ switch ($mode) {
                 'driverID' => intval($vehData['DRIVER_ID'] ?? 0),
                 'driverName' => db_output2($vehData['DRIVER_NAME'] ?? ''),
                 'driverMobile' => db_output2($vehData['DRIVER_NUM'] ?? ''),
+                'driverType' => $vehData['DRIVER_TYPE'] ?? '',
                 'nextTripTime' => $nextTripTime,
                 'disposal' => false,
                 'status' => 'A',
