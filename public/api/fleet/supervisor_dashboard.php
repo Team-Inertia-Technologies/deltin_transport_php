@@ -340,6 +340,7 @@ switch ($mode) {
 	
 		$cond = "";
 		
+		
 		$searchtxt = $_REQUEST['searchtxt'] ?? '';
 		$type = $_REQUEST['type'] ?? '';
 		$category = $_REQUEST['category'] ?? '';
