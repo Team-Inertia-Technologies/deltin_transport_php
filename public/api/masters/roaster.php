@@ -73,7 +73,7 @@ SELECT DISTINCT
 FROM driver d
 LEFT JOIN driver_vehicle_assoc dva ON dva.iDriverID = d.iDriverID
 LEFT JOIN vehicle v ON v.iVehicleID = dva.iVehicleID
-LEFT JOIN vehicle_category vc ON vc.iVehicleCategoryId = v.iVehicleCategoryId
+LEFT JOIN vehicle_category vc ON vc.iVCatID = v.iCatID
 $where
 GROUP BY d.iDriverID
 ORDER BY d.dtLoggedIn DESC
