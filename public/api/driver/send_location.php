@@ -25,6 +25,9 @@ $token      = trim($request->token);
 $booking_id = intval($request->id);
 $lat = floatval($request->lat);
 $long = floatval($request->log);
+$onTripRaw = $request->onTrip ?? null;
+$onTrip = filter_var($onTripRaw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+$cOnTrip = ($onTrip === true) ? 'Y' : 'N';
 
 if (!$token || !$booking_id) {
     http_response_code(400);
@@ -58,7 +61,7 @@ if (!sql_num_rows($r)) {
 
 $driverID = intval($userid);
 
-$sql = "UPDATE driver_vehicle_assoc SET vLat = '$lat', vLong = '$long' WHERE iDriverID = $driverID";
+$sql = "UPDATE driver_vehicle_assoc SET vLat = '$lat', vLong = '$long', cType = '$cOnTrip' WHERE iDriverID = $driverID";
 $res = sql_query($sql, 'DRIVER.LOCATION.UPDATE');
 if (!$res) {
 	http_response_code(400);
