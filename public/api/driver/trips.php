@@ -128,6 +128,7 @@ while ($row = sql_fetch_assoc($res)) {
         "to"   => $row["toLocation"],
         "type" => $row["cBookingFor"] == 'G' ? 'Guest' : 'Staff',
         "active" => true,
+
     ];
 }
 
@@ -136,12 +137,13 @@ if (empty($trips)) {
     header("Content-Type: application/json");
     echo json_encode([
         "statusCode" => 200,
-        "message" => "No trips found for this driver.",
+        "message" => "Driver is available. No trips assigned.",
         "data" => [
             "car" => (object)[],
             "requests" => [],
             "vehicle_id" => $vehicle_id,
-            "location_ping_seconds" => $pingDuration
+            "location_ping_seconds" => $pingDuration,
+            "available" => true
         ]
     ]);
     exit;
@@ -153,7 +155,8 @@ $response = [
     "data" => [
         "car" => $vehicle,
         "requests"   => $trips,
-        "location_ping_seconds" => $pingDuration
+        "location_ping_seconds" => $pingDuration,
+        "available" => false
     ]
 ];
 
