@@ -231,7 +231,7 @@ switch ($mode) {
                 'driverName' => (isset($row['iDriverID']) && !empty($row['iDriverID']))?$DRIVER_ARR[$row['iDriverID']]['NAME']:"",
 				'vehicleAssigned' => (isset($row['iVehicleID']) && !empty($row['iVehicleID']))?true:false,
 				'vehicle' => (isset($row['iVehicleID']) && !empty($row['iVehicleID']))?db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']]." ".$VEHICLE_ARR[$row['iVehicleID']]['REG']):"",
-				'vehicleType' => $VEHICLE_ARR[$row['iVehicleID']]['TYPE'],
+				'vehicleType' => (isset($row['iVehicleID']) && !empty($row['iVehicleID']))?$VEHICLE_ARR[$row['iVehicleID']]['TYPE']:0,
 				'borderColor' => $border
             ];
         }
@@ -353,6 +353,8 @@ switch ($mode) {
 		$drivertype = $_REQUEST['drivertype'] ?? '';
 		$category = $_REQUEST['category'] ?? '';
 		$status = $_REQUEST['status'] ?? '';
+		$from = date("H:i:s", strtotime($_REQUEST['from'])) ?? '';
+		$to = date("H:i:s", strtotime($_REQUEST['to'])) ?? '';
 		
 		$vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cType IN ('F') AND cStatus = 'A' ORDER BY vName";
         $vehicleCategoryRes = sql_query($vehicleCategorySql);
@@ -405,7 +407,7 @@ switch ($mode) {
 			$cond .= " and fb.cType = '$status'";			
 		}
 		
-		$vehicleData = GetVehicle_BasedOnSearch2($type, $category, 'Y');
+		$vehicleData = GetVehicle_BasedOnSearch2($type, $category, 'Y', $from, $to);
 		
         $vehicles = [];
         $currentlyAssigned = [];
