@@ -408,8 +408,7 @@ switch ($mode) {
 		}
 		
 		$vehicleData = GetVehicle_BasedOnSearch2($vehitype, $category, 'Y', $from, $to);
-		DFA($vehicleData);
-		exit;
+
         $vehicles = [];
         $currentlyAssigned = [];
         $availableVehicles = [];
@@ -470,8 +469,8 @@ switch ($mode) {
                 'regNo' => db_output2($vehData['NUM']),
                 'vehicletype' => intval($vehData['TYPE_ID']),
                 'categoryId' => intval($vehData['CAT_ID']),
-                'categoryName' => db_output2($categoryName),
-                'capacity' => intval($capacity),
+                'categoryName' => db_output2(GetXFromYID("select vName from vehicle_category where iVCatID = ".$vehData['CAT_ID']."")),
+                'capacity' => intval(GetXFromYID("select iCapacity from vehicle_category where iVCatID = ".$vehData['CAT_ID']."")),
                 'lastAssigned' => $lastAssigned,
                 'lastAssignedTime' => $lastAssignedTime,
                 'alreadyAssigned' => $assignedVeh,
