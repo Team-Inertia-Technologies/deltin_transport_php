@@ -1,6 +1,6 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 include "../../includes/common_api.php";
 
 header('Content-Type: application/json');
@@ -10,6 +10,7 @@ $_REQUEST = array_merge($_REQUEST, $request ?? []);
 $token = $_REQUEST['token'] ?? null;
 if (!$token) {
     http_response_code(401);
+    header('Content-Type: application/json');
     echo json_encode([
         "error" => ["message" => "Token missing"],
         "statuscode" => 401
@@ -22,6 +23,7 @@ $keywords = $_REQUEST['keywords'] ?? null;
 $sess_user_id = intval(DecodeParam($token));
 if (!$sess_user_id) {
     http_response_code(401);
+    header('Content-Type: application/json');
     echo json_encode([
         "error" => ["message" => "Invalid token"],
         "statuscode" => 401
@@ -177,12 +179,14 @@ try {
     ];
 
     http_response_code(200);
+    header('Content-Type: application/json');
     echo json_encode($response);
     exit;
 
 } catch (Exception $e) {
 
     http_response_code(500);
+    header('Content-Type: application/json');
     echo json_encode([
         "error" => [
             "message" => "Internal Server Error"
