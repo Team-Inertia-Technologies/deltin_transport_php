@@ -1612,7 +1612,175 @@ switch ($mode) {
             "statusCode" => 200
         ]);
         break;
+ case 'ADD_ONLOAD':
+        // $FLEET_BOOKED_BY = GetXArrFromYID("SELECT iUserID, vName from users where cStatus='A' ORDER BY vName", "3");
+        $BOOKING_CAT = GetXArrFromYID("SELECT iFleet_BkCatID, vName from fleet_bookingcategory where cStatus='A' ORDER BY iRank", "3");
+        $TRAVEL_PURPOSE = GetXArrFromYID("SELECT iFleet_TrvPurID, vName from fleet_travelpurpose where cStatus='A' ORDER BY iRank", "3");
+        $TRAVEL_TYPE = sql_query("SELECT iFleet_TrvTypeID, iFleet_TrvPurID, vName from fleet_traveltype where cStatus='A' ORDER BY iRank", "TRAVEL_TYPE");
+        $PROPERTY_ARR = GetXArrFromYID("SELECT iPropertyID, vName from property where cStatus='A' ORDER BY iRank", "3");
+        $MAX_PAX = GetXFromYID("SELECT vValue from sys_settings where vCode = 'FT_BK_MAX_PAX'");
+        $MAX_BAG = GetXFromYID("SELECT vValue from sys_settings where vCode = 'FT_BK_MAX_BAG'");
+        $VEH_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
+        // $STAFF_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
+        $STAFF_DEPT = GetXArrFromYID("SELECT iDepartmentID, vName from department where cStatus='A' ORDER BY iRank", "3");
+        $STAFF_ARR = sql_query("SELECT iFStaffID, vName, iDepartmentID, vMobile, iUserID from fleet_staff where cStatus='A' ORDER BY vName");
+        $GUEST_ARR = sql_query("SELECT iGuestID, vName, vMobileNo from guest where cStatus='A' ORDER BY vName");
 
+        $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
+        foreach ($FLEET_BOOKING_FOR as $id => $name) {
+            $bookedForOpt[] = ['id' => $id, 'name' => $name];
+        }
+        // $bookedByOpt = [['id' => 0, 'name' => 'Choose']];
+        // foreach ($FLEET_BOOKED_BY as $id => $name) {
+        //     $bookedByOpt[] = ['id' => $id, 'name' => $name];
+        // }
+        $bookingCatOpt = [['id' => 0, 'name' => 'Choose']];
+        foreach ($BOOKING_CAT as $id => $name) {
+            $bookingCatOpt[] = ['id' => intval($id), 'name' => $name];
+        }
+        // $travelPurposeOpt  = [['id' => 0, 'name' => 'Choose']];
+        // foreach ($TRAVEL_PURPOSE as $id => $name) {
+        //     $travelPurposeOpt[] = ['id' => intval($id), 'name' => $name];
+        // }
+        // $travelTypeOpt   = [['id' => 0, 'name' => 'Choose']];
+        // while ($row = sql_fetch_assoc($TRAVEL_TYPE)) {
+        //     $travelTypeOpt[] = ['id' => intval($row['iFleet_TrvTypeID']), 'name' => $row['vName'], 'purposeId' => intval($row['iFleet_TrvPurID'])];
+        // }
+        // Build merged Travel Purpose & Type array
+        $travelPurposeTypeOpt = [];
+
+        // First initialize purpose groups
+        foreach ($TRAVEL_PURPOSE as $id => $name) {
+            $travelPurposeTypeOpt[$id] = [
+                'id' => intval($id),
+                'name' => $name,
+                'types' => []
+            ];
+        }
+
+        while ($row = sql_fetch_assoc($TRAVEL_TYPE)) {
+            $purposeId = intval($row['iFleet_TrvPurID']);
+            if (isset($travelPurposeTypeOpt[$purposeId])) {
+                $travelPurposeTypeOpt[$purposeId]['types'][] = [
+                    'id' => intval($row['iFleet_TrvTypeID']),
+                    'name' => $row['vName']
+                ];
+            }
+        }
+
+        // Reset array keys (remove gaps)
+        $travelPurposeTypeOpt = array_values($travelPurposeTypeOpt);
+
+        $propertyOpt = [['id' => 0, 'name' => 'Choose']];
+        foreach ($PROPERTY_ARR as $id => $name) {
+            $propertyOpt[] = ['id' => intval($id), 'name' => $name];
+        }
+        // Extract numeric values (assuming $MAX_PAX and $MAX_BAG return associative array)
+        // $maxPaxValue = $MAX_PAX;
+        // $maxBagValue = $MAX_BAG;
+
+        // Create arrays 0 to max values (or at least 0 if no limit)
+        $paxOpt = ($MAX_PAX > 0) ? range(1, intval($MAX_PAX)) : [0];
+        $baggageOpt = ($MAX_BAG > 0) ? range(0, intval($MAX_BAG)) : [0];
+
+        $vehiCatOpt = [['id' => 0, 'name' => 'Choose']];
+        foreach ($VEH_CAT as $id => $name) {
+            $vehiCatOpt[] = ['id' => intval($id), 'name' => $name];
+        }
+        $tripTypeArr = [];
+        foreach ($FLEET_TRAVEL_TYPE as $id => $name) {
+            $tripTypeArr[] = ['id' => intval($id), 'name' => $name];
+        }
+        $staffDeptOpt = [['id' => 0, 'name' => 'Choose']];
+        foreach ($STAFF_DEPT as $id => $name) {
+            $staffDeptOpt[] = ['id' => intval($id), 'name' => $name];
+        }
+        $staffOpt = [];
+        while ($row = sql_fetch_assoc($STAFF_ARR)) {
+            // Check if staff member is logged in user
+            $staffUserID = intval($row['iUserID'] ?? 0);
+            $isLoggedin = false;
+
+            if ($staffUserID > 0 && $staffUserID == $user_id) {
+                $isLoggedin = true;
+            }
+
+            $staffOpt[] = [
+                'id' => intval($row['iFStaffID']),
+                'name' => $row['vName'],
+                'mobile' => $row['vMobile'],
+                'departmentId' => intval($row['iDepartmentID']),
+                'isLoggedin' => $isLoggedin
+            ];
+        }
+        $guestOpts = [];
+        while ($row = sql_fetch_assoc($GUEST_ARR)) {
+            $guestOpts[] = [
+                'id' => intval($row['iGuestID']),
+                'name' => $row['vName'],
+                'mobile' => $row['vMobileNo']
+            ];
+        }
+
+        // Get filter parameters
+        $filterTripStatus = $_REQUEST['filterTripStatus'] ?? '';
+        $filterBookedFor = $_REQUEST['filterBookedFor'] ?? '';
+        $filterTripType = $_REQUEST['filterTripType'] ?? '';
+        $filterVehicleCategory = intval($_REQUEST['filterVehicleCategory'] ?? 0);
+        $filterFromDateTime = $_REQUEST['fromDateTime'] ?? '';
+        $filterToDateTime = $_REQUEST['toDateTime'] ?? '';
+
+        // Create filter option arrays
+        $tripStatusFilterOpt = [['id' => '', 'name' => 'All']];
+        foreach ($FLEET_TRIP_STATUS as $id => $name) {
+            $tripStatusFilterOpt[] = ['id' => $id, 'name' => $name];
+        }
+
+        $bookedForFilterOpt = [['id' => '', 'name' => 'All']];
+        foreach ($FLEET_BOOKING_FOR as $id => $name) {
+            $bookedForFilterOpt[] = ['id' => $id, 'name' => $name];
+        }
+
+        $tripTypeFilterOpt = [
+            ['id' => '', 'name' => 'All'],
+            ['id' => 'Assigned', 'name' => 'Assigned'],
+            ['id' => 'Unassigned', 'name' => 'Unassigned'],
+            ['id' => 'Delayed', 'name' => 'Delayed']
+        ];
+
+        $vehicleCategoryFilterOpt = [['id' => 0, 'name' => 'All']];
+        foreach ($VEH_CAT as $id => $name) {
+            $vehicleCategoryFilterOpt[] = ['id' => intval($id), 'name' => $name];
+        }
+
+        $optArr = [
+            "bookedForOpt" => $bookedForOpt,
+            // "bookedByOpt" => $bookedByOpt,
+            "bookingCatOpt" => $bookingCatOpt,
+            "travelPurposeOpt" => $travelPurposeTypeOpt,
+            "propertyOpt" => $propertyOpt,
+            "paxOpt" => $paxOpt,
+            "baggageOpt" => $baggageOpt,
+            "vehiCatOpt" => $vehiCatOpt,
+            "tripTypeArr" => $tripTypeArr,
+            "staffDeptOpt" => $staffDeptOpt,
+            "staffOpt" => $staffOpt,
+            "guestOpts" => $guestOpts,
+            "tripStatusFilterOpt" => $tripStatusFilterOpt,
+            "bookedForFilterOpt" => $bookedForFilterOpt,
+            "tripTypeFilterOpt" => $tripTypeFilterOpt,
+            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt
+        ];
+
+
+       
+        echo json_encode([
+            "data" => [
+                "optArr" => $optArr
+            ],
+            "statusCode" => 200
+        ]);
+        break;
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
