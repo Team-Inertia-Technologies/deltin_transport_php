@@ -6,12 +6,29 @@ include "../../includes/common_api.php";
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
 $request  = json_decode($postdata, true);
-$token = $_REQUEST['token'] ?? null;
 $_REQUEST = array_merge($_REQUEST, $request ?? []);
+$token = $_REQUEST['token'] ?? null;
+if (!$token) {
+    http_response_code(401);
+    echo json_encode([
+        "error" => ["message" => "Token missing"],
+        "statuscode" => 401
+    ]);
+    exit;
+}
 $levelID  = $_REQUEST['level'] ?? null;
 $statusID = $_REQUEST['status'] ?? null;
 $keywords = $_REQUEST['keywords'] ?? null;
-$sess_user_id = DecodeParam($token);
+$sess_user_id = intval(DecodeParam($token));
+if (!$sess_user_id) {
+    http_response_code(401);
+    echo json_encode([
+        "error" => ["message" => "Invalid token"],
+        "statuscode" => 401
+    ]);
+    exit;
+}
+
 try {
     // if (!$sess_user_id) {
     //     throw new Exception("Invalid session");
@@ -26,7 +43,7 @@ try {
         JOIN levels l ON u.iLevel = l.iLevelD
         WHERE u.iUserID = $sess_user_id
     ";
-    echo $rankQuery;
+    // echo $rankQuery;
     $rankRes = sql_query($rankQuery);
     list($loggedInRank) = sql_fetch_row($rankRes);
     $loggedInRank = intval($loggedInRank);
