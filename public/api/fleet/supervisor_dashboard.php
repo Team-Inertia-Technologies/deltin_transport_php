@@ -349,8 +349,8 @@ switch ($mode) {
 		
 		
 		$searchtxt = $_REQUEST['searchtxt'] ?? '';
-		$type = $_REQUEST['type'] ?? '';
-		$drivertype = $_REQUEST['drivertype'] ?? '';
+		$vehitype = $_REQUEST['vehiType'] ?? '';
+		$drivertype = $_REQUEST['driverType'] ?? '';
 		$category = $_REQUEST['category'] ?? '';
 		$status = $_REQUEST['status'] ?? '';
 		$from = date("H:i:s", strtotime($_REQUEST['from'])) ?? '';
@@ -391,9 +391,9 @@ switch ($mode) {
 			$cond .= " and vc.iVCatID = '$category'";
 		}
 		
-		if(!empty($type)){
+		if(!empty($vehitype)){
 
-			$cond .= " and v.iType = '$type'";
+			$cond .= " and v.iType = '$vehitype'";
 			
 		}
 
@@ -407,7 +407,7 @@ switch ($mode) {
 			$cond .= " and fb.cType = '$status'";			
 		}
 		
-		$vehicleData = GetVehicle_BasedOnSearch2($type, $category, 'Y', $from, $to);
+		$vehicleData = GetVehicle_BasedOnSearch2($vehitype, $category, 'Y', $from, $to);
 		
         $vehicles = [];
         $currentlyAssigned = [];

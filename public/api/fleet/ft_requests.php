@@ -1215,6 +1215,7 @@ switch ($mode) {
         $iVehicleID = intval($_REQUEST['vehicleId'] ?? 0);
         $iDriverID = intval($_REQUEST['driverId'] ?? 0);
         $vRemarks = db_input($_REQUEST['remarks'] ?? '');
+        $vComments = db_input($_REQUEST['comment'] ?? '');
 
         // Validate required inputs
         if ($iFleet_BookingID <= 0) {
@@ -1339,7 +1340,7 @@ switch ($mode) {
                      iVehicleID = $iVehicleID,
                      iDriverID = $iDriverID,
                      iVehAssignedBy = $user_id,
-                      	dtVehAssigned = '$dtNow'
+                      	dtVehAssigned = '$dtNow', vComments = '$vComments'
                      WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A'";
 
         $updateResult = sql_query($updateSql);
