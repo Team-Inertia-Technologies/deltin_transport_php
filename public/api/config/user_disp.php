@@ -6,11 +6,12 @@ include "../../includes/common_api.php";
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
 $request  = json_decode($postdata, true);
+$token = $_REQUEST['token'] ?? null;
 $_REQUEST = array_merge($_REQUEST, $request ?? []);
 $levelID  = $_REQUEST['level'] ?? null;
 $statusID = $_REQUEST['status'] ?? null;
 $keywords = $_REQUEST['keywords'] ?? null;
-$sess_user_id = intval($_REQUEST['user_id'] ?? 0);
+$sess_user_id = DecodeParam($token);
 try {
 
    
