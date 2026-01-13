@@ -5,113 +5,175 @@ include "../../includes/common_api.php";
 
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
-
-$request = json_decode($postdata, true);
+$request  = json_decode($postdata, true);
 $_REQUEST = array_merge($_REQUEST, $request ?? []);
 $levelID  = $_REQUEST['level'] ?? null;
 $statusID = $_REQUEST['status'] ?? null;
 $keywords = $_REQUEST['keywords'] ?? null;
+$sess_user_id = intval($_REQUEST['user_id'] ?? 0);
 try {
-    // Build property map
+
+   
+    
+
+    if (!$sess_user_id) {
+        throw new Exception("Invalid session");
+    }
+
+    // ---------------------------------------------------
+    // Get logged-in user's LEVEL RANK
+    // ---------------------------------------------------
+    $rankQuery = "
+        SELECT l.iRank
+        FROM users u
+        JOIN levels l ON u.iLevel = l.iLevelD
+        WHERE u.iUserID = $sess_user_id
+    ";
+    $rankRes = sql_query($rankQuery);
+    list($loggedInRank) = sql_fetch_row($rankRes);
+    $loggedInRank = intval($loggedInRank);
+
+    // ---------------------------------------------------
+    // Build PROPERTY MAP
+    // ---------------------------------------------------
     $PROPERTY_ARR = [];
     $query = "
         SELECT up.iUserID, p.vShortCode
-        FROM users_property_assoc AS up
-        JOIN property AS p ON up.iPropertyID = p.iPropertyID
+        FROM users_property_assoc up
+        JOIN property p ON up.iPropertyID = p.iPropertyID
         ORDER BY p.iPropertyID
     ";
     $res = sql_query($query);
     while (list($u_id, $p_code) = sql_fetch_row($res)) {
         $PROPERTY_ARR[$u_id][] = $p_code;
     }
-    
-    $cond = "WHERE cRefType='A' AND cStatus!='X'";
-    $cond2 = "";
+
+    // ---------------------------------------------------
+    // Base Conditions
+    // ---------------------------------------------------
+    $cond = "
+        WHERE cRefType = 'A'
+          AND cStatus != 'X'
+          AND iLevel IN (
+              SELECT iLevelD
+              FROM levels
+              WHERE iRank > $loggedInRank
+          )
+    ";
+
+    // ---------------------------------------------------
+    // Additional Filters
+    // ---------------------------------------------------
     if (!is_null($levelID) && $levelID >= 0) {
-        $cond2 .= " AND iLevel = " . intval($levelID);
+        $cond .= " AND iLevel = " . intval($levelID);
     }
 
     if (!is_null($statusID) && $statusID !== "") {
-        $cond2 .= " AND cStatus = '" . db_input2($statusID) . "'";
+        $cond .= " AND cStatus = '" . db_input2($statusID) . "'";
     }
 
     if (!is_null($keywords) && trim($keywords) !== "") {
-        $keywords_escaped = db_input2(trim($keywords));
-        $cond2 .= " AND (vName LIKE '%" . $keywords_escaped . "%' OR vUName LIKE '%" . $keywords_escaped . "%' OR vPhone LIKE '%" . $keywords_escaped . "%')";
+        $kw = db_input2(trim($keywords));
+        $cond .= " AND (
+            vName LIKE '%$kw%'
+            OR vUName LIKE '%$kw%'
+            OR vPhone LIKE '%$kw%'
+        )";
     }
 
-    $query = "SELECT iLevelD, vName FROM levels WHERE cStatus='A' ORDER BY vName DESC";
-    $result = sql_query($query);
-    if (sql_num_rows($result)) {
-        while ($data = sql_fetch_assoc($result)) {
-            $levels[] = array(
-                "id" => (int)$data['iLevelD'],
-                "name" => $data['vName'],
-            );
-        }
+    // ---------------------------------------------------
+    // Fetch Levels (ONLY BELOW LOGGED-IN USER)
+    // ---------------------------------------------------
+    $levels = [];
+    $lvlQuery = "
+        SELECT iLevelD, vName
+        FROM levels
+        WHERE cStatus = 'A'
+          AND iRank > $loggedInRank
+        ORDER BY iRank
+    ";
+    $lvlRes = sql_query($lvlQuery);
+    while ($row = sql_fetch_assoc($lvlRes)) {
+        $levels[] = [
+            "id"   => (int)$row['iLevelD'],
+            "name" => $row['vName']
+        ];
     }
 
-
+    // ---------------------------------------------------
+    // Status List
+    // ---------------------------------------------------
     $Status = [];
-    $STATUS_ARR = array("A" => "Active", "I" => "Inactive", "P" => "Sent For Approval", "U" => "Pending For Activation");
+    $STATUS_ARR = [
+        "A" => "Active",
+        "I" => "Inactive",
+        "P" => "Sent For Approval",
+        "U" => "Pending For Activation"
+    ];
     foreach ($STATUS_ARR as $key => $value) {
         $Status[] = [
-            "id" => $key,
+            "id"   => $key,
             "name" => $value
         ];
     }
 
-
+    // ---------------------------------------------------
+    // Departments
+    // ---------------------------------------------------
     $DEPT = [];
-    $DEPT_ARR = GetXArrFromYID("SELECT iDepartmentID, vName FROM department WHERE cStatus='A' ORDER BY vName ASC"  ,$mode = "3");
-    //DFA($DEPT_ARR);
+    $DEPT_ARR = GetXArrFromYID(
+        "SELECT iDepartmentID, vName FROM department WHERE cStatus='A' ORDER BY vName ASC",
+        "3"
+    );
     foreach ($DEPT_ARR as $dept_id => $dept_name) {
         $DEPT[] = [
-            "id" => (int)$dept_id,
+            "id"   => (int)$dept_id,
             "name" => $dept_name
         ];
     }
 
-    // Fetch users
-    $sql = "SELECT * FROM users_temp $cond $cond2 ORDER BY vName ASC";
-    // echo $sql;
-    // exit;
+    // ---------------------------------------------------
+    // Fetch Users
+    // ---------------------------------------------------
+    $sql = "SELECT * FROM users_temp $cond ORDER BY vName ASC";
     $result = sql_query($sql);
 
     $users = [];
     while ($row = sql_fetch_assoc($result)) {
-        $levelName = GetXFromYID("SELECT vName FROM levels WHERE iLevelD = " . intval($row['iLevel']));
-        $row['levelname'] = $levelName;
+        $row['levelname'] = GetXFromYID(
+            "SELECT vName FROM levels WHERE iLevelD = " . intval($row['iLevel'])
+        );
         $users[] = $row;
     }
-    $response = array (
-        "data" => array (
-            "message" => "Users Fetched Successfully",
-            "users" => $users,
-            "properties" => $PROPERTY_ARR,
-            "levels" => $levels,
-            "status" => $Status,
+
+    // ---------------------------------------------------
+    // Response
+    // ---------------------------------------------------
+    $response = [
+        "data" => [
+            "message"     => "Users Fetched Successfully",
+            "users"       => $users,
+            "properties"  => $PROPERTY_ARR,
+            "levels"      => $levels,
+            "status"      => $Status,
             "departments" => $DEPT
-        ),
+        ],
         "statuscode" => 200
-    );
+    ];
 
     http_response_code(200);
-    header('Content-Type: application/json');
     echo json_encode($response);
     exit;
 
 } catch (Exception $e) {
-    $response = array (
-        "error" => array(
-            "message" => "Internal Server Error",
-        ),
-        "statuscode" => 500
-    );
 
     http_response_code(500);
-    header('Content-Type: application/json');
-    echo json_encode($response);
+    echo json_encode([
+        "error" => [
+            "message" => "Internal Server Error"
+        ],
+        "statuscode" => 500
+    ]);
     exit;
 }
 ?>
