@@ -86,7 +86,7 @@ switch ($mode) {
                 LEFT JOIN vehicle v ON tv.iVehicleID = v.iVehicleID
                 LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                 WHERE $whereClause
-                ORDER BY t.dtTrip, t.iGrpID";
+                ORDER BY t.dtTrip, t.iTripID";
 
         $res = sql_query($sql);
         $groupedTrips = [];
@@ -157,6 +157,7 @@ switch ($mode) {
                     "pax" => $totalRequestedPax,
                     "status" => $status,
                     "grpID" => (int) ($row['iGrpID'] ?? 0),
+                    "iTripID"=> (int) ($row['iTripID'] ?? 0),
                     "vehiNum" => [
                         [
                             "num" => db_output2($row['vehicleNumber'] ?? ''),
