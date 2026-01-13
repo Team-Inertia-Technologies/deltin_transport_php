@@ -31,9 +31,9 @@ switch ($mode) {
 	// ===================== CASE: DASHBOARD_COMPONENTS =====================	
     case 'DASHBOARD_COMPONENTS':
 	
-		$VEH_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('F') ORDER BY iRank", "3");
+		$VEH_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('F','B') ORDER BY iRank", "3");
 		$TODAY = date('Y-m-d');
-		$TOTAL_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where cStatus = 'A' and cServiceType IN ('F')");
+		$TOTAL_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where cStatus = 'A' and cServiceType IN ('F','B')");
 		$TOTAL_DRIVER_COUNT = GetXFromYID("select count(*) from driver where cStatus = 'A' and dExpiry > '$TODAY'");
 		
 		$AVAILABLE_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where iVehicleID NOT IN (select iVehicleID from fleet_booking where cType NOT IN ('C','N') and iVehicleID IS NOT NULL)");
