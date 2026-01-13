@@ -408,7 +408,8 @@ switch ($mode) {
 		}
 		
 		$vehicleData = GetVehicle_BasedOnSearch2($vehitype, $category, 'Y', $from, $to);
-		
+		DFA($vehicleData);
+		exit;
         $vehicles = [];
         $currentlyAssigned = [];
         $availableVehicles = [];
