@@ -13,13 +13,9 @@ $statusID = $_REQUEST['status'] ?? null;
 $keywords = $_REQUEST['keywords'] ?? null;
 $sess_user_id = DecodeParam($token);
 try {
-
-   
-    
-
-    if (!$sess_user_id) {
-        throw new Exception("Invalid session");
-    }
+    // if (!$sess_user_id) {
+    //     throw new Exception("Invalid session");
+    // }
 
     // ---------------------------------------------------
     // Get logged-in user's LEVEL RANK
@@ -30,6 +26,7 @@ try {
         JOIN levels l ON u.iLevel = l.iLevelD
         WHERE u.iUserID = $sess_user_id
     ";
+    echo $rankQuery;
     $rankRes = sql_query($rankQuery);
     list($loggedInRank) = sql_fetch_row($rankRes);
     $loggedInRank = intval($loggedInRank);
