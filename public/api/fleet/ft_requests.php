@@ -160,7 +160,8 @@ switch ($mode) {
             ['id' => '', 'name' => 'All'],
             ['id' => 'Assigned', 'name' => 'Assigned'],
             ['id' => 'Unassigned', 'name' => 'Unassigned'],
-            ['id' => 'Delayed', 'name' => 'Delayed']
+            ['id' => 'Delayed', 'name' => 'Delayed'],
+            ['id' => 'Cancelled', 'name' => 'Cancelled']
         ];
 
         $vehicleCategoryFilterOpt = [['id' => 0, 'name' => 'All']];
@@ -189,7 +190,7 @@ switch ($mode) {
 
 
         $whereClause = "fb.cStatus = 'A'";
-        
+
         // Check if user has FLEET_USER_SPECIFIC_REQ access
         $userSpecificAccess = checkUserModuleAccess($user_id, 'FLEET_USER_SPECIFIC_REQ');
 
@@ -203,7 +204,7 @@ switch ($mode) {
             $whereClause .= " AND fb.iFStaffID > 0";
         } else if (!$staffReqAccess && $guestReqAccess) {
             $whereClause .= " AND fb.iGuestID > 0";
-        }else if (!$staffReqAccess && !$guestReqAccess) {
+        } else if (!$staffReqAccess && !$guestReqAccess) {
             $whereClause .= " AND fb.iGuestID = 0 AND fb.iFStaffID = 0";
         }
         // Apply filters to WHERE clause
@@ -243,7 +244,9 @@ switch ($mode) {
                 fb.iBookedBy,
                 fb.iDriverID,
                 fb.iVehicleID,
+                fb.iAdded_UserID,
                 fb.cType as tripStatus,
+                fb.cStatus as bookingStatus,
                 s.vName as bookedByName,
                 p.vName as propertyName,
                 vc.vName as vehicleCatName,
@@ -323,8 +326,11 @@ switch ($mode) {
             $hasDriver = !empty($row['iDriverID']) && intval($row['iDriverID']) > 0;
             $pickupTime = $row['vPickUpTime'] ?? '';
             $currentTime = date('Y-m-d H:i:s');
+$bookingStatus = $row['bookingStatus'] ?? '';
 
-            if ($hasVehicle && $hasDriver) {
+             if ($bookingStatus == 'C') {
+                $tripType = 'Cancelled';
+            }else if ($hasVehicle && $hasDriver) {
                 $tripType = 'Assigned';
             } else if (!$hasVehicle && !$hasDriver) {
                 // Check if it's delayed (pickup time passed and cType is still 'N')
@@ -337,6 +343,14 @@ switch ($mode) {
                 // Partially assigned (either vehicle or driver but not both)
                 $tripType = 'Unassigned';
             }
+            $cancelModule = checkUserModuleAccess($user_id, 'FLEET_REQUEST_CANCEL');
+
+            // Check ownership
+            $isOwner = intval($row['iAdded_UserID']) == $user_id;
+
+            // Allow cancel only if module access or owner
+            $canCancel = ($cancelModule || $isOwner);
+
 
             $rowDataItem = [
                 'id' => $bookingID,
@@ -361,7 +375,8 @@ switch ($mode) {
                 'pickupByType' => $driverTypeName,
                 'vehicleDetails' => $vehicleDetails,
                 'vehicleType' => db_output2($row['vehicleCatName'] ?? ''),
-                'isTrip' => $isTrip
+                'isTrip' => $isTrip,
+                'canCancel' => $canCancel
             ];
 
             // Apply tripType filter (since it's calculated, not in DB)
@@ -1613,7 +1628,7 @@ switch ($mode) {
             "statusCode" => 200
         ]);
         break;
- case 'ADD_ONLOAD':
+    case 'ADD_ONLOAD':
         // $FLEET_BOOKED_BY = GetXArrFromYID("SELECT iUserID, vName from users where cStatus='A' ORDER BY vName", "3");
         $BOOKING_CAT = GetXArrFromYID("SELECT iFleet_BkCatID, vName from fleet_bookingcategory where cStatus='A' ORDER BY iRank", "3");
         $TRAVEL_PURPOSE = GetXArrFromYID("SELECT iFleet_TrvPurID, vName from fleet_travelpurpose where cStatus='A' ORDER BY iRank", "3");
@@ -1746,7 +1761,8 @@ switch ($mode) {
             ['id' => '', 'name' => 'All'],
             ['id' => 'Assigned', 'name' => 'Assigned'],
             ['id' => 'Unassigned', 'name' => 'Unassigned'],
-            ['id' => 'Delayed', 'name' => 'Delayed']
+            ['id' => 'Delayed', 'name' => 'Delayed'],
+            ['id' => 'Cancelled', 'name' => 'Cancelled']
         ];
 
         $vehicleCategoryFilterOpt = [['id' => 0, 'name' => 'All']];
@@ -1774,13 +1790,89 @@ switch ($mode) {
         ];
 
 
-       
+
         echo json_encode([
             "data" => [
                 "optArr" => $optArr
             ],
             "statusCode" => 200
         ]);
+        break;
+
+    // ===================== CASE CANCEL_REQUEST =====================
+    case 'CANCEL_REQUEST':
+        $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
+        $reason = db_input($_REQUEST['reason'] ?? '');
+
+        // Validate required parameter
+        if ($iFleet_BookingID <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing or invalid iFleet_BookingID parameter"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+        // Validate reason length (max 255 characters)
+        if (strlen($reason) > 255) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Reason must not exceed 255 characters"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Check if trip exists and is active
+        $checkSql = "SELECT iFleet_BookingID FROM fleet_booking WHERE iFleet_BookingID = $iFleet_BookingID";
+        $checkRes = sql_query($checkSql);
+
+        if (sql_num_rows($checkRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Booking not found"
+                ],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $completeSql = "UPDATE fleet_booking SET 
+                          cStatus = 'C',
+                          iCancellationBy = $user_id,
+                          vCancellationReason = '$reason'
+                        WHERE iFleet_BookingID=$iFleet_BookingID";
+
+        if (sql_query($completeSql)) {
+
+
+
+            if (sql_affected_rows() > 0) {
+                echo json_encode([
+                    "data" => [
+                        "message" => "Request marked as canceled",
+                        "iFleet_BookingID" => $iFleet_BookingID
+                    ],
+                    "statusCode" => 200
+                ]);
+            } else {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Failed to mark request as canceled"
+                    ],
+                    "statusCode" => 500
+                ]);
+            }
+        } else {
+            echo json_encode([
+                "error" => [
+                    "message" => "Database error occurred while marking request as canceled"
+                ],
+                "statusCode" => 500
+            ]);
+        }
         break;
     // ===================== DEFAULT =====================
     default:
