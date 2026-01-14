@@ -663,8 +663,8 @@ switch ($mode) {
         FROM st_request r
         INNER JOIN st_route rt ON r.iRouteID = rt.iRouteID
         INNER JOIN st_route_stops rs ON r.iStopID = rs.iStopID
-        INNER JOIN st_trips t ON r.iTripID = t.iTripID
-        LEFT JOIN vehicle v ON t.iVehicleID = v.iVehicleID
+         INNER JOIN st_trip_vehicle_assoc tv ON r.iTripID = tv.iTripID
+        LEFT JOIN vehicle v ON tv.iVehicleID = v.iVehicleID
         WHERE " . implode(' AND ', $whereConditions) . "
         ORDER BY sendStatus DESC, r.iTrReqID DESC
     ";
