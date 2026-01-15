@@ -542,7 +542,7 @@ $bookingStatus = $row['bookingStatus'] ?? '';
             exit;
         }
 
-        $bookingSql = "SELECT * FROM fleet_booking WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
+        $bookingSql = "SELECT * FROM fleet_booking WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus != 'X' LIMIT 1";
         $bookingRes = sql_query($bookingSql);
         $STAFF_DEPT_ARR = GetXArrFromYID("SELECT iDepartmentID, iFStaffID  from fleet_staff where cStatus='A'", "3");
 
@@ -725,7 +725,7 @@ $bookingStatus = $row['bookingStatus'] ?? '';
         }
 
         // Confirm booking exists and is active
-        $checkSql = "SELECT * FROM fleet_booking WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
+        $checkSql = "SELECT * FROM fleet_booking WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus != 'X' LIMIT 1";
         $checkRes = sql_query($checkSql);
         if (sql_num_rows($checkRes) == 0) {
             echo json_encode([
@@ -764,7 +764,7 @@ $bookingStatus = $row['bookingStatus'] ?? '';
                 tReturnTime = " . $vReturnTimeVal . ",
                 dtUpdated = '" . db_input($dtNow) . "',
                 iUpdated_UserID = " . intval($user_id) . "
-            WHERE iFleet_BookingID = " . intval($iFleet_BookingID) . " AND cStatus = 'A'
+            WHERE iFleet_BookingID = " . intval($iFleet_BookingID) . "
         ";
 
         $okUpdate = sql_query($updateSql);
@@ -815,6 +815,7 @@ $bookingStatus = $row['bookingStatus'] ?? '';
                 fb.vPickUpTime,
                 fb.vInstructions,
                 fb.vRemarks,
+                fb.iVehicleCatID,
                 fb.iPax,
                 fb.iBaggage,
                 fb.iVehicleID,
@@ -919,6 +920,7 @@ $bookingStatus = $row['bookingStatus'] ?? '';
             'dateTime' => $pickupDateTime,
             'instructions' => db_output2($booking['vInstructions']) ?? '',
             'remarks' => db_output2($booking['vRemarks']) ?? '',
+            'vehiCat' => intval($booking['iVehicleCatID'] ?? 0),
             'passengers' => intval($booking['iPax'] ?? 0),
             'baggage' => intval($booking['iBaggage'] ?? 0),
             'bookedBy' => db_output2($booking['bookedByName']) ?? 'N/A',
@@ -1264,7 +1266,7 @@ $bookingStatus = $row['bookingStatus'] ?? '';
 
         if (sql_num_rows($bookingCheckRes) == 0) {
             echo json_encode([
-                "error" => ["message" => "Booking not found or inactive"],
+                "error" => ["message" => "Booking not found or cancelled"],
                 "statusCode" => 404
             ]);
             exit;
