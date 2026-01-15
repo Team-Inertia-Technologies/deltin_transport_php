@@ -189,7 +189,7 @@ switch ($mode) {
         ];
 
 
-        $whereClause = "fb.cStatus = 'A'";
+        $whereClause = "fb.cStatus != 'X'";
 
         // Check if user has FLEET_USER_SPECIFIC_REQ access
         $userSpecificAccess = checkUserModuleAccess($user_id, 'FLEET_USER_SPECIFIC_REQ');
@@ -843,7 +843,7 @@ $bookingStatus = $row['bookingStatus'] ?? '';
             LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
             LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID AND vcat.cStatus = 'A'
             LEFT JOIN driver dr ON fb.iDriverID = dr.iDriverID AND dr.cStatus = 'A'
-            WHERE fb.iFleet_BookingID = $iFleet_BookingID AND fb.cStatus = 'A'
+            WHERE fb.iFleet_BookingID = $iFleet_BookingID AND fb.cStatus != 'X'
             LIMIT 1
         ";
 
@@ -1472,7 +1472,7 @@ $bookingStatus = $row['bookingStatus'] ?? '';
             LEFT JOIN guest g ON fb.iGuestID = g.iGuestID AND g.cStatus = 'A'
             LEFT JOIN fleet_staff fs ON fb.iFStaffID = fs.iFStaffID AND fs.cStatus = 'A'
             LEFT JOIN department d ON fs.iDepartmentID = d.iDepartmentID AND d.cStatus = 'A'
-            WHERE fb.iFleet_BookingID = $iFleet_BookingID AND fb.cStatus = 'A'
+            WHERE fb.iFleet_BookingID = $iFleet_BookingID AND fb.cStatus != 'X'
             LIMIT 1
         ";
 
