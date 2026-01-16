@@ -760,9 +760,9 @@ switch ($mode) {
     case 'ACTIVITY_TIMELINE':
 	
 			global $FL_LOG_STATUS_ARR;
-			
-			$from = $_REQUEST['from'] ?? date('Y-m-d H:i:s', strtotime("- 2 hours"));
-			$to = $_REQUEST['to'] ?? date('Y-m-d H:i:s');
+			$currentDate = date('Y-m-d');
+			$from = $_REQUEST['fromTime'] ?? date('H:00:s');
+			$to = $_REQUEST['toTime'] ?? date('H:00:s', strtotime('+4 hours'));
 			
 			$cond = "";
 			
