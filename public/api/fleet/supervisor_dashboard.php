@@ -755,13 +755,71 @@ switch ($mode) {
 				}
 			}			
 			$PAUSE_TYPE_ARR = GetXArrFromYID("select iReasonID, vName from pause_reasons where cStatus = 'A'", 3);
-			$q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where bl.cRefType <> 'P' order by bl.dtAdded DESC";
+			$q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID, bl.iPauseTypeID, bl.vNotes from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID order by bl.dtAdded DESC";
 			$r = sql_query($q, "");
 			
 			if(sql_num_rows($r)){
 				while($row = sql_fetch_assoc($r)){
 					//$LOG_DATA_ARR[] = array("ID"=>$row['iFleet_BookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME'] ?? '');
-					$LOG_DATA_ARR[] = array("code"=>$row['cRefType'], "status"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "message"=>$row['vRefName'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row['dtAdded'])));
+					
+						$driverName = db_output2($DRIVER_ARR[$row['iDriverID']]['NAME']);
+						//$LOG_DATA_ARR[] = array("ID"=>$row['iFleet_BookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME'] ?? '');
+						$stageStatus = $row['cRefType'];
+						$passengerName = db_output2($row['vName']);
+						$description = '';
+						switch ($stageStatus) {
+							case 'S':
+								$description = "$driverName started the trip";
+								break;
+							case 'G':
+								$description = "$driverName picked up $passengerName";
+								break;
+							case 'P':
+								// For pause entries, get pause reason and notes from fleet_booking_log
+								$pauseReason = '';
+								$pauseNotes = '';
+
+								// Get pause reason from current log entry if iPauseTypeID exists
+								if (!empty($row['iPauseTypeID']) && intval($row['iPauseTypeID']) > 0) {
+									// $pauseReasonSql = "SELECT vName FROM pause_reasons WHERE iReasonID = " . intval($logRow['iPauseTypeID']) . " AND cStatus = 'A' LIMIT 1";
+									// $pauseReasonRes = sql_query($pauseReasonSql);
+									// if (sql_num_rows($pauseReasonRes) > 0) {
+									//     $pauseReasonRow = sql_fetch_assoc($pauseReasonRes);
+									//     $pauseReason = db_output2($pauseReasonRow['vName'] ?? '');
+									// }
+									$pauseReasonRes = isset($PAUSE_REASON_ARR[$row['iPauseTypeID']]) ? db_output2($PAUSE_REASON_ARR[$row['iPauseTypeID']]) : '';
+								}
+
+								// Get pause notes from current log entry
+								if (!empty($row['vNotes'])) {
+									$pauseNotes = db_output2($row['vNotes']);
+								}
+
+								if (!empty($pauseReasonRes)) {
+									$description = "$driverName paused the trip due to $pauseReasonRes";
+									if (!empty($pauseNotes)) {
+										$description .= " ($pauseNotes)";
+									}
+								} else {
+									$description = "$driverName paused the trip";
+									if (!empty($pauseNotes)) {
+										$description .= " ($pauseNotes)";
+									}
+								}
+								break;
+							case 'R':
+								$description = "$driverName resumed back the trip";
+								break;
+							case 'C':
+								$description = "$driverName dropped $passengerName";
+								break;
+							default:
+								$description = "$driverName performed $stageName";
+								break;
+						}					
+					
+					
+					$LOG_DATA_ARR[] = array("code"=>$row['cRefType'], "status"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "message"=>$description, "dateTime"=>date('d/m/Y H:i:s', strtotime($row['dtAdded'])));
 				}
 			}
 			
@@ -771,7 +829,7 @@ switch ($mode) {
 			if(sql_num_rows($r1)){
 				while($row1 = sql_fetch_assoc($r1)){
 					//$LOG_DATA_ARR[] = array("ID"=>$row1['iFleet_BookingID'], "DATETIME"=>$row1['dtPauseTime'], "STATUS"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "NOTES"=>$row1['vNotes'], "GUEST"=>$row1['vName'], "DRIVER"=>$DRIVER_ARR[$row1['iDriverID']]['NAME'] ?? '');
-					$LOG_DATA_ARR[] = array("code"=>$row1['iPauseTypeID'], "status"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "message"=>$row1['vNotes'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row1['dtPauseTime'])));
+					//$LOG_DATA_ARR[] = array("code"=>$row1['iPauseTypeID'], "status"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "message"=>$row1['vNotes'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row1['dtPauseTime'])));
 				}
 			}			
 	
