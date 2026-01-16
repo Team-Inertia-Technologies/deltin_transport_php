@@ -347,9 +347,10 @@ $bookingStatus = $row['bookingStatus'] ?? '';
 
             // Check ownership
             $isOwner = intval($row['iAdded_UserID']) == $user_id;
+            $notCancelled= $row['iAdded_UserID'] != 'C';
 
             // Allow cancel only if module access or owner
-            $canCancel = ($cancelModule || $isOwner);
+            $canCancel = ($cancelModule || $isOwner || $notCancelled);
 
 
             $rowDataItem = [
