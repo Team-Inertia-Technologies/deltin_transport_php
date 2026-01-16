@@ -99,10 +99,14 @@ switch ($mode) {
     case 'REQUEST_STREAM':
 	
 		$cond = "";
-		
+		$currentDate = date('Y-m-d');
 		$searchtxt = $_REQUEST['searchtxt'] ?? '';
 		$type = $_REQUEST['type'] ?? '';
 		$bookedFor = $_REQUEST['bookedFor'] ?? '';
+		$fromTime = $currentDate." ".$REQUEST['fromTime'] ?? $currentDate." ".date('H:00:s');
+		$toTime = $currentDate." ".$REQUEST['toTime'] ?? $currentDate." ".date('H:00:s', strtotime('+4 hours'));
+		
+
 		
 		if(!empty($searchtxt)){
 			$cond .= " and ((vName like '%$searchtxt%') or (vMobileNo like '%$searchtxt%') or (vPickUpLocation like '%$searchtxt%') or (vDropLocation like '%$searchtxt%'))";
@@ -123,6 +127,16 @@ switch ($mode) {
 			if($type == 'A'){
 				$cond .= " and (iDriverID <> '0' and iVehicleID <> '0')";
 			}			
+		}
+
+		if(!empty($fromTime) || ! empty($toTime)){
+			if(!empty($fromTime)){
+				$cond .= " and vPickUpTime >= '$fromTime'";
+			}
+				
+			if(!empty($toTime)){
+				$cond .= " and vPickUpTime <= '$toTime'";
+			}				
 		}		
 		
 		$FLEET_STAFF_ARR = GetXArrFromYID("select iFStaffID, vName from fleet_staff order by vName", 3);
@@ -348,14 +362,16 @@ switch ($mode) {
 	
 		$cond = "";
 		
-		
+		$currentDate = date('Y-m-d');
 		$searchtxt = $_REQUEST['searchtxt'] ?? '';
 		$vehitype = $_REQUEST['vehiType'] ?? '';
 		$drivertype = $_REQUEST['driverType'] ?? '';
 		$category = $_REQUEST['category'] ?? '';
 		$status = $_REQUEST['status'] ?? '';
-		$from = date("H:i:s", strtotime($_REQUEST['from'])) ?? '';
-		$to = date("H:i:s", strtotime($_REQUEST['to'])) ?? '';
+		$from = $REQUEST['fromTime'] ?? date('H:00:s');
+		$to = $REQUEST['toTime'] ?? date('H:00:s', strtotime('+4 hours'));		
+		//$from = date("H:i:s", strtotime($_REQUEST['from'])) ?? '';
+		//$to = date("H:i:s", strtotime($_REQUEST['to'])) ?? '';
 		
 		$vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cType IN ('F') AND cStatus = 'A' ORDER BY vName";
         $vehicleCategoryRes = sql_query($vehicleCategorySql);
