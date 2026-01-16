@@ -744,6 +744,22 @@ switch ($mode) {
     case 'ACTIVITY_TIMELINE':
 	
 			global $FL_LOG_STATUS_ARR;
+			
+			$from = $_REQUEST['from'] ?? date('Y-m-d H:i:s', strtotime("- 2 hours"));
+			$to = $_REQUEST['to'] ?? date('Y-m-d H:i:s');
+			
+			$cond = "";
+			
+			if(!empty($from) || ! empty($to)){
+				if(!empty($from)){
+					$cond .= " and bl.dtAdded >= '$from'";
+				}
+				
+				if(!empty($to)){
+					$cond .= " and bl.dtAdded <= '$to'";
+				}				
+			}
+			
 			$LOG_DATA_ARR = array();
 			
 			$DRIVER_ARR = array();
@@ -755,7 +771,7 @@ switch ($mode) {
 				}
 			}			
 			$PAUSE_TYPE_ARR = GetXArrFromYID("select iReasonID, vName from pause_reasons where cStatus = 'A'", 3);
-			$q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID, bl.iPauseTypeID, bl.vNotes from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID order by bl.dtAdded DESC";
+			$q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID, bl.iPauseTypeID, bl.vNotes from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where 1 $cond order by bl.dtAdded DESC";
 			$r = sql_query($q, "");
 			
 			if(sql_num_rows($r)){
