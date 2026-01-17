@@ -761,8 +761,11 @@ switch ($mode) {
 	
 			global $FL_LOG_STATUS_ARR;
 			$currentDate = date('Y-m-d');
-			$from = $currentDate." ".$_REQUEST['fromTime'].":00" ?? date('Y-m-d H:00:s');
-			$to = $currentDate." ".$_REQUEST['toTime'].":59" ?? date('Y-m-d H:00:s', strtotime('+4 hours'));
+			//$from = $currentDate." ".$_REQUEST['fromTime'].":00" ?? date('Y-m-d H:00:s');
+			//$to = $currentDate." ".$_REQUEST['toTime'].":59" ?? date('Y-m-d H:00:s', strtotime('+4 hours'));
+			
+			$from = '';
+			$to = '';
 			
 			$cond = "";
 			
