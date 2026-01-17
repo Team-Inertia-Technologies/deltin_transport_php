@@ -99,10 +99,14 @@ switch ($mode) {
     case 'REQUEST_STREAM':
 	
 		$cond = "";
-		
+		$currentDate = date('Y-m-d');
 		$searchtxt = $_REQUEST['searchtxt'] ?? '';
 		$type = $_REQUEST['type'] ?? '';
 		$bookedFor = $_REQUEST['bookedFor'] ?? '';
+		$fromTime = $currentDate." ".$REQUEST['fromTime'].":00" ?? $currentDate." ".date('Y-m-d H:00:s');
+		$toTime = $currentDate." ".$REQUEST['toTime'].":59" ?? $currentDate." ".date('Y-m-d H:00:s', strtotime('+4 hours'));
+		
+
 		
 		if(!empty($searchtxt)){
 			$cond .= " and ((vName like '%$searchtxt%') or (vMobileNo like '%$searchtxt%') or (vPickUpLocation like '%$searchtxt%') or (vDropLocation like '%$searchtxt%'))";
@@ -123,6 +127,16 @@ switch ($mode) {
 			if($type == 'A'){
 				$cond .= " and (iDriverID <> '0' and iVehicleID <> '0')";
 			}			
+		}
+
+		if(!empty($fromTime) || ! empty($toTime)){
+			if(!empty($fromTime)){
+				$cond .= " and vPickUpTime >= '$fromTime'";
+			}
+				
+			if(!empty($toTime)){
+				$cond .= " and vPickUpTime <= '$toTime'";
+			}				
 		}		
 		
 		$FLEET_STAFF_ARR = GetXArrFromYID("select iFStaffID, vName from fleet_staff order by vName", 3);
@@ -149,7 +163,7 @@ switch ($mode) {
 		}		
 
         // Fetch booking data
-        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType from fleet_booking where 1 $cond and cType <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments from fleet_booking where 1 $cond and cType <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         $bookingRes = sql_query($bookingSql);
         
         $rowData = [];
@@ -227,6 +241,7 @@ switch ($mode) {
                 'travelType' => db_output2($TRAVEL_TYPE_ARR[$row['iFleet_TrvTypeID']] ?? ''),
                 'isDisposal' => $is_disposal,
                 'instruction' => db_output2($row['vInstructions'] ?? ''),
+                'comment' => db_output2($row['vComments'] ?? ''),
                 'driverAssigned' => (isset($row['iDriverID']) && !empty($row['iDriverID']))?true:false,
                 'driverName' => (isset($row['iDriverID']) && !empty($row['iDriverID']))?$DRIVER_ARR[$row['iDriverID']]['NAME']:"",
 				'vehicleAssigned' => (isset($row['iVehicleID']) && !empty($row['iVehicleID']))?true:false,
@@ -347,14 +362,16 @@ switch ($mode) {
 	
 		$cond = "";
 		
-		
+		$currentDate = date('Y-m-d');
 		$searchtxt = $_REQUEST['searchtxt'] ?? '';
 		$vehitype = $_REQUEST['vehiType'] ?? '';
 		$drivertype = $_REQUEST['driverType'] ?? '';
 		$category = $_REQUEST['category'] ?? '';
 		$status = $_REQUEST['status'] ?? '';
-		$from = date("H:i:s", strtotime($_REQUEST['from'])) ?? '';
-		$to = date("H:i:s", strtotime($_REQUEST['to'])) ?? '';
+		$from = $currentDate." ".$REQUEST['fromTime'].":00" ?? date('Y-m-d H:00:s');
+		$to = $currentDate." ".$REQUEST['toTime'].":59" ?? date('Y-m-d H:00:s', strtotime('+4 hours'));		
+		//$from = date("H:i:s", strtotime($_REQUEST['from'])) ?? '';
+		//$to = date("H:i:s", strtotime($_REQUEST['to'])) ?? '';
 		
 		$vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cType IN ('F') AND cStatus = 'A' ORDER BY vName";
         $vehicleCategoryRes = sql_query($vehicleCategorySql);
@@ -617,14 +634,70 @@ switch ($mode) {
 						$DRIVER_ARR[$drow['iDriverID']] = array("ID"=>$drow['iDriverID'], "NAME"=>$drow['vName']);
 					}
 				}			
-				$PAUSE_TYPE_ARR = GetXArrFromYID("select iReasonID, vName from pause_reasons where cStatus = 'A'", 3);
-				$q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where bl.cRefType <> 'P' and fb.iVehicleID = $vehiId order by bl.dtAdded DESC";
+				$PAUSE_REASON_ARR = GetXArrFromYID("SELECT iReasonID,vName FROM pause_reasons", "3");
+				$q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID, bl.iPauseTypeID, bl.vNotes from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where fb.iVehicleID = $vehiId order by bl.dtAdded DESC";
 				$r = sql_query($q, "");
 				
 				if(sql_num_rows($r)){
 					while($row = sql_fetch_assoc($r)){
+						$driverName = db_output2($DRIVER_ARR[$row['iDriverID']]['NAME']);
 						//$LOG_DATA_ARR[] = array("ID"=>$row['iFleet_BookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME'] ?? '');
-						$LOG_DATA_ARR[] = array("code"=>$row['cRefType'], "status"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "message"=>$row['vRefName'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row['dtAdded'])));
+						$stageStatus = $row['cRefType'];
+						$passengerName = db_output2($row['vName']);
+						$description = '';
+						switch ($stageStatus) {
+							case 'S':
+								$description = "$driverName started the trip";
+								break;
+							case 'G':
+								$description = "$driverName picked up $passengerName";
+								break;
+							case 'P':
+								// For pause entries, get pause reason and notes from fleet_booking_log
+								$pauseReason = '';
+								$pauseNotes = '';
+
+								// Get pause reason from current log entry if iPauseTypeID exists
+								if (!empty($row['iPauseTypeID']) && intval($row['iPauseTypeID']) > 0) {
+									// $pauseReasonSql = "SELECT vName FROM pause_reasons WHERE iReasonID = " . intval($logRow['iPauseTypeID']) . " AND cStatus = 'A' LIMIT 1";
+									// $pauseReasonRes = sql_query($pauseReasonSql);
+									// if (sql_num_rows($pauseReasonRes) > 0) {
+									//     $pauseReasonRow = sql_fetch_assoc($pauseReasonRes);
+									//     $pauseReason = db_output2($pauseReasonRow['vName'] ?? '');
+									// }
+									$pauseReasonRes = isset($PAUSE_REASON_ARR[$row['iPauseTypeID']]) ? db_output2($PAUSE_REASON_ARR[$row['iPauseTypeID']]) : '';
+								}
+
+								// Get pause notes from current log entry
+								if (!empty($row['vNotes'])) {
+									$pauseNotes = db_output2($row['vNotes']);
+								}
+
+								if (!empty($pauseReasonRes)) {
+									$description = "$driverName paused the trip due to $pauseReasonRes";
+									if (!empty($pauseNotes)) {
+										$description .= " ($pauseNotes)";
+									}
+								} else {
+									$description = "$driverName paused the trip";
+									if (!empty($pauseNotes)) {
+										$description .= " ($pauseNotes)";
+									}
+								}
+								break;
+							case 'R':
+								$description = "$driverName resumed back the trip";
+								break;
+							case 'C':
+								$description = "$driverName dropped $passengerName";
+								break;
+							default:
+								$description = "$driverName performed $stageName";
+								break;
+						}						
+						
+						
+						$LOG_DATA_ARR[] = array("code"=>$row['cRefType'], "status"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "message"=>$description, "dateTime"=>date('d/m/Y H:i:s', strtotime($row['dtAdded'])));
 					}
 				}
 				
@@ -634,7 +707,7 @@ switch ($mode) {
 				if(sql_num_rows($r1)){
 					while($row1 = sql_fetch_assoc($r1)){
 						//$LOG_DATA_ARR[] = array("ID"=>$row1['iFleet_BookingID'], "DATETIME"=>$row1['dtPauseTime'], "STATUS"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "NOTES"=>$row1['vNotes'], "GUEST"=>$row1['vName'], "DRIVER"=>$DRIVER_ARR[$row1['iDriverID']]['NAME'] ?? '');
-						$LOG_DATA_ARR[] = array("code"=>$row1['iPauseTypeID'], "status"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "message"=>$row1['vNotes'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row1['dtPauseTime'])));
+						//$LOG_DATA_ARR[] = array("code"=>$row1['iPauseTypeID'], "status"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "message"=>$row1['vNotes'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row1['dtPauseTime'])));
 					}
 				}			
 		
@@ -687,6 +760,25 @@ switch ($mode) {
     case 'ACTIVITY_TIMELINE':
 	
 			global $FL_LOG_STATUS_ARR;
+			$currentDate = date('Y-m-d');
+			//$from = $currentDate." ".$_REQUEST['fromTime'].":00" ?? date('Y-m-d H:00:s');
+			//$to = $currentDate." ".$_REQUEST['toTime'].":59" ?? date('Y-m-d H:00:s', strtotime('+4 hours'));
+			
+			$from = '';
+			$to = '';
+			
+			$cond = "";
+			
+			if(!empty($from) || ! empty($to)){
+				if(!empty($from)){
+					$cond .= " and bl.dtAdded >= '$from'";
+				}
+				
+				if(!empty($to)){
+					$cond .= " and bl.dtAdded <= '$to'";
+				}				
+			}
+			
 			$LOG_DATA_ARR = array();
 			
 			$DRIVER_ARR = array();
@@ -698,13 +790,71 @@ switch ($mode) {
 				}
 			}			
 			$PAUSE_TYPE_ARR = GetXArrFromYID("select iReasonID, vName from pause_reasons where cStatus = 'A'", 3);
-			$q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where bl.cRefType <> 'P' order by bl.dtAdded DESC";
+			$q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID, bl.iPauseTypeID, bl.vNotes from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where 1 $cond order by bl.dtAdded DESC";
 			$r = sql_query($q, "");
 			
 			if(sql_num_rows($r)){
 				while($row = sql_fetch_assoc($r)){
 					//$LOG_DATA_ARR[] = array("ID"=>$row['iFleet_BookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME'] ?? '');
-					$LOG_DATA_ARR[] = array("code"=>$row['cRefType'], "status"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "message"=>$row['vRefName'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row['dtAdded'])));
+					
+						$driverName = db_output2($DRIVER_ARR[$row['iDriverID']]['NAME']);
+						//$LOG_DATA_ARR[] = array("ID"=>$row['iFleet_BookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME'] ?? '');
+						$stageStatus = $row['cRefType'];
+						$passengerName = db_output2($row['vName']);
+						$description = '';
+						switch ($stageStatus) {
+							case 'S':
+								$description = "$driverName started the trip";
+								break;
+							case 'G':
+								$description = "$driverName picked up $passengerName";
+								break;
+							case 'P':
+								// For pause entries, get pause reason and notes from fleet_booking_log
+								$pauseReason = '';
+								$pauseNotes = '';
+
+								// Get pause reason from current log entry if iPauseTypeID exists
+								if (!empty($row['iPauseTypeID']) && intval($row['iPauseTypeID']) > 0) {
+									// $pauseReasonSql = "SELECT vName FROM pause_reasons WHERE iReasonID = " . intval($logRow['iPauseTypeID']) . " AND cStatus = 'A' LIMIT 1";
+									// $pauseReasonRes = sql_query($pauseReasonSql);
+									// if (sql_num_rows($pauseReasonRes) > 0) {
+									//     $pauseReasonRow = sql_fetch_assoc($pauseReasonRes);
+									//     $pauseReason = db_output2($pauseReasonRow['vName'] ?? '');
+									// }
+									$pauseReasonRes = isset($PAUSE_REASON_ARR[$row['iPauseTypeID']]) ? db_output2($PAUSE_REASON_ARR[$row['iPauseTypeID']]) : '';
+								}
+
+								// Get pause notes from current log entry
+								if (!empty($row['vNotes'])) {
+									$pauseNotes = db_output2($row['vNotes']);
+								}
+
+								if (!empty($pauseReasonRes)) {
+									$description = "$driverName paused the trip due to $pauseReasonRes";
+									if (!empty($pauseNotes)) {
+										$description .= " ($pauseNotes)";
+									}
+								} else {
+									$description = "$driverName paused the trip";
+									if (!empty($pauseNotes)) {
+										$description .= " ($pauseNotes)";
+									}
+								}
+								break;
+							case 'R':
+								$description = "$driverName resumed back the trip";
+								break;
+							case 'C':
+								$description = "$driverName dropped $passengerName";
+								break;
+							default:
+								$description = "$driverName performed $stageName";
+								break;
+						}					
+					
+					
+					$LOG_DATA_ARR[] = array("code"=>$row['cRefType'], "status"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "message"=>$description, "dateTime"=>date('d/m/Y H:i:s', strtotime($row['dtAdded'])));
 				}
 			}
 			
@@ -714,7 +864,7 @@ switch ($mode) {
 			if(sql_num_rows($r1)){
 				while($row1 = sql_fetch_assoc($r1)){
 					//$LOG_DATA_ARR[] = array("ID"=>$row1['iFleet_BookingID'], "DATETIME"=>$row1['dtPauseTime'], "STATUS"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "NOTES"=>$row1['vNotes'], "GUEST"=>$row1['vName'], "DRIVER"=>$DRIVER_ARR[$row1['iDriverID']]['NAME'] ?? '');
-					$LOG_DATA_ARR[] = array("code"=>$row1['iPauseTypeID'], "status"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "message"=>$row1['vNotes'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row1['dtPauseTime'])));
+					//$LOG_DATA_ARR[] = array("code"=>$row1['iPauseTypeID'], "status"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "message"=>$row1['vNotes'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row1['dtPauseTime'])));
 				}
 			}			
 	
