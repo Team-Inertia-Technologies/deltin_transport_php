@@ -164,7 +164,7 @@ switch ($mode) {
 
         // Fetch booking data
         $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments from fleet_booking where 1 $cond and cType <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
-		echo $bookingSql."<br>";
+		//echo $bookingSql."<br>";
         $bookingRes = sql_query($bookingSql);
         
         $rowData = [];
