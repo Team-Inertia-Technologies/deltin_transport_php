@@ -201,11 +201,11 @@ switch ($mode) {
         $staffReqAccess = checkUserModuleAccess($user_id, 'FLEET_STAFF_REQ');
         $guestReqAccess = checkUserModuleAccess($user_id, 'FLEET_GUEST_REQ');
         if ($staffReqAccess && !$guestReqAccess) {
-            $whereClause .= " AND fb.iFStaffID > 0";
+            $whereClause .= " AND fb.cBookingFor = 'S'";
         } else if (!$staffReqAccess && $guestReqAccess) {
-            $whereClause .= " AND fb.iGuestID > 0";
+            $whereClause .= " AND fb.cBookingFor = 'G'";
         } else if (!$staffReqAccess && !$guestReqAccess) {
-            $whereClause .= " AND fb.iGuestID = 0 AND fb.iFStaffID = 0";
+            $whereClause .= " AND fb.cBookingFor = ''";
         }
         // Apply filters to WHERE clause
         if (!empty($filterTripStatus)) {
@@ -326,11 +326,11 @@ switch ($mode) {
             $hasDriver = !empty($row['iDriverID']) && intval($row['iDriverID']) > 0;
             $pickupTime = $row['vPickUpTime'] ?? '';
             $currentTime = date('Y-m-d H:i:s');
-$bookingStatus = $row['bookingStatus'] ?? '';
+            $bookingStatus = $row['bookingStatus'] ?? '';
 
-             if ($bookingStatus == 'C') {
+            if ($bookingStatus == 'C') {
                 $tripType = 'Cancelled';
-            }else if ($hasVehicle && $hasDriver) {
+            } else if ($hasVehicle && $hasDriver) {
                 $tripType = 'Assigned';
             } else if (!$hasVehicle && !$hasDriver) {
                 // Check if it's delayed (pickup time passed and cType is still 'N')
@@ -347,7 +347,7 @@ $bookingStatus = $row['bookingStatus'] ?? '';
 
             // Check ownership
             $isOwner = intval($row['iAdded_UserID']) == $user_id;
-            $notCancelled= $row['iAdded_UserID'] != 'C';
+            $notCancelled = $row['iAdded_UserID'] != 'C';
 
             // Allow cancel only if module access or owner
             $canCancel = ($cancelModule || $isOwner || $notCancelled);
@@ -1872,6 +1872,69 @@ $bookingStatus = $row['bookingStatus'] ?? '';
             echo json_encode([
                 "error" => [
                     "message" => "Database error occurred while marking request as canceled"
+                ],
+                "statusCode" => 500
+            ]);
+        }
+        break;
+
+    case 'UPDATE_REMARKS_TO_DRIVERS':
+        $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
+        $remarks = db_input($_REQUEST['remarks'] ?? '');
+
+        // Validate required parameter
+        if ($iFleet_BookingID <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing or invalid iFleet_BookingID parameter"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Check if trip exists and is active
+        $checkSql = "SELECT iFleet_BookingID FROM fleet_booking WHERE iFleet_BookingID = $iFleet_BookingID";
+        $checkRes = sql_query($checkSql);
+
+        if (sql_num_rows($checkRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Booking not found"
+                ],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $completeSql = "UPDATE fleet_booking SET 
+                          vRemarks = '$remarks'
+                        WHERE iFleet_BookingID=$iFleet_BookingID";
+
+        if (sql_query($completeSql)) {
+
+
+
+            if (sql_affected_rows() > 0) {
+                echo json_encode([
+                    "data" => [
+                        "message" => "Remark updated successfully",
+                        "iFleet_BookingID" => $iFleet_BookingID
+                    ],
+                    "statusCode" => 200
+                ]);
+            } else {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Failed to update remark"
+                    ],
+                    "statusCode" => 500
+                ]);
+            }
+        } else {
+            echo json_encode([
+                "error" => [
+                    "message" => "Database error occurred while updating remark"
                 ],
                 "statusCode" => 500
             ]);
