@@ -241,6 +241,7 @@ if (true) {
 							"user_id" => $u_id,
 							"userName" => $u_name,
 							"userLevel" => $userlevel,
+							"userLevel_id" => $u_level,
 							"date" => date('d/m/Y H:i:s', strtotime($NOW)),
 							),
 							"token" => $token,
