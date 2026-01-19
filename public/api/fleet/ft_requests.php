@@ -457,9 +457,9 @@ switch ($mode) {
             exit;
         }
 
-        // Handle guest creation if both guestID and staffID are 0
-        if ($iGuestID == 0 && $iFStaffID == 0) {
-            $guestCheckSql = "SELECT iGuestID FROM guest WHERE vName = '" . db_input($vName) . "' AND vMobileNo = '" . db_input($vMobileNo) . "' AND cStatus = 'A'";
+        // Handle guest creation if both guestID is 0 and BookingFor == 'G'
+        if ($iGuestID == 0 && $cBookingFor == 'G') {
+            $guestCheckSql = "SELECT iGuestID FROM guest WHERE vMobileNo = '" . db_input($vMobileNo) . "' AND cStatus = 'A'";
             $guestCheckRes = sql_query($guestCheckSql);
 
             if (sql_num_rows($guestCheckRes) > 0) {
