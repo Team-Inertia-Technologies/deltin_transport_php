@@ -638,8 +638,8 @@ switch ($mode) {
         $maxWindow = date('Y-m-d H:i:s', $maxWindowTS);
 
         $addVehButton = true;
-
-        if (strtotime($NOW) >= $maxWindowTS) {
+// echo "NOW: $NOW, maxWindow: $maxWindow\n";
+        if (strtotime($NOW) >= strtotime($maxWindow)) {
             $addVehButton = false;
         }
 
