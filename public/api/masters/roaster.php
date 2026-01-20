@@ -90,9 +90,9 @@ while ($row = sql_fetch_assoc($res)) {
     if (!empty($row['dtLoggedIn'])) {
         $loggedDate = date('Y-m-d', strtotime($row['dtLoggedIn']));
         if ($loggedDate === $today) {
-            $dateTime = date('H:i', strtotime($row['dtLoggedIn']));
+            $dateTime = date('h:i A', strtotime($row['dtLoggedIn']));
         } else {
-            $dateTime = date('d/m/Y H:i', strtotime($row['dtLoggedIn']));
+            $dateTime = date('d/m/Y h:i A', strtotime($row['dtLoggedIn']));
         }
     }
 
