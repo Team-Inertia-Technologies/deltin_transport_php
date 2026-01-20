@@ -802,7 +802,8 @@ switch ($mode) {
         while ($propRow = sql_fetch_assoc($propertyResult)) {
             $propertyMap[strtolower(trim($propRow['vName']))] = (int) $propRow['iPropertyID'];
         }
-
+$cnt_insert=0;
+$cnt_skipped=0;
         foreach ($rows as $index => $row) {
 
             $vCode = db_input($row['code'] ?? '');
@@ -904,11 +905,12 @@ switch ($mode) {
                 //         "status" => "Updated"
                 //     ];
                 // } else {
+                $cnt_skipped++;
                 $skipped[] = [
                     "row" => $index + 1,
                     "code" => $vCode,
                     "mobile" => $vMobile,
-                    "reason" => "Failed to update existing row"
+                    "reason" => "Staff with this code or mobile already exists"
                 ];
                 //  }
                 continue;
@@ -925,6 +927,7 @@ switch ($mode) {
                 ($iStaffID, '$vCode', '$vName', '$vMobile', $iRouteID, $iStopID, $iDepartmentID, $iPropertyID, '$dtRegistered', '$cStatus')";
 
             if (sql_query($sql)) {
+                $cnt_inserted++;
                 $inserted[] = [
                     "row" => $index + 1,
                     "id" => $iStaffID,
@@ -935,6 +938,7 @@ switch ($mode) {
                     "status" => "Inserted"
                 ];
             } else {
+                 $cnt_skipped++;
                 $skipped[] = [
                     "row" => $index + 1,
                     "code" => $vCode,
@@ -943,12 +947,18 @@ switch ($mode) {
                 ];
             }
         }
-
+$messgage="";
+if($cnt_inserted>0){
+$messgage =" $cnt_inserted records inserted and $cnt_skipped records skipped."; 
+}else{
+$messgage =" No records inserted. $cnt_skipped records skipped.";
+}
         echo json_encode([
             "data" => [
                 "inserted" => $inserted,
                 // "updated" => $updated,
-                "skipped" => $skipped
+                "skipped" => $skipped,
+                "messgage" => $messgage
             ],
             "statusCode" => 200
         ]);
