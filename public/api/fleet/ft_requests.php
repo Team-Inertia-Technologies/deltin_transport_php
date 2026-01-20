@@ -704,8 +704,8 @@ switch ($mode) {
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
 
         $iVehicleCatID = intval($_REQUEST['vehiCat'] ?? 0);
-        $vInstructions = db_input($_REQUEST['intruc'] ?? '');
-        $vRemarks = db_input($_REQUEST['remarks'] ?? '');
+        $vInstructions = db_input($_REQUEST['intruc']) ?? '';
+        $vRemarks = db_input($_REQUEST['remarks']) ?? '';
 
         // $tripType = intval($_REQUEST['tripType'] ?? 0);
         // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
@@ -747,9 +747,9 @@ switch ($mode) {
                 iFleet_TrvTypeID = " . intval($iFleet_TrvTypeID) . ",
                 iPropertyID = " . intval($iPropertyID) . ",
                 iFleet_BKCatID = " . intval($iFleet_BKCatID) . ",
-                vInstructions = '" . db_input($vInstructions) . "',
-                vRemarks = '" . db_input($vRemarks) . "',
-                vName = '" . db_input($vName) . "',
+                vInstructions = '" . $vInstructions . "',
+                vRemarks = '" . $vRemarks . "',
+                vName = '" . $vName . "',
                 vMobileNo = '" . db_input($vMobileNo) . "',
                 iGuestID = " . intval($iGuestID) . ",
                 iFStaffID = " . intval($iFStaffID) . ",
