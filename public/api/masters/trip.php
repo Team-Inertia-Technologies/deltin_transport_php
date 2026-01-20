@@ -631,8 +631,11 @@ switch ($mode) {
         foreach ($CANCELATION_STATUS as $id => $name) {
             $cancelOpt[] = ['id' => $id, 'name' => $name];
         }
+         echo "currentTripDateTime: $currentTripDateTime\n";
+             echo "window: $window\n";
         // Convert string to timestamp
         $currentTripTS = strtotime($currentTripDateTime);
+         echo "currentTripTS: $currentTripTS\n";
 
         $maxWindowTS = strtotime("+{$window} minutes", $currentTripTS);
         $maxWindow = date('Y-m-d H:i:s', $maxWindowTS);
