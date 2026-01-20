@@ -702,7 +702,7 @@ switch ($mode) {
 					}
 				}
 				
-				$q1 = "select pl.iFleet_BookingID, pl.iPauseTypeID, pl.vNotes, pl.dtPauseTime, fb.vName, pl.iDriverID from trip_pause_log pl join fleet_booking fb on pl.iFleet_BookingID = fb.iFleet_BookingID where 1 and fb.iVehicleID = $vehiId order by pl.dtPauseTime DESC";
+				/*$q1 = "select pl.iFleet_BookingID, pl.iPauseTypeID, pl.vNotes, pl.dtPauseTime, fb.vName, pl.iDriverID from trip_pause_log pl join fleet_booking fb on pl.iFleet_BookingID = fb.iFleet_BookingID where 1 and fb.iVehicleID = $vehiId order by pl.dtPauseTime DESC";
 				$r1 = sql_query($q1, "");
 				
 				if(sql_num_rows($r1)){
@@ -710,7 +710,7 @@ switch ($mode) {
 						//$LOG_DATA_ARR[] = array("ID"=>$row1['iFleet_BookingID'], "DATETIME"=>$row1['dtPauseTime'], "STATUS"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "NOTES"=>$row1['vNotes'], "GUEST"=>$row1['vName'], "DRIVER"=>$DRIVER_ARR[$row1['iDriverID']]['NAME'] ?? '');
 						//$LOG_DATA_ARR[] = array("code"=>$row1['iPauseTypeID'], "status"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "message"=>$row1['vNotes'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row1['dtPauseTime'])));
 					}
-				}			
+				}*/			
 		
 				usort($LOG_DATA_ARR, function ($a, $b) {
 					return strtotime($b['DATETIME']) <=> strtotime($a['DATETIME']);
@@ -859,7 +859,7 @@ switch ($mode) {
 				}
 			}
 			
-			$q1 = "select pl.iFleet_BookingID, pl.iPauseTypeID, pl.vNotes, pl.dtPauseTime, fb.vName, pl.iDriverID from trip_pause_log pl join fleet_booking fb on pl.iFleet_BookingID = fb.iFleet_BookingID where 1 order by pl.dtPauseTime DESC";
+			/*$q1 = "select pl.iFleet_BookingID, pl.iPauseTypeID, pl.vNotes, pl.dtPauseTime, fb.vName, pl.iDriverID from trip_pause_log pl join fleet_booking fb on pl.iFleet_BookingID = fb.iFleet_BookingID where 1 order by pl.dtPauseTime DESC";
 			$r1 = sql_query($q1, "");
 			
 			if(sql_num_rows($r1)){
@@ -867,7 +867,7 @@ switch ($mode) {
 					//$LOG_DATA_ARR[] = array("ID"=>$row1['iFleet_BookingID'], "DATETIME"=>$row1['dtPauseTime'], "STATUS"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "NOTES"=>$row1['vNotes'], "GUEST"=>$row1['vName'], "DRIVER"=>$DRIVER_ARR[$row1['iDriverID']]['NAME'] ?? '');
 					//$LOG_DATA_ARR[] = array("code"=>$row1['iPauseTypeID'], "status"=>$PAUSE_TYPE_ARR[$row1['iPauseTypeID']], "message"=>$row1['vNotes'], "dateTime"=>date('d/m/Y H:i:s', strtotime($row1['dtPauseTime'])));
 				}
-			}			
+			}*/			
 	
 			usort($LOG_DATA_ARR, function ($a, $b) {
 				return strtotime($b['DATETIME']) <=> strtotime($a['DATETIME']);
