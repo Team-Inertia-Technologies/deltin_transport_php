@@ -87,12 +87,12 @@ switch ($mode) {
                 "route" => db_output2($row['route'] ?? ''),
                 "destination" => db_output2($row['destination'] ?? ''),
                 "capacity" => (int) ($row['vehicleCapacity'] ?? 0),
-                "pax" => 0, // Will be calculated separately
+                "pax" => 0, 
                 "availed" => (int) ($row['availed'] ?? 0),
                 "vehicleID" => (int) ($row['iVehicleID'] ?? 0),
                 "vehicleNumber" => $row['vehicleNumber'] ?? '',
                 "driverID" => (int) ($row['iDriverID'] ?? 0),
-                "driverName" => $row['driverName'] ?? ''
+                "driverName" => db_output2($row['driverName']) ?? ''
             ];
 
             $trips[$tripID] = $trip;
@@ -179,7 +179,6 @@ switch ($mode) {
             ];
         }
 
-        // Get mode options from vehicle category table
         $modeSql = "SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
         $modeRes = sql_query($modeSql);
 
@@ -213,7 +212,6 @@ switch ($mode) {
             ];
         }
 
-        // Get routes for rdOpt 
         $routesSql = "SELECT iRouteID, vName, vDestination FROM st_route WHERE cStatus = 'A' ORDER BY iRank";
         $routesRes = sql_query($routesSql);
 
@@ -346,7 +344,7 @@ switch ($mode) {
         $tripDateTime = '';
 
         while ($row = sql_fetch_assoc($res)) {
-            // Set route info (same for all rows)
+       
             if (empty($routeInfo)) {
                 $routeInfo = [
                     "routeName" => $row['routeName'] ?? '',
@@ -358,10 +356,10 @@ switch ($mode) {
                 $totalAvailedPax = (int) ($row['availedPax'] ?? 0);
             }
 
-            // Process vehicle assignments
+        
             $vehicleID = (int) ($row['iVehicleID'] ?? 0);
             // if ($vehicleID > 0 && $row['vehicleAssignStatus'] == 'A') {
-              if ($vehicleID > 0 ) {
+            if ($vehicleID > 0) {
                 $vendorID = (int) ($row['iVendorID'] ?? 0);
                 $driverID = (int) ($row['iDriverID'] ?? 0);
 
@@ -545,7 +543,7 @@ switch ($mode) {
             ];
         }
 
-        // Get mode options from vehicle category table (same as ADD_ONLOAD)
+    
         $modeSql = "SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
         $modeRes = sql_query($modeSql);
 
@@ -560,7 +558,6 @@ switch ($mode) {
             ];
         }
 
-        // Get vendor options (same as ADD_ONLOAD)
         $vendorSql = "SELECT DISTINCT ven.iVendorID, ven.vName 
                      FROM vendor ven 
                      INNER JOIN vehicle v ON v.iVendorID = ven.iVendorID 
@@ -620,9 +617,9 @@ switch ($mode) {
 
             $tableArr[] = [
                 "id" => $vehicleID,
-                "vhNum" => db_output2($tableRow['vRnum'] ?? ''),
+                "vhNum" => db_output2($tableRow['vRnum']) ?? '',
                 "vhCap" => (int) ($tableRow['iCapacity'] ?? 0),
-                "vhOwner" => db_output2($tableRow['vOwner'] ?? ''),
+                "vhOwner" => db_output2($tableRow['vOwner']) ?? '',
                 "vhDriver" => $vhDriver  // Vendor-specific driver list for each vehicle
             ];
         }
@@ -631,15 +628,19 @@ switch ($mode) {
         foreach ($CANCELATION_STATUS as $id => $name) {
             $cancelOpt[] = ['id' => $id, 'name' => $name];
         }
+        $window = intval(GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'QR_SCAN_WINDOW_POST'")) ?? 0;
+        // echo "currentTripDateTime: $currentTripDateTime\n";
+        // echo "window: $window\n";
         // Convert string to timestamp
         $currentTripTS = strtotime($currentTripDateTime);
+     //   echo "currentTripTS: $currentTripTS\n";
 
         $maxWindowTS = strtotime("+{$window} minutes", $currentTripTS);
         $maxWindow = date('Y-m-d H:i:s', $maxWindowTS);
 
         $addVehButton = true;
-
-        if (strtotime($NOW) >= $maxWindowTS) {
+       // echo "NOW: $NOW, maxWindow: $maxWindow\n";
+        if (strtotime($NOW) >= $maxWindow) {
             $addVehButton = false;
         }
 
@@ -1290,7 +1291,6 @@ switch ($mode) {
                     } else {
                         $errors[] = "Insert failed for vehicle ID $vehicleID.";
                     }
-
                 } else {
                     // UPDATE EXISTING
                     $updateSql = "UPDATE st_trip_vehicle_assoc SET
@@ -1333,7 +1333,6 @@ switch ($mode) {
                 "warnings" => $errors,
                 "statusCode" => 200
             ]);
-
         } catch (Exception $e) {
 
             sql_query("ROLLBACK");

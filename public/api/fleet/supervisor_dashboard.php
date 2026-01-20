@@ -103,8 +103,8 @@ switch ($mode) {
 		$searchtxt = $_REQUEST['searchtxt'] ?? '';
 		$type = $_REQUEST['type'] ?? '';
 		$bookedFor = $_REQUEST['bookedFor'] ?? '';
-		$fromTime = $currentDate." ".$REQUEST['fromTime'].":00" ?? $currentDate." ".date('Y-m-d H:00:s');
-		$toTime = $currentDate." ".$REQUEST['toTime'].":59" ?? $currentDate." ".date('Y-m-d H:00:s', strtotime('+4 hours'));
+		$fromTime = $currentDate." ".$_REQUEST['fromTime'].":00" ?? $currentDate." ".date('Y-m-d H:00:s');
+		$toTime = $currentDate." ".$_REQUEST['toTime'].":59" ?? $currentDate." ".date('Y-m-d H:00:s', strtotime('+4 hours'));
 		
 
 		
@@ -164,6 +164,7 @@ switch ($mode) {
 
         // Fetch booking data
         $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments from fleet_booking where 1 $cond and cType <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+		//echo $bookingSql."<br>";
         $bookingRes = sql_query($bookingSql);
         
         $rowData = [];
@@ -368,8 +369,8 @@ switch ($mode) {
 		$drivertype = $_REQUEST['driverType'] ?? '';
 		$category = $_REQUEST['category'] ?? '';
 		$status = $_REQUEST['status'] ?? '';
-		$from = $currentDate." ".$REQUEST['fromTime'].":00" ?? date('Y-m-d H:00:s');
-		$to = $currentDate." ".$REQUEST['toTime'].":59" ?? date('Y-m-d H:00:s', strtotime('+4 hours'));		
+		$from = $currentDate." ".$_REQUEST['fromTime'].":00" ?? date('Y-m-d H:00:s');
+		$to = $currentDate." ".$_REQUEST['toTime'].":59" ?? date('Y-m-d H:00:s', strtotime('+4 hours'));		
 		//$from = date("H:i:s", strtotime($_REQUEST['from'])) ?? '';
 		//$to = date("H:i:s", strtotime($_REQUEST['to'])) ?? '';
 		
