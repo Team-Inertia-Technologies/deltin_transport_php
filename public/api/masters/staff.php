@@ -42,6 +42,7 @@ switch ($mode) {
                     r.vName as routeName,
                     st.vName as stopName,
                     d.vName as departmentName
+                    p.vName as propertyName
                 FROM staff s
                 LEFT JOIN st_route r ON s.iRouteID = r.iRouteID AND r.cStatus = 'A'
                 LEFT JOIN st_route_stops st ON s.iStopID = st.iStopID AND st.cStatus = 'A'
@@ -65,8 +66,9 @@ switch ($mode) {
                 'stopId' => (int) ($row['iStopID'] ?? 0),
                 'stopName' => db_output2($row['stopName'] ?? ''),
                 'departmentId' => (int) ($row['iDepartmentID'] ?? 0),
+                 'departmentName' => db_output2($row['departmentName'] ?? ''),
                 'propertyId' => (int) ($row['iPropertyID'] ?? 0),
-                'departmentName' => db_output2($row['departmentName'] ?? ''),
+                  'propertyName' => db_output2($row['propertyName'] ?? ''),
                 'status' => $row['cStatus']
             ];
         }
