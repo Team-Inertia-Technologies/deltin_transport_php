@@ -361,7 +361,7 @@ switch ($mode) {
             // Process vehicle assignments
             $vehicleID = (int) ($row['iVehicleID'] ?? 0);
             // if ($vehicleID > 0 && $row['vehicleAssignStatus'] == 'A') {
-              if ($vehicleID > 0 ) {
+            if ($vehicleID > 0) {
                 $vendorID = (int) ($row['iVendorID'] ?? 0);
                 $driverID = (int) ($row['iDriverID'] ?? 0);
 
@@ -631,17 +631,18 @@ switch ($mode) {
         foreach ($CANCELATION_STATUS as $id => $name) {
             $cancelOpt[] = ['id' => $id, 'name' => $name];
         }
-         echo "currentTripDateTime: $currentTripDateTime\n";
-             echo "window: $window\n";
+        $window = intval(GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'QR_SCAN_WINDOW_POST'"));
+        echo "currentTripDateTime: $currentTripDateTime\n";
+        echo "window: $window\n";
         // Convert string to timestamp
         $currentTripTS = strtotime($currentTripDateTime);
-         echo "currentTripTS: $currentTripTS\n";
+        echo "currentTripTS: $currentTripTS\n";
 
         $maxWindowTS = strtotime("+{$window} minutes", $currentTripTS);
         $maxWindow = date('Y-m-d H:i:s', $maxWindowTS);
 
         $addVehButton = true;
- echo "NOW: $NOW, maxWindow: $maxWindow\n";
+        echo "NOW: $NOW, maxWindow: $maxWindow\n";
         if (strtotime($NOW) >= $maxWindow) {
             $addVehButton = false;
         }
@@ -1293,7 +1294,6 @@ switch ($mode) {
                     } else {
                         $errors[] = "Insert failed for vehicle ID $vehicleID.";
                     }
-
                 } else {
                     // UPDATE EXISTING
                     $updateSql = "UPDATE st_trip_vehicle_assoc SET
@@ -1336,7 +1336,6 @@ switch ($mode) {
                 "warnings" => $errors,
                 "statusCode" => 200
             ]);
-
         } catch (Exception $e) {
 
             sql_query("ROLLBACK");
