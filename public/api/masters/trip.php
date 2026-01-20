@@ -631,18 +631,18 @@ switch ($mode) {
         foreach ($CANCELATION_STATUS as $id => $name) {
             $cancelOpt[] = ['id' => $id, 'name' => $name];
         }
-        $window = intval(GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'QR_SCAN_WINDOW_POST'"));
-        echo "currentTripDateTime: $currentTripDateTime\n";
-        echo "window: $window\n";
+        $window = intval(GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'QR_SCAN_WINDOW_POST'")) ?? 0;
+        // echo "currentTripDateTime: $currentTripDateTime\n";
+        // echo "window: $window\n";
         // Convert string to timestamp
         $currentTripTS = strtotime($currentTripDateTime);
-        echo "currentTripTS: $currentTripTS\n";
+     //   echo "currentTripTS: $currentTripTS\n";
 
         $maxWindowTS = strtotime("+{$window} minutes", $currentTripTS);
         $maxWindow = date('Y-m-d H:i:s', $maxWindowTS);
 
         $addVehButton = true;
-        echo "NOW: $NOW, maxWindow: $maxWindow\n";
+       // echo "NOW: $NOW, maxWindow: $maxWindow\n";
         if (strtotime($NOW) >= $maxWindow) {
             $addVehButton = false;
         }
