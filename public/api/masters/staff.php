@@ -41,7 +41,7 @@ switch ($mode) {
                     s.cStatus,
                     r.vName as routeName,
                     st.vName as stopName,
-                    d.vName as departmentName
+                    d.vName as departmentName,
                     p.vName as propertyName
                 FROM staff s
                 LEFT JOIN st_route r ON s.iRouteID = r.iRouteID AND r.cStatus = 'A'
@@ -66,9 +66,9 @@ switch ($mode) {
                 'stopId' => (int) ($row['iStopID'] ?? 0),
                 'stopName' => db_output2($row['stopName'] ?? ''),
                 'departmentId' => (int) ($row['iDepartmentID'] ?? 0),
-                 'departmentName' => db_output2($row['departmentName'] ?? ''),
+                'departmentName' => db_output2($row['departmentName'] ?? ''),
                 'propertyId' => (int) ($row['iPropertyID'] ?? 0),
-                  'propertyName' => db_output2($row['propertyName'] ?? ''),
+                'propertyName' => db_output2($row['propertyName'] ?? ''),
                 'status' => $row['cStatus']
             ];
         }
@@ -804,15 +804,15 @@ switch ($mode) {
         while ($propRow = sql_fetch_assoc($propertyResult)) {
             $propertyMap[strtolower(trim($propRow['vName']))] = (int) $propRow['iPropertyID'];
         }
-$cnt_insert=0;
-$cnt_skipped=0;
+        $cnt_inserted = 0;
+        $cnt_skipped = 0;
         foreach ($rows as $index => $row) {
 
-            $vCode = db_input($row['code'] ?? '');
-            $vName = db_input($row['name'] ?? '');
-            $vMobile = db_input($row['mobile'] ?? '');
-            $departmentName = trim($row['department'] ?? '');
-            $propertyName = trim($row['property'] ?? '');
+            $vCode = db_input($row['code']) ?? '';
+            $vName = db_input($row['name']) ?? '';
+            $vMobile = db_input($row['mobile']) ?? '';
+            $departmentName = trim($row['department']) ?? '';
+            $propertyName = trim($row['property']) ?? '';
 
             $iRouteID = 0;
             $iStopID = 0;
@@ -854,10 +854,6 @@ $cnt_skipped=0;
                     continue;
                 }
             }
-
-            /* --------------------------------------
-            VALIDATE REQUIRED FIELDS
-        --------------------------------------- */
             if ($vCode === '' || $vName === '' || $vMobile === '') {
                 $skipped[] = [
                     "row" => $index + 1,
@@ -940,7 +936,7 @@ $cnt_skipped=0;
                     "status" => "Inserted"
                 ];
             } else {
-                 $cnt_skipped++;
+                $cnt_skipped++;
                 $skipped[] = [
                     "row" => $index + 1,
                     "code" => $vCode,
@@ -949,18 +945,18 @@ $cnt_skipped=0;
                 ];
             }
         }
-$messgage="";
-if($cnt_inserted>0){
-$messgage =" $cnt_inserted records inserted and $cnt_skipped records skipped."; 
-}else{
-$messgage =" No records inserted. $cnt_skipped records skipped.";
-}
+        $message = "";
+        if ($cnt_inserted > 0) {
+            $message = " $cnt_inserted records inserted and $cnt_skipped records skipped.";
+        } else {
+            $message = " No records inserted. $cnt_skipped records skipped.";
+        }
         echo json_encode([
             "data" => [
                 "inserted" => $inserted,
                 // "updated" => $updated,
                 "skipped" => $skipped,
-                "messgage" => $messgage
+                "message" => $message
             ],
             "statusCode" => 200
         ]);
