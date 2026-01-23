@@ -87,7 +87,7 @@ switch ($mode) {
                 "route" => db_output2($row['route'] ?? ''),
                 "destination" => db_output2($row['destination'] ?? ''),
                 "capacity" => (int) ($row['vehicleCapacity'] ?? 0),
-                "pax" => 0, 
+                "pax" => 0,
                 "availed" => (int) ($row['availed'] ?? 0),
                 "vehicleID" => (int) ($row['iVehicleID'] ?? 0),
                 "vehicleNumber" => $row['vehicleNumber'] ?? '',
@@ -344,7 +344,7 @@ switch ($mode) {
         $tripDateTime = '';
 
         while ($row = sql_fetch_assoc($res)) {
-       
+
             if (empty($routeInfo)) {
                 $routeInfo = [
                     "routeName" => $row['routeName'] ?? '',
@@ -356,7 +356,7 @@ switch ($mode) {
                 $totalAvailedPax = (int) ($row['availedPax'] ?? 0);
             }
 
-        
+
             $vehicleID = (int) ($row['iVehicleID'] ?? 0);
             // if ($vehicleID > 0 && $row['vehicleAssignStatus'] == 'A') {
             if ($vehicleID > 0) {
@@ -542,7 +542,7 @@ switch ($mode) {
             ];
         }
 
-    
+
         $modeSql = "SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
         $modeRes = sql_query($modeSql);
 
@@ -632,13 +632,13 @@ switch ($mode) {
         // echo "window: $window\n";
         // Convert string to timestamp
         $currentTripTS = strtotime($currentTripDateTime);
-     //   echo "currentTripTS: $currentTripTS\n";
+        //   echo "currentTripTS: $currentTripTS\n";
 
         $maxWindowTS = strtotime("+{$window} minutes", $currentTripTS);
         $maxWindow = date('Y-m-d H:i:s', $maxWindowTS);
 
         $addVehButton = true;
-       // echo "NOW: $NOW, maxWindow: $maxWindow\n";
+        // echo "NOW: $NOW, maxWindow: $maxWindow\n";
         if (strtotime($NOW) >= $maxWindow) {
             $addVehButton = false;
         }
@@ -992,6 +992,7 @@ switch ($mode) {
 
         $errors = [];
         $insertValues = [];
+        $vehicleAssociations = [];
         if (checkUserModuleAccess($user_id, 'STAFF_TRIP_APPROVE')) {
             $cStatus = 'A'; // approved
         } else {
@@ -1054,20 +1055,18 @@ switch ($mode) {
                 }
 
 
-                $insertValues[] = "($currentTripID,$currentTripID, $routeID, '" . db_input($tripDateTime) . "', 0, $user_id, 1, '$NOW', '$cStatus')";
+                $tripIDForThisRow = $currentTripID; // LOCK TripID
 
-                // Store vehicle associations for later insertion into association table
+                $insertValues[] = "($tripIDForThisRow,$tripIDForThisRow, $routeID, '" . db_input($tripDateTime) . "', 0, $user_id, 1, '$NOW', '$cStatus')";
+
                 if (!empty($vehicles)) {
-                    foreach ($vehicles as $vehicleIndex => $vehicle) {
-                        // Support multiple field name variations for vehicle ID
+                    foreach ($vehicles as $vehicle) {
                         $vehID = intval($vehicle['vhId'] ?? $vehicle['vehID'] ?? 0);
-                        // Support multiple field name variations for driver ID
                         $driverID = intval($vehicle['driverId'] ?? $vehicle['driverID'] ?? 0);
 
-                        // Only create association if vehicle ID is provided (not 0)
                         if ($vehID > 0) {
                             $vehicleAssociations[] = [
-                                'tripID' => $currentTripID,
+                                'tripID' => $tripIDForThisRow, 
                                 'vehicleID' => $vehID,
                                 'driverID' => $driverID,
                                 'assignedBy' => $user_id
@@ -1076,12 +1075,12 @@ switch ($mode) {
                     }
                 }
 
-                $currentTripID++; // Increment for next record
+                $currentTripID++;
             }
         }
 
         $insertedCount = 0;
-        $vehicleAssociations = [];
+
 
 
         if (!empty($insertValues)) {
