@@ -516,11 +516,10 @@ switch ($mode) {
             $conflictingVehicleIDs[] = (int) $conflictRow['iVehicleID'];
         }
 
-        // Get vehicle options (excluding vehicles already assigned at the same time)
         $vehicleSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity 
                       FROM vehicle v
                       LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                      WHERE v.cStatus = 'A'
+                      WHERE v.cStatus = 'A' AND v.cServiceType IN ('S','B')
                       ORDER BY v.vRnum";
         $vehicleRes = sql_query($vehicleSql);
 
