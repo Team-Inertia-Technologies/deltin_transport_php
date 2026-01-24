@@ -1756,6 +1756,53 @@ switch ($mode) {
         ]);
         break;
 
+case 'VEHICLE_CURRENT_LOCATION':
+
+    $sql = "
+        SELECT 
+            d.iVehicleID,
+            d.vLat,
+            d.vLong,
+            d.dtPinned
+        FROM driver d
+        INNER JOIN (
+            SELECT iVehicleID, MAX(dtPinned) AS lastPinned
+            FROM driver
+            WHERE cStatus = 'A'
+              AND iVehicleID > 0
+              AND vLat IS NOT NULL AND vLat != ''
+              AND vLong IS NOT NULL AND vLong != ''
+              AND dtPinned IS NOT NULL
+            GROUP BY iVehicleID
+        ) latest 
+            ON latest.iVehicleID = d.iVehicleID 
+           AND latest.lastPinned = d.dtPinned
+        WHERE d.cStatus = 'A'
+          AND d.iVehicleID > 0
+          AND d.vLat IS NOT NULL AND d.vLat != ''
+          AND d.vLong IS NOT NULL AND d.vLong != ''
+          AND d.dtPinned IS NOT NULL
+        ORDER BY d.iVehicleID ASC
+    ";
+
+    $res = sql_query($sql);
+
+    $rowData = [];
+    while ($row = sql_fetch_assoc($res)) {
+        $rowData[] = [
+            "iVehicleID" => intval($row['iVehicleID']),
+            "vLat" => $row['vLat'],
+            "vLong" => $row['vLong']
+        ];
+    }
+
+    echo json_encode([
+        "data" => [
+            "rowData" => $rowData
+        ],
+        "statusCode" => 200
+    ]);
+    break;
 
 
 
