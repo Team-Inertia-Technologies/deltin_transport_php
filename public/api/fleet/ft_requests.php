@@ -207,20 +207,29 @@ switch ($mode) {
         } else if (!$staffReqAccess && !$guestReqAccess) {
             $whereClause .= " AND fb.cBookingFor = ''";
         }
-        // Apply filters to WHERE clause
-        if (!is_array($filterTripStatus)) {
+    if (!is_array($filterTripStatus)) {
+    $filterTripStatus = explode(',', $filterTripStatus);
+}
 
-            $filterTripStatus = explode(',', $filterTripStatus);
-        }
-        $filterTripStatus = array_filter(array_map('trim', $filterTripStatus));
-        if (!empty($filterTripStatus)) {
-            $tripStatusArr = [];
-            foreach ($filterTripStatus as $status) {
-                $tripStatusArr[] = "'" . db_input($status) . "'";
-            }
+$filterTripStatus = array_filter(array_map('trim', $filterTripStatus));
 
-            $whereClause .= " AND fb.cType IN (" . implode(",", $tripStatusArr) . ")";
-        }
+if (!empty($filterTripStatus)) {
+
+    // If Select All (0) exists → load all valid status codes
+    if (in_array('0', $filterTripStatus)) {
+        $filterTripStatus = array_keys($FLEET_TRIP_STATUS); 
+    }
+
+    $tripStatusArr = [];
+    foreach ($filterTripStatus as $status) {
+        $tripStatusArr[] = "'" . db_input($status) . "'";
+    }
+
+    if (!empty($tripStatusArr)) {
+        $whereClause .= " AND fb.cType IN (" . implode(",", $tripStatusArr) . ")";
+    }
+}
+
 
         if (!empty($filterBookedFor)) {
             $whereClause .= " AND fb.cBookingFor = '" . db_input($filterBookedFor) . "'";
