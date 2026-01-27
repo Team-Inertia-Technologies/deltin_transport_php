@@ -1758,12 +1758,14 @@ switch ($mode) {
 
 case 'VEHICLE_CURRENT_LOCATION':
 
-    $sql = "
+   $sql = "
         SELECT 
             d.iVehicleID,
             d.vLat,
             d.vLong,
-            d.dtPinned
+            d.dtPinned,
+            v.vRnum AS vehicleRegNo,
+            v.iCatID as catID
         FROM driver d
         INNER JOIN (
             SELECT iVehicleID, MAX(dtPinned) AS lastPinned
@@ -1777,6 +1779,7 @@ case 'VEHICLE_CURRENT_LOCATION':
         ) latest 
             ON latest.iVehicleID = d.iVehicleID 
            AND latest.lastPinned = d.dtPinned
+        LEFT JOIN vehicle v ON v.iVehicleID = d.iVehicleID
         WHERE d.cStatus = 'A'
           AND d.iVehicleID > 0
           AND d.vLat IS NOT NULL AND d.vLat != ''
@@ -1792,7 +1795,9 @@ case 'VEHICLE_CURRENT_LOCATION':
         $rowData[] = [
             "iVehicleID" => intval($row['iVehicleID']),
             "vLat" => $row['vLat'],
-            "vLong" => $row['vLong']
+            "vLong" => $row['vLong'],
+            "vehicleRegNo" => $row['vehicleRegNo'],
+            "catID" => intval($row['catID'])
         ];
     }
 
