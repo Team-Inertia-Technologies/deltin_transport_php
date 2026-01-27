@@ -146,7 +146,7 @@ switch ($mode) {
         $filterToDateTime = $_REQUEST['toDateTime'] ?? '';
 
         // Create filter option arrays
-        $tripStatusFilterOpt = [['id' => '', 'name' => 'All']];
+        $tripStatusFilterOpt = [['id' => '0', 'name' => 'Select All']];
         foreach ($FLEET_TRIP_STATUS as $id => $name) {
             $tripStatusFilterOpt[] = ['id' => $id, 'name' => $name];
         }
@@ -208,8 +208,18 @@ switch ($mode) {
             $whereClause .= " AND fb.cBookingFor = ''";
         }
         // Apply filters to WHERE clause
+        if (!is_array($filterTripStatus)) {
+
+            $filterTripStatus = explode(',', $filterTripStatus);
+        }
+        $filterTripStatus = array_filter(array_map('trim', $filterTripStatus));
         if (!empty($filterTripStatus)) {
-            $whereClause .= " AND fb.cType = '" . db_input($filterTripStatus) . "'";
+            $tripStatusArr = [];
+            foreach ($filterTripStatus as $status) {
+                $tripStatusArr[] = "'" . db_input($status) . "'";
+            }
+
+            $whereClause .= " AND fb.cType IN (" . implode(",", $tripStatusArr) . ")";
         }
 
         if (!empty($filterBookedFor)) {

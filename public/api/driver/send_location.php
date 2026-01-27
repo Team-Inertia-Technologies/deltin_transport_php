@@ -60,25 +60,26 @@ if (!sql_num_rows($r)) {
 }
 
 $driverID = intval($userid);
-
+$NOW = NOW;
+sql_query("UPDATE driver SET vLat='$lat', vLong='$long', dtPinned='$NOW' WHERE iDriverID=$driverID", 'DRIVER.LOCATION.UPDATE');
 $sql = "UPDATE driver_vehicle_assoc SET vLat = '$lat', vLong = '$long', cType = '$cOnTrip' WHERE iDriverID = $driverID";
 $res = sql_query($sql, 'DRIVER.LOCATION.UPDATE');
 if (!$res) {
-	http_response_code(400);
-	header('Content-Type: application/json');
-	echo json_encode([
-		"statusCode" => 400,
-		"error" => [
-			"message" => "Failed to update location."
-		]
-	]);
-	exit;
+    http_response_code(400);
+    header('Content-Type: application/json');
+    echo json_encode([
+        "statusCode" => 400,
+        "error" => [
+            "message" => "Failed to update location."
+        ]
+    ]);
+    exit;
 } else {
-	header('Content-Type: application/json');
-echo json_encode([
-	"data" => array(),
-	"statusCode" => 200,
-	"message" => "Location updated successfully."
-]);
-	exit;
+    header('Content-Type: application/json');
+    echo json_encode([
+        "data" => array(),
+        "statusCode" => 200,
+        "message" => "Location updated successfully."
+    ]);
+    exit;
 }

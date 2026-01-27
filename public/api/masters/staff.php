@@ -710,7 +710,7 @@ switch ($mode) {
         INNER JOIN st_route rt ON r.iRouteID = rt.iRouteID
         INNER JOIN st_route_stops rs ON r.iStopID = rs.iStopID
          INNER JOIN st_trip_vehicle_assoc tv ON r.iTripID = tv.iTripID
-        LEFT JOIN vehicle v ON tv.iVehicleID = v.iVehicleID
+        LEFT JOIN vehicle v ON r.iVehicleID = v.iVehicleID
         WHERE " . implode(' AND ', $whereConditions) . "
         ORDER BY sendStatus DESC, r.iTrReqID DESC
     ";
@@ -728,13 +728,14 @@ switch ($mode) {
                 "pickup"      => db_output2($row['pickup']),
                 "pickupTime"  => date('H:i', strtotime($row['pickupTime'])),
                 "enteredTime" => $row['enteredTime'] ? date('H:i', strtotime($row['enteredTime'])) : "",
-                "status"  => $row['sendStatus']
+                "status"  => $row['sendStatus'],
+                "vehiNum"  => db_output2($row['vehiNum'])
             ];
 
-            // Only include vehicle number if it exists and is not empty
-            if (!empty($row['vehiNum'])) {
-                $rowItem["vehiNum"] = db_output2($row['vehiNum']);
-            }
+            // // Only include vehicle number if it exists and is not empty
+            // if (!empty($row['vehiNum'])) {
+            //     $rowItem["vehiNum"] = db_output2($row['vehiNum']);
+            // }
 
             $rowData[] = $rowItem;
         }
