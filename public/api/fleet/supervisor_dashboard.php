@@ -1758,7 +1758,25 @@ switch ($mode) {
 
 case 'VEHICLE_CURRENT_LOCATION':
 
-   $sql = "
+    $vehiType = $_REQUEST['vehiType'] ?? '';
+    $vehiCat  = $_REQUEST['vehiCat'] ?? '';
+$CATEGORY_ARR =GetXArrFromYID("select iVCatID,vName from vehicle_category where","3");
+    $filters = [];
+
+    if ($vehiType !== '') {
+        $filters[] = "v.vType = '" . $vehiType . "'";
+    }
+
+    if ($vehiCat !== '') {
+        $filters[] = "v.iCatID = '" . intval($vehiCat) . "'";
+    }
+
+    $filterSQL = '';
+    if (!empty($filters)) {
+        $filterSQL = ' AND ' . implode(' AND ', $filters);
+    }
+
+    $sql = "
         SELECT 
             d.iVehicleID,
             d.vLat,
@@ -1785,6 +1803,7 @@ case 'VEHICLE_CURRENT_LOCATION':
           AND d.vLat IS NOT NULL AND d.vLat != ''
           AND d.vLong IS NOT NULL AND d.vLong != ''
           AND d.dtPinned IS NOT NULL
+          $filterSQL
         ORDER BY d.iVehicleID ASC
     ";
 
@@ -1793,11 +1812,12 @@ case 'VEHICLE_CURRENT_LOCATION':
     $rowData = [];
     while ($row = sql_fetch_assoc($res)) {
         $rowData[] = [
-            "iVehicleID" => intval($row['iVehicleID']),
-            "vLat" => $row['vLat'],
-            "vLong" => $row['vLong'],
+            "iVehicleID"   => intval($row['iVehicleID']),
+            "vLat"         => $row['vLat'],
+            "vLong"        => $row['vLong'],
             "vehicleRegNo" => $row['vehicleRegNo'],
-            "catID" => intval($row['catID'])
+            "catID"        => intval($row['catID']),
+            "catName"      => $CATEGORY_ARR[$row['catID']] ?? ''
         ];
     }
 
@@ -1808,8 +1828,6 @@ case 'VEHICLE_CURRENT_LOCATION':
         "statusCode" => 200
     ]);
     break;
-
-
 
     // ===================== DEFAULT =====================
     default:
