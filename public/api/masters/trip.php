@@ -698,10 +698,10 @@ switch ($mode) {
                         FROM st_trips t
                         LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
                         LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID 
+                            LEFT JOIN st_route_stops s ON r.iRouteID = s.iRouteID AND s.cStatus = 'A'
                          LEFT JOIN st_request req ON t.iTripID = req.iTripID AND req.iStopID = s.iStopID AND req.cStatus = 'A'
                         LEFT JOIN vehicle v ON req.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                         LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                        LEFT JOIN st_route_stops s ON r.iRouteID = s.iRouteID AND s.cStatus = 'A'
                         LEFT JOIN staff st ON req.iStaffID = st.iStaffID AND st.cStatus = 'A'
                WHERE t.iTripID = $iTripID AND t.cStatus != 'X'
                         ORDER BY s.iRank, st.vName";
