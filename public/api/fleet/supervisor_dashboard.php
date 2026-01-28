@@ -1760,7 +1760,7 @@ case 'VEHICLE_CURRENT_LOCATION':
 
     $vehiType = $_REQUEST['vehiType'] ?? '';
     $vehiCat  = $_REQUEST['vehiCat'] ?? '';
-$CATEGORY_ARR =GetXArrFromYID("select iVCatID,vName from vehicle_category where","3");
+$CATEGORY_ARR =GetXArrFromYID("select iVCatID,vName from vehicle_category ","3");
     $filters = [];
 
     if ($vehiType !== '') {
