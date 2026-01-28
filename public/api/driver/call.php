@@ -1,6 +1,6 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../../includes/common_api.php";
@@ -38,16 +38,6 @@ if ($token === '' || $mobile === '') {
     exit;
 }
 
-/* -------------------- TOKEN VALIDATION (example) -------------------- */
-$validToken = GetXFromYID("SELECT vToken FROM api_tokens WHERE vToken = '$token'");
-
-if (!$validToken) {
-    echo json_encode([
-        'status'  => 'error',
-        'message' => 'Invalid token'
-    ]);
-    exit;
-}
 
 /* -------------------- EXOTEL FUNCTION -------------------- */
 function triggerExotelExoMLCall($fromNumber)
