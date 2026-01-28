@@ -1758,16 +1758,16 @@ switch ($mode) {
 
 case 'VEHICLE_CURRENT_LOCATION':
 
-    $vehiType = $_REQUEST['vehiType'] ?? '';
-    $vehiCat  = $_REQUEST['vehiCat'] ?? '';
+    $vehiType = $_REQUEST['vehiType'] ?? 0;
+    $vehiCat  = $_REQUEST['vehiCat'] ?? 0;
 $CATEGORY_ARR =GetXArrFromYID("select iVCatID,vName from vehicle_category ","3");
     $filters = [];
 
-    if ($vehiType !== '') {
+    if ($vehiType > 0) {
         $filters[] = "v.vType = '" . $vehiType . "'";
     }
 
-    if ($vehiCat !== '') {
+    if ($vehiCat > 0) {
         $filters[] = "v.iCatID = '" . intval($vehiCat) . "'";
     }
 
