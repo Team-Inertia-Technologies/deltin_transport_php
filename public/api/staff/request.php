@@ -253,7 +253,7 @@ break;
             $tripRes = sql_query($tripSql);
 
             if (sql_num_rows($tripRes) == 0) {
-                $errors[] = "Trip ID $tripID not found";
+                $errors['tripNotFound'][] = $tripID;
                 continue;
             }
 
@@ -273,7 +273,8 @@ break;
         $dayConflictSql = "SELECT iTrReqID FROM st_request WHERE iStaffID = $user_id AND dPickup = '" . db_input($tripDate) . "' AND cStatus = 'A' LIMIT 1";
         $dayConflictRes = sql_query($dayConflictSql);
         if (sql_num_rows($dayConflictRes) > 0) {
-            $errors[] = "Staff already has a request on $tripDate";
+            $errors['dayConflict'][] = $tripDate;
+
             continue;
         }
             // Check if request already exists for this staff, route, and trip
@@ -282,7 +283,7 @@ break;
             $existingRes = sql_query($existingSql);
 
             if (sql_num_rows($existingRes) > 0) {
-                $errors[] = "Request already exists for trip on $tripDate";
+                $errors['alreadyExists'][] = $tripDate;
                 continue;
             }
 
@@ -292,7 +293,8 @@ break;
             $stopRes = sql_query($stopSql);
 
             if (sql_num_rows($stopRes) == 0) {
-                $errors[] = "Stop ID $pickUp not found";
+                $errors['stopMissing'][] = $pickUp;
+
                 continue;
             }
 
@@ -385,10 +387,12 @@ break;
                     // If trip update fails, rollback the request insert
                     $deleteSql = "DELETE FROM st_request WHERE iTrReqID = $iTrReqID";
                     sql_query($deleteSql);
-                    $errors[] = "Failed to update trip capacity for trip on $tripDate";
+                    $errors['capacityFailed'][] = $tripDate;
+
                 }
             } else {
-                $errors[] = "Failed to save request for trip on $tripDate";
+               $errors['saveFailed'][] = $tripDate;
+
             }
         }
         $staffCheckSql = "SELECT iRouteID, iStopID FROM staff WHERE iStaffID = $user_id AND cStatus = 'A'";
@@ -407,6 +411,40 @@ break;
                 sql_query($updateStaffSql);
             }
         }
+
+$finalErrors = [];
+
+if (!empty($errors['dayConflict'])) {
+    $dates = array_unique($errors['dayConflict']);
+    $finalErrors[] = "Already has request on: " . implode(", ", $dates);
+}
+
+if (!empty($errors['alreadyExists'])) {
+    $dates = array_unique($errors['alreadyExists']);
+    $finalErrors[] = "Request already exists on: " . implode(", ", $dates);
+}
+
+if (!empty($errors['tripNotFound'])) {
+    $ids = array_unique($errors['tripNotFound']);
+    $finalErrors[] = "Trip not found: " . implode(", ", $ids);
+}
+
+if (!empty($errors['stopMissing'])) {
+    $finalErrors[] = "Pickup stop not found";
+}
+
+if (!empty($errors['saveFailed'])) {
+    $dates = array_unique($errors['saveFailed']);
+    $finalErrors[] = "Failed to save request on: " . implode(", ", $dates);
+}
+if (!empty($errors['capacityFailed'])) {
+    $dates = array_unique($errors['capacityFailed']);
+    $finalErrors[] = "Failed to capacity ";
+}
+
+$errors = $finalErrors;
+
+        
 
         // Prepare response
         if ($successCount > 0) {

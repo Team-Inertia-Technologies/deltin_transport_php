@@ -1758,12 +1758,32 @@ switch ($mode) {
 
 case 'VEHICLE_CURRENT_LOCATION':
 
+    $vehiType = $_REQUEST['vehiType'] ?? 0;
+    $vehiCat  = $_REQUEST['vehiCat'] ?? 0;
+$CATEGORY_ARR =GetXArrFromYID("select iVCatID,vName from vehicle_category ","3");
+    $filters = [];
+
+    if ($vehiType > 0) {
+        $filters[] = "v.vType = '" . $vehiType . "'";
+    }
+
+    if ($vehiCat > 0) {
+        $filters[] = "v.iCatID = '" . intval($vehiCat) . "'";
+    }
+
+    $filterSQL = '';
+    if (!empty($filters)) {
+        $filterSQL = ' AND ' . implode(' AND ', $filters);
+    }
+
     $sql = "
         SELECT 
             d.iVehicleID,
             d.vLat,
             d.vLong,
-            d.dtPinned
+            d.dtPinned,
+            v.vRnum AS vehicleRegNo,
+            v.iCatID as catID
         FROM driver d
         INNER JOIN (
             SELECT iVehicleID, MAX(dtPinned) AS lastPinned
@@ -1777,11 +1797,13 @@ case 'VEHICLE_CURRENT_LOCATION':
         ) latest 
             ON latest.iVehicleID = d.iVehicleID 
            AND latest.lastPinned = d.dtPinned
+        LEFT JOIN vehicle v ON v.iVehicleID = d.iVehicleID
         WHERE d.cStatus = 'A'
           AND d.iVehicleID > 0
           AND d.vLat IS NOT NULL AND d.vLat != ''
           AND d.vLong IS NOT NULL AND d.vLong != ''
           AND d.dtPinned IS NOT NULL
+          $filterSQL
         ORDER BY d.iVehicleID ASC
     ";
 
@@ -1790,9 +1812,12 @@ case 'VEHICLE_CURRENT_LOCATION':
     $rowData = [];
     while ($row = sql_fetch_assoc($res)) {
         $rowData[] = [
-            "iVehicleID" => intval($row['iVehicleID']),
-            "vLat" => $row['vLat'],
-            "vLong" => $row['vLong']
+            "iVehicleID"   => intval($row['iVehicleID']),
+            "vLat"         => $row['vLat'],
+            "vLong"        => $row['vLong'],
+            "vehicleRegNo" => $row['vehicleRegNo'],
+            "catID"        => intval($row['catID']),
+            "catName"      => $CATEGORY_ARR[$row['catID']] ?? ''
         ];
     }
 
@@ -1803,8 +1828,6 @@ case 'VEHICLE_CURRENT_LOCATION':
         "statusCode" => 200
     ]);
     break;
-
-
 
     // ===================== DEFAULT =====================
     default:
