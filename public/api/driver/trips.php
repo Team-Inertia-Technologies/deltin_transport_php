@@ -65,7 +65,7 @@ LEFT JOIN property p ON p.iPropertyID = fb.iPropertyID
 WHERE 
     fb.cType = 'N'
     AND (
-        fb.iDriverID = '{$driverID}' OR fb.iVehicleID IN (SELECT iVehicleID FROM driver_vehicle_assoc WHERE iDriverID = '{$driverID}')
+        fb.iDriverID = '{$driverID}' OR fb.iVehicleID IN (SELECT iVehicleID FROM driver_vehicle_assoc WHERE iDriverID = '{$driverID}' AND cStatus='A')
         )
 ORDER BY fb.vPickUpTime ASC
 ";
