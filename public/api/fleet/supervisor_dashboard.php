@@ -762,6 +762,7 @@ switch ($mode) {
 	
 			global $FL_LOG_STATUS_ARR;
 			$currentDate = date('Y-m-d');
+            $user_level = GetXFromYID("select iLevelID from users where iUserID = $user_id");
 			//$from = $currentDate." ".$_REQUEST['fromTime'].":00" ?? date('Y-m-d H:00:s');
 			//$to = $currentDate." ".$_REQUEST['toTime'].":59" ?? date('Y-m-d H:00:s', strtotime('+4 hours'));
 			
@@ -779,6 +780,10 @@ switch ($mode) {
 					$cond .= " and bl.dtAdded <= '$to'";
 				}				
 			}
+
+            if(in_array($user_level, [7])){
+                $cond .= " and fb.iAdded_UserID = $user_id";
+            }
 			
 			$LOG_DATA_ARR = array();
 			
