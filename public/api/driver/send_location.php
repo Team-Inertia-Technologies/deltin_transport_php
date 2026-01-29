@@ -29,13 +29,13 @@ $onTripRaw = $request->onTrip ?? null;
 $onTrip = filter_var($onTripRaw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
 $cOnTrip = ($onTrip === true) ? 'Y' : 'N';
 
-if (!$token || !$booking_id) {
+if (!$token) {
     http_response_code(400);
     header('Content-Type: application/json');
     echo json_encode([
         "statusCode" => 400,
         "error" => [
-            "message" => "Missing token or booking_id."
+            "message" => "Missing token."
         ]
     ]);
     exit;
