@@ -64,7 +64,7 @@ switch ($mode) {
                     tva.iDriverID,
                     d.vName as driverName
                 FROM st_trips t
-                LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID AND tva.cStatus = 'A'
+                LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID
                 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
                 LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                 LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
@@ -464,7 +464,7 @@ switch ($mode) {
                                     req.dtIn
                                 FROM st_request req
                                 INNER JOIN staff st ON req.iStaffID = st.iStaffID AND st.cStatus = 'A'
-                                LEFT OUTER JOIN st_trip_vehicle_assoc tva ON req.iTripID = tva.iTripID AND tva.cStatus = 'A'
+                                LEFT OUTER JOIN st_trip_vehicle_assoc tva ON req.iTripID = tva.iTripID
                                 LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                                 WHERE req.iTripID = $iTripID 
                                 AND req.iStopID = $stopID 
@@ -507,7 +507,6 @@ switch ($mode) {
                                   WHERE t.dtTrip = '$currentTripDateTime'
                                   AND t.iTripID != $iTripID
                                   AND t.cStatus != 'X'
-                                  AND tva.cStatus = 'A'
                                   AND tva.iVehicleID > 0";
         $conflictingVehiclesRes = sql_query($conflictingVehiclesSql);
 
@@ -1210,7 +1209,6 @@ switch ($mode) {
                         WHERE tva.iTripID != $iTripID
                         AND tva.iVehicleID IN ($vehicleIDsStr)
                         AND t.dtTrip = '$tripDateTime'
-                        AND tva.cStatus = 'A'
                         AND t.cStatus != 'X'";
 
             $confRes = sql_query($conflictSql);
@@ -1303,7 +1301,6 @@ switch ($mode) {
                         INNER JOIN vehicle v ON tva.iVehicleID = v.iVehicleID
                         INNER JOIN vehicle_category vc ON v.iCatID = vc.iVCatID
                         WHERE tva.iTripID = $iTripID 
-                        AND tva.cStatus = 'A'
                         AND v.cStatus = 'A'
                         AND vc.cStatus = 'A'
                      )

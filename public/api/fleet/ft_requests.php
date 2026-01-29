@@ -406,10 +406,48 @@ if (!empty($filterTripStatus)) {
 
             $rowData[] = $rowDataItem;
         }
+     
+        $countSql = "
+            SELECT 
+                COUNT(*) as total_requests,
+                SUM(CASE WHEN fb.cType = 'N' THEN 1 ELSE 0 END) as unattended_requests,
+                SUM(CASE 
+                    WHEN fb.vPickUpTime > NOW() 
+                    AND fb.cType NOT IN ('C', 'X') 
+                    AND fb.cStatus != 'C' 
+                    THEN 1 ELSE 0 
+                END) as upcoming_requests,
+                SUM(CASE 
+                    WHEN fb.cType IN ('S', 'G', 'P', 'R') 
+                    THEN 1 ELSE 0 
+                END) as ongoing_requests
+            FROM fleet_booking fb
+            WHERE $whereClause
+        ";
+        
+        $countRes = sql_query($countSql);
+        $requestCounts = [
+            'total_requests' => 0,
+            'unattended_requests' => 0,
+            'upcoming_requests' => 0,
+            'ongoing_requests' => 0
+        ];
+        
+        if (sql_num_rows($countRes) > 0) {
+            $countRow = sql_fetch_assoc($countRes);
+            $requestCounts = [
+                'total_requests' => intval($countRow['total_requests']),
+                'unattended_requests' => intval($countRow['unattended_requests']),
+                'upcoming_requests' => intval($countRow['upcoming_requests']),
+                'ongoing_requests' => intval($countRow['ongoing_requests'])
+            ];
+        }
+
         echo json_encode([
             "data" => [
                 "rowData" => $rowData,
-                "optArr" => $optArr
+                "optArr" => $optArr,
+                "counts" => $requestCounts
             ],
             "statusCode" => 200
         ]);
@@ -503,7 +541,6 @@ if (!empty($filterTripStatus)) {
             }
         }
 
-        // Common columns (include PK as first column)
         $cols = "iFleet_BookingID,iBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vRemarks, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,
@@ -550,7 +587,7 @@ if (!empty($filterTripStatus)) {
         ]);
 
         break;
-    // ===================== CASE: EDIT_BOOKING (no pairing) =====================
+    // ===================== CASE: EDIT_BOOKING =====================
     case 'EDIT_BOOKING':
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
 
