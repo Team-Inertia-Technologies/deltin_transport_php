@@ -503,7 +503,6 @@ if (!empty($filterTripStatus)) {
             }
         }
 
-        // Common columns (include PK as first column)
         $cols = "iFleet_BookingID,iBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vRemarks, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,
@@ -550,7 +549,7 @@ if (!empty($filterTripStatus)) {
         ]);
 
         break;
-    // ===================== CASE: EDIT_BOOKING (no pairing) =====================
+    // ===================== CASE: EDIT_BOOKING =====================
     case 'EDIT_BOOKING':
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
 

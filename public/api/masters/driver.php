@@ -550,7 +550,7 @@ switch ($mode) {
         }
 
         // Build WHERE conditions for filtering
-        $whereConditions = ["v.cStatus = 'A'"];
+        $whereConditions = ["v.cStatus = 'A'AND v.cServiceType IN ('B','F')"];
         
         // Add keyword search (search in vehicle registration number and category name)
         if (!empty($keyword)) {
