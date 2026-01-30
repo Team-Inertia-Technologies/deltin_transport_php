@@ -763,6 +763,15 @@ switch ($mode) {
         global $FL_LOG_STATUS_ARR;
         $currentDate = date('Y-m-d');
         $user_level = GetXFromYID("select iLevel from users where iUserID = $user_id");
+
+        $LEVEL_MODULE_ASSOC_ARR = array();
+        $ql = "select * from module_level_assoc where iLevelID = $user_level";
+        $rl = sql_query($ql, "supervisor_dashboard.768");
+        if (sql_num_rows($rl)) {
+            while ($rowl = sql_fetch_assoc($rl)) {
+                $LEVEL_MODULE_ASSOC_ARR[] = $rowl['iModuleID'];
+            }
+        }
         //$from = $currentDate." ".$_REQUEST['fromTime'].":00" ?? date('Y-m-d H:00:s');
         //$to = $currentDate." ".$_REQUEST['toTime'].":59" ?? date('Y-m-d H:00:s', strtotime('+4 hours'));
 
@@ -781,9 +790,19 @@ switch ($mode) {
             }
         }
 
-        if (in_array($user_level, [7])) {
+        if (in_array(34, $LEVEL_MODULE_ASSOC_ARR)) {
             $cond .= " and fb.iAdded_UserID = $user_id";
         }
+
+        if (in_array(37, $LEVEL_MODULE_ASSOC_ARR)) {
+            $cond .= " and fb.cBookingFor = 'S'";
+        }
+
+        if (in_array(38, $LEVEL_MODULE_ASSOC_ARR)) {
+            $cond .= " and fb.cBookingFor = 'G'";
+        }
+
+
 
         $LOG_DATA_ARR = array();
 
