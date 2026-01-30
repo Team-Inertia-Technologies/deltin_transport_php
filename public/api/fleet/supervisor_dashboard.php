@@ -795,11 +795,17 @@ switch ($mode) {
         }
 
         if (in_array(37, $LEVEL_MODULE_ASSOC_ARR)) {
-            $cond .= " and fb.cBookingFor = 'S'";
+            $bookingFor[] = "'S'";
         }
 
+        $bookingFor = [];
+
         if (in_array(38, $LEVEL_MODULE_ASSOC_ARR)) {
-            $cond .= " and fb.cBookingFor = 'G'";
+            $bookingFor[] = "'G'";
+        }
+
+        if (!empty($bookingFor)) {
+            $cond .= " AND fb.cBookingFor IN (" . implode(',', $bookingFor) . ")";
         }
 
 
