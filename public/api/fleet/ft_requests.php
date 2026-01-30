@@ -570,6 +570,12 @@ if (!empty($filterTripStatus)) {
                 "statusCode" => 500
             ]);
             exit;
+        }else{
+            $date = date('d/m/Y', strtotime($vPickUpTime));
+
+           // SendConfirmationMessage($vMobileNo, db_input($vName), $vPickUpTime, $date);
+          //  sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
+
         }
 
         // Log booking creation
@@ -1302,7 +1308,7 @@ if (!empty($filterTripStatus)) {
 
         if ($iVehicleID <= 0) {
             echo json_encode([
-                "error" => ["message" => "Vehicle ID is required"],
+                "error" => ["message" => "Vehicle is required"],
                 "statusCode" => 400
             ]);
             exit;
@@ -1310,7 +1316,7 @@ if (!empty($filterTripStatus)) {
 
         if ($iDriverID <= 0) {
             echo json_encode([
-                "error" => ["message" => "Driver ID is required"],
+                "error" => ["message" => "Driver is required"],
                 "statusCode" => 400
             ]);
             exit;
@@ -1425,6 +1431,11 @@ if (!empty($filterTripStatus)) {
                 "statusCode" => 500
             ]);
             exit;
+        }else{
+  
+        //    SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $driverData['vMobileNum']);
+         //   sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
+
         }
 
         // Log vehicle allocation

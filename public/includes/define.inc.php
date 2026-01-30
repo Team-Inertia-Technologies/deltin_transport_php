@@ -335,5 +335,5 @@ $STAFF_TRIP_STATUS= array("D"=>"Draft", "A" => "Active", "NS" => "No Show", "XP"
 $FL_LOG_STATUS_ARR = array("S"=>"Trip Started", "G"=>"Guest Picked Up", "P"=>"Trip Paused", "R"=>"Trip Resumed", "C"=>"Trip Completed");
 
 $REQUEST_TYPE_ARR = array("D"=>"Delayed", "U"=>"Unassigned", "A"=>"Assigned");
-
+$COMMUNICATION_TYPE_ARR = array("C"=>"Confimation", "A"=>"Driver Assignment");
 

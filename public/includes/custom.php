@@ -483,4 +483,115 @@ function SendWhatsappMessage2($mobile, $otp)
 
     return $response;
 }
+
+function SendConfirmationMessage($to, $name, $from_palce, $date)
+{
+    $ch = curl_init();
+
+    // Set the URL
+    curl_setopt($ch, CURLOPT_URL, 'https://in1-ccaaspro.ozonetel.com/whatsApp_API/v1/WhatsAppSendOzone/reply');
+
+    // Set the request method to POST
+    curl_setopt($ch, CURLOPT_POST, 1);
+
+    // Set the headers
+    $headers = [
+        'apikey: KK402649e9b17ee14c0ec4469cf34882af',
+        'Content-Type: application/json',
+        'Cookie: PHPSESSID=ff77edb2060d5af54ef0af9941b3f3a9'
+    ];
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+    // Set the POST data
+    $data = [
+        'recipient' => [
+            'id' => $to
+        ],
+        'kookoo_id' => 'OZNTLWA:918806660117',
+        'type' => 'template',
+        'template' => [
+            'name' => 'rmflightescalation',
+            'language' => 'en_US',
+            'parameters' => [
+                '1' => $name,
+                '2' => $from_palce,
+                '3' => $date
+            ]
+
+        ]
+    ];
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+
+    // Return the response as a string instead of outputting it
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    // Execute the cURL request
+    $response = curl_exec($ch);
+
+    //Check for cURL errors
+    if (curl_errno($ch)) {
+        echo 'cURL error: ' . curl_error($ch);
+    }
+
+    // Close the cURL session
+    curl_close($ch);
+
+    echo  $response;
+}
+
+function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num,$driver_contact)
+{
+    $ch = curl_init();
+
+    // Set the URL
+    curl_setopt($ch, CURLOPT_URL, 'https://in1-ccaaspro.ozonetel.com/whatsApp_API/v1/WhatsAppSendOzone/reply');
+
+    // Set the request method to POST
+    curl_setopt($ch, CURLOPT_POST, 1);
+
+    // Set the headers
+    $headers = [
+        'apikey: KK402649e9b17ee14c0ec4469cf34882af',
+        'Content-Type: application/json',
+        'Cookie: PHPSESSID=ff77edb2060d5af54ef0af9941b3f3a9'
+    ];
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+    // Set the POST data
+    $data = [
+        'recipient' => [
+            'id' => $to
+        ],
+        'kookoo_id' => 'OZNTLWA:918806660117',
+        'type' => 'template',
+        'template' => [
+            'name' => 'rmflightescalation',
+            'language' => 'en_US',
+            'parameters' => [
+                '1' => $name,
+                '2' => $driver_name,
+                '3' => $vehicle_num,
+                '4' => $driver_contact
+            ]
+
+        ]
+    ];
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+
+    // Return the response as a string instead of outputting it
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    // Execute the cURL request
+    $response = curl_exec($ch);
+
+    //Check for cURL errors
+    if (curl_errno($ch)) {
+        echo 'cURL error: ' . curl_error($ch);
+    }
+
+    // Close the cURL session
+    curl_close($ch);
+
+    echo  $response;
+}
 ?>

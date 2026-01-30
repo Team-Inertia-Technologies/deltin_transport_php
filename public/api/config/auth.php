@@ -76,7 +76,7 @@ if (true) {
 						$menu_query = "SELECT iMenuID, cType, iParentID, vTitle, vUrl, vCode,vIcon,vIconPack, cHasSub, cDisplayInMenu, cStatus 
 									   FROM menu 
 									   WHERE iMenuID IN ($menu_ids) AND cDisplayInMenu='Y' AND cStatus='A' 
-									   ORDER BY iParentID ASC, iMenuID ASC";
+									   ORDER BY iRank ASC, iParentID ASC";
 						$menu_result = sql_query($menu_query, 'AUTH.MENU');
 						
 						$all_menus = array();
