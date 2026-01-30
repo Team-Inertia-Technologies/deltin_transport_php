@@ -777,7 +777,7 @@ switch ($mode) {
 
         $from = '';
         $to = '';
-
+        $bookingFor = [];
         $cond = "";
 
         if (!empty($from) || !empty($to)) {
@@ -798,7 +798,7 @@ switch ($mode) {
             $bookingFor[] = "'S'";
         }
 
-        $bookingFor = [];
+
 
         if (in_array(38, $LEVEL_MODULE_ASSOC_ARR)) {
             $bookingFor[] = "'G'";
