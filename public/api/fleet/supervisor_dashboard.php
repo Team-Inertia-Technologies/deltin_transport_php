@@ -765,7 +765,7 @@ switch ($mode) {
         $user_level = GetXFromYID("select iLevel from users where iUserID = $user_id");
 
         $LEVEL_MODULE_ASSOC_ARR = array();
-        $ql = "select * from module_level_assoc where iLevelID = $user_level";
+        $ql = "select * from module_level_assoc where iLevelD = $user_level";
         $rl = sql_query($ql, "supervisor_dashboard.768");
         if (sql_num_rows($rl)) {
             while ($rowl = sql_fetch_assoc($rl)) {
