@@ -124,11 +124,11 @@ if ($mode == 'LOGIN') {
                 'name'  => db_output($staffName),
                 'pic'   => '',
             ];
-            $ID = NextID('iLDID', 'log_driver_signin');
+            //$ID = NextID('iLDID', 'log_driver_signin');
             // Log the signin
             sql_query("INSERT INTO st_log_signin (dDate, cRefType, iRefID, dtEntry, vIPAddress, vBrowser, cStatus) VALUES ('" . TODAY . "', 'S', '$staffId', '" . NOW . "', '" . ($_SERVER['REMOTE_ADDR'] ?? '') . "', '" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "', 'A')", "Log staff signin");
-            sql_query("UPDATE driver SET dtLoggedIn = '" . NOW . "' WHERE iDriverID = '$staffId'");
-            sql_query("INSERT INTO log_driver_signin (iLDID, iDriverID, dtEntry, cType, cStatus) VALUES ($ID, '$staffId', '" . NOW . "', 'IN', 'A')");
+            //sql_query("UPDATE driver SET dtLoggedIn = '" . NOW . "' WHERE iDriverID = '$staffId'");
+            //sql_query("INSERT INTO log_driver_signin (iLDID, iDriverID, dtEntry, cType, cStatus) VALUES ($ID, '$staffId', '" . NOW . "', 'IN', 'A')");
             http_response_code(200);
             header('Content-Type: application/json');
             echo json_encode([
