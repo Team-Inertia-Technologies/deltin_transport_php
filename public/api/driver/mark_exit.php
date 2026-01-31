@@ -75,7 +75,7 @@ if (sql_affected_rows() > 0) {
     header('Content-Type: application/json');
     echo json_encode([
         "statusCode" => 200,
-        "message" => "Attendance marked successfully."
+        "message" => "Logged out successfully."
     ]);
 } else {
     http_response_code(400);
