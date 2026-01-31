@@ -98,7 +98,7 @@ SELECT
     DATE_FORMAT(vDropTime,'%d/%m/%Y %H:%i') AS toTime
 FROM fleet_booking
 WHERE iDriverID = $driverId
-  AND cType IN ('N','C')
+  AND cType IN ('N','C') AND cStatus = 'A'
 ORDER BY 
     CASE 
         WHEN cType = 'N' THEN 1
