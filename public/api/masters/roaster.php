@@ -32,7 +32,7 @@ if (!$token) {
 }
 
 /* ---------- BUILD FILTERS ---------- */
-$where = " WHERE d.cStatus = 'A' ";
+$where = " WHERE d.cStatus = 'A'";
 
 if ($vehicle_status === 'Y') {
     $where .= " AND dva.iDriverID IS NOT NULL";
@@ -71,7 +71,7 @@ SELECT DISTINCT
     END AS vehicleAllocated
 
 FROM driver d
-LEFT JOIN driver_vehicle_assoc dva ON dva.iDriverID = d.iDriverID
+LEFT JOIN driver_vehicle_assoc dva ON dva.iDriverID = d.iDriverID AND dva.cStatus = 'A'
 LEFT JOIN vehicle v ON v.iVehicleID = dva.iVehicleID
 LEFT JOIN vehicle_category vc ON vc.iVCatID = v.iCatID
 $where
