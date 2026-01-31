@@ -61,7 +61,7 @@ SELECT
     vc.vName AS vehicleName
 FROM driver d
 LEFT JOIN driver_vehicle_assoc dva 
-    ON dva.iDriverID = d.iDriverID
+    ON dva.iDriverID = d.iDriverID AND dva.cStatus = 'A'
 LEFT JOIN vehicle v 
     ON v.iVehicleID = dva.iVehicleID
 LEFT JOIN vehicle_category vc ON vc.iVCatID = v.iCatID
