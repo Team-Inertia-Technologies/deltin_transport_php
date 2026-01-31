@@ -207,28 +207,28 @@ switch ($mode) {
         } else if (!$staffReqAccess && !$guestReqAccess) {
             $whereClause .= " AND fb.cBookingFor = ''";
         }
-    if (!is_array($filterTripStatus)) {
-    $filterTripStatus = explode(',', $filterTripStatus);
-}
+        if (!is_array($filterTripStatus)) {
+            $filterTripStatus = explode(',', $filterTripStatus);
+        }
 
-$filterTripStatus = array_filter(array_map('trim', $filterTripStatus));
+        $filterTripStatus = array_filter(array_map('trim', $filterTripStatus));
 
-if (!empty($filterTripStatus)) {
+        if (!empty($filterTripStatus)) {
 
-    // If Select All (0) exists → load all valid status codes
-    if (in_array('0', $filterTripStatus)) {
-        $filterTripStatus = array_keys($FLEET_TRIP_STATUS); 
-    }
+            // If Select All (0) exists → load all valid status codes
+            if (in_array('0', $filterTripStatus)) {
+                $filterTripStatus = array_keys($FLEET_TRIP_STATUS);
+            }
 
-    $tripStatusArr = [];
-    foreach ($filterTripStatus as $status) {
-        $tripStatusArr[] = "'" . db_input($status) . "'";
-    }
+            $tripStatusArr = [];
+            foreach ($filterTripStatus as $status) {
+                $tripStatusArr[] = "'" . db_input($status) . "'";
+            }
 
-    if (!empty($tripStatusArr)) {
-        $whereClause .= " AND fb.cType IN (" . implode(",", $tripStatusArr) . ")";
-    }
-}
+            if (!empty($tripStatusArr)) {
+                $whereClause .= " AND fb.cType IN (" . implode(",", $tripStatusArr) . ")";
+            }
+        }
 
 
         if (!empty($filterBookedFor)) {
@@ -406,7 +406,7 @@ if (!empty($filterTripStatus)) {
 
             $rowData[] = $rowDataItem;
         }
-     
+
         $countSql = "
             SELECT 
                 COUNT(*) as total_requests,
@@ -424,7 +424,7 @@ if (!empty($filterTripStatus)) {
             FROM fleet_booking fb
             WHERE $whereClause
         ";
-        
+
         $countRes = sql_query($countSql);
         $requestCounts = [
             'total_requests' => 0,
@@ -432,7 +432,7 @@ if (!empty($filterTripStatus)) {
             'upcoming_requests' => 0,
             'ongoing_requests' => 0
         ];
-        
+
         if (sql_num_rows($countRes) > 0) {
             $countRow = sql_fetch_assoc($countRes);
             $requestCounts = [
@@ -458,6 +458,7 @@ if (!empty($filterTripStatus)) {
 
         $cBookingFor = db_input($_REQUEST['bookedFor'] ?? '');
         $iBookedBy = db_input($_REQUEST['bookedBy'] ?? '');
+        $bookedByName = db_input($_REQUEST['bookedByName'] ?? '');
         $iFleet_TrvPurID = intval($_REQUEST['travelPurpose'] ?? 0);
         $iFleet_TrvTypeID = intval($_REQUEST['travelType'] ?? 0);
         $iFleet_BKCatID = intval($_REQUEST['bookingCat'] ?? 0);
@@ -493,7 +494,7 @@ if (!empty($filterTripStatus)) {
         $iVehicleCatID = intval($_REQUEST['vehiCat'] ?? 0);
         $vInstructions = db_input($_REQUEST['intruc'] ?? '');
         $vRemarks = db_input($_REQUEST['remarks'] ?? '');
-
+   $vLandmark = db_input($_REQUEST['landMark'] ?? '');
         // $tripType = intval($_REQUEST['tripType'] ?? 0);
         // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
         //    $cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true') ? 'Y' : 'N';
@@ -541,24 +542,24 @@ if (!empty($filterTripStatus)) {
             }
         }
 
-        $cols = "iFleet_BookingID,iBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
+
+        $cols = "iFleet_BookingID,iBookedBy,vBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vRemarks, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,
-                 vDropLocation, vLatLong_From, vLatLong_To, iVehicleCatID, cDisposal, tReturnTime, dtAdded,iAdded_UserID,cStatus";
+                 vDropLocation, vLatLong_From, vLatLong_To,vLandmark, iVehicleCatID, cDisposal, tReturnTime, dtAdded,iAdded_UserID,cStatus";
 
-        // Create OUTBOUND booking
         $iFleet_BookingID1 = NextID('iFleet_BookingID', 'fleet_booking');
         $dtAdded = NOW;
-        // handle possible NULL for vReturnTime
+
         $vReturnTimeVal = (!empty($vReturnTime)) ? "'$vReturnTime'" : "NULL";
 
         $sql1 = "
         INSERT INTO fleet_booking ($cols)
         VALUES (
-            $iFleet_BookingID1,$iBookedBy, '" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
+            $iFleet_BookingID1,$iBookedBy, '" . db_input($bookedByName) . "','" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
             $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
             $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "',
-            '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal, '" . db_input($dtAdded) . "',$user_id,'A'
+            '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal, '" . db_input($dtAdded) . "',$user_id,'A'
         )";
 
         $ok1 = sql_query($sql1);
@@ -570,15 +571,14 @@ if (!empty($filterTripStatus)) {
                 "statusCode" => 500
             ]);
             exit;
-        }else{
+        } else {
             $date = date('d/m/Y', strtotime($vPickUpTime));
 
-           // SendConfirmationMessage($vMobileNo, db_input($vName), $vPickUpTime, $date);
-          //  sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
+            // SendConfirmationMessage($vMobileNo, db_input($vName), $vPickUpTime, $date);
+            //  sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
 
         }
 
-        // Log booking creation
         LogBookingCreated($iFleet_BookingID1, $vName, $user_id);
 
         $responseId = $iFleet_BookingID1;
@@ -626,6 +626,8 @@ if (!empty($filterTripStatus)) {
         $response = [
             "bookingId" => intval($booking['iFleet_BookingID']),
             "bookedBy" => intval($booking['iBookedBy']),
+            "bookedByName" => intval($booking['bookedByName']),
+
             "bookedFor" => $booking['cBookingFor'],
             "travelPurpose" => intval($booking['iFleet_TrvPurID']),
             "travelType" => intval($booking['iFleet_TrvTypeID']),
@@ -645,6 +647,7 @@ if (!empty($filterTripStatus)) {
                 'lng' => isset($dropLatLng[1]) && !empty(trim($dropLatLng[1])) ? floatval(trim($dropLatLng[1])) : null,
                 'loc' => db_output2($booking['vDropLocation'])
             ],
+            "landMark" => db_output2($booking['vLandmark']),
             "pickUpDateTime" => $booking['vPickUpTime'],
             "returnTime" => ($booking['tReturnTime'] ?? null),
             "vehiCat" => intval($booking['iVehicleCatID']),
@@ -731,9 +734,9 @@ if (!empty($filterTripStatus)) {
             exit;
         }
 
-        // Collect & sanitize inputs (same names as ADD_BOOKING)
         $cBookingFor = db_input($_REQUEST['bookedFor'] ?? '');
         $iBookedBy = db_input($_REQUEST['bookedBy'] ?? '');
+        $bookedByName= db_input($_REQUEST['bookedByName'] ?? '');
         $iFleet_TrvPurID = intval($_REQUEST['travelPurpose'] ?? 0);
         $iFleet_TrvTypeID = intval($_REQUEST['travelType'] ?? 0);
         $iFleet_BKCatID = intval($_REQUEST['bookingCat'] ?? 0);
@@ -762,7 +765,7 @@ if (!empty($filterTripStatus)) {
         if (!empty($dropLocData['lat']) && !empty($dropLocData['lng'])) {
             $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
         }
-
+   $vLandmark = db_input($_REQUEST['landMark'] ?? '');
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
 
         $iVehicleCatID = intval($_REQUEST['vehiCat'] ?? 0);
@@ -804,6 +807,7 @@ if (!empty($filterTripStatus)) {
         $updateSql = "
             UPDATE fleet_booking SET
                 iBookedBy = " . intval($iBookedBy) . ",
+                 vBookedBy = " . intval($bookedByName) . ",
                 cBookingFor = '" . db_input($cBookingFor) . "',
                 iFleet_TrvPurID = " . intval($iFleet_TrvPurID) . ",
                 iFleet_TrvTypeID = " . intval($iFleet_TrvTypeID) . ",
@@ -822,6 +826,7 @@ if (!empty($filterTripStatus)) {
                 vDropLocation = '" . db_input($vDropLocation) . "',
                 vLatLong_From = '" . db_input($vLatLong_From) . "',
                 vLatLong_To = '" . db_input($vLatLong_To) . "',
+                vLandmark ='" . db_input($vLandmark) . "',
                 iVehicleCatID = " . intval($iVehicleCatID) . ",
                 cDisposal = '" . db_input($cDisposal) . "',
                 tReturnTime = " . $vReturnTimeVal . ",
@@ -1431,10 +1436,10 @@ if (!empty($filterTripStatus)) {
                 "statusCode" => 500
             ]);
             exit;
-        }else{
-  
-        //    SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $driverData['vMobileNum']);
-         //   sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
+        } else {
+
+            //    SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $driverData['vMobileNum']);
+            //   sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
 
         }
 
