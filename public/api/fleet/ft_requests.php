@@ -626,7 +626,7 @@ switch ($mode) {
         $response = [
             "bookingId" => intval($booking['iFleet_BookingID']),
             "bookedBy" => intval($booking['iBookedBy']),
-            "bookedByName" => intval($booking['bookedByName']),
+            "bookedByName" => db_output2($booking['vBookedBy']),
 
             "bookedFor" => $booking['cBookingFor'],
             "travelPurpose" => intval($booking['iFleet_TrvPurID']),
