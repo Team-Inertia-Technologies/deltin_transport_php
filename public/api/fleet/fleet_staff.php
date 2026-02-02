@@ -17,7 +17,7 @@ $NOW = NOW;
 /* ---------- USER VALIDATION ---------- */
 $res = sql_query("SELECT iUserID FROM users WHERE iUserID=$user_id AND cStatus='A'");
 if (sql_num_rows($res) == 0) {
-    echo json_encode(["statusCode"=>401,"message"=>"User not found or inactive"]);
+    echo json_encode(["statusCode" => 401, "message" => "User not found or inactive"]);
     exit;
 }
 
@@ -39,11 +39,11 @@ switch ($mode) {
         /* ---- DUPLICATE MOBILE CHECK ---- */
         $dup = sql_query("SELECT 1 FROM fleet_staff WHERE vMobile='$vMobile' AND cStatus!='X'");
         if (sql_num_rows($dup) > 0) {
-            echo json_encode(["statusCode"=>409,"message"=>"Mobile number already exists"]);
+            echo json_encode(["statusCode" => 409, "message" => "Mobile number already exists"]);
             exit;
         }
 
-        $iFStaffID = NextID('iFStaffID','fleet_staff');
+        $iFStaffID = NextID('iFStaffID', 'fleet_staff');
 
         sql_query("
             INSERT INTO fleet_staff
@@ -52,7 +52,7 @@ switch ($mode) {
         ");
 
         if ($isUser) {
-            $iUserID = NextID('iUserID','users_temp');
+            $iUserID = NextID('iUserID', 'users_temp');
 
             sql_query("
                 INSERT INTO users_temp
@@ -67,13 +67,13 @@ switch ($mode) {
         }
 
         echo json_encode([
-            "statusCode"=>200,
-            "message"=>"Staff added successfully",
-            "data"=>["iFStaffID"=>$iFStaffID]
+            "statusCode" => 200,
+            "message" => "Staff added successfully",
+            "data" => ["iFStaffID" => $iFStaffID]
         ]);
         exit;
 
-    /* ================= EDIT ================= */
+        /* ================= EDIT ================= */
     case 'EDIT':
 
         $iFStaffID = intval($_REQUEST['iFStaffID']);
@@ -92,7 +92,7 @@ switch ($mode) {
         ");
 
         if (sql_num_rows($res) == 0) {
-            echo json_encode(["statusCode"=>400,"message"=>"Invalid Staff ID"]);
+            echo json_encode(["statusCode" => 400, "message" => "Invalid Staff ID"]);
             exit;
         }
 
@@ -114,10 +114,10 @@ switch ($mode) {
             $data = array_merge($data, $u ?: []);
         }
 
-        echo json_encode(["statusCode"=>200,"data"=>$data]);
+        echo json_encode(["statusCode" => 200, "data" => $data]);
         exit;
 
-    /* ================= UPDATE STAFF ================= */
+        /* ================= UPDATE STAFF ================= */
     case 'UPDATE_STAFF':
 
         $iFStaffID     = intval($_REQUEST['iFStaffID']);
@@ -138,7 +138,7 @@ switch ($mode) {
             WHERE vMobile='$vMobile' AND iFStaffID!=$iFStaffID AND cStatus!='X'
         ");
         if (sql_num_rows($dup) > 0) {
-            echo json_encode(["statusCode"=>409,"message"=>"Mobile number already exists"]);
+            echo json_encode(["statusCode" => 409, "message" => "Mobile number already exists"]);
             exit;
         }
 
@@ -171,10 +171,10 @@ switch ($mode) {
             ");
         }
 
-        echo json_encode(["statusCode"=>200,"message"=>"Staff updated successfully"]);
+        echo json_encode(["statusCode" => 200, "message" => "Staff updated successfully"]);
         exit;
 
-    /* ================= LIST ================= */
+        /* ================= LIST ================= */
     case 'LIST':
 
         $res = sql_query("
@@ -196,11 +196,63 @@ switch ($mode) {
             $data[] = $row;
         }
 
-        echo json_encode(["statusCode"=>200,"data"=>$data]);
+        echo json_encode(["statusCode" => 200, "data" => $data]);
+        exit;
+
+    case 'ONLOAD_LIST':
+
+        $departmentQuery = "SELECT iDepartmentID, vName FROM department WHERE cStatus = 'A' ORDER BY vName";
+        $departmentResult = sql_query($departmentQuery);
+        $departments = [];
+        $departments = [
+            ["id" => 0, "name" => "Choose"]
+        ];
+        while ($row = sql_fetch_assoc($departmentResult)) {
+            $departments[] = [
+                "id" => (int) $row['iDepartmentID'],
+                "name" => db_output2($row['vName'])
+            ];
+        }
+        $levelsQuery = " SELECT iLevelD, vName FROM levels WHERE cStatus = 'A' ORDER BY iRank";
+        $levelsResult = sql_query($levelsQuery);
+        $levels = [];
+
+        $levels = [
+            ["id" => 0, "name" => "Choose"]
+        ];
+
+        while ($row = sql_fetch_assoc($levelsResult)) {
+            $levels[] = [
+                "id" => (int) $row['iLevelD'],
+                "name" => db_output2($row['vName'])
+            ];
+        }
+
+        $userQuery = " SELECT iUserID, vName FROM users WHERE cStatus = 'A' ORDER BY iRank";
+        $userresult = sql_query($userQuery);
+        $users = [];
+
+        $users = [
+            ["id" => 0, "name" => "Choose"]
+        ];
+
+        while ($row = sql_fetch_assoc($userresult)) {
+            $users[] = [
+                "id" => (int) $row['iUserID'],
+                "name" => db_output2($row['vName']),
+            ];
+        }
+
+        $data = [
+            "departments" => $departments,
+            "levels" => $levels,
+             "users" => $users,
+
+        ];
+        echo json_encode(["statusCode" => 200, "data" => $data]);
         exit;
 
     default:
-        echo json_encode(["statusCode"=>400,"message"=>"Invalid mode"]);
+        echo json_encode(["statusCode" => 400, "message" => "Invalid mode"]);
         exit;
 }
-?>
