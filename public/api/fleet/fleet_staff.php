@@ -175,29 +175,34 @@ switch ($mode) {
         exit;
 
         /* ================= LIST ================= */
-    case 'LIST':
+  case 'LIST':
 
-        $res = sql_query("
-            SELECT
-                iFStaffID AS staffID,
-                vCode AS staffCode,
-                vName AS staffName,
-                vMobile AS mobile,
-                iDepartmentID AS departmentID,
-                cStatus AS status,
-                IF(iUserID>0,'Y','N') AS isUser
-            FROM fleet_staff
-            WHERE cStatus!='X'
-            ORDER BY vName ASC
-        ");
+    $res = sql_query("
+        SELECT
+            fs.iFStaffID AS staffID,
+            fs.vCode AS staffCode,
+            fs.vName AS staffName,
+            fs.vMobile AS mobile,
+            fs.iDepartmentID AS departmentID,
+            d.vName AS deptname,
+            fs.cStatus AS status,
+            IF(fs.iUserID > 0, 'Y', 'N') AS isUser
+        FROM fleet_staff fs
+        LEFT JOIN department d 
+            ON d.iDepartmentID = fs.iDepartmentID
+           AND d.cStatus = 'A'
+        WHERE fs.cStatus != 'X'
+        ORDER BY fs.vName ASC
+    ");
 
-        $data = [];
-        while ($row = sql_fetch_assoc($res)) {
-            $data[] = $row;
-        }
+    $data = [];
+    while ($row = sql_fetch_assoc($res)) {
+        $data[] = $row;
+    }
 
-        echo json_encode(["statusCode" => 200, "data" => $data]);
-        exit;
+    echo json_encode(["statusCode" => 200, "data" => $data]);
+    exit;
+
 
     case 'ONLOAD_LIST':
 
