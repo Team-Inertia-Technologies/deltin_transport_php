@@ -228,7 +228,7 @@ switch ($mode) {
             ];
         }
 
-        $userQuery = " SELECT iUserID, vName FROM users WHERE cStatus = 'A' ORDER BY iRank";
+        $userQuery = " SELECT iUserID, vName FROM users WHERE cStatus = 'A' ORDER BY vName";
         $userresult = sql_query($userQuery);
 
 
