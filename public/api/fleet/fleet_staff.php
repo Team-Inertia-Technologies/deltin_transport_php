@@ -78,44 +78,90 @@ switch ($mode) {
 
         $iFStaffID = intval($_REQUEST['iFStaffID']);
 
-        $res = sql_query("
-            SELECT 
-                iFStaffID AS staffID,
-                vCode AS staffCode,
-                vName AS staffName,
-                vMobile AS mobile,
-                iDepartmentID AS departmentID,
-                iUserID AS userID,
-                cStatus AS status
-            FROM fleet_staff
-            WHERE iFStaffID=$iFStaffID AND cStatus!='X'
-        ");
 
         if (sql_num_rows($res) == 0) {
-            echo json_encode(["statusCode" => 400, "message" => "Invalid Staff ID"]);
+            echo json_encode([
+                "statusCode" => 400,
+                "message" => "Invalid Staff ID"
+            ]);
             exit;
         }
 
-        $data = sql_fetch_assoc($res);
-        $data['isUser'] = ($data['userID'] > 0) ? 'Y' : 'N';
+        $res = sql_query("SELECT iFStaffID,vCode,vName,vMobile,iDepartmentID,
+        iUserID,cStatus FROM fleet_staff WHERE iFStaffID = $iFStaffID AND cStatus != 'X'");
 
-        /* fetch user data if exists */
-        if ($data['userID'] > 0) {
-            $u = sql_fetch_assoc(
-                sql_query("
-                    SELECT vUName AS username,
-                           vPassword AS password,
-                           iLevel AS level,
-                           iReportingID AS reportingTo
-                    FROM users_temp
-                    WHERE iUserID={$data['userID']}
-                ")
-            );
-            $data = array_merge($data, $u ?: []);
+
+        $userInfo = sql_fetch_assoc($res);
+
+        $userInfo['isUser'] = ($userInfo['iUserID'] > 0) ? 'Y' : 'N';
+
+        if ($userInfo['iUserID'] > 0) {
+            $uRes = sql_query("
+        SELECT 
+            vUName AS username,
+            vPassword AS password,
+            iLevel AS level,
+            iReportingID AS reportingTo
+        FROM users_temp
+        WHERE iUserID = {$userInfo['iUserID']}
+    ");
+
+            if ($u = sql_fetch_assoc($uRes)) {
+                $userInfo = array_merge($userInfo, $u);
+            }
         }
 
-        echo json_encode(["statusCode" => 200, "data" => $data]);
+        $departments = [
+            ["id" => 0, "name" => "Choose"]
+        ];
+
+        $departmentResult = sql_query("
+    SELECT iDepartmentID, vName FROM department WHERE cStatus = 'A' ORDER BY vName");
+
+        while ($row = sql_fetch_assoc($departmentResult)) {
+            $departments[] = [
+                "id" => (int)$row['iDepartmentID'],
+                "name" => db_output2($row['vName'])
+            ];
+        }
+
+        $levels = [
+            ["id" => 0, "name" => "Choose"]
+        ];
+
+        $levelsResult = sql_query("SELECT iLevelD, vName FROM levels WHERE cStatus = 'A' ORDER BY iRank");
+
+        while ($row = sql_fetch_assoc($levelsResult)) {
+            $levels[] = [
+                "id" => (int)$row['iLevelD'],
+                "name" => db_output2($row['vName'])
+            ];
+        }
+
+        $users = [
+            ["id" => 0, "name" => "Choose"]
+        ];
+
+        $userResult = sql_query("SELECT iUserID, vName FROM users  WHERE cStatus = 'A'  ORDER BY vName");
+
+        while ($row = sql_fetch_assoc($userResult)) {
+            $users[] = [
+                "id" => (int)$row['iUserID'],
+                "name" => db_output2($row['vName'])
+            ];
+        }
+
+        echo json_encode([
+            "statusCode" => 200,
+            "data" => [
+                "userInfo"    => $userInfo,
+                "departments" => $departments,
+                "levels"      => $levels,
+                "users"       => $users
+            ]
+        ]);
         exit;
+
 
         /* ================= UPDATE STAFF ================= */
     case 'UPDATE_STAFF':
@@ -175,9 +221,9 @@ switch ($mode) {
         exit;
 
         /* ================= LIST ================= */
-  case 'LIST':
+    case 'LIST':
 
-    $res = sql_query("
+        $res = sql_query("
         SELECT
             fs.iFStaffID AS staffID,
             fs.vCode AS staffCode,
@@ -195,13 +241,13 @@ switch ($mode) {
         ORDER BY fs.vName ASC
     ");
 
-    $data = [];
-    while ($row = sql_fetch_assoc($res)) {
-        $data[] = $row;
-    }
+        $data = [];
+        while ($row = sql_fetch_assoc($res)) {
+            $data[] = $row;
+        }
 
-    echo json_encode(["statusCode" => 200, "data" => $data]);
-    exit;
+        echo json_encode(["statusCode" => 200, "data" => $data]);
+        exit;
 
 
     case 'ONLOAD_LIST':
@@ -251,7 +297,7 @@ switch ($mode) {
         $data = [
             "departments" => $departments,
             "levels" => $levels,
-             "users" => $users
+            "users" => $users
 
         ];
         echo json_encode(["statusCode" => 200, "data" => $data]);
