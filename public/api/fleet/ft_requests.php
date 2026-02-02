@@ -737,6 +737,9 @@ switch ($mode) {
         $cBookingFor = db_input($_REQUEST['bookedFor'] ?? '');
         $iBookedBy = db_input($_REQUEST['bookedBy'] ?? '');
         $bookedByName= db_input($_REQUEST['bookedByName'] ?? '');
+        if($iBookedBy > 0){
+        $bookedByName= '';
+        }
         $iFleet_TrvPurID = intval($_REQUEST['travelPurpose'] ?? 0);
         $iFleet_TrvTypeID = intval($_REQUEST['travelType'] ?? 0);
         $iFleet_BKCatID = intval($_REQUEST['bookingCat'] ?? 0);
@@ -890,11 +893,11 @@ switch ($mode) {
                 fb.iDriverID,
                 fb.cType as currentStatus,
                 fb.iBookedBy as bookedById,
-                fb.vBookedBy as bookedByName,
+                fb.vBookedBy as bookedBy,
                 fbc.vName as bookingCategoryName,
                 p.vName as propertyName,
                 d.vName as departmentName,
-                s.vName as bookedBy,
+                s.vName as bookedByName,
                 vc.vName as vehicleCategoryName,
                 ftp.vName as travelPurposeName,
                 ftt.vName as travelTypeName,
