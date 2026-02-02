@@ -203,7 +203,7 @@ switch ($mode) {
 
         $departmentQuery = "SELECT iDepartmentID, vName FROM department WHERE cStatus = 'A' ORDER BY vName";
         $departmentResult = sql_query($departmentQuery);
-        $departments = [];
+
         $departments = [
             ["id" => 0, "name" => "Choose"]
         ];
@@ -215,7 +215,7 @@ switch ($mode) {
         }
         $levelsQuery = " SELECT iLevelD, vName FROM levels WHERE cStatus = 'A' ORDER BY iRank";
         $levelsResult = sql_query($levelsQuery);
-        $levels = [];
+
 
         $levels = [
             ["id" => 0, "name" => "Choose"]
@@ -230,7 +230,7 @@ switch ($mode) {
 
         $userQuery = " SELECT iUserID, vName FROM users WHERE cStatus = 'A' ORDER BY iRank";
         $userresult = sql_query($userQuery);
-        $users = [];
+
 
         $users = [
             ["id" => 0, "name" => "Choose"]
@@ -246,7 +246,7 @@ switch ($mode) {
         $data = [
             "departments" => $departments,
             "levels" => $levels,
-             "users" => $users,
+             "users" => $users
 
         ];
         echo json_encode(["statusCode" => 200, "data" => $data]);
