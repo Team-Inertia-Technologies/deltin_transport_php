@@ -628,7 +628,7 @@ switch ($mode) {
         if ($driverID <= 0) {
             echo json_encode([
                 "error" => [
-                    "message" => "Driver ID is required"
+                    "message" => "Driver is required"
                 ],
                 "statusCode" => 400
             ]);
@@ -638,7 +638,7 @@ switch ($mode) {
         if ($vehicleID <= 0) {
             echo json_encode([
                 "error" => [
-                    "message" => "Vehicle ID is required"
+                    "message" => "Vehicle is required"
                 ],
                 "statusCode" => 400
             ]);
