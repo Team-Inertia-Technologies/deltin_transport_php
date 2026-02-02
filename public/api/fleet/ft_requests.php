@@ -810,7 +810,7 @@ switch ($mode) {
         $updateSql = "
             UPDATE fleet_booking SET
                 iBookedBy = " . intval($iBookedBy) . ",
-                 vBookedBy = " . db_input($bookedByName) . ",
+                 vBookedBy = '" . $bookedByName . "',
                 cBookingFor = '" . db_input($cBookingFor) . "',
                 iFleet_TrvPurID = " . intval($iFleet_TrvPurID) . ",
                 iFleet_TrvTypeID = " . intval($iFleet_TrvTypeID) . ",
