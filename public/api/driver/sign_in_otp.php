@@ -8,7 +8,7 @@ header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
 
 $request = json_decode($postdata, true);
-$_REQUEST = array_merge($_REQUEST, $request ?? []); 
+$_REQUEST = array_merge($_REQUEST, $request ?? []);
 $mode = $_REQUEST['mode'] ?? '';
 $NUMBER_OF_ATTEMPTS = GetXFromYID("SELECT  vValue FROM sys_settings WHERE vCode='OTP_ATTEMPTS'");
 $RESTRICT_TIME_HOURS = GetXFromYID("SELECT  vValue FROM sys_settings WHERE vCode='OTP_RESTRICT_TIME_HOURS'");
@@ -18,14 +18,14 @@ if ($mode == 'LOGIN') {
     $mob = db_input($_REQUEST['mobile'] ?? '');
 
     if (empty($mob)) {
-		http_response_code(400);
-		header('Content-Type: application/json');
+        http_response_code(400);
+        header('Content-Type: application/json');
         echo json_encode([
-			"statusCode" => 400,
+            "statusCode" => 400,
             "error" => [
                 "message" => "Mobile number is required"
             ]
-            
+
         ]);
         exit;
     }
@@ -49,14 +49,14 @@ if ($mode == 'LOGIN') {
 
 
         if ($otpCount >= $NUMBER_OF_ATTEMPTS) {
-			http_response_code(400);
-			header('Content-Type: application/json');
+            http_response_code(400);
+            header('Content-Type: application/json');
             echo json_encode([
-				"statusCode" => 400,
+                "statusCode" => 400,
                 "error" => [
                     "message" => "You have exceeded the maximum number of OTP attempts. Please try again after some time."
                 ]
-                
+
             ]);
             exit;
         }
@@ -70,23 +70,23 @@ if ($mode == 'LOGIN') {
         if (strlen($to) == 10) $to = '91' . $to;
         $status = SendSmsCurl2($templateid, $to, $message);
         SendWhatsappMessage2($to, $otp);
-		http_response_code(200);
-		header('Content-Type: application/json');
+        http_response_code(200);
+        header('Content-Type: application/json');
         echo json_encode([
-			 "statusCode" => 200,
+            "statusCode" => 200,
             "message" => "OTP sent to your mobile number successfully",
             "data" => []
-           
+
         ]);
     } else {
-		http_response_code(400);
-		header('Content-Type: application/json');
+        http_response_code(400);
+        header('Content-Type: application/json');
         echo json_encode([
-			"statusCode" => 400,
-			"error" => [
-                    "message" => "Mobile number not registered"
-                ]
-            
+            "statusCode" => 400,
+            "error" => [
+                "message" => "Mobile number not registered"
+            ]
+
         ]);
     }
 
@@ -96,14 +96,14 @@ if ($mode == 'LOGIN') {
     $OTP = db_input($_REQUEST['otp'] ?? '');
 
     if (empty($mobile) || empty($OTP)) {
-		http_response_code(400);
-		header('Content-Type: application/json');
+        http_response_code(400);
+        header('Content-Type: application/json');
         echo json_encode([
-			"statusCode" => 400,
+            "statusCode" => 400,
             "error" => [
                 "message" => "Mobile number and OTP are required"
             ]
-            
+
         ]);
         exit;
     }
@@ -113,51 +113,52 @@ if ($mode == 'LOGIN') {
     if (sql_num_rows($otp_result)) {
         [$iOTPID] = sql_fetch_row($otp_result);
         sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='$iOTPID'");
-		$staff_query = "SELECT iDriverID, vName FROM driver WHERE vMobileNum='$mobile' AND cStatus='A'";
-		$staff_result = sql_query($staff_query, "Get staff details");
-       
-		if (sql_num_rows($staff_result)) {
-			[$staffId, $staffName] = sql_fetch_row($staff_result);
+        $staff_query = "SELECT iDriverID, vName FROM driver WHERE vMobileNum='$mobile' AND cStatus='A'";
+        $staff_result = sql_query($staff_query, "Get staff details");
 
-			$USER_DATA = [
+        if (sql_num_rows($staff_result)) {
+            [$staffId, $staffName] = sql_fetch_row($staff_result);
+
+            $USER_DATA = [
                 'token' => EncodeParam($staffId),
                 'name'  => db_output($staffName),
                 'pic'   => '',
             ];
+            //$ID = NextID('iLDID', 'log_driver_signin');
+            // Log the signin
+            sql_query("INSERT INTO st_log_signin (dDate, cRefType, iRefID, dtEntry, vIPAddress, vBrowser, cStatus) VALUES ('" . TODAY . "', 'S', '$staffId', '" . NOW . "', '" . ($_SERVER['REMOTE_ADDR'] ?? '') . "', '" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "', 'A')", "Log staff signin");
+            //sql_query("UPDATE driver SET dtLoggedIn = '" . NOW . "' WHERE iDriverID = '$staffId'");
+            //sql_query("INSERT INTO log_driver_signin (iLDID, iDriverID, dtEntry, cType, cStatus) VALUES ($ID, '$staffId', '" . NOW . "', 'IN', 'A')");
+            http_response_code(200);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'statusCode' => 200,
+                'message' => 'Login successful',
+                'data' => $USER_DATA,
 
-			// Log the signin
-			sql_query("INSERT INTO st_log_signin (dDate, cRefType, iRefID, dtEntry, vIPAddress, vBrowser, cStatus) VALUES ('" . TODAY . "', 'S', '$staffId', '" . NOW . "', '" . ($_SERVER['REMOTE_ADDR'] ?? '') . "', '" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "', 'A')", "Log staff signin");
-			http_response_code(200);
-				header('Content-Type: application/json');
-			echo json_encode([
-				'statusCode' => 200,
-				'message' => 'Login successful',
-				'data' => $USER_DATA,
-					
-			]);
-			exit;
-		} else {
-			http_response_code(400);
-			header('Content-Type: application/json');
-			echo json_encode([
-				"statusCode" => 400,
-				"error" => [
-					"message" => "Driver not found"
-				]
-				
-			]);
-			exit;
-		}
-        
+            ]);
+            exit;
+        } else {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "statusCode" => 400,
+                "error" => [
+                    "message" => "Driver not found"
+                ]
+
+            ]);
+            exit;
+        }
     } else {
-		http_response_code(400);
-		header('Content-Type: application/json');
+        http_response_code(400);
+        header('Content-Type: application/json');
         echo json_encode([
-			"statusCode" => 400,
+            "statusCode" => 400,
             "error" => [
                 "message" => "Invalid or expired OTP. Please request a new OTP."
             ]
-            
+
         ]);
         exit;
     }
@@ -165,14 +166,14 @@ if ($mode == 'LOGIN') {
     $mobile = db_input($_REQUEST['mobile'] ?? '');
 
     if (empty($mobile)) {
-		http_response_code(400);
-		header('Content-Type: application/json');
+        http_response_code(400);
+        header('Content-Type: application/json');
         echo json_encode([
-			"statusCode" => 400,
+            "statusCode" => 400,
             "error" => [
                 "message" => "Mobile number is required"
             ]
-            
+
         ]);
         exit;
     }
@@ -190,14 +191,14 @@ if ($mode == 'LOGIN') {
             $otp = '1234';
         }
         if ($otpCount >= $NUMBER_OF_ATTEMPTS) {
-			http_response_code(400);
-			header('Content-Type: application/json');
+            http_response_code(400);
+            header('Content-Type: application/json');
             echo json_encode([
-				"statusCode" => 403,
+                "statusCode" => 403,
                 "error" => [
                     "message" => "You have exceeded the maximum number of OTP attempts. Please try again after some time."
                 ]
-                
+
             ]);
             exit;
         }
@@ -205,29 +206,29 @@ if ($mode == 'LOGIN') {
         $code = '+91';
         sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','A','0','$otp','$mobile','$TIME','$dtTo','N')", "Resend OTP for staff");
 
-		$message = urlencode('Dear Guest, To access your account on DeltinOne, please use ' . $otp . ' as your one-time password (OTP). Best regards, Deltin wPYrBplEnt1');
+        $message = urlencode('Dear Guest, To access your account on DeltinOne, please use ' . $otp . ' as your one-time password (OTP). Best regards, Deltin wPYrBplEnt1');
         $templateid = '1307175128414225156';
         $to = $mobile;
         if (strlen($to) == 10) $to = '91' . $to;
         $status = SendSmsCurl2($templateid, $to, $message);
         SendWhatsappMessage2($to, $otp);
-		http_response_code(200);
-		header('Content-Type: application/json');
+        http_response_code(200);
+        header('Content-Type: application/json');
         echo json_encode([
             'statusCode' => 200,
-			'message' => 'OTP resent successfully to your mobile',
+            'message' => 'OTP resent successfully to your mobile',
             "data" => []
         ]);
         exit;
     } else {
-		http_response_code(400);
-		header('Content-Type: application/json');
+        http_response_code(400);
+        header('Content-Type: application/json');
         echo json_encode([
-			"statusCode" => 400,
+            "statusCode" => 400,
             "error" => [
                 "message" => "Driver not found"
             ]
-            
+
         ]);
         exit;
     }
@@ -235,14 +236,14 @@ if ($mode == 'LOGIN') {
     $mob = db_input($_REQUEST['mobile'] ?? '');
 
     if (empty($mob)) {
-		http_response_code(400);
-		header('Content-Type: application/json');
+        http_response_code(400);
+        header('Content-Type: application/json');
         echo json_encode([
-			"statusCode" => 400,
+            "statusCode" => 400,
             "error" => [
                 "message" => "Mobile number is required"
             ]
-            
+
         ]);
         exit;
     }
@@ -266,14 +267,14 @@ if ($mode == 'LOGIN') {
 
 
         if ($otpCount >= $NUMBER_OF_ATTEMPTS) {
-			http_response_code(400);
-			header('Content-Type: application/json');
+            http_response_code(400);
+            header('Content-Type: application/json');
             echo json_encode([
-				"statusCode" => 400,
+                "statusCode" => 400,
                 "error" => [
                     "message" => "You have exceeded the maximum number of OTP attempts. Please try again after some time."
                 ]
-                
+
             ]);
             exit;
         }
@@ -287,23 +288,23 @@ if ($mode == 'LOGIN') {
         if (strlen($to) == 10) $to = '91' . $to;
         $status = SendSmsCurl2($templateid, $to, $message);
         SendWhatsappMessage2($to, $otp);
-		http_response_code(200);
-		header('Content-Type: application/json');
+        http_response_code(200);
+        header('Content-Type: application/json');
         echo json_encode([
-			 "statusCode" => 200,
+            "statusCode" => 200,
             "message" => "OTP sent to your mobile number successfully",
             "data" => []
-           
+
         ]);
     } else {
-		http_response_code(400);
-		header('Content-Type: application/json');
+        http_response_code(400);
+        header('Content-Type: application/json');
         echo json_encode([
-			"statusCode" => 400,
-			"error" => [
-                    "message" => "Mobile number not registered"
-                ]
-            
+            "statusCode" => 400,
+            "error" => [
+                "message" => "Mobile number not registered"
+            ]
+
         ]);
     }
 
@@ -313,14 +314,14 @@ if ($mode == 'LOGIN') {
     $OTP = db_input($_REQUEST['otp'] ?? '');
 
     if (empty($mobile) || empty($OTP)) {
-		http_response_code(400);
-		header('Content-Type: application/json');
+        http_response_code(400);
+        header('Content-Type: application/json');
         echo json_encode([
-			"statusCode" => 400,
+            "statusCode" => 400,
             "error" => [
                 "message" => "Mobile number and OTP are required"
             ]
-            
+
         ]);
         exit;
     }
@@ -330,51 +331,50 @@ if ($mode == 'LOGIN') {
     if (sql_num_rows($otp_result)) {
         [$iOTPID] = sql_fetch_row($otp_result);
         sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='$iOTPID'");
-		$staff_query = "SELECT iGuestID, vName FROM guest WHERE vMobileNo='$mobile' AND cStatus='A'";
-		$staff_result = sql_query($staff_query, "Get staff details");
+        $staff_query = "SELECT iGuestID, vName FROM guest WHERE vMobileNo='$mobile' AND cStatus='A'";
+        $staff_result = sql_query($staff_query, "Get staff details");
 
-		if (sql_num_rows($staff_result)) {
-			[$staffId, $staffName] = sql_fetch_row($staff_result);
+        if (sql_num_rows($staff_result)) {
+            [$staffId, $staffName] = sql_fetch_row($staff_result);
 
-			$USER_DATA = [
-				'token' => EncodeParam($staffId),
-				'name' => db_output($staffName),
-				'pic'  => '',
-			];
+            $USER_DATA = [
+                'token' => EncodeParam($staffId),
+                'name' => db_output($staffName),
+                'pic'  => '',
+            ];
 
-			// Log the signin
-			sql_query("INSERT INTO st_log_signin (dDate, cRefType, iRefID, dtEntry, vIPAddress, vBrowser, cStatus) VALUES ('" . TODAY . "', 'S', '$staffId', '" . NOW . "', '" . ($_SERVER['REMOTE_ADDR'] ?? '') . "', '" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "', 'A')", "Log staff signin");
-			http_response_code(200);
-				header('Content-Type: application/json');
-			echo json_encode([
-				'statusCode' => 200,
-				'message' => 'Login successful',
-				'data' => $USER_DATA,
-					
-			]);
-			exit;
-		} else {
-			http_response_code(400);
-			header('Content-Type: application/json');
-			echo json_encode([
-				"statusCode" => 400,
-				"error" => [
-					"message" => "Driver not found"
-				]
-				
-			]);
-			exit;
-		}
-        
+            // Log the signin
+            sql_query("INSERT INTO st_log_signin (dDate, cRefType, iRefID, dtEntry, vIPAddress, vBrowser, cStatus) VALUES ('" . TODAY . "', 'S', '$staffId', '" . NOW . "', '" . ($_SERVER['REMOTE_ADDR'] ?? '') . "', '" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "', 'A')", "Log staff signin");
+            http_response_code(200);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'statusCode' => 200,
+                'message' => 'Login successful',
+                'data' => $USER_DATA,
+
+            ]);
+            exit;
+        } else {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "statusCode" => 400,
+                "error" => [
+                    "message" => "Driver not found"
+                ]
+
+            ]);
+            exit;
+        }
     } else {
-		http_response_code(400);
-		header('Content-Type: application/json');
+        http_response_code(400);
+        header('Content-Type: application/json');
         echo json_encode([
-			"statusCode" => 400,
+            "statusCode" => 400,
             "error" => [
                 "message" => "Invalid or expired OTP. Please request a new OTP."
             ]
-            
+
         ]);
         exit;
     }
@@ -382,14 +382,14 @@ if ($mode == 'LOGIN') {
     $mobile = db_input($_REQUEST['mobile'] ?? '');
 
     if (empty($mobile)) {
-		http_response_code(400);
-		header('Content-Type: application/json');
+        http_response_code(400);
+        header('Content-Type: application/json');
         echo json_encode([
-			"statusCode" => 400,
+            "statusCode" => 400,
             "error" => [
                 "message" => "Mobile number is required"
             ]
-            
+
         ]);
         exit;
     }
@@ -407,14 +407,14 @@ if ($mode == 'LOGIN') {
             $otp = '1234';
         }
         if ($otpCount >= $NUMBER_OF_ATTEMPTS) {
-			http_response_code(400);
-			header('Content-Type: application/json');
+            http_response_code(400);
+            header('Content-Type: application/json');
             echo json_encode([
-				"statusCode" => 403,
+                "statusCode" => 403,
                 "error" => [
                     "message" => "You have exceeded the maximum number of OTP attempts. Please try again after some time."
                 ]
-                
+
             ]);
             exit;
         }
@@ -422,29 +422,29 @@ if ($mode == 'LOGIN') {
         $code = '+91';
         sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','A','0','$otp','$mobile','$TIME','$dtTo','N')", "Resend OTP for staff");
 
-		$message = urlencode('Dear Guest, To access your account on DeltinOne, please use ' . $otp . ' as your one-time password (OTP). Best regards, Deltin wPYrBplEnt1');
+        $message = urlencode('Dear Guest, To access your account on DeltinOne, please use ' . $otp . ' as your one-time password (OTP). Best regards, Deltin wPYrBplEnt1');
         $templateid = '1307175128414225156';
         $to = $mobile;
         if (strlen($to) == 10) $to = '91' . $to;
         $status = SendSmsCurl2($templateid, $to, $message);
         SendWhatsappMessage2($to, $otp);
-		http_response_code(200);
-		header('Content-Type: application/json');
+        http_response_code(200);
+        header('Content-Type: application/json');
         echo json_encode([
             'statusCode' => 200,
-			'message' => 'OTP resent successfully to your mobile',
+            'message' => 'OTP resent successfully to your mobile',
             "data" => []
         ]);
         exit;
     } else {
-		http_response_code(400);
-		header('Content-Type: application/json');
+        http_response_code(400);
+        header('Content-Type: application/json');
         echo json_encode([
-			"statusCode" => 400,
+            "statusCode" => 400,
             "error" => [
                 "message" => "Driver not found"
             ]
-            
+
         ]);
         exit;
     }

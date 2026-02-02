@@ -64,9 +64,8 @@ LEFT JOIN property p ON p.iPropertyID = fb.iPropertyID
 
 WHERE 
     fb.cType = 'N'
-    AND (
-        fb.iDriverID = '{$driverID}' OR fb.iVehicleID IN (SELECT iVehicleID FROM driver_vehicle_assoc WHERE iDriverID = '{$driverID}' AND cStatus='A')
-        )
+    AND fb.cStatus ='A'
+    AND  fb.iDriverID = '{$driverID}'
 ORDER BY fb.vPickUpTime ASC
 ";
 
@@ -96,7 +95,7 @@ $settingsResult = sql_query($settingsQuery);
 
 $settings = [];
 while ($row = sql_fetch_assoc($settingsResult)) {
-$settings[$row['vCode']] = $row['vValue'];
+    $settings[$row['vCode']] = $row['vValue'];
 }
 
 $pingDriverLocation = $settings['PING_DRIVER_LOCATION'] ?? 'N';
@@ -114,7 +113,6 @@ while ($row = sql_fetch_assoc($res)) {
         $vehicle["id"]     = $row["iVehicleID"];
         $vehicle["name"] = $row["vehicleName"];
         $vehicle["number"]  = $row["vehicleNo"];
-       
     }
 
     $trips[] = [

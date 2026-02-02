@@ -22,19 +22,19 @@ $postdata = file_get_contents("php://input");
 $request = json_decode($postdata);
 
 $token      = trim($request->token);
-$VehicleID  = trim($request->vehicle_id);
+$VehicleID = isset($request->vehicle_id) && is_numeric($request->vehicle_id) ? (int)$request->vehicle_id : 0;
 $vehicle_status = trim($request->vehicle_status);
 $vehicle_status = ($vehicle_status === 'atStation') ? 'Y' : 'N';
 $station = trim($request->station);
 
 
-if (!$token || !$VehicleID) {
+if (!$token) {
     http_response_code(400);
     header('Content-Type: application/json');
     echo json_encode([
         "statusCode" => 400,
         "error" => [
-            "message" => "Missing token or vehicle_id."
+            "message" => "Missing token."
         ]
     ]);
     exit;
@@ -64,15 +64,18 @@ $driverID = intval($userid);
 // -------------------- UPDATE TRIP STATUS TO STARTED --------------------
 $id = NextID('iLDID', 'log_driver_signin');
 $NOW = NOW;
-$query = "UPDATE driver set dtLoggedOut = '$NOW' WHERE iDriverID = $driverID";
+$query = "UPDATE driver set dtLoggedOut = '$NOW', dtLoggedIn = NULL WHERE iDriverID = $driverID";
 sql_query("INSERT INTO log_driver_signin (iLDID, iDriverID, dtEntry, cType, iVehicleID, cVehicleDropped, cStatus) VALUES ($id, $driverID, '$NOW', 'OUT', '$VehicleID', '$vehicle_status', 'A')", 'DRIVER.ATTENDANCE');
+if ($VehicleID > 0) {
+    sql_query("UPDATE driver_vehicle_assoc set cStatus = 'X' WHERE iDriverID = $driverID AND iVehicleID = $VehicleID AND cStatus = 'A'");
+}
 $result = sql_query($query, 'TRIP.START');
 if (sql_affected_rows() > 0) {
     http_response_code(200);
     header('Content-Type: application/json');
     echo json_encode([
         "statusCode" => 200,
-        "message" => "Attendance marked successfully."
+        "message" => "Logged out successfully."
     ]);
 } else {
     http_response_code(400);

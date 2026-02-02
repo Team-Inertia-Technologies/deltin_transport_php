@@ -82,6 +82,7 @@ switch ($mode) {
                         INNER JOIN st_route_stops rs ON r.iStopID = rs.iStopID
                         INNER JOIN st_trips t ON r.iTripID = t.iTripID
                         WHERE r.iStaffID = $user_id 
+                        AND r.cStatus = 'A'
                         AND t.cStatus IN ('A', 'C')
                         AND (
                             DATE(t.dtTrip) < '$today'

@@ -73,7 +73,7 @@ switch ($mode) {
 
             $tripTime = $timeRow['trip_time']; // base time for this slot (HH:MM:SS)
 
-            // ---- DAYS FOR THIS TIME SLOT ----
+       
             $today = date('Y-m-d');
             $maxDate = date('Y-m-d', strtotime('+7 days'));
             $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
@@ -108,7 +108,7 @@ switch ($mode) {
 
             // ---- PICKUP OPTIONS FOR THIS TIME SLOT ----
             $pickUpOpt = [];
-            $stopsRes = sql_query($stopsSql); // re-run stops query fresh
+            $stopsRes = sql_query($stopsSql); 
 
             while ($stopRow = sql_fetch_assoc($stopsRes)) {
 
@@ -201,6 +201,16 @@ break;
 
         // Get the actual time value - support both old (trip ID) and new (time value) structure
         $selectedTimeValue = $_REQUEST['timeValue'] ?? '';
+        if (empty($selectedTimeValue)) {
+     echo json_encode([
+                "error" => [
+                    "message" => "Invalid time selected"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+}
+
 
         if (!empty($selectedTimeValue)) {
             // New structure: time value is provided directly
