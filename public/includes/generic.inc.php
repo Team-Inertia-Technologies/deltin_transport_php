@@ -930,9 +930,7 @@ function CheckForXSS($string)
 }
 function db_input($string)
 {
-	$string = CheckForXSS($string);
-	//return (get_magic_quotes_gpc())? htmlspecialchars(addslashes($string)): htmlspecialchars(addslashes($string));
-	return htmlspecialchars(addslashes($string));
+    return addslashes(CheckForXSS($string)); // legacy-safe
 }
 
 function db_input2($string)

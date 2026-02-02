@@ -807,7 +807,7 @@ switch ($mode) {
         $updateSql = "
             UPDATE fleet_booking SET
                 iBookedBy = " . intval($iBookedBy) . ",
-                 vBookedBy = " . intval($bookedByName) . ",
+                 vBookedBy = " . db_input($bookedByName) . ",
                 cBookingFor = '" . db_input($cBookingFor) . "',
                 iFleet_TrvPurID = " . intval($iFleet_TrvPurID) . ",
                 iFleet_TrvTypeID = " . intval($iFleet_TrvTypeID) . ",
@@ -889,10 +889,12 @@ switch ($mode) {
                 fb.iVehicleID,
                 fb.iDriverID,
                 fb.cType as currentStatus,
+                fb.iBookedBy as bookedById,
+                fb.vBookedBy as bookedByName,
                 fbc.vName as bookingCategoryName,
                 p.vName as propertyName,
                 d.vName as departmentName,
-                s.vName as bookedByName,
+                s.vName as bookedBy,
                 vc.vName as vehicleCategoryName,
                 ftp.vName as travelPurposeName,
                 ftt.vName as travelTypeName,
@@ -976,6 +978,9 @@ switch ($mode) {
         $isVehicleAssigned = !empty($booking['iVehicleID']) && intval($booking['iVehicleID']) > 0;
         $isDriverAssigned = !empty($booking['iDriverID']) && intval($booking['iDriverID']) > 0;
 
+        if(intval($booking['bookedById']) == 0){
+            $bookedByName =  db_output2($booking['bookedBy']);
+        }
         $requestDetails = [
             'bookingId' => intval($booking['iFleet_BookingID']),
             'passengerName' => db_output2($passengerName),
@@ -991,7 +996,7 @@ switch ($mode) {
             'vehiCat' => intval($booking['iVehicleCatID'] ?? 0),
             'passengers' => intval($booking['iPax'] ?? 0),
             'baggage' => intval($booking['iBaggage'] ?? 0),
-            'bookedBy' => db_output2($booking['bookedByName']) ?? 'N/A',
+            'bookedBy' => $bookedByName,
             'vehicleCategory' => db_output2($booking['vehicleCategoryName']) ?? 'N/A',
             'travelPurpose' => $booking['travelPurposeName'] ?? 'N/A',
             'travelType' => $booking['travelTypeName'] ?? 'N/A',
