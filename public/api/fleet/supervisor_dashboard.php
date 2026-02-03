@@ -1824,6 +1824,7 @@ switch ($mode) {
             d.vLat,
             d.vLong,
             d.dtPinned,
+            d.vName as driverName, d.vMobileNum AS driverMobile,
             v.vRnum AS vehicleRegNo,
             v.iCatID as catID
         FROM driver d
@@ -1855,6 +1856,8 @@ switch ($mode) {
         while ($row = sql_fetch_assoc($res)) {
             $rowData[] = [
                 "iVehicleID" => intval($row['iVehicleID']),
+                "driverName" => db_output2($row['driverName']),
+                "driverMobile" => db_output2($row['driverMobile']),
                 "vLat" => $row['vLat'],
                 "vLong" => $row['vLong'],
                 "vehicleRegNo" => $row['vehicleRegNo'],

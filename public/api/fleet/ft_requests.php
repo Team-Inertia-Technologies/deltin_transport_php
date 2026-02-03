@@ -891,6 +891,7 @@ switch ($mode) {
                 fb.iBaggage,
                 fb.iVehicleID,
                 fb.iDriverID,
+                fb.cStatus as bookingStatus,
                 fb.cType as currentStatus,
                 fb.iBookedBy as bookedById,
                 fb.vBookedBy as bookedBy,
@@ -1018,7 +1019,8 @@ switch ($mode) {
                 'name' => db_output2($booking['assignedDriverName'] ?? ''),
                 'mobile' => db_output2($booking['assignedDriverMobile'] ?? '')
             ] : null,
-            'tripStatus' => isset($booking['currentStatus']) ? $booking['currentStatus'] : 'N'
+            'tripStatus' => isset($booking['currentStatus']) ? $booking['currentStatus'] : 'N',
+           'bookingStatus' => isset($booking['bookingStatus']) ? $booking['bookingStatus'] : 'C',
             // 'tripStatus' => isset($FLEET_TRIP_STATUS[$booking['currentStatus']]) ? $FLEET_TRIP_STATUS[$booking['currentStatus']] : 'Not Started'
             // "status" => $booking['currentStatus']
         ];
