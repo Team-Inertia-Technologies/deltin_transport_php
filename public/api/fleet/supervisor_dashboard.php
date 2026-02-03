@@ -37,7 +37,8 @@ switch ($mode) {
         $TOTAL_DRIVER_COUNT = GetXFromYID("select count(*) from driver where cStatus = 'A' and dExpiry > '$TODAY'");
 
         $AVAILABLE_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where iVehicleID NOT IN (select iVehicleID from fleet_booking where cType NOT IN ('C','N') and iVehicleID IS NOT NULL)");
-        $AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where iDriverID NOT IN (select iDriverID from fleet_booking where cType NOT IN ('C','N') and iDriverID IS NOT NULL)");
+        //$AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where iDriverID NOT IN (select iDriverID from fleet_booking where cType NOT IN ('C','N') and iDriverID IS NOT NULL)");
+        $AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where dtLoggedIn IS NOT NULL and cStatus = 'A'");
 
         $refreshRequestStreamTime = GetXFromYID("select vValue from sys_settings where vCode = 'REQSTREAM_PING_DURATION'");
         $refreshVehicleComponentTime = GetXFromYID("select vValue from sys_settings where vCode = 'VEHICLECOMPONENT_PING_DURATION'");
@@ -219,7 +220,7 @@ switch ($mode) {
                 $type_status = 'D';
             }
             $bookedByName = db_output2($FLEET_STAFF_ARR[$row['iBookedBy']] ?? '');
-            if($row['iBookedBy'] == '0'){
+            if ($row['iBookedBy'] == '0') {
                 $bookedByName = db_output2($row['vBookedBy'] ?? '');
             }
 
