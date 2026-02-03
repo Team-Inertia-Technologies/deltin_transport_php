@@ -684,23 +684,31 @@ switch ($mode) {
         
         if (sql_num_rows($existingAssignmentRes) > 0) {
             // Deallocate the existing assignment by setting dtAssigned_To
-            $currentDateTime = date('Y-m-d H:i:s');
-            $deallocateSql = "UPDATE driver_vehicle_assoc 
-                              SET dtAssigned_To = '$currentDateTime', cStatus = 'X' 
-                              WHERE iDriverID = $driverID AND iVehicleID = $vehicleID AND cStatus = 'A'";
-            sql_query($deallocateSql);
+          $currentDateTime = date('Y-m-d H:i:s');
+
+$deallocateDriverSql = "
+    UPDATE driver_vehicle_assoc
+    SET dtAssigned_To = '$currentDateTime', cStatus = 'X'
+    WHERE iDriverID = $driverID
+      AND cStatus = 'A'
+";
+sql_query($deallocateDriverSql);
+
         }
 
 
         $iDVID = NextID('iDVID', 'driver_vehicle_assoc');
 
-        // Insert new vehicle assignment
+
         $sql = "INSERT INTO driver_vehicle_assoc (iDVID, iVehicleID, iDriverID, dtAssigned_From, iAssigned_By, cStatus) 
                 VALUES ($iDVID, $vehicleID, $driverID, 
                     " . (!empty($assignedFrom) ? "'$assignedFrom'" : "NULL") . ",  
                     $user_id, '$cStatus')";
 
         if (sql_query($sql)) {
+
+        $update_div = sql_query("UPDATE driver SET iVehicleID = 0 WHERE iVehicleID = $vehicleID AND cStatus = 'A'");
+
              $update_veh = "UPDATE driver
                               SET iVehicleID = '$vehicleID'
                               WHERE iDriverID = $driverID AND cStatus = 'A'";

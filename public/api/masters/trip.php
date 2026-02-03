@@ -827,13 +827,7 @@ switch ($mode) {
                             req.dtIn,
                             
                             -- Trip requested pax
-                            t.iRequested,
-                            
-                            -- Sum total requested pax for this group
-                            (SELECT SUM(t2.iRequested) 
-                             FROM st_trips t2 
-                             WHERE t2.iGrpID = $iGrpID 
-                             AND t2.cStatus != 'X') as totalPaxRequested
+                            t.iRequested  as totalPaxRequested,
                              
                         FROM st_trips t
                         LEFT JOIN st_route r ON t.iRouteID = r.iRouteID

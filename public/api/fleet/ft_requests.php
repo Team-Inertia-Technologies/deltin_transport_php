@@ -737,6 +737,9 @@ switch ($mode) {
         $cBookingFor = db_input($_REQUEST['bookedFor'] ?? '');
         $iBookedBy = db_input($_REQUEST['bookedBy'] ?? '');
         $bookedByName= db_input($_REQUEST['bookedByName'] ?? '');
+        if($iBookedBy > 0){
+        $bookedByName= '';
+        }
         $iFleet_TrvPurID = intval($_REQUEST['travelPurpose'] ?? 0);
         $iFleet_TrvTypeID = intval($_REQUEST['travelType'] ?? 0);
         $iFleet_BKCatID = intval($_REQUEST['bookingCat'] ?? 0);
@@ -807,7 +810,7 @@ switch ($mode) {
         $updateSql = "
             UPDATE fleet_booking SET
                 iBookedBy = " . intval($iBookedBy) . ",
-                 vBookedBy = " . intval($bookedByName) . ",
+                 vBookedBy = '" . $bookedByName . "',
                 cBookingFor = '" . db_input($cBookingFor) . "',
                 iFleet_TrvPurID = " . intval($iFleet_TrvPurID) . ",
                 iFleet_TrvTypeID = " . intval($iFleet_TrvTypeID) . ",
@@ -889,6 +892,8 @@ switch ($mode) {
                 fb.iVehicleID,
                 fb.iDriverID,
                 fb.cType as currentStatus,
+                fb.iBookedBy as bookedById,
+                fb.vBookedBy as bookedBy,
                 fbc.vName as bookingCategoryName,
                 p.vName as propertyName,
                 d.vName as departmentName,
@@ -976,6 +981,9 @@ switch ($mode) {
         $isVehicleAssigned = !empty($booking['iVehicleID']) && intval($booking['iVehicleID']) > 0;
         $isDriverAssigned = !empty($booking['iDriverID']) && intval($booking['iDriverID']) > 0;
 
+        if(intval($booking['bookedById']) == 0){
+            $bookedByName =  db_output2($booking['bookedBy']);
+        }
         $requestDetails = [
             'bookingId' => intval($booking['iFleet_BookingID']),
             'passengerName' => db_output2($passengerName),
@@ -991,7 +999,7 @@ switch ($mode) {
             'vehiCat' => intval($booking['iVehicleCatID'] ?? 0),
             'passengers' => intval($booking['iPax'] ?? 0),
             'baggage' => intval($booking['iBaggage'] ?? 0),
-            'bookedBy' => db_output2($booking['bookedByName']) ?? 'N/A',
+            'bookedBy' => $bookedByName,
             'vehicleCategory' => db_output2($booking['vehicleCategoryName']) ?? 'N/A',
             'travelPurpose' => $booking['travelPurposeName'] ?? 'N/A',
             'travelType' => $booking['travelTypeName'] ?? 'N/A',
