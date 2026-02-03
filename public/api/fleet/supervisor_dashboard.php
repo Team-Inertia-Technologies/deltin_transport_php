@@ -498,7 +498,7 @@ switch ($mode) {
                 $bookingStatus = $bookings[0]['STATUS'];
             }
 
-            $driverLoggedIn = GetXFromYID("select dtLoggedIn from driver where iDriverID = " . $vehData['DRIVER_ID'] . " and (dtLoggedIn between '$from' and '$to')");
+            $driverLoggedIn = GetXFromYID("select dtLoggedIn from driver where iDriverID = " . $vehData['DRIVER_ID'] . " and (dtLoggedIn IS NOT NULL)");
             if (!empty($driverLoggedIn)) {
                 $driverStatus = true;
             }
