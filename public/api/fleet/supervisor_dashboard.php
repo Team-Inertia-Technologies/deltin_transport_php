@@ -68,7 +68,7 @@ switch ($mode) {
         foreach ($VEHICLE_STATUS_ARR as $id => $name) {
             $vehiStatusArr[] = ['id' => $id, 'name' => $name];
         }
-          $ql = "select iFleet_LocationID, vName, vLat,vLong from fleet_location order by vName";
+        $ql = "select iFleet_LocationID, vName, vLat,vLong from fleet_location order by vName";
         $rl = sql_query($ql, "supervisor_dashboard.77");
         if (sql_num_rows($rl)) {
             while ($lrow = sql_fetch_assoc($rl)) {
@@ -484,6 +484,8 @@ switch ($mode) {
             $lastAssignedTime = null;
             $lastAssigned = false;
             $nextTripTime = null;
+            $bookingStatus = null;
+            $driverStatus = false;
 
             // BOOKINGS array contains future trips, get the earliest one as next trip
             if (!empty($vehData['BOOKINGS'])) {
@@ -493,7 +495,14 @@ switch ($mode) {
                     return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
                 });
                 $nextTripTime = $bookings[0]['PICKUP_TIME'];
+                $bookingStatus = $bookings[0]['STATUS'];
             }
+
+            $driverLoggedIn = GetXFromYID("select dtLoggedIn from driver where iDriverID = " . $vehData['DRIVER_ID'] . " and (dtLoggedIn IS NOT NULL and dtLoggedIn between '$from' and '$to')");
+            if (!empty($driverLoggedIn)) {
+                $driverStatus = true;
+            }
+
 
             $vehicleDataFormatted = [
                 'id' => intval($vehicleID),
@@ -511,7 +520,8 @@ switch ($mode) {
                 'driverType' => $vehData['DRIVER_TYPE'] ?? '',
                 'nextTripTime' => $nextTripTime,
                 'disposal' => false,
-                'status' => 'A',
+                'status' => $bookingStatus,
+                'driverStatus' => $driverStatus,
                 //'bookings' => $vehData['BOOKINGS'] // Include booking details for reference
             ];
 
