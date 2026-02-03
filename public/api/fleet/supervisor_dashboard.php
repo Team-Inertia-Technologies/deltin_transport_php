@@ -163,7 +163,7 @@ switch ($mode) {
         }
 
         // Fetch booking data
-        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments from fleet_booking where 1 $cond and cType <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments from fleet_booking where 1 $cond and cType <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         //echo $bookingSql."<br>";
         $bookingRes = sql_query($bookingSql);
 
@@ -218,6 +218,10 @@ switch ($mode) {
             if (!empty($row['vPickUpTime']) && strtotime($row['vPickUpTime']) < strtotime($currentTime) && $row['cType'] == 'N') {
                 $type_status = 'D';
             }
+            $bookedByName = db_output2($FLEET_STAFF_ARR[$row['iBookedBy']] ?? '');
+            if($row['iBookedBy'] == '0'){
+                $bookedByName = db_output2($row['vBookedBy'] ?? '');
+            }
 
 
             $rowData[] = [
@@ -233,7 +237,7 @@ switch ($mode) {
                 'type' => $type_status,
                 'pax' => strval($row['iPax'] ?? '0'),
                 'bags' => strval($row['iBaggage'] ?? '0'),
-                'bookedByName' => db_output2($FLEET_STAFF_ARR[$row['iBookedBy']] ?? ''),
+                'bookedByName' => $bookedByName,
                 'bookingCat' => db_output2($FLEET_CATEGORY_ARR[$row['iFleet_BKCatID']] ?? ''),
                 'bookedFor' => db_output2($row['cBookingFor'] ?? ''),
                 'property' => db_output2($PROPERTY_ARR[$row['iPropertyID']] ?? ''),
