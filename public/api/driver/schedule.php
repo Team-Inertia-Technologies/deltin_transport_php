@@ -111,10 +111,10 @@ while ($row = sql_fetch_assoc($res)) {
 }
 
 if (empty($trips)) {
-    http_response_code(404);
+    http_response_code(200);
     header("Content-Type: application/json");
     echo json_encode([
-        "statusCode" => 404,
+        "statusCode" => 200,
         "message" => "No record found for this driver.",
         "data" => [
             "scheduleList" => []

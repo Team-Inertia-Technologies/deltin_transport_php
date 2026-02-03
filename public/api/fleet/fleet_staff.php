@@ -32,7 +32,7 @@ switch ($mode) {
         $iDepartmentID = intval($_REQUEST['iDepartmentID']);
         $isUser        = ($_REQUEST['isUser'] ?? 'N') === 'Y';
         $username     = db_input($_REQUEST['username'] ?? '');
-        $password     = db_input($_REQUEST['password'] ?? '');
+        $password = htmlspecialchars_decode($_REQUEST['password'] ?? '');
         $level        = intval($_REQUEST['level'] ?? 0);
         $reportingTo  = intval($_REQUEST['reportingTo'] ?? 0);
 
@@ -164,61 +164,80 @@ switch ($mode) {
 
 
         /* ================= UPDATE STAFF ================= */
-    case 'UPDATE_STAFF':
+   case 'UPDATE_STAFF':
 
-        $iFStaffID     = intval($_REQUEST['iFStaffID']);
-        $vCode         = db_input($_REQUEST['vCode']);
-        $vName         = db_input($_REQUEST['vName']);
-        $vMobile       = db_input($_REQUEST['vMobile']);
-        $iDepartmentID = intval($_REQUEST['iDepartmentID']);
-        $isUser        = ($_REQUEST['isUser'] ?? 'N') === 'Y';
+    $iFStaffID     = intval($_REQUEST['iFStaffID']);
+    $vCode         = db_input($_REQUEST['vCode']);
+    $vName         = db_input($_REQUEST['vName']);
+    $vMobile       = db_input($_REQUEST['vMobile']);
+    $iDepartmentID = intval($_REQUEST['iDepartmentID']);
+    $isUser        = ($_REQUEST['isUser'] ?? 'N') === 'Y';
 
-        $username     = db_input($_REQUEST['username'] ?? '');
-        $password     = db_input($_REQUEST['password'] ?? '');
-        $level        = intval($_REQUEST['level'] ?? 0);
-        $reportingTo  = intval($_REQUEST['reportingTo'] ?? 0);
+    $username     = db_input($_REQUEST['username'] ?? '');
+    $level        = intval($_REQUEST['level'] ?? 0);
+    $reportingTo  = intval($_REQUEST['reportingTo'] ?? 0);
 
-        /* ---- DUPLICATE MOBILE CHECK ---- */
-        $dup = sql_query("
-            SELECT 1 FROM fleet_staff 
-            WHERE vMobile='$vMobile' AND iFStaffID!=$iFStaffID AND cStatus!='X'
-        ");
-        if (sql_num_rows($dup) > 0) {
-            echo json_encode(["statusCode" => 409, "message" => "Mobile number already exists"]);
-            exit;
+    /* ---- DUPLICATE MOBILE CHECK ---- */
+    $dup = sql_query("
+        SELECT 1 FROM fleet_staff 
+        WHERE vMobile='$vMobile' 
+          AND iFStaffID!=$iFStaffID 
+          AND cStatus!='X'
+    ");
+    if (sql_num_rows($dup) > 0) {
+        echo json_encode([
+            "statusCode" => 409,
+            "message" => "Mobile number already exists"
+        ]);
+        exit;
+    }
+
+    /* ---- UPDATE STAFF ---- */
+    sql_query("
+        UPDATE fleet_staff
+        SET vCode='$vCode',
+            vName='$vName',
+            vMobile='$vMobile',
+            iDepartmentID=$iDepartmentID
+        WHERE iFStaffID=$iFStaffID
+    ");
+
+    $staff = sql_fetch_assoc(
+        sql_query("SELECT iUserID FROM fleet_staff WHERE iFStaffID=$iFStaffID")
+    );
+
+    /* ---- UPDATE USER (ONLY IF LINKED) ---- */
+    if ($isUser && intval($staff['iUserID']) > 0) {
+
+        $updateFields = [];
+        $updateFields[] = "vName='$vName'";
+        $updateFields[] = "vUName='$username'";
+        $updateFields[] = "vPhone='$vMobile'";
+        $updateFields[] = "iDepartmentID=$iDepartmentID";
+        $updateFields[] = "iReportingID=$reportingTo";
+        $updateFields[] = "iLevel=$level";
+        $updateFields[] = "cStatus='D'";
+        $updateFields[] = "cAction='AWA'";
+
+        /* ---- PASSWORD UPDATE ONLY IF SENT ---- */
+        if (!empty($_REQUEST['password'])) {
+            $password = htmlspecialchars_decode(db_input($_REQUEST['password'])); 
+            $updateFields[] = "vPassword='$password'";
         }
 
         sql_query("
-            UPDATE fleet_staff
-            SET vCode='$vCode',
-                vName='$vName',
-                vMobile='$vMobile',
-                iDepartmentID=$iDepartmentID
-            WHERE iFStaffID=$iFStaffID
+            UPDATE users_temp
+            SET " . implode(',', $updateFields) . "
+            WHERE iUserID={$staff['iUserID']}
         ");
+    }
 
-        $staff = sql_fetch_assoc(
-            sql_query("SELECT iUserID FROM fleet_staff WHERE iFStaffID=$iFStaffID")
-        );
+    echo json_encode([
+        "statusCode" => 200,
+        "message" => "Staff updated successfully"
+    ]);
+    exit;
 
-        if ($isUser && intval($staff['iUserID']) > 0) {
-            sql_query("
-                UPDATE users_temp
-                SET vName='$vName',
-                    vUName='$username',
-                    vPassword='$password',
-                    vPhone='$vMobile',
-                    iDepartmentID=$iDepartmentID,
-                    iReportingID=$reportingTo,
-                    iLevel=$level,
-                    cStatus='D',
-                    cAction='AWA'
-                WHERE iUserID={$staff['iUserID']}
-            ");
-        }
-
-        echo json_encode(["statusCode" => 200, "message" => "Staff updated successfully"]);
-        exit;
 
         /* ================= LIST ================= */
     case 'LIST':
