@@ -981,8 +981,10 @@ switch ($mode) {
         $isVehicleAssigned = !empty($booking['iVehicleID']) && intval($booking['iVehicleID']) > 0;
         $isDriverAssigned = !empty($booking['iDriverID']) && intval($booking['iDriverID']) > 0;
 
-        if(intval($booking['bookedById']) == 0){
+        if(intval(value: $booking['bookedById']) == 0){
             $bookedByName =  db_output2($booking['bookedBy']);
+        }else{
+            $bookedByName =  db_output2($booking['bookedByName']);
         }
         $requestDetails = [
             'bookingId' => intval($booking['iFleet_BookingID']),
