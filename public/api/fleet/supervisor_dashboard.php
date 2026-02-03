@@ -67,6 +67,13 @@ switch ($mode) {
         foreach ($VEHICLE_STATUS_ARR as $id => $name) {
             $vehiStatusArr[] = ['id' => $id, 'name' => $name];
         }
+          $ql = "select iFleet_LocationID, vName, vLat,vLong from fleet_location order by vName";
+        $rl = sql_query($ql, "supervisor_dashboard.77");
+        if (sql_num_rows($rl)) {
+            while ($lrow = sql_fetch_assoc($rl)) {
+                $LOCATION_ARR[] = array("ID" => $lrow['iFleet_LocationID'], "NAME" => $lrow['vName'], "LAT" => $lrow['vLat'], "LONG" => $lrow['vLong']);
+            }
+        }
 
         $optArr = [
             "requestTypeArr" => $requestTypeArr,
@@ -75,6 +82,7 @@ switch ($mode) {
             "vehiTypeArr" => $vehiTypeArr,
             "driverTypeArr" => $vehiTypeArr,
             "vehiStatusArr" => $vehiStatusArr,
+            "locationArr" => $LOCATION_ARR,
             "refreshRequestStreamTime" => (int) $refreshRequestStreamTime,
             "refreshVehicleComponentTime" => (int) $refreshVehicleComponentTime,
             "refreshActivityTimelineTime" => (int) $refreshActivityTimelineTime
