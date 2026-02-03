@@ -90,7 +90,7 @@ $vehicle = [
 ];
 
 $vehicle_id = GetXFromYID("SELECT iVehicleID FROM driver_vehicle_assoc WHERE iDriverID = $driverID AND cStatus='A' LIMIT 1", 'TRIPS.VEHICLE');
-$settingsQuery = "SELECT vCode, vValue FROM sys_settings WHERE vCode IN ('PING_DRIVER_LOCATION', 'DRIVERLOC_PING_DURATION')";
+$settingsQuery = "SELECT vCode, vValue FROM sys_settings WHERE vCode IN ('PING_DRIVER_LOCATION', 'DRIVERLOC_PING_DURATION', 'TRIP_START_TIME')";
 $settingsResult = sql_query($settingsQuery);
 
 $settings = [];
@@ -100,12 +100,20 @@ while ($row = sql_fetch_assoc($settingsResult)) {
 
 $pingDriverLocation = $settings['PING_DRIVER_LOCATION'] ?? 'N';
 $pingDuration = $settings['DRIVERLOC_PING_DURATION'] ?? null;
+$tripStartHours = (int)($settings['TRIP_START_TIME'] ?? 0);
 
 if ($pingDriverLocation === 'Y') {
     $pingDuration = (int)$pingDuration;
 } else {
     $pingDuration = null;
 }
+
+$pickupTime = strtotime($row["vPickUpTime"]);
+$currentTime = time();
+
+$hoursDiff = ($pickupTime - $currentTime) / 3600;
+
+$buttonStatus = ($hoursDiff <= $tripStartHours && $hoursDiff >= 0) ? "enabled" : "disabled";
 
 while ($row = sql_fetch_assoc($res)) {
 
@@ -126,6 +134,7 @@ while ($row = sql_fetch_assoc($res)) {
         "to"   => $row["toLocation"],
         "type" => $row["cBookingFor"] == 'G' ? 'Guest' : 'Staff',
         "active" => true,
+        "buttonStatus" => $buttonStatus
 
     ];
 }
