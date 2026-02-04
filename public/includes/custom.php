@@ -536,7 +536,7 @@ function SendConfirmationMessage($to, $name, $from_palce, $date)
     // Close the cURL session
     curl_close($ch);
 
-    echo  $response;
+    return  $response;
 }
 
 function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num,$driver_contact)
@@ -592,6 +592,6 @@ function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num,$driver
     // Close the cURL session
     curl_close($ch);
 
-    echo  $response;
+    return  $response;
 }
 ?>
