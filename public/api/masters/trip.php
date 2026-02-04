@@ -31,6 +31,8 @@ switch ($mode) {
         $fromDate = $_REQUEST['fromDate'] ?? '';
         $toDate = $_REQUEST['toDate'] ?? '';
         $routeID = intval($_REQUEST['routeID'] ?? 0);
+         $driverID =  isset($_REQUEST['driverID']) ? intval($_REQUEST['driverID'] ?? 0) : 0;
+          $vendorID = isset($_REQUEST['vendorID']) ? intval($_REQUEST['vendorID'] ?? 0) : 0;
 
         // Build WHERE conditions
         $whereConditions = ["t.cStatus != 'X'"];
@@ -45,6 +47,12 @@ switch ($mode) {
 
         if ($routeID > 0) {
             $whereConditions[] = "t.iRouteID = $routeID";
+        }
+         if ($driverID > 0) {
+            $whereConditions[] = "t.iDriverID = $driverID";
+        }
+         if ($vendorID > 0) {
+            $whereConditions[] = "t.iVendorID = $vendorID";
         }
 
         $whereClause = implode(' AND ', $whereConditions);

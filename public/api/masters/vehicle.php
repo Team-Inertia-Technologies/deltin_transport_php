@@ -324,7 +324,7 @@ foreach ($VEHICLE_SERVICE_TYPE as $id => $label) {
         $touTax = db_input($_REQUEST['touTax'] ?? ''); // Tourist tax (if needed)
         $perNum = db_input($_REQUEST['perNum'] ?? ''); // Permit number
         $perNumExpiry = db_input($_REQUEST['perNumExpiry'] ?? ''); // Tourist permit expiry date
-        $cServiceType = db_input($_REQUEST['serviceType'] ?? ''); // Service type
+         $cServiceType = isset($_REQUEST['serviceType']) ? db_input($_REQUEST['serviceType']) : ''; 
 
         if ($id <= 0) {
             echo json_encode([
@@ -452,7 +452,7 @@ foreach ($VEHICLE_SERVICE_TYPE as $id => $label) {
 
         $perNum = db_input($_REQUEST['perNum'] ?? ''); // Permit number
         $perNumExpiry = db_input($_REQUEST['perNumExpiry'] ?? ''); // Tourist permit expiry date
-        $cServiceType = db_input($_REQUEST['serviceType'] ?? ''); // Service type
+        $cServiceType = isset($_REQUEST['serviceType']) ? db_input($_REQUEST['serviceType']) : ''; // Service type
         $cStatus = 'A'; // Default active status
 
         // Basic validation
