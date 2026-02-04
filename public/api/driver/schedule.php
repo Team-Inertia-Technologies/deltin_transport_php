@@ -26,6 +26,19 @@ $userid = DecodeParam($token);
 $stars = isset($request->stars) ? intval($request->stars) : 0;
 $dateID = isset($request->dateID) ? trim($request->dateID) : '';
 
+if ($dateID == 1) {
+    $dateFilter = "AND fb.vPickUpTime >= CURDATE() AND fb.vPickUpTime < CURDATE() + INTERVAL 1 DAY";
+} elseif ($dateID == 2) {
+    $dateFilter = "AND fb.vPickUpTime >= CURDATE() - INTERVAL 1 DAY AND fb.vPickUpTime < CURDATE()";
+} elseif ($dateID == 3) {
+    $dateFilter = "AND fb.vPickUpTime >= CURDATE() - INTERVAL 7 DAY";
+} elseif ($dateID == 4) {
+    $dateFilter = "AND fb.vPickUpTime >= CURDATE() - INTERVAL 30 DAY";
+} elseif ($dateID == 5) {
+    $dateFilter = "";
+}
+
+
 
 // -------------------- VERIFY TOKEN --------------------
 $q = "SELECT iDriverID, vName FROM driver WHERE iDriverID='$userid' AND cStatus='A'";
@@ -62,6 +75,7 @@ SELECT
 FROM fleet_booking fb
 WHERE 
     fb.cType IN ('P', 'C')
+    {$dateFilter}
     AND (
         fb.iDriverID = '{$driverID}' 
     )
@@ -130,23 +144,23 @@ $response = [
         "scheduleList" => $trips,
         "dateFilter" => [
             [
-                "id" => "",
+                "id" => 1,
                 "lable" => "today"
             ],
             [
-                "id" => "",
+                "id" => 2,
                 "lable" => "Yesterday"
             ],
             [
-                "id" => "",
+                "id" => 3,
                 "lable" => "Last 7 days"
             ],
             [
-                "id" => "",
+                "id" => 4,
                 "lable" => "Last 30 Days"
             ],
             [
-                "id" => "",
+                "id" => 5,
                 "lable" => "All time"
             ]
         ],
