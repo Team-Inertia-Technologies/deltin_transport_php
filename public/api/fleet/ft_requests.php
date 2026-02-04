@@ -574,8 +574,8 @@ switch ($mode) {
         } else {
             $date = date('d/m/Y', strtotime($vPickUpTime));
 
-            // SendConfirmationMessage($vMobileNo, db_input($vName), $vPickUpTime, $date);
-            //  sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
+            SendConfirmationMessage($vMobileNo, db_input($vName), $vPickUpTime, $date);
+             sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
 
         }
 
@@ -1450,8 +1450,8 @@ switch ($mode) {
             exit;
         } else {
 
-            //    SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $driverData['vMobileNum']);
-            //   sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
+               SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $driverData['vMobileNum']);
+              sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
 
         }
 
