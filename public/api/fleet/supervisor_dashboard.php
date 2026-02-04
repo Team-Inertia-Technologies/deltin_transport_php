@@ -1813,6 +1813,7 @@ switch ($mode) {
 
         $vehiType = $_REQUEST['vehiType'] ?? 0;
         $vehiCat = $_REQUEST['vehiCat'] ?? 0;
+         $status = $_REQUEST['status'] ?? '';
         $CATEGORY_ARR = GetXArrFromYID("select iVCatID,vName from vehicle_category ", "3");
         $filters = [];
 
@@ -1823,11 +1824,21 @@ switch ($mode) {
         if ($vehiCat > 0) {
             $filters[] = "v.iCatID = '" . intval($vehiCat) . "'";
         }
+        if ($status) {
+            if($status == 'A'){
+  $filters[] = "d.cAvailable  = 'Y'";
+            }else{
+                  $filters[] = "d.cAvailable  = 'N'";
+            }
+          
+        }
 
         $filterSQL = '';
         if (!empty($filters)) {
             $filterSQL = ' AND ' . implode(' AND ', $filters);
         }
+        
+       
 
         $sql = "
         SELECT 
