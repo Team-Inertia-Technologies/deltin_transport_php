@@ -19,7 +19,6 @@ $request = json_decode(file_get_contents("php://input"));
 
 $token = trim($request->token ?? '');
 $mode  = strtoupper(trim($request->mode ?? ''));
-$VehicleID = isset($request->vehicleID) && is_numeric($request->vehicleID) ? (int)$request->vehicleID : 0;
 
 if (!$token) {
     http_response_code(400);
@@ -41,9 +40,6 @@ if (!in_array($mode, ['SINGLE', 'ALL'])) {
     exit;
 }
 
-/* =========================
-   DRIVER ID HANDLING
-========================= */
 $driverIds = [];
 
 if ($mode === 'SINGLE') {
@@ -62,7 +58,7 @@ if ($mode === 'SINGLE') {
 
     $driverIds[] = $driverId;
 
-} else { // MODE = ALL
+} else {
 
     if (
         empty($request->driver_ids) ||
@@ -95,19 +91,28 @@ if ($mode === 'SINGLE') {
     }
 }
 
-/* =========================
-   SIGN OUT DRIVERS
-========================= */
 $signedOut = [];
 $failed    = [];
 $now = NOW;
+$vehicleIds = [];
+
+if (!empty($request->vehicle_ids) && is_array($request->vehicle_ids)) {
+    foreach ($request->vehicle_ids as $vid) {
+        $vid = intval($vid);
+        if ($vid > 0) {
+            $vehicleIds[] = $vid;
+        }
+    }
+}
+
 foreach ($driverIds as $driverId) {
 
     $sql = "UPDATE driver SET dtLoggedOut = '$now', dtLoggedIn = NULL WHERE iDriverID = {$driverId}";
     $result = sql_query($sql);
     if ($result && sql_affected_rows() > 0) {
-		if ($VehicleID > 0) {
-			sql_query("UPDATE driver_vehicle_assoc set cStatus = 'X' WHERE iDriverID = $driverId AND iVehicleID = $VehicleID AND cStatus = 'A'");
+		if (!empty($vehicleIds)) {
+			$vehicleList = implode(',', $vehicleIds);
+			sql_query("UPDATE driver_vehicle_assoc SET cStatus = 'X' WHERE iDriverID = {$driverId} AND iVehicleID IN ($vehicleList) AND cStatus = 'A' ");
 		}
         $signedOut[] = $driverId;
     } else {
