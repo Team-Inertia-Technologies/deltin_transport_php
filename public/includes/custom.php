@@ -510,7 +510,7 @@ function SendConfirmationMessage($to, $name, $from_palce, $date)
         'kookoo_id' => 'OZNTLWA:918806660117',
         'type' => 'template',
         'template' => [
-            'name' => 'rmflightescalation',
+            'name' => 'transport_confirmation_pending',
             'language' => 'en_US',
             'parameters' => [
                 '1' => $name,
@@ -536,7 +536,7 @@ function SendConfirmationMessage($to, $name, $from_palce, $date)
     // Close the cURL session
     curl_close($ch);
 
-    echo  $response;
+    return  $response;
 }
 
 function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num,$driver_contact)
@@ -565,7 +565,7 @@ function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num,$driver
         'kookoo_id' => 'OZNTLWA:918806660117',
         'type' => 'template',
         'template' => [
-            'name' => 'rmflightescalation',
+            'name' => 'transport_driver_assigned',
             'language' => 'en_US',
             'parameters' => [
                 '1' => $name,
@@ -592,6 +592,6 @@ function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num,$driver
     // Close the cURL session
     curl_close($ch);
 
-    echo  $response;
+    return  $response;
 }
 ?>

@@ -57,6 +57,7 @@ SELECT DISTINCT
     d.dtLoggedIn,
     d.vName AS name,
     d.vMobileNum AS mobile,
+    v.iVehicleID,
     v.vRnum AS vehicle,
     vc.vName AS vehicleName,
 
@@ -101,6 +102,7 @@ while ($row = sql_fetch_assoc($res)) {
         "dateTime"         => $dateTime,
         "name"             => db_output2($row['name']),
         "mobile"           => $row['mobile'],
+        "vehicle_ids"       => intval($row['iVehicleID']),
         "vehicle"          => $row['vehicle'] ?: "",
         "vehicleName"      => db_output2($row['vehicleName'] ?: ""),
         "status"           => $row['status'],

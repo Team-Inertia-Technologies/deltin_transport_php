@@ -37,7 +37,8 @@ switch ($mode) {
         $TOTAL_DRIVER_COUNT = GetXFromYID("select count(*) from driver where cStatus = 'A' and dExpiry > '$TODAY'");
 
         $AVAILABLE_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where iVehicleID NOT IN (select iVehicleID from fleet_booking where cType NOT IN ('C','N') and iVehicleID IS NOT NULL)");
-        $AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where iDriverID NOT IN (select iDriverID from fleet_booking where cType NOT IN ('C','N') and iDriverID IS NOT NULL)");
+        //$AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where iDriverID NOT IN (select iDriverID from fleet_booking where cType NOT IN ('C','N') and iDriverID IS NOT NULL)");
+        $AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where dtLoggedIn IS NOT NULL and cStatus = 'A'");
 
         $refreshRequestStreamTime = GetXFromYID("select vValue from sys_settings where vCode = 'REQSTREAM_PING_DURATION'");
         $refreshVehicleComponentTime = GetXFromYID("select vValue from sys_settings where vCode = 'VEHICLECOMPONENT_PING_DURATION'");
@@ -67,6 +68,13 @@ switch ($mode) {
         foreach ($VEHICLE_STATUS_ARR as $id => $name) {
             $vehiStatusArr[] = ['id' => $id, 'name' => $name];
         }
+        $ql = "select iFleet_LocationID, vName, vLat,vLong from fleet_location order by vName";
+        $rl = sql_query($ql, "supervisor_dashboard.77");
+        if (sql_num_rows($rl)) {
+            while ($lrow = sql_fetch_assoc($rl)) {
+                $LOCATION_ARR[] = array("ID" => $lrow['iFleet_LocationID'], "NAME" => $lrow['vName'], "LAT" => $lrow['vLat'], "LONG" => $lrow['vLong']);
+            }
+        }
 
         $optArr = [
             "requestTypeArr" => $requestTypeArr,
@@ -75,6 +83,7 @@ switch ($mode) {
             "vehiTypeArr" => $vehiTypeArr,
             "driverTypeArr" => $vehiTypeArr,
             "vehiStatusArr" => $vehiStatusArr,
+            "locationArr" => $LOCATION_ARR,
             "refreshRequestStreamTime" => (int) $refreshRequestStreamTime,
             "refreshVehicleComponentTime" => (int) $refreshVehicleComponentTime,
             "refreshActivityTimelineTime" => (int) $refreshActivityTimelineTime
@@ -219,7 +228,7 @@ switch ($mode) {
                 $type_status = 'D';
             }
             $bookedByName = db_output2($FLEET_STAFF_ARR[$row['iBookedBy']] ?? '');
-            if($row['iBookedBy'] == '0'){
+            if ($row['iBookedBy'] == '0') {
                 $bookedByName = db_output2($row['vBookedBy'] ?? '');
             }
 
@@ -475,6 +484,8 @@ switch ($mode) {
             $lastAssignedTime = null;
             $lastAssigned = false;
             $nextTripTime = null;
+            $bookingStatus = null;
+            $driverStatus = false;
 
             // BOOKINGS array contains future trips, get the earliest one as next trip
             if (!empty($vehData['BOOKINGS'])) {
@@ -484,7 +495,14 @@ switch ($mode) {
                     return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
                 });
                 $nextTripTime = $bookings[0]['PICKUP_TIME'];
+                $bookingStatus = $bookings[0]['STATUS'];
             }
+
+            $driverLoggedIn = GetXFromYID("SELECT dtLoggedIn  FROM driver WHERE iDriverID = " . (int) $vehData['DRIVER_ID'] . " AND dtLoggedIn IS NOT NULL");
+            if (!empty($driverLoggedIn)) {
+                $driverStatus = true;
+            }
+
 
             $vehicleDataFormatted = [
                 'id' => intval($vehicleID),
@@ -502,7 +520,8 @@ switch ($mode) {
                 'driverType' => $vehData['DRIVER_TYPE'] ?? '',
                 'nextTripTime' => $nextTripTime,
                 'disposal' => false,
-                'status' => 'A',
+                'status' => $bookingStatus,
+                'driverStatus' => $driverStatus,
                 //'bookings' => $vehData['BOOKINGS'] // Include booking details for reference
             ];
 
@@ -1816,6 +1835,7 @@ switch ($mode) {
             d.vLat,
             d.vLong,
             d.dtPinned,
+            d.vName as driverName, d.vMobileNum AS driverMobile,
             v.vRnum AS vehicleRegNo,
             v.iCatID as catID
         FROM driver d
@@ -1847,6 +1867,8 @@ switch ($mode) {
         while ($row = sql_fetch_assoc($res)) {
             $rowData[] = [
                 "iVehicleID" => intval($row['iVehicleID']),
+                "driverName" => db_output2($row['driverName']),
+                "driverMobile" => db_output2($row['driverMobile']),
                 "vLat" => $row['vLat'],
                 "vLong" => $row['vLong'],
                 "vehicleRegNo" => $row['vehicleRegNo'],

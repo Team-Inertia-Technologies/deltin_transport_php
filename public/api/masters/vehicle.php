@@ -118,6 +118,10 @@ switch ($mode) {
                 'name' => $vendorRow['vName']
             ];
         }
+$serviceOpt = [];
+foreach ($VEHICLE_SERVICE_TYPE as $id => $label) {
+    $serviceOpt[] = ['id' => $id, 'title' => $label];
+}
 
         echo json_encode([
             "statusCode" => 200,
@@ -127,7 +131,8 @@ switch ($mode) {
                 'availableOpt' => $availableOpt,
                 'driverTypeOpt' => $driverTypeOpt,
                 'categoryOpt' => $categoryOpt,
-                'vendorOpt' => $vendorOpt
+                'vendorOpt' => $vendorOpt,
+                'serviceOpt' => $serviceOpt
             ]
         ]);
         break;
@@ -135,7 +140,7 @@ switch ($mode) {
     // ===================== CASE 2: LIST =====================
     case 'LIST':
 
-        $sql = "SELECT v.iVehicleID, v.iVendorID, v.iSeats, v.vRnum, v.iType,
+        $sql = "SELECT v.iVehicleID, v.iVendorID, v.iSeats, v.vRnum, v.iType,v.	cServiceType,
                        v.fRate, vn.vName as vendor_name, c.iCapacity as capacity,c.vName as catName 
                 FROM vehicle v
                 LEFT JOIN vendor vn ON v.iVendorID = vn.iVendorID AND vn.cStatus = 'A'
@@ -180,7 +185,8 @@ switch ($mode) {
                 'iType' => $driverTypeID,
                 'driverType' => $driverTypeName,
                 'availabilityID' => $availability,
-                'availability' => $availabilityNames
+                'availability' => $availabilityNames,
+                'serviceType' => $row['cServiceType'] ?? ''
             ];
             $rowData[] = $vehicle;
         }
@@ -208,8 +214,8 @@ switch ($mode) {
             exit;
         }
 
-        // Optimized query with JOINs to get vendor and category data in single query
-        $sql = "SELECT v.iVehicleID, v.vName, v.vRnum, v.iCatID, v.iVendorID, v.iSeats, v.iType,
+
+        $sql = "SELECT v.iVehicleID, v.vName, v.vRnum, v.iCatID, v.iVendorID, v.iSeats, v.iType,cServiceType, 
                        v.dRegistration, v.dExpiry, v.vTouristPerNo, v.dTouristPerNoExpiry, v.cStatus, 
                        vn.vName as vendor_name, c.vName as category_name
                 FROM vehicle v
@@ -269,6 +275,11 @@ switch ($mode) {
                 'name' => $vendorRow['vName']
             ];
         }
+        $serviceOpt = [];
+foreach ($VEHICLE_SERVICE_TYPE as $id => $label) {
+    $serviceOpt[] = ['id' => $id, 'title' => $label];
+}
+
 
         echo json_encode([
             "statusCode" => 200,
@@ -288,12 +299,14 @@ switch ($mode) {
                     'availability' => $availability,
                     'selectedCategoryType' => intval($row['iCatID'] ?? 0),
                     'selectedVendor' => intval($row['iVendorID'] ?? 0),
-                    'cStatus' => $row['cStatus'] ?? 'A'
+                    'cStatus' => $row['cStatus'] ?? 'A',
+                    'serviceType' => $row['cServiceType'] ?? ''
                 ],
                 'availableOpt' => $availableOpt,
                 'driverTypeOpt' => $driverTypeOpt,
                 'categoryOpt' => $categoryOpt,
-                'vendorOpt' => $vendorOpt
+                'vendorOpt' => $vendorOpt,
+                'serviceOpt' => $serviceOpt
             ]
         ]);
         break;
@@ -311,6 +324,7 @@ switch ($mode) {
         $touTax = db_input($_REQUEST['touTax'] ?? ''); // Tourist tax (if needed)
         $perNum = db_input($_REQUEST['perNum'] ?? ''); // Permit number
         $perNumExpiry = db_input($_REQUEST['perNumExpiry'] ?? ''); // Tourist permit expiry date
+         $cServiceType = isset($_REQUEST['serviceType']) ? db_input($_REQUEST['serviceType']) : ''; 
 
         if ($id <= 0) {
             echo json_encode([
@@ -359,6 +373,7 @@ switch ($mode) {
                     iCatID = $category,
                     iVendorID = $vendor,
                     iType = $type,
+                    cServiceType = '" . db_input($cServiceType) . "',
                     dRegistration = " . (!empty($dateOfReg) ? "'" . db_input($dateOfReg) . "'" : "NULL") . ",
                     dExpiry = " . (!empty($dateOfExp) ? "'" . db_input($dateOfExp) . "'" : "NULL") . ",
                     vTouristPerNo = '" . db_input($perNum) . "',
@@ -437,6 +452,7 @@ switch ($mode) {
 
         $perNum = db_input($_REQUEST['perNum'] ?? ''); // Permit number
         $perNumExpiry = db_input($_REQUEST['perNumExpiry'] ?? ''); // Tourist permit expiry date
+        $cServiceType = isset($_REQUEST['serviceType']) ? db_input($_REQUEST['serviceType']) : ''; // Service type
         $cStatus = 'A'; // Default active status
 
         // Basic validation
@@ -476,8 +492,8 @@ switch ($mode) {
         $iVehicleID = NextID('iVehicleID', 'vehicle');
 
         // Using the newly added database fields
-        $sql = "INSERT INTO vehicle (iVehicleID, vRnum, iCatID, iVendorID, iType, dRegistration, dExpiry, vTouristPerNo, dTouristPerNoExpiry, cStatus) 
-                VALUES ($iVehicleID, '" . db_input($vehiNum) . "', $category, $vendor, $type, 
+        $sql = "INSERT INTO vehicle (iVehicleID, vRnum, iCatID, iVendorID, iType, cServiceType, dRegistration, dExpiry, vTouristPerNo, dTouristPerNoExpiry, cStatus) 
+                VALUES ($iVehicleID, '" . db_input($vehiNum) . "', $category, $vendor, $type, '" . db_input($cServiceType) . "',
                     " . (!empty($dateOfReg) ? "'" . db_input($dateOfReg) . "'" : "NULL") . ", 
                     " . (!empty($dateOfExp) ? "'" . db_input($dateOfExp) . "'" : "NULL") . ", 
                     '" . db_input($perNum) . "', 
