@@ -44,7 +44,7 @@ $driverIds = [];
 
 if ($mode === 'SINGLE') {
 
-    $driverId = intval($request->driver_id ?? 0);
+    $driverId = intval($request->driver_ids ?? 0);
 
     if ($driverId <= 0) {
         http_response_code(400);
