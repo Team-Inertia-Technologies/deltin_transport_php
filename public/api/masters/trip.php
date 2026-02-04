@@ -71,6 +71,7 @@ switch ($mode) {
                     vc.iCapacity as vehicleCapacity,
                     tva.iDriverID,
                     d.vName as driverName,
+                    vn.iVendorID as vendorID,
                     vn.vName as vendorName
                 FROM st_trips t
                 LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID
@@ -102,7 +103,9 @@ switch ($mode) {
                 "vehicleID" => (int) ($row['iVehicleID'] ?? 0),
                 "vehicleNumber" => $row['vehicleNumber'] ?? '',
                 "driverID" => (int) ($row['iDriverID'] ?? 0),
-                "driverName" => db_output2($row['driverName']) ?? ''
+                "driverName" => db_output2($row['driverName']) ?? '',
+                "vendorName" => db_output2($row['vendorName']) ?? '',
+                "vendorID" => (int) ($row['vendorID'] ?? 0)
             ];
 
             $trips[$tripID] = $trip;
