@@ -49,7 +49,7 @@ switch ($mode) {
 
         $whereClause = implode(' AND ', $whereConditions);
 
-        // Modified query to get trips with vehicle details using association table
+       
         $sql = "SELECT 
                     t.iTripID as id,
                     t.dtTrip,
@@ -62,11 +62,13 @@ switch ($mode) {
                     v.vRnum as vehicleNumber,
                     vc.iCapacity as vehicleCapacity,
                     tva.iDriverID,
-                    d.vName as driverName
+                    d.vName as driverName,
+                    vn.vName as vendorName
                 FROM st_trips t
                 LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID
                 LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
                 LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
+                LEFT JOIN vendor vn ON vn.iVendorID  = v.iVendorID
                 LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                 LEFT JOIN driver d ON tva.iDriverID = d.iDriverID AND d.cStatus = 'A'
                 WHERE $whereClause
@@ -145,6 +147,33 @@ switch ($mode) {
                 "name" => db_output2($routeRow['vName'])
             ];
         }
+         $driverSQL = "SELECT iDriverID, vName FROM driver WHERE cStatus = 'A' ORDER BY vName";
+        $driverRes = sql_query($driverSQL);
+
+        $driverOpt = [
+            ["id" => 0, "name" => "All"]
+        ];
+
+        while ($driverRow = sql_fetch_assoc($driverRes)) {
+            $driverOpt[] = [
+                "id" => (int) $driverRow['iDriverID'],
+                "name" => db_output2($driverRow['vName'])
+            ];
+        }
+
+             $vendorSQL = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
+        $vendorRes = sql_query($vendorSQL);
+
+        $vendorOpt = [
+            ["id" => 0, "name" => "All"]
+        ];
+
+        while ($vendorRow = sql_fetch_assoc($vendorRes)) {
+            $vendorOpt[] = [
+                "id" => (int) $vendorRow['iVendorID'],
+                "name" => db_output2($vendorRow['vName'])
+            ];
+        }
 
         echo json_encode([
             "data" => [
@@ -152,7 +181,9 @@ switch ($mode) {
                 "routesOpt" => $routesOpt,
                 "fromDate" => $fromDate,
                 "toDate" => $toDate,
-                "routeID" => $routeID
+                "routeID" => $routeID,
+                "driverOpt" => $driverOpt,
+                "vendorOpt" => $vendorOpt
             ],
             "statusCode" => 200
         ]);
