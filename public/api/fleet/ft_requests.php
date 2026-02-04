@@ -494,7 +494,7 @@ switch ($mode) {
         $iVehicleCatID = intval($_REQUEST['vehiCat'] ?? 0);
         $vInstructions = db_input($_REQUEST['intruc'] ?? '');
         $vRemarks = db_input($_REQUEST['remarks'] ?? '');
-   $vLandmark = db_input($_REQUEST['landMark'] ?? '');
+        $vLandmark = db_input($_REQUEST['landMark'] ?? '');
         // $tripType = intval($_REQUEST['tripType'] ?? 0);
         // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
         //    $cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true') ? 'Y' : 'N';
@@ -574,9 +574,8 @@ switch ($mode) {
         } else {
             $date = date('d/m/Y', strtotime($vPickUpTime));
 
-            SendConfirmationMessage($vMobileNo, db_input($vName), $vPickUpTime, $date);
-             sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
-
+            SendConfirmationMessage($vMobileNo, db_input($vName), $vPickUpLocation, $date);
+            sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
         }
 
         LogBookingCreated($iFleet_BookingID1, $vName, $user_id);
@@ -736,9 +735,9 @@ switch ($mode) {
 
         $cBookingFor = db_input($_REQUEST['bookedFor'] ?? '');
         $iBookedBy = db_input($_REQUEST['bookedBy'] ?? '');
-        $bookedByName= db_input($_REQUEST['bookedByName'] ?? '');
-        if($iBookedBy > 0){
-        $bookedByName= '';
+        $bookedByName = db_input($_REQUEST['bookedByName'] ?? '');
+        if ($iBookedBy > 0) {
+            $bookedByName = '';
         }
         $iFleet_TrvPurID = intval($_REQUEST['travelPurpose'] ?? 0);
         $iFleet_TrvTypeID = intval($_REQUEST['travelType'] ?? 0);
@@ -768,7 +767,7 @@ switch ($mode) {
         if (!empty($dropLocData['lat']) && !empty($dropLocData['lng'])) {
             $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
         }
-   $vLandmark = db_input($_REQUEST['landMark'] ?? '');
+        $vLandmark = db_input($_REQUEST['landMark'] ?? '');
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
 
         $iVehicleCatID = intval($_REQUEST['vehiCat'] ?? 0);
@@ -982,9 +981,9 @@ switch ($mode) {
         $isVehicleAssigned = !empty($booking['iVehicleID']) && intval($booking['iVehicleID']) > 0;
         $isDriverAssigned = !empty($booking['iDriverID']) && intval($booking['iDriverID']) > 0;
 
-        if(intval(value: $booking['bookedById']) == 0){
+        if (intval(value: $booking['bookedById']) == 0) {
             $bookedByName =  db_output2($booking['bookedBy']);
-        }else{
+        } else {
             $bookedByName =  db_output2($booking['bookedByName']);
         }
         $requestDetails = [
@@ -1020,7 +1019,7 @@ switch ($mode) {
                 'mobile' => db_output2($booking['assignedDriverMobile'] ?? '')
             ] : null,
             'tripStatus' => isset($booking['currentStatus']) ? $booking['currentStatus'] : 'N',
-           'bookingStatus' => isset($booking['bookingStatus']) ? $booking['bookingStatus'] : 'C',
+            'bookingStatus' => isset($booking['bookingStatus']) ? $booking['bookingStatus'] : 'C',
             // 'tripStatus' => isset($FLEET_TRIP_STATUS[$booking['currentStatus']]) ? $FLEET_TRIP_STATUS[$booking['currentStatus']] : 'Not Started'
             // "status" => $booking['currentStatus']
         ];
@@ -1340,7 +1339,7 @@ switch ($mode) {
         }
 
         // Check if booking exists and is active
-        $bookingCheckSql = "SELECT iFleet_BookingID, vName, vPickUpTime FROM fleet_booking 
+        $bookingCheckSql = "SELECT iFleet_BookingID, vName,vMobileNo, vPickUpTime FROM fleet_booking 
                            WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
         $bookingCheckRes = sql_query($bookingCheckSql);
 
@@ -1450,13 +1449,21 @@ switch ($mode) {
             exit;
         } else {
 
-               SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $driverData['vMobileNum']);
-              sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
+            $vMobileNo = $bookingData['vMobileNo'] ?? '';
+            $vName     = db_output2($bookingData['vName']) ?? '';
+            $dtAdded   = NOW;
 
+            // Send WhatsApp
+            SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $driverData['vMobileNum']);
+
+            sql_query("
+        INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)VALUES ('C', '+91', '$vMobileNo', 'WA', '$dtAdded', $user_id)
+");
+  LogVehicleAllocated($iFleet_BookingID, $iVehicleID, $iDriverID, $vName, $user_id);
         }
 
         // Log vehicle allocation
-        LogVehicleAllocated($iFleet_BookingID, $iVehicleID, $iDriverID, $bookingData['vName'], $user_id);
+      
 
         // $assocCheckSql = "SELECT iDVAssocID FROM driver_vehicle_assoc 
         //                  WHERE iDriverID = $iDriverID 
