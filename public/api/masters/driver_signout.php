@@ -44,14 +44,37 @@ $driverIds = [];
 
 if ($mode === 'SINGLE') {
 
-    $driverId = intval($request->driver_ids ?? 0);
+    if (
+        empty($request->driver_ids) ||
+        !is_array($request->driver_ids)
+    ) {
+        http_response_code(400);
+        header('Content-Type: application/json');
+        echo json_encode([
+            "statusCode" => 400,
+            "error" => ["message" => "driver_ids must be an array with one driver ID"]
+        ]);
+        exit;
+    }
+
+    if (count($request->driver_ids) !== 1) {
+        http_response_code(400);
+        header('Content-Type: application/json');
+        echo json_encode([
+            "statusCode" => 400,
+            "error" => ["message" => "SINGLE mode accepts exactly one driver ID"]
+        ]);
+        exit;
+    }
+
+    $driverId = intval($request->driver_ids[0]);
 
     if ($driverId <= 0) {
         http_response_code(400);
-		header('Content-Type: application/json');
+        header('Content-Type: application/json');
         echo json_encode([
             "statusCode" => 400,
-            "error" => ["message" => "Invalid driver_id"]
+            "error" => ["message" => "Invalid driver ID"]
         ]);
         exit;
     }
