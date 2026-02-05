@@ -113,7 +113,7 @@ $currentTime = time();
 
 $hoursDiff = ($pickupTime - $currentTime) / 3600;
 
-$buttonStatus = ($hoursDiff <= $tripStartHours && $hoursDiff >= 0) ? "enabled" : "disabled";
+$buttonStatus = ($hoursDiff <= $tripStartHours && $hoursDiff >= $tripStartHours) ? "enabled" : "disabled";
 
 while ($row = sql_fetch_assoc($res)) {
 
