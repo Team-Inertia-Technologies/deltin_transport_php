@@ -1867,6 +1867,11 @@ LEFT JOIN vehicle_category vc ON vc.iVCatID = v.iCatID
 
         $rowData = [];
         while ($row = sql_fetch_assoc($res)) {
+            if ($row['status'] == 'N') {
+                $status = 'U';
+            } else {
+                $status = 'A';
+            }
             $rowData[] = [
                 "iVehicleID" => intval($row['iVehicleID']),
                 "driverName" => db_output2($row['driverName']),
@@ -1876,7 +1881,7 @@ LEFT JOIN vehicle_category vc ON vc.iVCatID = v.iCatID
                 "vehicleRegNo" => $row['vehicleRegNo'],
                 "catID" => intval($row['catID']),
                 "catName" => $CATEGORY_ARR[$row['catID']] ?? '',
-                "status"       => $row['status']
+                "status"       => $status
             ];
         }
 
