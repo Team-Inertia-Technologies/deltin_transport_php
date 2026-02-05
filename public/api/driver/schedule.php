@@ -131,7 +131,55 @@ if (empty($trips)) {
         "statusCode" => 200,
         "message" => "No record found for this driver.",
         "data" => [
-            "scheduleList" => []
+            "scheduleList" => [],
+            "dateFilter" => [
+                [
+                    "id" => 1,
+                    "lable" => "today"
+                ],
+                [
+                    "id" => 2,
+                    "lable" => "Yesterday"
+                ],
+                [
+                    "id" => 3,
+                    "lable" => "Last 7 days"
+                ],
+                [
+                    "id" => 4,
+                    "lable" => "Last 30 Days"
+                ],
+                [
+                    "id" => 5,
+                    "lable" => "All time"
+                ]
+            ],
+            "starFilter" => [
+                [
+                    "id" => 0,
+                    "lable" => "All Ratings"
+                ],
+                [
+                    "id" => 1,
+                    "lable" => "1 Star"
+                ],
+                [
+                    "id" => 2,
+                    "lable" => "2 Stars"
+                ],
+                [
+                    "id" => 3,
+                    "lable" => "3 Stars"
+                ],
+                [
+                    "id" => 4,
+                    "lable" => "4 Stars"
+                ],
+                [
+                    "id" => 5,
+                    "lable" => "5 Stars"
+                ]
+            ]
         ]
     ]);
     exit;
