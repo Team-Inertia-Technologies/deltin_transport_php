@@ -71,12 +71,12 @@ if(isset($_GET['sohel']))
 }
 else
 {
-	$txtpickup_time = '2025-12-24 17:00:00';
+	$txtpickup_time = '2026-02-05 10:33:00';
 	$txtpickup_location = '1';
 	$txttype = $txtcatid = 0;
 }
 
-$RESPONSE = GetVehicle_BasedOnSearch2($txttype,$txtcatid,'Y');
+$RESPONSE = GetVehicle_BasedOnSearch2($txttype,$txtcatid,'Y','','','');
 DFA($RESPONSE);
 exit;
 ?>

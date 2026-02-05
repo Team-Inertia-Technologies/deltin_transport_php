@@ -49,10 +49,10 @@ switch ($mode) {
             $whereConditions[] = "t.iRouteID = $routeID";
         }
          if ($driverID > 0) {
-            $whereConditions[] = "t.iDriverID = $driverID";
+            $whereConditions[] = "tva.iDriverID = $driverID";
         }
          if ($vendorID > 0) {
-            $whereConditions[] = "t.iVendorID = $vendorID";
+            $whereConditions[] = "v.iVendorID = $vendorID";
         }
 
         $whereClause = implode(' AND ', $whereConditions);
