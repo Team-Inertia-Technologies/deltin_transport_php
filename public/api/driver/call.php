@@ -46,8 +46,8 @@ function triggerExotelExoMLCall($fromNumber)
     $api_key   = 'ab4f6f769ee189fa5e4d57b79789de3b987fab33a413819f';
     $api_token = '5f1f43db51a120f9027c32fbecc3de88410a92a0396c9da0';
     $sid       = 'deltacorp1';
-    $callerId = '07314852425';
-    $exoMLUrl = 'http://my.exotel.com/deltacorp1/exoml/start_voice/1175999';
+    $callerId = '09513886363';
+    $exoMLUrl = 'http://my.exotel.com/deltacorp1/exoml/start_voice/1159575';
 
     $url = "https://api.exotel.com/v1/Accounts/$sid/Calls/connect.json";
 
