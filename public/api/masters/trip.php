@@ -140,7 +140,11 @@ switch ($mode) {
                 "capacity" => $trip['capacity'],
                 "pax" => $trip['pax'],
                 "availed" => $trip['availed'],
-                "hasVehicle" => !empty($trip['vehicleNumber'])
+                "hasVehicle" => !empty($trip['vehicleNumber']),
+                 "driverID" =>  $trip['driverID'],
+                "driverName" => $trip['driverName'],
+                "vendorName" => $trip['vendorName'],
+                "vendorID" => $trip['vendorID'],
             ];
         }
 

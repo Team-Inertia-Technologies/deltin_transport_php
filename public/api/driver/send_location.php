@@ -21,13 +21,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $postdata = file_get_contents("php://input");
 $request = json_decode($postdata);
 
-$token      = trim($request->token);
-$booking_id = intval($request->id);
-$lat = floatval($request->lat);
-$long = floatval($request->log);
-$onTripRaw = $request->onTrip ?? null;
-$onTrip = filter_var($onTripRaw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-$cOnTrip = ($onTrip === true) ? 'Y' : 'N';
+$token      = trim($request->token ?? '');
+$booking_id = isset($request->id) ? intval($request->id) : 0;
+$lat        = floatval($request->lat ?? 0);
+$long       = floatval($request->log ?? 0);
+$cOnTrip = 'N';
+if (!empty($booking_id) && $booking_id > 0) {
+    $cOnTrip = 'Y';
+}
 
 if (!$token) {
     http_response_code(400);
@@ -61,7 +62,7 @@ if (!sql_num_rows($r)) {
 
 $driverID = intval($userid);
 $NOW = NOW;
-sql_query("UPDATE driver SET vLat='$lat', vLong='$long', dtPinned='$NOW' WHERE iDriverID=$driverID", 'DRIVER.LOCATION.UPDATE');
+sql_query("UPDATE driver SET vLat='$lat', vLong='$long', dtPinned='$NOW', cAvailable = '$cOnTrip' WHERE iDriverID=$driverID", 'DRIVER.LOCATION.UPDATE');
 $sql = "UPDATE driver_vehicle_assoc SET vLat = '$lat', vLong = '$long', cType = '$cOnTrip' WHERE iDriverID = $driverID";
 $res = sql_query($sql, 'DRIVER.LOCATION.UPDATE');
 if (!$res) {

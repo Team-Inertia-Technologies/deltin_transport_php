@@ -97,6 +97,11 @@ while ($row = sql_fetch_assoc($res)) {
         }
     }
 
+    $loggedInStatus = false;
+    if (!empty($row['dtLoggedIn'])) {
+        $loggedInStatus = true;
+    }
+
     $tripList[] = [
         "id"               => intval($row['iRoasterID']),
         "dateTime"         => $dateTime,
@@ -106,7 +111,8 @@ while ($row = sql_fetch_assoc($res)) {
         "vehicle"          => $row['vehicle'] ?: "",
         "vehicleName"      => db_output2($row['vehicleName'] ?: ""),
         "status"           => $row['status'],
-        "vehicleAllocated" => $row['vehicleAllocated']
+        "vehicleAllocated" => $row['vehicleAllocated'],
+        "loggedInStatus"   => $loggedInStatus
     ];
 }
 
