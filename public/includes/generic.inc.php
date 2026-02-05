@@ -5507,7 +5507,7 @@ function GetVehicle_BasedOnSearch($txtpickup_time,$txtpickup_location,$txttype=0
 		AND fb.iFleet_BookingID IS NULL;*/
 }
 
-function GetVehicle_BasedOnSearch2($txttype=0,$txtcatid=0,$show_currentstatus='N',$txtfrom_time='',$txtto_time='')
+function GetVehicle_BasedOnSearch2($txttype=0,$txtcatid=0,$show_currentstatus='N',$txtfrom_time='',$txtto_time='',$cmbstatus='')
 {
 	$arr = $arr2 = array();
 	$cond = '';
@@ -5533,7 +5533,10 @@ function GetVehicle_BasedOnSearch2($txttype=0,$txtcatid=0,$show_currentstatus='N
 		if(empty($txtfrom_time)) $txtfrom_time = NOW;
 		if(empty($txtto_time)) $txtto_time = DateTimeAdd($txtfrom_time,0,0,0,1,0,0,'Y-m-d H:i:s');
 		
-		$q2 = 'select iFleet_BookingID, iFleet_LocationID_From, iFleet_LocationID_To, vPickUpLocation, vPickUpTime, vDropLocation, vDropTime, iDriverID, iVehicleID, cDisposal, cType from fleet_booking where iVehicleID IN ('.implode(',',array_keys($arr)).') and cStatus NOT IN ("X") and vPickUpTime < "'.$txtto_time.'" and vDropTime > "'.$txtfrom_time.'" order by iVehicleID, vPickUpTime';
+		$cond2 = '';
+		if(!empty($cmbstatus)) $cond2 .= ' and cType="'.$cmbstatus.'"';
+		
+		$q2 = 'select iFleet_BookingID, iFleet_LocationID_From, iFleet_LocationID_To, vPickUpLocation, vPickUpTime, vDropLocation, vDropTime, iDriverID, iVehicleID, cDisposal, cType from fleet_booking where iVehicleID IN ('.implode(',',array_keys($arr)).') and cStatus NOT IN ("X") and vPickUpTime < "'.$txtto_time.'" and vDropTime > "'.$txtfrom_time.'"'.$cond2.' order by iVehicleID, vPickUpTime';
 		$r2 = sql_query($q2,'');
 		if(sql_num_rows($r2))
 		{
@@ -5550,7 +5553,7 @@ function GetVehicle_BasedOnSearch2($txttype=0,$txtcatid=0,$show_currentstatus='N
 		
 		if(!empty($arr2) && count($arr2))
 		{
-			$q3 = 'select iFleet_BookingID, iFleet_LocationID_From, iFleet_LocationID_To, vPickUpLocation, vPickUpTime, vDropLocation, vDropTime, iDriverID, iVehicleID, cDisposal, cType from ( select *, ROW_NUMBER() OVER ( PARTITION BY iVehicleID ORDER BY vPickUpTime ) AS rn FROM fleet_booking WHERE iVehicleID IN ('.implode(',',array_keys($arr2)).') AND cStatus NOT IN ("X") AND vPickUpTime > "'.$txtfrom_time.'" ) t WHERE rn = 1';
+			$q3 = 'select iFleet_BookingID, iFleet_LocationID_From, iFleet_LocationID_To, vPickUpLocation, vPickUpTime, vDropLocation, vDropTime, iDriverID, iVehicleID, cDisposal, cType from ( select *, ROW_NUMBER() OVER ( PARTITION BY iVehicleID ORDER BY vPickUpTime ) AS rn FROM fleet_booking WHERE iVehicleID IN ('.implode(',',array_keys($arr2)).') AND cStatus NOT IN ("X") AND vPickUpTime > "'.$txtfrom_time.'"'.$cond2.' ) t WHERE rn = 1';
 			$r3 = sql_query($q3,'');
 			if(sql_num_rows($r3))
 			{
