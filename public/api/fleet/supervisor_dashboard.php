@@ -70,6 +70,7 @@ switch ($mode) {
         }
         $ql = "select iFleet_LocationID, vName, vLat,vLong from fleet_location order by vName";
         $rl = sql_query($ql, "supervisor_dashboard.77");
+         $LOCATION_ARR = [['ID' => 0, 'NAME' => 'All', "LAT" => '', "LONG" => '']];
         if (sql_num_rows($rl)) {
             while ($lrow = sql_fetch_assoc($rl)) {
                 $LOCATION_ARR[] = array("ID" => $lrow['iFleet_LocationID'], "NAME" => $lrow['vName'], "LAT" => $lrow['vLat'], "LONG" => $lrow['vLong']);
