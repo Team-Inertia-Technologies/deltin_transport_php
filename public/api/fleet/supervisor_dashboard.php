@@ -478,7 +478,7 @@ switch ($mode) {
             $lastAssignedTime = null;
             $lastAssigned = false;
             $nextTripTime = null;
-            $bookingStatus = null;
+            $bookingStatus = 'A';
             $driverStatus = false;
 
             // BOOKINGS array contains future trips, get the earliest one as next trip
