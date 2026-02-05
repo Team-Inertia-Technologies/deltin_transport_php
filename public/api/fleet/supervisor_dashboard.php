@@ -295,9 +295,7 @@ switch ($mode) {
             while ($vrow = sql_fetch_assoc($r)) {
 
                 $VEHI_TYPE_ARR[$vrow['iVehicleID']] = array("TYPE" => $vrow['iType']);
-
             }
-
         }
 
         if (!empty($id)) {
@@ -409,9 +407,7 @@ switch ($mode) {
             while ($vrow = sql_fetch_assoc($r)) {
 
                 $VEHI_TYPE_ARR[$vrow['iVehicleID']] = array("TYPE" => $vrow['iType']);
-
             }
-
         }
 
         if (!empty($searchtxt)) {
@@ -425,13 +421,11 @@ switch ($mode) {
         if (!empty($vehitype)) {
 
             $cond .= " and v.iType = '$vehitype'";
-
         }
 
         if (!empty($drivertype)) {
 
             $cond .= " and d.iType = '$drivertype'";
-
         }
 
         if (!empty($status)) {
@@ -601,9 +595,7 @@ switch ($mode) {
                         'mob' => $row1['vMobileNum'],
                         'trips' => $row1['totalTrips']
                     ];
-
                 }
-
             }
             $tripsArr = array();
             //$q2 = "SELECT fb.iFleet_BookingID, fb.vPickupLocation, fb.vDropLocation, fb.vName, vc.vName AS vehicleType, vc.iCapacity, fb.vPickupTime, fb.vDropTime, cBookingFor FROM fleet_booking fb JOIN vehicle_category vc ON vc.iVCatID = fb.iVehicleCatID WHERE fb.iVehicleID = $vehiId ORDER BY fb.vPickupTime DESC";
@@ -749,9 +741,6 @@ switch ($mode) {
             $data['driversArr'] = $driversArr;
             $data['tripsArr'] = $tripsArr;
             $data['vehiHistoryArr'] = $LOG_DATA_ARR;
-
-
-
         }
 
 
@@ -1245,7 +1234,7 @@ switch ($mode) {
 
         // $tripType = intval($_REQUEST['tripType'] ?? 0);
         // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
-// $cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true') ? 'Y' : 'N';
+        // $cDisposal = ($_REQUEST['disposal'] === true || $_REQUEST['disposal'] === 'true') ? 'Y' : 'N';
         $cDisposal = isset($_REQUEST['disposal']) ? $_REQUEST['disposal'] : 'N';
         $vReturnTime = !empty($_REQUEST['returnTime']) ? db_input($_REQUEST['returnTime']) : null;
 
@@ -1416,7 +1405,6 @@ switch ($mode) {
             $travelDateTime = '';
             if (!empty($historyRow['travelDateTime'])) {
                 $travelDateTime = date('d-m-Y', strtotime($historyRow['travelDateTime']));
-
             }
 
             $vehicleHistory[] = [
@@ -1813,7 +1801,8 @@ switch ($mode) {
 
         $vehiType = $_REQUEST['vehiType'] ?? 0;
         $vehiCat = $_REQUEST['vehiCat'] ?? 0;
-         $status = $_REQUEST['status'] ?? '';
+        $status = $_REQUEST['status'] ?? '';
+        $keyword = isset($_REQUEST['keyword']) ? db_input($_REQUEST['keyword']) : '';
         $CATEGORY_ARR = GetXArrFromYID("select iVCatID,vName from vehicle_category ", "3");
         $filters = [];
 
@@ -1825,34 +1814,37 @@ switch ($mode) {
             $filters[] = "v.iCatID = '" . intval($vehiCat) . "'";
         }
         if ($status) {
-            if($status == 'A'){
-  $filters[] = "d.cAvailable  = 'Y'";
-            }else{
-                  $filters[] = "d.cAvailable  = 'N'";
+            if ($status == 'A') {
+                $filters[] = "d.cAvailable  = 'Y'";
+            } else {
+                $filters[] = "d.cAvailable  = 'N'";
             }
-          
         }
+        if ($keyword != '') {
+            $kw = trim($keyword);
+
+            $filters[] = "(
+        v.vRnum LIKE '%$kw%' OR
+        RIGHT(v.vRnum,4) LIKE '%$kw%' OR
+        d.vName LIKE '%$kw%' OR
+        d.vMobileNum LIKE '%$kw%' OR
+        vc.vName LIKE '%$kw%'
+    )";
+        }
+
 
         $filterSQL = '';
         if (!empty($filters)) {
             $filterSQL = ' AND ' . implode(' AND ', $filters);
         }
-        
-       
 
         $sql = "
         SELECT 
-            d.iVehicleID,
-            d.vLat,
-            d.vLong,
-            d.dtPinned,
-            d.vName as driverName, d.vMobileNum AS driverMobile,
-            v.vRnum AS vehicleRegNo,
-            v.iCatID as catID
+            d.iVehicleID, d.vLat, d.vLong, d.dtPinned,d.cAvailable AS status,
+            d.vName as driverName, d.vMobileNum AS driverMobile, v.vRnum AS vehicleRegNo, v.iCatID as catID
         FROM driver d
         INNER JOIN (
-            SELECT iVehicleID, MAX(dtPinned) AS lastPinned
-            FROM driver
+            SELECT iVehicleID, MAX(dtPinned) AS lastPinned FROM driver
             WHERE cStatus = 'A'
               AND iVehicleID > 0
               AND vLat IS NOT NULL AND vLat != ''
@@ -1863,10 +1855,9 @@ switch ($mode) {
             ON latest.iVehicleID = d.iVehicleID 
            AND latest.lastPinned = d.dtPinned
         LEFT JOIN vehicle v ON v.iVehicleID = d.iVehicleID
+LEFT JOIN vehicle_category vc ON vc.iVCatID = v.iCatID
         WHERE d.cStatus = 'A'
-          AND d.iVehicleID > 0
-          AND d.vLat IS NOT NULL AND d.vLat != ''
-          AND d.vLong IS NOT NULL AND d.vLong != ''
+          AND d.iVehicleID > 0 AND d.vLat IS NOT NULL AND d.vLat != '' AND d.vLong IS NOT NULL AND d.vLong != ''
           AND d.dtPinned IS NOT NULL
           $filterSQL
         ORDER BY d.iVehicleID ASC
@@ -1884,7 +1875,8 @@ switch ($mode) {
                 "vLong" => $row['vLong'],
                 "vehicleRegNo" => $row['vehicleRegNo'],
                 "catID" => intval($row['catID']),
-                "catName" => $CATEGORY_ARR[$row['catID']] ?? ''
+                "catName" => $CATEGORY_ARR[$row['catID']] ?? '',
+                "status"       => $row['status']
             ];
         }
 
