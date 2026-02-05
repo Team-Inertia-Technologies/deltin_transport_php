@@ -36,7 +36,7 @@ switch ($mode) {
         $TOTAL_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where cStatus = 'A' and cServiceType IN ('F','B')");
         $TOTAL_DRIVER_COUNT = GetXFromYID("select count(*) from driver where cStatus = 'A'");
 
-        $AVAILABLE_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where iVehicleID NOT IN (select iVehicleID from fleet_booking where cType NOT IN ('C','N') and cServiceType IN ('F','B') and iVehicleID IS NOT NULL)");
+        $AVAILABLE_VEHICLE_COUNT = GetXFromYID("select count(iVehicleID) from vehicle where iVehicleID NOT IN (select iVehicleID from fleet_booking where cType NOT IN ('C','N') and iVehicleID IS NOT NULL) and cServiceType IN ('F','B')");
         //$AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where iDriverID NOT IN (select iDriverID from fleet_booking where cType NOT IN ('C','N') and iDriverID IS NOT NULL)");
         $AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where dtLoggedIn IS NOT NULL and cStatus = 'A'");
 
