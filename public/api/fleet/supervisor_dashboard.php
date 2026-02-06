@@ -776,6 +776,11 @@ switch ($mode) {
         global $FL_LOG_STATUS_ARR;
         $currentDate = date('Y-m-d');
         $user_level = GetXFromYID("select iLevel from users where iUserID = $user_id");
+        $timeline_limit = (int) GetXFromYID("select vValue from sys_settings where vCode = 'ACTIVITY_TIMELINE_DATA_LIMIT'");
+
+        if ($timeline_limit <= 0) {
+            $timeline_limit = 50; // sensible default
+        }        
 
         $LEVEL_MODULE_ASSOC_ARR = array();
         $ql = "select * from module_level_assoc where iLevelD = $user_level";
@@ -834,7 +839,7 @@ switch ($mode) {
             }
         }
         $PAUSE_TYPE_ARR = GetXArrFromYID("select iReasonID, vName from pause_reasons where cStatus = 'A'", 3);
-        $q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID, bl.iPauseTypeID, bl.vNotes from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where 1 $cond order by bl.dtAdded DESC";
+        $q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID, bl.iPauseTypeID, bl.vNotes from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where 1 $cond order by bl.dtAdded DESC limit $timeline_limit";
         $r = sql_query($q, "");
 
         if (sql_num_rows($r)) {
@@ -912,9 +917,9 @@ switch ($mode) {
             }
         }*/
 
-        usort($LOG_DATA_ARR, function ($a, $b) {
+/*         usort($LOG_DATA_ARR, function ($a, $b) {
             return strtotime($b['DATETIME']) <=> strtotime($a['DATETIME']);
-        });
+        }); */
 
         echo json_encode([
             "data" => [
