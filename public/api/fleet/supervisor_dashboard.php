@@ -516,7 +516,7 @@ switch ($mode) {
                 'driverMobile' => db_output2($vehData['DRIVER_NUM'] ?? ''),
                 'driverType' => $vehData['DRIVER_TYPE'] ?? '',
                 'nextTripTime' => $nextTripTime,
-                'bookingId' => (int) $$bookingId,
+                'bookingId' => (int) $bookingId,
                 'disposal' => false,
                 'status' => $bookingStatus,
                 'driverStatus' => $driverStatus,
