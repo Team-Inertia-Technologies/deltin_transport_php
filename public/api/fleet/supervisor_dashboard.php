@@ -479,6 +479,7 @@ switch ($mode) {
             $lastAssignedTime = null;
             $lastAssigned = false;
             $nextTripTime = null;
+            $bookingId = null;
             $bookingStatus = 'A';
             $driverStatus = false;
 
@@ -490,6 +491,7 @@ switch ($mode) {
                     return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
                 });
                 $nextTripTime = $bookings[0]['PICKUP_TIME'];
+                $bookingId = $bookings[0]['ID'];
                 $bookingStatus = $bookings[0]['STATUS'];
             }
 
@@ -514,6 +516,7 @@ switch ($mode) {
                 'driverMobile' => db_output2($vehData['DRIVER_NUM'] ?? ''),
                 'driverType' => $vehData['DRIVER_TYPE'] ?? '',
                 'nextTripTime' => $nextTripTime,
+                'bookingId' => (int) $$bookingId,
                 'disposal' => false,
                 'status' => $bookingStatus,
                 'driverStatus' => $driverStatus,
