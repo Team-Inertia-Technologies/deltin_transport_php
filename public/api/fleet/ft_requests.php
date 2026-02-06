@@ -144,6 +144,8 @@ switch ($mode) {
         $filterVehicleCategory = intval($_REQUEST['filterVehicleCategory'] ?? 0);
         $filterFromDateTime = $_REQUEST['fromDateTime'] ?? '';
         $filterToDateTime = $_REQUEST['toDateTime'] ?? '';
+        $filterBookedBy = intval($_REQUEST['filterBookedBy'] ?? 0);
+        $filterGuest = intval($_REQUEST['filterGuest'] ?? 0);
 
         // Create filter option arrays
         $tripStatusFilterOpt = [['id' => '0', 'name' => 'Select All']];
@@ -185,7 +187,9 @@ switch ($mode) {
             "tripStatusFilterOpt" => $tripStatusFilterOpt,
             "bookedForFilterOpt" => $bookedForFilterOpt,
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
-            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt
+            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
+            "staffFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($staff) { return ['id' => $staff['id'], 'name' => $staff['name']]; }, $staffOpt)),
+            "guestFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($guest) { return ['id' => $guest['id'], 'name' => $guest['name']]; }, $guestOpts))
         ];
 
 
@@ -237,6 +241,16 @@ switch ($mode) {
 
         if ($filterVehicleCategory > 0) {
             $whereClause .= " AND fb.iVehicleCatID = " . intval($filterVehicleCategory);
+        }
+
+        // Apply staff filter (booked by)
+        if ($filterBookedBy > 0) {
+            $whereClause .= " AND fb.iBookedBy = " . intval($filterBookedBy);
+        }
+
+        // Apply guest filter
+        if ($filterGuest > 0) {
+            $whereClause .= " AND fb.iGuestID = " . intval($filterGuest);
         }
 
         // Apply datetime filters based on pickup datetime
@@ -366,7 +380,7 @@ switch ($mode) {
 
             // Check ownership
             $isOwner = intval($row['iAdded_UserID']) == $user_id;
-            $notCancelled = $row['iAdded_UserID'] != 'C';
+            $notCancelled = $row['bookingStatus'] != 'C';
 
             // Allow cancel only if module access or owner
             $canCancel = ($cancelModule || $isOwner || $notCancelled);
@@ -841,7 +855,7 @@ switch ($mode) {
         $iPax = intval($_REQUEST['pax'] ?? 0);
         $iBaggage = intval($_REQUEST['baggage'] ?? 0);
 
-        // Handle new location format with lat/lng
+
         $pickUpLocData = $_REQUEST['pickUpLoc'] ?? [];
         $dropLocData = $_REQUEST['dropLoc'] ?? [];
 
@@ -982,6 +996,7 @@ switch ($mode) {
                 fb.iBaggage,
                 fb.iVehicleID,
                 fb.iDriverID,
+                fb.iAdded_UserID,
                 fb.cStatus as bookingStatus,
                 fb.cType as currentStatus,
                 fb.iBookedBy as bookedById,
@@ -1073,11 +1088,21 @@ switch ($mode) {
         $isVehicleAssigned = !empty($booking['iVehicleID']) && intval($booking['iVehicleID']) > 0;
         $isDriverAssigned = !empty($booking['iDriverID']) && intval($booking['iDriverID']) > 0;
 
-        if (intval(value: $booking['bookedById']) == 0) {
+        if (intval($booking['bookedById']) == 0) {
             $bookedByName =  db_output2($booking['bookedBy']);
         } else {
             $bookedByName =  db_output2($booking['bookedByName']);
         }
+
+        $cancelModule = checkUserModuleAccess($user_id, 'FLEET_REQUEST_CANCEL');
+
+            // Check ownership
+            $isOwner = intval($booking['iAdded_UserID']) == $user_id;
+            $notCancelled = $booking['bookingStatus'] != 'C';
+
+            // Allow cancel only if module access or owner
+            $canCancel = ($cancelModule || $isOwner || $notCancelled);
+
         $requestDetails = [
             'bookingId' => intval($booking['iFleet_BookingID']),
             'passengerName' => db_output2($passengerName),
@@ -1972,7 +1997,9 @@ switch ($mode) {
             "tripStatusFilterOpt" => $tripStatusFilterOpt,
             "bookedForFilterOpt" => $bookedForFilterOpt,
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
-            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt
+            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
+          //  "staffFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($staff) { return ['id' => $staff['id'], 'name' => $staff['name']]; }, $staffOpt)),
+           // "guestFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($guest) { return ['id' => $guest['id'], 'name' => $guest['name']]; }, $guestOpts))
         ];
 
 
