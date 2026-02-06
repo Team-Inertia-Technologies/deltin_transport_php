@@ -239,6 +239,13 @@ switch ($mode) {
                 $bookedByName = db_output2($row['vBookedBy'] ?? '');
             }
 
+                $dt = strtotime($row['vPickUpTime']);
+
+                if (date('Y-m-d', $dt) === date('Y-m-d')) {
+                    $dateTime = date('g:i A', $dt);
+                } else {
+                    $dateTime = date('d M g:i A', $dt);
+                }
 
             $rowData[] = [
                 'id' => intval($row['iFleet_BookingID']),
@@ -248,7 +255,7 @@ switch ($mode) {
                 'guest' => $is_guest,
                 'from' => db_output2($row['vPickUpLocation'] ?? ''),
                 'to' => db_output2($row['vDropLocation'] ?? ''),
-                'time' => date('d/m/Y H:i', strtotime($row['vPickUpTime'])) ?? '',
+                'time' => $dateTime ?? '',
                 'typeStatus' => '',
                 'type' => $type_status,
                 'pax' => strval($row['iPax'] ?? '0'),
@@ -355,13 +362,21 @@ switch ($mode) {
                 $to_latlong_arr[1] = '0';
             }
 
+                $dt = strtotime($row['tReturnTime']);
+
+                if (date('Y-m-d', $dt) === date('Y-m-d')) {
+                    $dateTime = date('g:i A', $dt);
+                } else {
+                    $dateTime = date('d M g:i A', $dt);
+                }
+
             $rowData[] = [
                 'requestId' => intval($row['iFleet_BookingID']),
                 'vehiCatId' => $row['iVehicleCatID'] ?? 0,
                 'vehiTypeId' => $VEHI_TYPE_ARR[$row['iVehicleID']]['TYPE'] ?? 0,
                 'pickUpLoc' => array('lat' => $from_latlong_arr[0], 'log' => $from_latlong_arr[1], 'loc' => $row['vPickUpLocation']),
                 'pickUpLoc' => array('lat' => $to_latlong_arr[0], 'log' => $to_latlong_arr[1], 'loc' => $row['vDropLocation']),
-                'returnTime' => date('d/m/Y H:i', strtotime($row['tReturnTime'])),
+                'returnTime' => $dateTime,
                 'remark1' => db_output2($row['vInstructions'] ?? ''),
                 'remark2' => db_output2($row['vRemarks'] ?? ''),
             ];
@@ -499,10 +514,10 @@ switch ($mode) {
                 });
                 $nextTripTime = $bookings[0]['PICKUP_TIME'];
                 if(!empty($nextTripTime)){
-                    if (date('Y-m-d', $nextTripTime) === date('Y-m-d')) {
-                        $dateTime = date('g:i A', $nextTripTime);
+                    if (date('Y-m-d', strtotime($nextTripTime)) === date('Y-m-d')) {
+                        $dateTime = date('g:i A', strtotime($nextTripTime));
                     } else {
-                        $dateTime = date('d/m g:i A', $nextTripTime);
+                        $dateTime = date('d M g:i A', strtotime($nextTripTime));
                     }
                 }
 
@@ -927,7 +942,7 @@ switch ($mode) {
                 if (date('Y-m-d', $dt) === date('Y-m-d')) {
                     $dateTime = date('g:i A', $dt);
                 } else {
-                    $dateTime = date('d/m g:i A', $dt);
+                    $dateTime = date('d M g:i A', $dt);
                 }
 
                 $LOG_DATA_ARR[] = array("code" => $row['cRefType'], "status" => $FL_LOG_STATUS_ARR[$row['cRefType']], "message" => $description, "dateTime" => $dateTime, "bookingId" => (int)$bookingId);
