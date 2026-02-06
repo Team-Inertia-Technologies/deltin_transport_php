@@ -85,6 +85,9 @@ $res = sql_query($sql, 'ROASTER.LIST');
 $tripList = [];
 $today = date('Y-m-d');
 
+$currentTime = time();
+$maxLoggedSeconds = 8 * 3600;
+
 while ($row = sql_fetch_assoc($res)) {
 
     $dateTime = "";
@@ -102,6 +105,15 @@ while ($row = sql_fetch_assoc($res)) {
         $loggedInStatus = true;
     }
 
+    $overLoggedLimit = false;
+
+    if (!empty($row['dtLoggedIn'])) {
+        $loggedInTimestamp = strtotime($row['dtLoggedIn']);
+        if (($currentTime - $loggedInTimestamp) >= $maxLoggedSeconds) {
+            $overLoggedLimit = true;
+        }
+    }
+
     $tripList[] = [
         "id"               => intval($row['iRoasterID']),
         "dateTime"         => $dateTime,
@@ -112,7 +124,8 @@ while ($row = sql_fetch_assoc($res)) {
         "vehicleName"      => db_output2($row['vehicleName'] ?: ""),
         "status"           => $row['status'],
         "vehicleAllocated" => $row['vehicleAllocated'],
-        "loggedInStatus"   => $loggedInStatus
+        "loggedInStatus"   => $loggedInStatus,
+        "overLoggedLimit"  => $overLoggedLimit
     ];
 }
 
