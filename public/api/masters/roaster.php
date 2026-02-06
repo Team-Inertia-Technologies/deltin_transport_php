@@ -100,9 +100,9 @@ while ($row = sql_fetch_assoc($res)) {
         }
     }
 
-    $loggedInStatus = false;
+    $loggedInStatus = 'N';
     if (!empty($row['dtLoggedIn'])) {
-        $loggedInStatus = true;
+        $loggedInStatus = 'Y';
     }
 
     $overLoggedLimit = false;
