@@ -485,6 +485,7 @@ switch ($mode) {
             $lastAssignedTime = null;
             $lastAssigned = false;
             $nextTripTime = null;
+            $dateTime = null;
             $bookingId = null;
             $bookingStatus = 'A';
             $driverStatus = false;
@@ -497,6 +498,14 @@ switch ($mode) {
                     return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
                 });
                 $nextTripTime = $bookings[0]['PICKUP_TIME'];
+                if(!empty($nextTripTime)){
+                    if (date('Y-m-d', $nextTripTime) === date('Y-m-d')) {
+                        $dateTime = date('g:i A', $nextTripTime);
+                    } else {
+                        $dateTime = date('d/m g:i A', $nextTripTime);
+                    }
+                }
+
                 $bookingId = $bookings[0]['ID'];
                 $bookingStatus = $bookings[0]['STATUS'];
             }
@@ -506,11 +515,7 @@ switch ($mode) {
                 $driverStatus = true;
             }
 
-                if (date('Y-m-d', $nextTripTime) === date('Y-m-d')) {
-                    $dateTime = date('g:i A', $nextTripTime);
-                } else {
-                    $dateTime = date('d/m g:i A', $nextTripTime);
-                }
+
 
             $vehicleDataFormatted = [
                 'id' => intval($vehicleID),
