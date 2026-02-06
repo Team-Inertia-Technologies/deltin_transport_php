@@ -500,6 +500,11 @@ switch ($mode) {
                 $driverStatus = true;
             }
 
+                if (date('Y-m-d', $nextTripTime) === date('Y-m-d')) {
+                    $dateTime = date('g:i A', $nextTripTime);
+                } else {
+                    $dateTime = date('d/m g:i A', $nextTripTime);
+                }
 
             $vehicleDataFormatted = [
                 'id' => intval($vehicleID),
@@ -515,7 +520,7 @@ switch ($mode) {
                 'driverName' => db_output2($vehData['DRIVER_NAME'] ?? ''),
                 'driverMobile' => db_output2($vehData['DRIVER_NUM'] ?? ''),
                 'driverType' => $vehData['DRIVER_TYPE'] ?? '',
-                'nextTripTime' => $nextTripTime,
+                'nextTripTime' => $dateTime,
                 'bookingId' => (int) $bookingId,
                 'disposal' => false,
                 'status' => $bookingStatus,
@@ -906,8 +911,15 @@ switch ($mode) {
                         break;
                 }
 
+                $dt = strtotime($row['dtAdded']);
 
-                $LOG_DATA_ARR[] = array("code" => $row['cRefType'], "status" => $FL_LOG_STATUS_ARR[$row['cRefType']], "message" => $description, "dateTime" => date('d/m/Y H:i:s', strtotime($row['dtAdded'])), "bookingId" => (int)$bookingId);
+                if (date('Y-m-d', $dt) === date('Y-m-d')) {
+                    $dateTime = date('g:i A', $dt);
+                } else {
+                    $dateTime = date('d/m g:i A', $dt);
+                }
+
+                $LOG_DATA_ARR[] = array("code" => $row['cRefType'], "status" => $FL_LOG_STATUS_ARR[$row['cRefType']], "message" => $description, "dateTime" => $dateTime, "bookingId" => (int)$bookingId);
             }
         }
 
