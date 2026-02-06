@@ -144,6 +144,8 @@ switch ($mode) {
         $filterVehicleCategory = intval($_REQUEST['filterVehicleCategory'] ?? 0);
         $filterFromDateTime = $_REQUEST['fromDateTime'] ?? '';
         $filterToDateTime = $_REQUEST['toDateTime'] ?? '';
+        $filterBookedBy = intval($_REQUEST['filterBookedBy'] ?? 0);
+        $filterGuest = intval($_REQUEST['filterGuest'] ?? 0);
 
         // Create filter option arrays
         $tripStatusFilterOpt = [['id' => '0', 'name' => 'Select All']];
@@ -185,7 +187,9 @@ switch ($mode) {
             "tripStatusFilterOpt" => $tripStatusFilterOpt,
             "bookedForFilterOpt" => $bookedForFilterOpt,
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
-            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt
+            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
+            "staffFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($staff) { return ['id' => $staff['id'], 'name' => $staff['name']]; }, $staffOpt)),
+            "guestFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($guest) { return ['id' => $guest['id'], 'name' => $guest['name']]; }, $guestOpts))
         ];
 
 
@@ -237,6 +241,16 @@ switch ($mode) {
 
         if ($filterVehicleCategory > 0) {
             $whereClause .= " AND fb.iVehicleCatID = " . intval($filterVehicleCategory);
+        }
+
+        // Apply staff filter (booked by)
+        if ($filterBookedBy > 0) {
+            $whereClause .= " AND fb.iBookedBy = " . intval($filterBookedBy);
+        }
+
+        // Apply guest filter
+        if ($filterGuest > 0) {
+            $whereClause .= " AND fb.iGuestID = " . intval($filterGuest);
         }
 
         // Apply datetime filters based on pickup datetime
@@ -366,7 +380,7 @@ switch ($mode) {
 
             // Check ownership
             $isOwner = intval($row['iAdded_UserID']) == $user_id;
-            $notCancelled = $row['iAdded_UserID'] != 'C';
+            $notCancelled = $row['bookingStatus'] != 'C';
 
             // Allow cancel only if module access or owner
             $canCancel = ($cancelModule || $isOwner || $notCancelled);
@@ -593,133 +607,225 @@ switch ($mode) {
 
         break;
     // ===================== CASE: EDIT_BOOKING =====================
-    case 'EDIT_BOOKING':
-        $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
+   case 'EDIT_BOOKING':
 
-        if ($iFleet_BookingID <= 0) {
-            echo json_encode([
-                "error" => ["message" => "bookingId missing or invalid"],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
+    $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
 
-        $bookingSql = "SELECT * FROM fleet_booking WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus != 'X' LIMIT 1";
-        $bookingRes = sql_query($bookingSql);
-        $STAFF_DEPT_ARR = GetXArrFromYID("SELECT iDepartmentID, iFStaffID  from fleet_staff where cStatus='A'", "3");
-
-        if (sql_num_rows($bookingRes) == 0) {
-            echo json_encode([
-                "error" => ["message" => "Booking not found"],
-                "statusCode" => 404
-            ]);
-            exit;
-        }
-
-        $booking = sql_fetch_assoc($bookingRes);
-
-        // Parse lat/lng coordinates from database
-        $pickUpLatLng = explode(',', $booking['vLatLong_From'] ?? '');
-        $dropLatLng = explode(',', $booking['vLatLong_To'] ?? '');
-
-        $response = [
-            "bookingId" => intval($booking['iFleet_BookingID']),
-            "bookedBy" => intval($booking['iBookedBy']),
-            "bookedByName" => db_output2($booking['vBookedBy']),
-
-            "bookedFor" => $booking['cBookingFor'],
-            "travelPurpose" => intval($booking['iFleet_TrvPurID']),
-            "travelType" => intval($booking['iFleet_TrvTypeID']),
-            "bookingCat" => intval($booking['iFleet_BKCatID']),
-            "property" => intval($booking['iPropertyID']),
-            "name" => db_output2($booking['vName']),
-            "mob" => $booking['vMobileNo'],
-            "pax" => intval($booking['iPax']),
-            "baggage" => intval($booking['iBaggage']),
-            "pickUpLoc" => [
-                'lat' => isset($pickUpLatLng[0]) && !empty(trim($pickUpLatLng[0])) ? floatval(trim($pickUpLatLng[0])) : null,
-                'lng' => isset($pickUpLatLng[1]) && !empty(trim($pickUpLatLng[1])) ? floatval(trim($pickUpLatLng[1])) : null,
-                'loc' => db_output2($booking['vPickUpLocation'])
-            ],
-            "dropLoc" => [
-                'lat' => isset($dropLatLng[0]) && !empty(trim($dropLatLng[0])) ? floatval(trim($dropLatLng[0])) : null,
-                'lng' => isset($dropLatLng[1]) && !empty(trim($dropLatLng[1])) ? floatval(trim($dropLatLng[1])) : null,
-                'loc' => db_output2($booking['vDropLocation'])
-            ],
-            "landMark" => db_output2($booking['vLandmark']),
-            "pickUpDateTime" => $booking['vPickUpTime'],
-            "returnTime" => ($booking['tReturnTime'] ?? null),
-            "vehiCat" => intval($booking['iVehicleCatID']),
-            "intruc" => db_output2($booking['vInstructions']),
-            "remarks" => db_output2($booking['vRemarks']),
-            "guestID" => intval($booking['iGuestID']),
-            "staffID" => intval($booking['iFStaffID']),
-            "staff_dept" => isset($STAFF_DEPT_ARR[intval($booking['iFStaffID'])]) ? $STAFF_DEPT_ARR[intval($booking['iFStaffID'])] : 0,
-            //"disposal"       => ($booking['cDisposal'] ?? 'N') === 'Y' ? true : false,
-            "disposal" => $booking['cDisposal'] ?? 'N',
-            "dtAdded" => $booking['dtAdded'],
-            "addedUserId" => intval($booking['iAdded_UserID']),
-        ];
-
-        // Option arrays for form rendering (minimal set; extend if needed)
-        // $BOOKING_CAT = GetXArrFromYID("SELECT iFleet_BkCatID, vName from fleet_bookingcategory where cStatus='A' ORDER BY vName", "3");
-        // $TRAVEL_PURPOSE = GetXArrFromYID("SELECT iFleet_TrvPurID, vName from fleet_travelpurpose where cStatus='A' ORDER BY iRank", "3");
-        // $VEH_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('B','F') ORDER BY iRank", "3");
-        // $PROPERTY_ARR = GetXArrFromYID("SELECT iPropertyID, vName from property where cStatus='A' ORDER BY vName", "3");
-        // $STAFF_ARR = sql_query("SELECT iFStaffID, vName, iDepartmentID from fleet_staff where cStatus='A' ORDER BY vName");
-        // $GUEST_ARR = sql_query("SELECT iGuestID, vName, vMobileNo from guest where cStatus='A' ORDER BY vName");
-
-        // $bookingCatOpt = [['id' => 0, 'name' => 'Choose']];
-        // foreach ($BOOKING_CAT as $id => $name) {
-        //     $bookingCatOpt[] = ['id' => intval($id), 'name' => $name];
-        // }
-
-        // $travelPurposeOpt = [];
-        // foreach ($TRAVEL_PURPOSE as $id => $name) {
-        //     $travelPurposeOpt[] = ['id' => intval($id), 'name' => $name];
-        // }
-
-        // $propertyOpt = [['id' => 0, 'name' => 'Choose']];
-        // foreach ($PROPERTY_ARR as $id => $name) {
-        //     $propertyOpt[] = ['id' => intval($id), 'name' => $name];
-        // }
-
-        // $vehiCatOpt = [['id' => 0, 'name' => 'Choose']];
-        // foreach ($VEH_CAT as $id => $name) {
-        //     $vehiCatOpt[] = ['id' => intval($id), 'name' => $name];
-        // }
-
-        // $staffOpt = [];
-        // while ($row = sql_fetch_assoc($STAFF_ARR)) {
-        //     $staffOpt[] = [
-        //         'id' => intval($row['iFStaffID']),
-        //         'name' => $row['vName'],
-        //         'departmentId' => intval($row['iDepartmentID'])
-        //     ];
-        // }
-
-        // $guestOpts = [];
-        // while ($row = sql_fetch_assoc($GUEST_ARR)) {
-        //     $guestOpts[] = [
-        //         'id' => intval($row['iGuestID']),
-        //         'name' => $row['vName'],
-        //         'mobile' => $row['vMobileNo']
-        //     ];
-        // }
-
+    if ($iFleet_BookingID <= 0) {
         echo json_encode([
-            "data" => [
-                "booking" => $response
-                // "bookingCatOpt" => $bookingCatOpt,
-                // "travelPurposeOpt" => $travelPurposeOpt,
-                // "propertyOpt" => $propertyOpt,
-                // "vehiCatOpt" => $vehiCatOpt,
-                // "staffOpt" => $staffOpt,
-                // "guestOpts" => $guestOpts
-            ],
-            "statusCode" => 200
+            "error" => ["message" => "bookingId missing or invalid"],
+            "statusCode" => 400
         ]);
-        break;
+        exit;
+    }
+
+    $bookingSql = "SELECT * FROM fleet_booking 
+                   WHERE iFleet_BookingID = $iFleet_BookingID 
+                   AND cStatus!='X' LIMIT 1";
+
+    $bookingRes = sql_query($bookingSql);
+
+    if (sql_num_rows($bookingRes) == 0) {
+        echo json_encode([
+            "error" => ["message" => "Booking not found"],
+            "statusCode" => 404
+        ]);
+        exit;
+    }
+
+    $booking = sql_fetch_assoc($bookingRes);
+
+    /* ---------------- BOOKING DATA ---------------- */
+
+    $STAFF_DEPT_ARR = GetXArrFromYID(
+        "SELECT iDepartmentID, iFStaffID FROM fleet_staff WHERE cStatus='A'",
+        "3"
+    );
+
+    $pickUpLatLng = explode(',', $booking['vLatLong_From'] ?? '');
+    $dropLatLng   = explode(',', $booking['vLatLong_To'] ?? '');
+
+    $response = [
+        "bookingId" => intval($booking['iFleet_BookingID']),
+        "bookedBy" => intval($booking['iBookedBy']),
+        "bookedByName" => db_output2($booking['vBookedBy']),
+        "bookedFor" => $booking['cBookingFor'],
+        "travelPurpose" => intval($booking['iFleet_TrvPurID']),
+        "travelType" => intval($booking['iFleet_TrvTypeID']),
+        "bookingCat" => intval($booking['iFleet_BKCatID']),
+        "property" => intval($booking['iPropertyID']),
+        "name" => db_output2($booking['vName']),
+        "mob" => $booking['vMobileNo'],
+        "pax" => intval($booking['iPax']),
+        "baggage" => intval($booking['iBaggage']),
+        "pickUpLoc" => [
+            'lat' => !empty(trim($pickUpLatLng[0] ?? '')) ? floatval($pickUpLatLng[0]) : null,
+            'lng' => !empty(trim($pickUpLatLng[1] ?? '')) ? floatval($pickUpLatLng[1]) : null,
+            'loc' => db_output2($booking['vPickUpLocation'])
+        ],
+        "dropLoc" => [
+            'lat' => !empty(trim($dropLatLng[0] ?? '')) ? floatval($dropLatLng[0]) : null,
+            'lng' => !empty(trim($dropLatLng[1] ?? '')) ? floatval($dropLatLng[1]) : null,
+            'loc' => db_output2($booking['vDropLocation'])
+        ],
+        "landMark" => db_output2($booking['vLandmark']),
+        "pickUpDateTime" => $booking['vPickUpTime'],
+        "returnTime" => ($booking['tReturnTime'] ?? null),
+        "vehiCat" => intval($booking['iVehicleCatID']),
+        "intruc" => db_output2($booking['vInstructions']),
+        "remarks" => db_output2($booking['vRemarks']),
+        "guestID" => intval($booking['iGuestID']),
+        "staffID" => intval($booking['iFStaffID']),
+        "staff_dept" => isset($STAFF_DEPT_ARR[intval($booking['iFStaffID'])])
+            ? $STAFF_DEPT_ARR[intval($booking['iFStaffID'])]
+            : 0,
+        "disposal" => $booking['cDisposal'] ?? 'N',
+        "dtAdded" => $booking['dtAdded'],
+        "addedUserId" => intval($booking['iAdded_UserID'])
+    ];
+
+    /* ---------------- OPTIONS SAME AS ADD_ONLOAD ---------------- */
+
+    $BOOKING_CAT   = GetXArrFromYID("SELECT iFleet_BkCatID,vName FROM fleet_bookingcategory WHERE cStatus='A' ORDER BY iRank","3");
+    $TRAVEL_PURPOSE= GetXArrFromYID("SELECT iFleet_TrvPurID,vName FROM fleet_travelpurpose WHERE cStatus='A' ORDER BY iRank","3");
+    $TRAVEL_TYPE   = sql_query("SELECT iFleet_TrvTypeID,iFleet_TrvPurID,vName FROM fleet_traveltype WHERE cStatus='A' ORDER BY iRank");
+    $PROPERTY_ARR  = GetXArrFromYID("SELECT iPropertyID,vName FROM property WHERE cStatus='A' ORDER BY iRank","3");
+    $VEH_CAT       = GetXArrFromYID("SELECT iVCatID,vName FROM vehicle_category WHERE cStatus='A' AND cType IN('B','F') ORDER BY iRank","3");
+    $STAFF_DEPT    = GetXArrFromYID("SELECT iDepartmentID,vName FROM department WHERE cStatus='A' ORDER BY iRank","3");
+
+    $MAX_PAX = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode='FT_BK_MAX_PAX'");
+    $MAX_BAG = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode='FT_BK_MAX_BAG'");
+
+    $STAFF_ARR = sql_query("SELECT iFStaffID,vName,iDepartmentID,vMobile,iUserID FROM fleet_staff WHERE cStatus='A' ORDER BY vName");
+    $GUEST_ARR = sql_query("SELECT iGuestID,vName,vMobileNo FROM guest WHERE cStatus='A' ORDER BY vName");
+
+    /* bookedForOpt */
+    $bookedForOpt=[['id'=>0,'name'=>'Choose']];
+    foreach($FLEET_BOOKING_FOR as $id=>$name){
+        $bookedForOpt[]=['id'=>$id,'name'=>$name];
+    }
+
+    /* bookingCatOpt */
+    $bookingCatOpt=[['id'=>0,'name'=>'Choose']];
+    foreach($BOOKING_CAT as $id=>$name){
+        $bookingCatOpt[]=['id'=>intval($id),'name'=>$name];
+    }
+
+    /* travelPurposeTypeOpt */
+    $travelPurposeTypeOpt=[];
+    foreach($TRAVEL_PURPOSE as $id=>$name){
+        $travelPurposeTypeOpt[$id]=[
+            'id'=>intval($id),
+            'name'=>$name,
+            'types'=>[]
+        ];
+    }
+    while($row=sql_fetch_assoc($TRAVEL_TYPE)){
+        $pid=intval($row['iFleet_TrvPurID']);
+        if(isset($travelPurposeTypeOpt[$pid])){
+            $travelPurposeTypeOpt[$pid]['types'][]=[
+                'id'=>intval($row['iFleet_TrvTypeID']),
+                'name'=>$row['vName']
+            ];
+        }
+    }
+    $travelPurposeTypeOpt=array_values($travelPurposeTypeOpt);
+
+    /* propertyOpt */
+    $propertyOpt=[['id'=>0,'name'=>'Choose']];
+    foreach($PROPERTY_ARR as $id=>$name){
+        $propertyOpt[]=['id'=>intval($id),'name'=>$name];
+    }
+
+    $paxOpt     = ($MAX_PAX>0)? range(1,intval($MAX_PAX)):[0];
+    $baggageOpt = ($MAX_BAG>0)? range(0,intval($MAX_BAG)):[0];
+
+    $vehiCatOpt=[['id'=>0,'name'=>'Choose']];
+    foreach($VEH_CAT as $id=>$name){
+        $vehiCatOpt[]=['id'=>intval($id),'name'=>$name];
+    }
+
+    $tripTypeArr=[];
+    foreach($FLEET_TRAVEL_TYPE as $id=>$name){
+        $tripTypeArr[]=['id'=>intval($id),'name'=>$name];
+    }
+
+    $staffDeptOpt=[['id'=>0,'name'=>'Choose']];
+    foreach($STAFF_DEPT as $id=>$name){
+        $staffDeptOpt[]=['id'=>intval($id),'name'=>$name];
+    }
+
+    $staffOpt=[];
+    while($row=sql_fetch_assoc($STAFF_ARR)){
+        $staffUserID=intval($row['iUserID']??0);
+        $staffOpt[]=[
+            'id'=>intval($row['iFStaffID']),
+            'name'=>$row['vName'],
+            'mobile'=>$row['vMobile'],
+            'departmentId'=>intval($row['iDepartmentID']),
+            'isLoggedin'=>($staffUserID>0 && $staffUserID==$user_id)
+        ];
+    }
+
+    $guestOpts=[];
+    while($row=sql_fetch_assoc($GUEST_ARR)){
+        $guestOpts[]=[
+            'id'=>intval($row['iGuestID']),
+            'name'=>$row['vName'],
+            'mobile'=>$row['vMobileNo']
+        ];
+    }
+
+    /* FILTER OPTIONS */
+    $tripStatusFilterOpt=[['id'=>'','name'=>'All']];
+    foreach($FLEET_TRIP_STATUS as $id=>$name){
+        $tripStatusFilterOpt[]=['id'=>$id,'name'=>$name];
+    }
+
+    $bookedForFilterOpt=[['id'=>'','name'=>'All']];
+    foreach($FLEET_BOOKING_FOR as $id=>$name){
+        $bookedForFilterOpt[]=['id'=>$id,'name'=>$name];
+    }
+
+    $tripTypeFilterOpt=[
+        ['id'=>'','name'=>'All'],
+        ['id'=>'Assigned','name'=>'Assigned'],
+        ['id'=>'Unassigned','name'=>'Unassigned'],
+        ['id'=>'Delayed','name'=>'Delayed'],
+        ['id'=>'Cancelled','name'=>'Cancelled']
+    ];
+
+    $vehicleCategoryFilterOpt=[['id'=>0,'name'=>'All']];
+    foreach($VEH_CAT as $id=>$name){
+        $vehicleCategoryFilterOpt[]=['id'=>intval($id),'name'=>$name];
+    }
+
+    $optArr=[
+        "bookedForOpt"=>$bookedForOpt,
+        "bookingCatOpt"=>$bookingCatOpt,
+        "travelPurposeOpt"=>$travelPurposeTypeOpt,
+        "propertyOpt"=>$propertyOpt,
+        "paxOpt"=>$paxOpt,
+        "baggageOpt"=>$baggageOpt,
+        "vehiCatOpt"=>$vehiCatOpt,
+        "tripTypeArr"=>$tripTypeArr,
+        "staffDeptOpt"=>$staffDeptOpt,
+        "staffOpt"=>$staffOpt,
+        "guestOpts"=>$guestOpts,
+        "tripStatusFilterOpt"=>$tripStatusFilterOpt,
+        "bookedForFilterOpt"=>$bookedForFilterOpt,
+        "tripTypeFilterOpt"=>$tripTypeFilterOpt,
+        "vehicleCategoryFilterOpt"=>$vehicleCategoryFilterOpt
+    ];
+
+    echo json_encode([
+        "data"=>[
+            "booking"=>$response,
+            "optArr"=>$optArr
+        ],
+        "statusCode"=>200
+    ]);
+    break;
 
 
     // ===================== CASE: UPDATE_BOOKING  =====================
@@ -749,7 +855,7 @@ switch ($mode) {
         $iPax = intval($_REQUEST['pax'] ?? 0);
         $iBaggage = intval($_REQUEST['baggage'] ?? 0);
 
-        // Handle new location format with lat/lng
+
         $pickUpLocData = $_REQUEST['pickUpLoc'] ?? [];
         $dropLocData = $_REQUEST['dropLoc'] ?? [];
 
@@ -890,6 +996,7 @@ switch ($mode) {
                 fb.iBaggage,
                 fb.iVehicleID,
                 fb.iDriverID,
+                fb.iAdded_UserID,
                 fb.cStatus as bookingStatus,
                 fb.cType as currentStatus,
                 fb.iBookedBy as bookedById,
@@ -981,11 +1088,21 @@ switch ($mode) {
         $isVehicleAssigned = !empty($booking['iVehicleID']) && intval($booking['iVehicleID']) > 0;
         $isDriverAssigned = !empty($booking['iDriverID']) && intval($booking['iDriverID']) > 0;
 
-        if (intval(value: $booking['bookedById']) == 0) {
+        if (intval($booking['bookedById']) == 0) {
             $bookedByName =  db_output2($booking['bookedBy']);
         } else {
             $bookedByName =  db_output2($booking['bookedByName']);
         }
+
+        $cancelModule = checkUserModuleAccess($user_id, 'FLEET_REQUEST_CANCEL');
+
+            // Check ownership
+            $isOwner = intval($booking['iAdded_UserID']) == $user_id;
+            $notCancelled = $booking['bookingStatus'] != 'C';
+
+            // Allow cancel only if module access or owner
+            $canCancel = ($cancelModule || $isOwner || $notCancelled);
+
         $requestDetails = [
             'bookingId' => intval($booking['iFleet_BookingID']),
             'passengerName' => db_output2($passengerName),
@@ -1880,7 +1997,9 @@ switch ($mode) {
             "tripStatusFilterOpt" => $tripStatusFilterOpt,
             "bookedForFilterOpt" => $bookedForFilterOpt,
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
-            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt
+            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
+          //  "staffFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($staff) { return ['id' => $staff['id'], 'name' => $staff['name']]; }, $staffOpt)),
+           // "guestFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($guest) { return ['id' => $guest['id'], 'name' => $guest['name']]; }, $guestOpts))
         ];
 
 

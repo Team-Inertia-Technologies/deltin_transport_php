@@ -20,7 +20,7 @@ $request = json_decode(file_get_contents("php://input"));
 $token              = trim($request->token ?? '');
 $driverType         = intval($request->driverType ?? 0);
 $vehicle_status     = trim($request->status ?? 'Y');
-$showLoggedInOnly = filter_var($request->showLoggedInOnly ?? true, FILTER_VALIDATE_BOOLEAN);
+$showLoggedInOnly   = trim($request->showLoggedInOnly ?? 'Y');
 
 if (!$token) {
     http_response_code(400);
@@ -46,7 +46,7 @@ if ($driverType > 0) {
     $where .= " AND d.iType = $driverType";
 }
 
-if ($showLoggedInOnly) {
+if ($showLoggedInOnly === 'Y') {
     $where .= " AND d.dtLoggedIn IS NOT NULL";
 }
 
@@ -85,6 +85,9 @@ $res = sql_query($sql, 'ROASTER.LIST');
 $tripList = [];
 $today = date('Y-m-d');
 
+$currentTime = time();
+$maxLoggedSeconds = 8 * 3600;
+
 while ($row = sql_fetch_assoc($res)) {
 
     $dateTime = "";
@@ -97,9 +100,18 @@ while ($row = sql_fetch_assoc($res)) {
         }
     }
 
-    $loggedInStatus = false;
+    $loggedInStatus = 'N';
     if (!empty($row['dtLoggedIn'])) {
-        $loggedInStatus = true;
+        $loggedInStatus = 'Y';
+    }
+
+    $overLoggedLimit = false;
+
+    if (!empty($row['dtLoggedIn'])) {
+        $loggedInTimestamp = strtotime($row['dtLoggedIn']);
+        if (($currentTime - $loggedInTimestamp) >= $maxLoggedSeconds) {
+            $overLoggedLimit = true;
+        }
     }
 
     $tripList[] = [
@@ -112,7 +124,8 @@ while ($row = sql_fetch_assoc($res)) {
         "vehicleName"      => db_output2($row['vehicleName'] ?: ""),
         "status"           => $row['status'],
         "vehicleAllocated" => $row['vehicleAllocated'],
-        "loggedInStatus"   => $loggedInStatus
+        "loggedInStatus"   => $loggedInStatus,
+        "overLoggedLimit"  => $overLoggedLimit
     ];
 }
 

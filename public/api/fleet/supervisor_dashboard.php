@@ -36,7 +36,7 @@ switch ($mode) {
         $TOTAL_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where cStatus = 'A' and cServiceType IN ('F','B')");
         $TOTAL_DRIVER_COUNT = GetXFromYID("select count(*) from driver where cStatus = 'A'");
 
-        $AVAILABLE_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where iVehicleID NOT IN (select iVehicleID from fleet_booking where cType NOT IN ('C','N') and iVehicleID IS NOT NULL)");
+        $AVAILABLE_VEHICLE_COUNT = GetXFromYID("select count(iVehicleID) from vehicle where iVehicleID NOT IN (select iVehicleID from fleet_booking where cType NOT IN ('C','N') and iVehicleID IS NOT NULL) and cServiceType IN ('F','B')");
         //$AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where iDriverID NOT IN (select iDriverID from fleet_booking where cType NOT IN ('C','N') and iDriverID IS NOT NULL)");
         $AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where dtLoggedIn IS NOT NULL and cStatus = 'A'");
 
@@ -68,6 +68,11 @@ switch ($mode) {
         foreach ($VEHICLE_STATUS_ARR as $id => $name) {
             $vehiStatusArr[] = ['id' => $id, 'name' => $name];
         }
+
+          $vehiStatusLocArr = [['id' => 0, 'name' => 'All']];
+        foreach ($VEHICLE_STATUS_ARR2 as $id => $name) {
+            $vehiStatusLocArr[] = ['id' => $id, 'name' => $name];
+        }
         $ql = "select iFleet_LocationID, vName, vLat,vLong from fleet_location order by vName";
         $rl = sql_query($ql, "supervisor_dashboard.77");
          $LOCATION_ARR = [['ID' => 0, 'NAME' => 'All', "LAT" => '', "LONG" => '']];
@@ -84,6 +89,7 @@ switch ($mode) {
             "vehiTypeArr" => $vehiTypeArr,
             "driverTypeArr" => $vehiTypeArr,
             "vehiStatusArr" => $vehiStatusArr,
+            "vehiStatusLocArr" => $vehiStatusLocArr,
             "locationArr" => $LOCATION_ARR,
             "refreshRequestStreamTime" => (int) $refreshRequestStreamTime,
             "refreshVehicleComponentTime" => (int) $refreshVehicleComponentTime,
@@ -173,7 +179,7 @@ switch ($mode) {
         }
 
         // Fetch booking data
-        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments from fleet_booking where 1 $cond and cType <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments from fleet_booking where 1 $cond and cType <> 'C' and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         //echo $bookingSql."<br>";
         $bookingRes = sql_query($bookingSql);
 
@@ -479,6 +485,8 @@ switch ($mode) {
             $lastAssignedTime = null;
             $lastAssigned = false;
             $nextTripTime = null;
+            $dateTime = null;
+            $bookingId = null;
             $bookingStatus = 'A';
             $driverStatus = false;
 
@@ -490,6 +498,15 @@ switch ($mode) {
                     return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
                 });
                 $nextTripTime = $bookings[0]['PICKUP_TIME'];
+                if(!empty($nextTripTime)){
+                    if (date('Y-m-d', $nextTripTime) === date('Y-m-d')) {
+                        $dateTime = date('g:i A', $nextTripTime);
+                    } else {
+                        $dateTime = date('d/m g:i A', $nextTripTime);
+                    }
+                }
+
+                $bookingId = $bookings[0]['ID'];
                 $bookingStatus = $bookings[0]['STATUS'];
             }
 
@@ -497,6 +514,7 @@ switch ($mode) {
             if (!empty($driverLoggedIn)) {
                 $driverStatus = true;
             }
+
 
 
             $vehicleDataFormatted = [
@@ -513,7 +531,8 @@ switch ($mode) {
                 'driverName' => db_output2($vehData['DRIVER_NAME'] ?? ''),
                 'driverMobile' => db_output2($vehData['DRIVER_NUM'] ?? ''),
                 'driverType' => $vehData['DRIVER_TYPE'] ?? '',
-                'nextTripTime' => $nextTripTime,
+                'nextTripTime' => $dateTime,
+                'bookingId' => (int) $bookingId,
                 'disposal' => false,
                 'status' => $bookingStatus,
                 'driverStatus' => $driverStatus,
@@ -776,6 +795,11 @@ switch ($mode) {
         global $FL_LOG_STATUS_ARR;
         $currentDate = date('Y-m-d');
         $user_level = GetXFromYID("select iLevel from users where iUserID = $user_id");
+        $timeline_limit = (int) GetXFromYID("select vValue from sys_settings where vCode = 'ACTIVITY_TIMELINE_DATA_LIMIT'");
+
+        if ($timeline_limit <= 0) {
+            $timeline_limit = 50; // sensible default
+        }        
 
         $LEVEL_MODULE_ASSOC_ARR = array();
         $ql = "select * from module_level_assoc where iLevelD = $user_level";
@@ -834,7 +858,7 @@ switch ($mode) {
             }
         }
         $PAUSE_TYPE_ARR = GetXArrFromYID("select iReasonID, vName from pause_reasons where cStatus = 'A'", 3);
-        $q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID, bl.iPauseTypeID, bl.vNotes from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where 1 $cond order by bl.dtAdded DESC";
+        $q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID, bl.iPauseTypeID, bl.vNotes from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where 1 $cond order by bl.dtAdded DESC limit $timeline_limit";
         $r = sql_query($q, "");
 
         if (sql_num_rows($r)) {
@@ -844,6 +868,7 @@ switch ($mode) {
                 $driverName = db_output2($DRIVER_ARR[$row['iDriverID']]['NAME']);
                 //$LOG_DATA_ARR[] = array("ID"=>$row['iFleet_BookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME'] ?? '');
                 $stageStatus = $row['cRefType'];
+                $bookingId = $row['iFleet_BookingID'];
                 $passengerName = db_output2($row['vName']);
                 $description = '';
                 switch ($stageStatus) {
@@ -897,8 +922,15 @@ switch ($mode) {
                         break;
                 }
 
+                $dt = strtotime($row['dtAdded']);
 
-                $LOG_DATA_ARR[] = array("code" => $row['cRefType'], "status" => $FL_LOG_STATUS_ARR[$row['cRefType']], "message" => $description, "dateTime" => date('d/m/Y H:i:s', strtotime($row['dtAdded'])));
+                if (date('Y-m-d', $dt) === date('Y-m-d')) {
+                    $dateTime = date('g:i A', $dt);
+                } else {
+                    $dateTime = date('d/m g:i A', $dt);
+                }
+
+                $LOG_DATA_ARR[] = array("code" => $row['cRefType'], "status" => $FL_LOG_STATUS_ARR[$row['cRefType']], "message" => $description, "dateTime" => $dateTime, "bookingId" => (int)$bookingId);
             }
         }
 
@@ -912,9 +944,9 @@ switch ($mode) {
             }
         }*/
 
-        usort($LOG_DATA_ARR, function ($a, $b) {
+/*         usort($LOG_DATA_ARR, function ($a, $b) {
             return strtotime($b['DATETIME']) <=> strtotime($a['DATETIME']);
-        });
+        }); */
 
         echo json_encode([
             "data" => [
