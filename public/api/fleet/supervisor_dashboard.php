@@ -68,6 +68,11 @@ switch ($mode) {
         foreach ($VEHICLE_STATUS_ARR as $id => $name) {
             $vehiStatusArr[] = ['id' => $id, 'name' => $name];
         }
+
+          $vehiStatusLocArr = [['id' => 0, 'name' => 'All']];
+        foreach ($VEHICLE_STATUS_ARR2 as $id => $name) {
+            $vehiStatusLocArr[] = ['id' => $id, 'name' => $name];
+        }
         $ql = "select iFleet_LocationID, vName, vLat,vLong from fleet_location order by vName";
         $rl = sql_query($ql, "supervisor_dashboard.77");
          $LOCATION_ARR = [['ID' => 0, 'NAME' => 'All', "LAT" => '', "LONG" => '']];
@@ -84,6 +89,7 @@ switch ($mode) {
             "vehiTypeArr" => $vehiTypeArr,
             "driverTypeArr" => $vehiTypeArr,
             "vehiStatusArr" => $vehiStatusArr,
+            "vehiStatusLocArr" => $vehiStatusLocArr,
             "locationArr" => $LOCATION_ARR,
             "refreshRequestStreamTime" => (int) $refreshRequestStreamTime,
             "refreshVehicleComponentTime" => (int) $refreshVehicleComponentTime,
