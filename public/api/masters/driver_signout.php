@@ -22,7 +22,7 @@ $mode  = strtoupper(trim($request->mode ?? ''));
 
 if (!$token) {
     http_response_code(400);
-	header('Content-Type: application/json');
+    header('Content-Type: application/json');
     echo json_encode([
         "statusCode" => 400,
         "error" => ["message" => "Missing token"]
@@ -32,7 +32,7 @@ if (!$token) {
 
 if (!in_array($mode, ['SINGLE', 'ALL'])) {
     http_response_code(400);
-	header('Content-Type: application/json');
+    header('Content-Type: application/json');
     echo json_encode([
         "statusCode" => 400,
         "error" => ["message" => "Invalid mode"]
@@ -88,7 +88,7 @@ if ($mode === 'SINGLE') {
         !is_array($request->driver_ids)
     ) {
         http_response_code(400);
-		header('Content-Type: application/json');
+        header('Content-Type: application/json');
         echo json_encode([
             "statusCode" => 400,
             "error" => ["message" => "driver_ids must be a non-empty array"]
@@ -105,7 +105,7 @@ if ($mode === 'SINGLE') {
 
     if (empty($driverIds)) {
         http_response_code(400);
-		header('Content-Type: application/json');
+        header('Content-Type: application/json');
         echo json_encode([
             "statusCode" => 400,
             "error" => ["message" => "No valid driver IDs provided"]
@@ -114,9 +114,26 @@ if ($mode === 'SINGLE') {
     }
 }
 
+
+$logoutDateTime = NOW;
+if (!empty($request->logout_time)) {
+    $providedDateTime = trim($request->logout_time);
+    $dt = DateTime::createFromFormat('Y-m-d H:i:s', $providedDateTime);
+    if ($dt && $dt->format('Y-m-d H:i:s') === $providedDateTime) {
+        $logoutDateTime = $providedDateTime;
+    } else {
+        http_response_code(400);
+        header('Content-Type: application/json');
+        echo json_encode([
+            "statusCode" => 400,
+            "error" => ["message" => "Invalid logout_datetime format. Use YYYY-MM-DD HH:MM:SS"]
+        ]);
+        exit;
+    }
+}
+
 $signedOut = [];
 $failed    = [];
-$now = NOW;
 $vehicleIds = [];
 
 if (!empty($request->vehicle_ids) && is_array($request->vehicle_ids)) {
@@ -130,13 +147,13 @@ if (!empty($request->vehicle_ids) && is_array($request->vehicle_ids)) {
 
 foreach ($driverIds as $driverId) {
 
-    $sql = "UPDATE driver SET dtLoggedOut = '$now', dtLoggedIn = NULL WHERE iDriverID = {$driverId}";
+    $sql = "UPDATE driver SET dtLoggedOut = '$logoutDateTime', dtLoggedIn = NULL WHERE iDriverID = {$driverId}";
     $result = sql_query($sql);
     if ($result && sql_affected_rows() > 0) {
-		if (!empty($vehicleIds)) {
-			$vehicleList = implode(',', $vehicleIds);
-			sql_query("UPDATE driver_vehicle_assoc SET cStatus = 'X' WHERE iDriverID = {$driverId} AND iVehicleID IN ($vehicleList) AND cStatus = 'A' ");
-		}
+        if (!empty($vehicleIds)) {
+            $vehicleList = implode(',', $vehicleIds);
+            sql_query("UPDATE driver_vehicle_assoc SET cStatus = 'X' WHERE iDriverID = {$driverId} AND iVehicleID IN ($vehicleList) AND cStatus = 'A' ");
+        }
         $signedOut[] = $driverId;
     } else {
         $failed[] = $driverId;
@@ -149,6 +166,7 @@ echo json_encode([
     "statusCode" => 200,
     "message" => "Driver sign-out processed",
     "mode" => $mode,
+    "logout_time" => $logoutDateTime,
     "signed_out" => $signedOut,
     "failed" => $failed
 ]);

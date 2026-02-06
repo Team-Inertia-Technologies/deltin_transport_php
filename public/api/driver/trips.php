@@ -108,14 +108,17 @@ if ($pingDriverLocation === 'Y') {
     $pingDuration = null;
 }
 
-$pickupTime = strtotime($row["vPickUpTime"]);
-$currentTime = time();
 
-$hoursDiff = ($pickupTime - $currentTime) / 3600;
-
-$buttonStatus = ($hoursDiff <= $tripStartHours && $hoursDiff >= $tripStartHours) ? "enabled" : "disabled";
 
 while ($row = sql_fetch_assoc($res)) {
+
+    $pickupTime  = strtotime($row["vPickUpTime"]);
+    $currentTime = time();
+
+    $timeDiffSeconds = $pickupTime - $currentTime;
+    $allowedSeconds  = $tripStartHours * 3600;
+
+    $buttonStatus = ($timeDiffSeconds <= $allowedSeconds) ? "enabled" : "disabled";
 
     if ($vehicle["number"] === "" && !empty($row["vehicleNo"])) {
         $vehicle["id"]     = $row["iVehicleID"];
