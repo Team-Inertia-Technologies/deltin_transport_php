@@ -849,6 +849,7 @@ switch ($mode) {
                 $driverName = db_output2($DRIVER_ARR[$row['iDriverID']]['NAME']);
                 //$LOG_DATA_ARR[] = array("ID"=>$row['iFleet_BookingID'], "DATETIME"=>$row['dtAdded'], "STATUS"=>$FL_LOG_STATUS_ARR[$row['cRefType']], "NOTES"=>$row['vRefName'], "GUEST"=>$row['vName'], "DRIVER"=>$DRIVER_ARR[$row['iDriverID']]['NAME'] ?? '');
                 $stageStatus = $row['cRefType'];
+                $bookingId = $row['iFleet_BookingID'];
                 $passengerName = db_output2($row['vName']);
                 $description = '';
                 switch ($stageStatus) {
@@ -903,7 +904,7 @@ switch ($mode) {
                 }
 
 
-                $LOG_DATA_ARR[] = array("code" => $row['cRefType'], "status" => $FL_LOG_STATUS_ARR[$row['cRefType']], "message" => $description, "dateTime" => date('d/m/Y H:i:s', strtotime($row['dtAdded'])));
+                $LOG_DATA_ARR[] = array("code" => $row['cRefType'], "status" => $FL_LOG_STATUS_ARR[$row['cRefType']], "message" => $description, "dateTime" => date('d/m/Y H:i:s', strtotime($row['dtAdded'])), "bookingId" => (int)$bookingId);
             }
         }
 
