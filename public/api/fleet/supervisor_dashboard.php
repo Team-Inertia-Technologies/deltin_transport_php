@@ -526,6 +526,60 @@ switch ($mode) {
                 $bookingStatus = $bookings[0]['STATUS'];
             }
 
+            if (!empty($vehData['BOOKINGS'])) {
+
+                $now = time();
+                $bookings = $vehData['BOOKINGS'];
+
+                /* =======================
+                NEXT / ONGOING TRIP
+                ======================== */
+
+                $futureBookings = array_filter($bookings, function ($b) use ($now) {
+                    return strtotime($b['PICKUP_TIME']) >= $now;
+                });
+
+                if (!empty($futureBookings)) {
+                    usort($futureBookings, function ($a, $b) {
+                        return strtotime($a['PICKUP_TIME']) <=> strtotime($b['PICKUP_TIME']);
+                    });
+
+                    $nextTrip = $futureBookings[0];
+                    $nextTripTime = $nextTrip['PICKUP_TIME'];
+
+                    $nextTripDateTime = (date('Y-m-d', strtotime($nextTripTime)) === date('Y-m-d'))
+                        ? date('g:i A', strtotime($nextTripTime))
+                        : date('d M g:i A', strtotime($nextTripTime));
+
+                    $nextBookingId     = $nextTrip['ID'];
+                    $nextBookingStatus = $nextTrip['STATUS'];
+                }
+
+                /* =======================
+                PREVIOUS TRIP
+                ======================== */
+
+                $pastBookings = array_filter($bookings, function ($b) use ($now) {
+                    return strtotime($b['PICKUP_TIME']) < $now;
+                });
+
+                if (!empty($pastBookings)) {
+                    usort($pastBookings, function ($a, $b) {
+                        return strtotime($b['PICKUP_TIME']) <=> strtotime($a['PICKUP_TIME']);
+                    });
+
+                    $prevTrip = $pastBookings[0];
+                    $prevTripTime = $prevTrip['PICKUP_TIME'];
+
+                    $prevTripDateTime = (date('Y-m-d', strtotime($prevTripTime)) === date('Y-m-d'))
+                        ? date('g:i A', strtotime($prevTripTime))
+                        : date('d M g:i A', strtotime($prevTripTime));
+
+                    $prevBookingId     = $prevTrip['ID'];
+                    $prevBookingStatus = $prevTrip['STATUS'];
+                }
+            }            
+
             $driverLoggedIn = GetXFromYID("SELECT dtLoggedIn  FROM driver WHERE iDriverID = " . (int) $vehData['DRIVER_ID'] . " AND dtLoggedIn IS NOT NULL");
             if (!empty($driverLoggedIn)) {
                 $driverStatus = true;
@@ -547,10 +601,11 @@ switch ($mode) {
                 'driverName' => db_output2($vehData['DRIVER_NAME'] ?? ''),
                 'driverMobile' => db_output2($vehData['DRIVER_NUM'] ?? ''),
                 'driverType' => $vehData['DRIVER_TYPE'] ?? '',
-                'nextTripTime' => $dateTime,
-                'bookingId' => (int) $bookingId,
+                'nextTripTime' => $nextTripDateTime,
+                'prevTripTime' => $prevTripDateTime,
+                'bookingId' => (int) $nextBookingId,
                 'disposal' => false,
-                'status' => $bookingStatus,
+                'status' => $nextBookingStatus,
                 'driverStatus' => $driverStatus,
                 //'bookings' => $vehData['BOOKINGS'] // Include booking details for reference
             ];
@@ -661,6 +716,23 @@ switch ($mode) {
             foreach ([$qPrev, $qNext] as $query) {
                 $res = sql_query($query, "supervisor_dashboard");
                 if ($row = sql_fetch_assoc($res)) {
+
+                    $dtpick = strtotime($row['vPickupTime']);
+
+                    if (date('Y-m-d', $dtpick) === date('Y-m-d')) {
+                        $dateTimePick = date('g:i A', $dtpick);
+                    } else {
+                        $dateTimePick = date('d M g:i A', $dtpick);
+                    }  
+
+                    $dtdrop = strtotime($row['vDropTime']);
+
+                    if (date('Y-m-d', $dtdrop) === date('Y-m-d')) {
+                        $dateTimeDrop = date('g:i A', $dtdrop);
+                    } else {
+                        $dateTimeDrop = date('d M g:i A', $dtdrop);
+                    }                    
+
                     $tripsArr[] = [
                         'title' => '',
                         'from' => $row['vPickupLocation'],
@@ -668,8 +740,8 @@ switch ($mode) {
                         'name' => $row['vName'],
                         'type' => $row['cBookingFor'],
                         'capacity' => $row['iCapacity'],
-                        'fromTime' => date('H:i:s', strtotime($row['vPickupTime'])),
-                        'toTime' => date('H:i:s', strtotime($row['vDropTime'])),
+                        'fromTime' => $dateTimePick,
+                        'toTime' => $dateTimeDrop,
                     ];
                 }
             }
@@ -699,7 +771,7 @@ switch ($mode) {
                     $description = '';
                     switch ($stageStatus) {
                         case 'S':
-                            $description = "$driverName started the trip";
+                            $description = "$driverName started the trip to pick up $passengerName";
                             break;
                         case 'G':
                             $description = "$driverName picked up $passengerName";
@@ -748,8 +820,16 @@ switch ($mode) {
                             break;
                     }
 
+                    $dt = strtotime($row['dtAdded']);
 
-                    $LOG_DATA_ARR[] = array("code" => $row['cRefType'], "status" => $FL_LOG_STATUS_ARR[$row['cRefType']], "message" => $description, "dateTime" => date('d/m/Y H:i:s', strtotime($row['dtAdded'])));
+                    if (date('Y-m-d', $dt) === date('Y-m-d')) {
+                        $dateTime = date('g:i A', $dt);
+                    } else {
+                        $dateTime = date('d M g:i A', $dt);
+                    }                    
+
+
+                    $LOG_DATA_ARR[] = array("code" => $row['cRefType'], "status" => $FL_LOG_STATUS_ARR[$row['cRefType']], "message" => $description, "dateTime" => $dateTime);
                 }
             }
 
@@ -889,7 +969,7 @@ switch ($mode) {
                 $description = '';
                 switch ($stageStatus) {
                     case 'S':
-                        $description = "$driverName started the trip";
+                        $description = "$driverName started the trip to pick up $passengerName";
                         break;
                     case 'G':
                         $description = "$driverName picked up $passengerName";
