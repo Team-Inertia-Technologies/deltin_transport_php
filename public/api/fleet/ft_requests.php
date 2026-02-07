@@ -137,7 +137,6 @@ switch ($mode) {
             ];
         }
 
-        // Get filter parameters
         $filterTripStatus = $_REQUEST['filterTripStatus'] ?? '';
         $filterBookedFor = $_REQUEST['filterBookedFor'] ?? '';
         $filterTripType = $_REQUEST['filterTripType'] ?? '';
@@ -219,7 +218,6 @@ switch ($mode) {
 
         if (!empty($filterTripStatus)) {
 
-            // If Select All (0) exists → load all valid status codes
             if (in_array('0', $filterTripStatus)) {
                 $filterTripStatus = array_keys($FLEET_TRIP_STATUS);
             }
@@ -262,7 +260,6 @@ switch ($mode) {
             $whereClause .= " AND fb.vPickUpTime <= '" . db_input($filterToDateTime) . "'";
         }
 
-        // Fetch booking data
         $bookingSql = "
             SELECT 
                 fb.iFleet_BookingID,
@@ -635,7 +632,6 @@ switch ($mode) {
 
     $booking = sql_fetch_assoc($bookingRes);
 
-    /* ---------------- BOOKING DATA ---------------- */
 
     $STAFF_DEPT_ARR = GetXArrFromYID(
         "SELECT iDepartmentID, iFStaffID FROM fleet_staff WHERE cStatus='A'",
@@ -684,7 +680,6 @@ switch ($mode) {
         "addedUserId" => intval($booking['iAdded_UserID'])
     ];
 
-    /* ---------------- OPTIONS SAME AS ADD_ONLOAD ---------------- */
 
     $BOOKING_CAT   = GetXArrFromYID("SELECT iFleet_BkCatID,vName FROM fleet_bookingcategory WHERE cStatus='A' ORDER BY iRank","3");
     $TRAVEL_PURPOSE= GetXArrFromYID("SELECT iFleet_TrvPurID,vName FROM fleet_travelpurpose WHERE cStatus='A' ORDER BY iRank","3");
@@ -699,19 +694,16 @@ switch ($mode) {
     $STAFF_ARR = sql_query("SELECT iFStaffID,vName,iDepartmentID,vMobile,iUserID FROM fleet_staff WHERE cStatus='A' ORDER BY vName");
     $GUEST_ARR = sql_query("SELECT iGuestID,vName,vMobileNo FROM guest WHERE cStatus='A' ORDER BY vName");
 
-    /* bookedForOpt */
     $bookedForOpt=[['id'=>0,'name'=>'Choose']];
     foreach($FLEET_BOOKING_FOR as $id=>$name){
         $bookedForOpt[]=['id'=>$id,'name'=>$name];
     }
 
-    /* bookingCatOpt */
     $bookingCatOpt=[['id'=>0,'name'=>'Choose']];
     foreach($BOOKING_CAT as $id=>$name){
         $bookingCatOpt[]=['id'=>intval($id),'name'=>$name];
     }
 
-    /* travelPurposeTypeOpt */
     $travelPurposeTypeOpt=[];
     foreach($TRAVEL_PURPOSE as $id=>$name){
         $travelPurposeTypeOpt[$id]=[
@@ -731,7 +723,6 @@ switch ($mode) {
     }
     $travelPurposeTypeOpt=array_values($travelPurposeTypeOpt);
 
-    /* propertyOpt */
     $propertyOpt=[['id'=>0,'name'=>'Choose']];
     foreach($PROPERTY_ARR as $id=>$name){
         $propertyOpt[]=['id'=>intval($id),'name'=>$name];
@@ -775,8 +766,6 @@ switch ($mode) {
             'mobile'=>$row['vMobileNo']
         ];
     }
-
-    /* FILTER OPTIONS */
     $tripStatusFilterOpt=[['id'=>'','name'=>'All']];
     foreach($FLEET_TRIP_STATUS as $id=>$name){
         $tripStatusFilterOpt[]=['id'=>$id,'name'=>$name];
@@ -889,7 +878,6 @@ switch ($mode) {
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
         $iFStaffID = intval($_REQUEST['staffID'] ?? 0);
 
-        // Basic required fields check 
         if (empty($vName) || empty($vMobileNo) || empty($vPickUpTime)) {
             echo json_encode([
                 "error" => ["message" => "Required fields missing"],
@@ -1046,7 +1034,7 @@ switch ($mode) {
         // $guestStaffType = ($booking['cBookingFor'] === 'S') ? 'Staff' : 'Guest';
         $guestStaffType = $booking['cBookingFor'];
 
-        // Format date time for display
+     
         $pickupDateTime = '';
         if (!empty($booking['vPickUpTime'])) {
             $pickupDateTime = date('d-m-Y H:i', strtotime($booking['vPickUpTime']));
@@ -1096,7 +1084,6 @@ switch ($mode) {
 
         $cancelModule = checkUserModuleAccess($user_id, 'FLEET_REQUEST_CANCEL');
 
-            // Check ownership
             $isOwner = intval($booking['iAdded_UserID']) == $user_id;
             $notCancelled = $booking['bookingStatus'] != 'C';
 
@@ -1137,6 +1124,7 @@ switch ($mode) {
             ] : null,
             'tripStatus' => isset($booking['currentStatus']) ? $booking['currentStatus'] : 'N',
             'bookingStatus' => isset($booking['bookingStatus']) ? $booking['bookingStatus'] : 'C',
+                'canCancel' => $canCancel
             // 'tripStatus' => isset($FLEET_TRIP_STATUS[$booking['currentStatus']]) ? $FLEET_TRIP_STATUS[$booking['currentStatus']] : 'Not Started'
             // "status" => $booking['currentStatus']
         ];

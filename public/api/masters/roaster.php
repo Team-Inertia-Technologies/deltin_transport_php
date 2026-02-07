@@ -88,6 +88,9 @@ $today = date('Y-m-d');
 $currentTime = time();
 $maxLoggedSeconds = 8 * 3600;
 
+$currentTimeSql = date('Y-m-d H:i:s');
+$todayDate      = date('Y-m-d');
+
 while ($row = sql_fetch_assoc($res)) {
 
     $dateTime = "";
@@ -114,6 +117,55 @@ while ($row = sql_fetch_assoc($res)) {
         }
     }
 
+    $currentTrip = null;
+    $nextTrip    = null;
+
+    $currentTripSql = "
+        SELECT 
+            iFleet_BookingID,
+            vPickUpTime,
+            vPickUpLocation,
+            vDropLocation
+        FROM fleet_booking
+        WHERE 
+            iDriverID = {$row['iRoasterID']}
+            AND cType IN ('S','G', 'P', 'R', 'C')
+            AND DATE(vPickUpTime) = '$todayDate'
+            AND vPickUpTime <= '$currentTimeSql'
+            AND cStatus = 'A'
+        ORDER BY vPickUpTime DESC
+        LIMIT 1
+    ";
+
+    $currRes = sql_query($currentTripSql, 'CURRENT.TRIP');
+    if ($currRes && sql_num_rows($currRes)) {
+        $currentTrip = sql_fetch_assoc($currRes);
+    }
+
+    $nextTripSql = "
+    SELECT 
+        iFleet_BookingID,
+        vPickUpTime,
+        vPickUpLocation,
+        vDropLocation
+    FROM fleet_booking
+    WHERE 
+        iDriverID = {$row['iRoasterID']}
+        AND cType = 'N'
+        AND DATE(vPickUpTime) = '$todayDate'
+        AND vPickUpTime > '$currentTimeSql'
+        AND cStatus = 'A'
+    ORDER BY vPickUpTime ASC
+    LIMIT 1
+";
+
+    $nextRes = sql_query($nextTripSql, 'NEXT.TRIP');
+    if ($nextRes && sql_num_rows($nextRes)) {
+        $nextTrip = sql_fetch_assoc($nextRes);
+    }
+
+
+
     $tripList[] = [
         "id"               => intval($row['iRoasterID']),
         "dateTime"         => $dateTime,
@@ -125,7 +177,20 @@ while ($row = sql_fetch_assoc($res)) {
         "status"           => $row['status'],
         "vehicleAllocated" => $row['vehicleAllocated'],
         "loggedInStatus"   => $loggedInStatus,
-        "overLoggedLimit"  => $overLoggedLimit
+        "overLoggedLimit"  => $overLoggedLimit,
+        "currentTrip" => $currentTrip ? [
+            "id"       => $currentTrip['iFleet_BookingID'],
+            "time"     => $currentTrip['vPickUpTime'],
+            "from"     => $currentTrip['vPickUpLocation'],
+            "to"       => $currentTrip['vDropLocation']
+        ] : null,
+
+        "nextTrip" => $nextTrip ? [
+            "id"       => $nextTrip['iFleet_BookingID'],
+            "time"     => $nextTrip['vPickUpTime'],
+            "from"     => $nextTrip['vPickUpLocation'],
+            "to"       => $nextTrip['vDropLocation']
+        ] : null
     ];
 }
 
@@ -144,7 +209,7 @@ $response = [
         ],
         "loginFilterOpt" => [
             ["id" => "N", "name" => "All Drivers"],
-            ["id" => "Y", "name" => "Logged In Only"]
+            ["id" => "Y", "name" => "Signed In Only"]
         ]
     ]
 ];

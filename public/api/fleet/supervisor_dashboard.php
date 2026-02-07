@@ -43,6 +43,7 @@ switch ($mode) {
         $refreshRequestStreamTime = GetXFromYID("select vValue from sys_settings where vCode = 'REQSTREAM_PING_DURATION'");
         $refreshVehicleComponentTime = GetXFromYID("select vValue from sys_settings where vCode = 'VEHICLECOMPONENT_PING_DURATION'");
         $refreshActivityTimelineTime = GetXFromYID("select vValue from sys_settings where vCode = 'ACTIVITYTIMELINE_PING_DURATION'");
+        $overtimelimit = GetXFromYID("SELECT COUNT(*) FROM driver WHERE dtLoggedIn IS NOT NULL AND TIMESTAMPDIFF(HOUR, dtLoggedIn, NOW()) > 8");
 
         $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
         foreach ($FLEET_BOOKING_FOR as $id => $name) {
@@ -69,13 +70,13 @@ switch ($mode) {
             $vehiStatusArr[] = ['id' => $id, 'name' => $name];
         }
 
-          $vehiStatusLocArr = [['id' => 0, 'name' => 'All']];
+        $vehiStatusLocArr = [['id' => 0, 'name' => 'All']];
         foreach ($VEHICLE_STATUS_ARR2 as $id => $name) {
             $vehiStatusLocArr[] = ['id' => $id, 'name' => $name];
         }
         $ql = "select iFleet_LocationID, vName, vLat,vLong from fleet_location order by vName";
         $rl = sql_query($ql, "supervisor_dashboard.77");
-         $LOCATION_ARR = [['ID' => 0, 'NAME' => 'All', "LAT" => '', "LONG" => '']];
+        $LOCATION_ARR = [['ID' => 0, 'NAME' => 'All', "LAT" => '', "LONG" => '']];
         if (sql_num_rows($rl)) {
             while ($lrow = sql_fetch_assoc($rl)) {
                 $LOCATION_ARR[] = array("ID" => $lrow['iFleet_LocationID'], "NAME" => $lrow['vName'], "LAT" => $lrow['vLat'], "LONG" => $lrow['vLong']);
@@ -103,7 +104,8 @@ switch ($mode) {
                 "avaiDriver" => $AVAILABLE_DRIVER_COUNT,
                 "totalVehi" => $TOTAL_VEHICLE_COUNT,
                 "avaiVehi" => $AVAILABLE_VEHICLE_COUNT,
-                "optArrs" => $optArr
+                "optArrs" => $optArr,
+                "overtimelimit" => intval($overtimelimit)
             ],
             "statusCode" => 200
         ]);
@@ -239,13 +241,13 @@ switch ($mode) {
                 $bookedByName = db_output2($row['vBookedBy'] ?? '');
             }
 
-                $dt = strtotime($row['vPickUpTime']);
+            $dt = strtotime($row['vPickUpTime']);
 
-                if (date('Y-m-d', $dt) === date('Y-m-d')) {
-                    $dateTime = date('g:i A', $dt);
-                } else {
-                    $dateTime = date('d M g:i A', $dt);
-                }
+            if (date('Y-m-d', $dt) === date('Y-m-d')) {
+                $dateTime = date('g:i A', $dt);
+            } else {
+                $dateTime = date('d M g:i A', $dt);
+            }
 
             $rowData[] = [
                 'id' => intval($row['iFleet_BookingID']),
@@ -362,13 +364,13 @@ switch ($mode) {
                 $to_latlong_arr[1] = '0';
             }
 
-                $dt = strtotime($row['tReturnTime']);
+            $dt = strtotime($row['tReturnTime']);
 
-                if (date('Y-m-d', $dt) === date('Y-m-d')) {
-                    $dateTime = date('g:i A', $dt);
-                } else {
-                    $dateTime = date('d M g:i A', $dt);
-                }
+            if (date('Y-m-d', $dt) === date('Y-m-d')) {
+                $dateTime = date('g:i A', $dt);
+            } else {
+                $dateTime = date('d M g:i A', $dt);
+            }
 
             $rowData[] = [
                 'requestId' => intval($row['iFleet_BookingID']),
@@ -513,7 +515,7 @@ switch ($mode) {
                     return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
                 });
                 $nextTripTime = $bookings[0]['PICKUP_TIME'];
-                if(!empty($nextTripTime)){
+                if (!empty($nextTripTime)) {
                     if (date('Y-m-d', strtotime($nextTripTime)) === date('Y-m-d')) {
                         $dateTime = date('g:i A', strtotime($nextTripTime));
                     } else {
@@ -523,6 +525,60 @@ switch ($mode) {
 
                 $bookingId = $bookings[0]['ID'];
                 $bookingStatus = $bookings[0]['STATUS'];
+            }
+
+            if (!empty($vehData['BOOKINGS'])) {
+
+                $now = time();
+                $bookings = $vehData['BOOKINGS'];
+
+                /* =======================
+                NEXT / ONGOING TRIP
+                ======================== */
+
+                $futureBookings = array_filter($bookings, function ($b) use ($now) {
+                    return strtotime($b['PICKUP_TIME']) >= $now;
+                });
+
+                if (!empty($futureBookings)) {
+                    usort($futureBookings, function ($a, $b) {
+                        return strtotime($a['PICKUP_TIME']) <=> strtotime($b['PICKUP_TIME']);
+                    });
+
+                    $nextTrip = $futureBookings[0];
+                    $nextTripTime = $nextTrip['PICKUP_TIME'];
+
+                    $nextTripDateTime = (date('Y-m-d', strtotime($nextTripTime)) === date('Y-m-d'))
+                        ? date('g:i A', strtotime($nextTripTime))
+                        : date('d M g:i A', strtotime($nextTripTime));
+
+                    $nextBookingId     = $nextTrip['ID'];
+                    $nextBookingStatus = $nextTrip['STATUS'];
+                }
+
+                /* =======================
+                PREVIOUS TRIP
+                ======================== */
+
+                $pastBookings = array_filter($bookings, function ($b) use ($now) {
+                    return strtotime($b['PICKUP_TIME']) < $now;
+                });
+
+                if (!empty($pastBookings)) {
+                    usort($pastBookings, function ($a, $b) {
+                        return strtotime($b['PICKUP_TIME']) <=> strtotime($a['PICKUP_TIME']);
+                    });
+
+                    $prevTrip = $pastBookings[0];
+                    $prevTripTime = $prevTrip['PICKUP_TIME'];
+
+                    $prevTripDateTime = (date('Y-m-d', strtotime($prevTripTime)) === date('Y-m-d'))
+                        ? date('g:i A', strtotime($prevTripTime))
+                        : date('d M g:i A', strtotime($prevTripTime));
+
+                    $prevBookingId     = $prevTrip['ID'];
+                    $prevBookingStatus = $prevTrip['STATUS'];
+                }
             }
 
             $driverLoggedIn = GetXFromYID("SELECT dtLoggedIn  FROM driver WHERE iDriverID = " . (int) $vehData['DRIVER_ID'] . " AND dtLoggedIn IS NOT NULL");
@@ -546,10 +602,11 @@ switch ($mode) {
                 'driverName' => db_output2($vehData['DRIVER_NAME'] ?? ''),
                 'driverMobile' => db_output2($vehData['DRIVER_NUM'] ?? ''),
                 'driverType' => $vehData['DRIVER_TYPE'] ?? '',
-                'nextTripTime' => $dateTime,
-                'bookingId' => (int) $bookingId,
+                'nextTripTime' => $nextTripDateTime,
+                'prevTripTime' => $prevTripDateTime,
+                'bookingId' => (int) $nextBookingId,
                 'disposal' => false,
-                'status' => $bookingStatus,
+                'status' => $nextBookingStatus,
                 'driverStatus' => $driverStatus,
                 //'bookings' => $vehData['BOOKINGS'] // Include booking details for reference
             ];
@@ -660,6 +717,23 @@ switch ($mode) {
             foreach ([$qPrev, $qNext] as $query) {
                 $res = sql_query($query, "supervisor_dashboard");
                 if ($row = sql_fetch_assoc($res)) {
+
+                    $dtpick = strtotime($row['vPickupTime']);
+
+                    if (date('Y-m-d', $dtpick) === date('Y-m-d')) {
+                        $dateTimePick = date('g:i A', $dtpick);
+                    } else {
+                        $dateTimePick = date('d M g:i A', $dtpick);
+                    }
+
+                    $dtdrop = strtotime($row['vDropTime']);
+
+                    if (date('Y-m-d', $dtdrop) === date('Y-m-d')) {
+                        $dateTimeDrop = date('g:i A', $dtdrop);
+                    } else {
+                        $dateTimeDrop = date('d M g:i A', $dtdrop);
+                    }
+
                     $tripsArr[] = [
                         'title' => '',
                         'from' => $row['vPickupLocation'],
@@ -667,8 +741,8 @@ switch ($mode) {
                         'name' => $row['vName'],
                         'type' => $row['cBookingFor'],
                         'capacity' => $row['iCapacity'],
-                        'fromTime' => date('H:i:s', strtotime($row['vPickupTime'])),
-                        'toTime' => date('H:i:s', strtotime($row['vDropTime'])),
+                        'fromTime' => $dateTimePick,
+                        'toTime' => $dateTimeDrop,
                     ];
                 }
             }
@@ -698,7 +772,7 @@ switch ($mode) {
                     $description = '';
                     switch ($stageStatus) {
                         case 'S':
-                            $description = "$driverName started the trip";
+                            $description = "$driverName started the trip to pick up $passengerName";
                             break;
                         case 'G':
                             $description = "$driverName picked up $passengerName";
@@ -747,8 +821,16 @@ switch ($mode) {
                             break;
                     }
 
+                    $dt = strtotime($row['dtAdded']);
 
-                    $LOG_DATA_ARR[] = array("code" => $row['cRefType'], "status" => $FL_LOG_STATUS_ARR[$row['cRefType']], "message" => $description, "dateTime" => date('d/m/Y H:i:s', strtotime($row['dtAdded'])));
+                    if (date('Y-m-d', $dt) === date('Y-m-d')) {
+                        $dateTime = date('g:i A', $dt);
+                    } else {
+                        $dateTime = date('d M g:i A', $dt);
+                    }
+
+
+                    $LOG_DATA_ARR[] = array("code" => $row['cRefType'], "status" => $FL_LOG_STATUS_ARR[$row['cRefType']], "message" => $description, "dateTime" => $dateTime);
                 }
             }
 
@@ -814,7 +896,7 @@ switch ($mode) {
 
         if ($timeline_limit <= 0) {
             $timeline_limit = 50; // sensible default
-        }        
+        }
 
         $LEVEL_MODULE_ASSOC_ARR = array();
         $ql = "select * from module_level_assoc where iLevelD = $user_level";
@@ -888,7 +970,7 @@ switch ($mode) {
                 $description = '';
                 switch ($stageStatus) {
                     case 'S':
-                        $description = "$driverName started the trip";
+                        $description = "$driverName started the trip to pick up $passengerName";
                         break;
                     case 'G':
                         $description = "$driverName picked up $passengerName";
@@ -959,7 +1041,7 @@ switch ($mode) {
             }
         }*/
 
-/*         usort($LOG_DATA_ARR, function ($a, $b) {
+        /*         usort($LOG_DATA_ARR, function ($a, $b) {
             return strtotime($b['DATETIME']) <=> strtotime($a['DATETIME']);
         }); */
 

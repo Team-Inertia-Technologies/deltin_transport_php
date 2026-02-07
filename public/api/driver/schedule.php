@@ -25,6 +25,7 @@ $token = trim($request->token);
 $userid = DecodeParam($token);
 $stars = isset($request->stars) ? intval($request->stars) : 0;
 $dateID = isset($request->dateID) ? trim($request->dateID) : '';
+$status = isset($request->status) ? trim($request->status) : '';
 
 if ($dateID == 1) {
     $dateFilter = "AND fb.vPickUpTime >= CURDATE() AND fb.vPickUpTime < CURDATE() + INTERVAL 1 DAY";
@@ -36,6 +37,24 @@ if ($dateID == 1) {
     $dateFilter = "AND fb.vPickUpTime >= CURDATE() - INTERVAL 30 DAY";
 } elseif ($dateID == 5) {
     $dateFilter = "";
+}
+
+if ($status) {
+    $statusFilter = "AND fb.cType = '" . db_input($status) . "'";
+} else {
+    $statusFilter = "";
+}
+
+if (!$token) {
+    http_response_code(400);
+    header('Content-Type: application/json');
+    echo json_encode([
+        "statusCode" => 400,
+        "error" => [
+            "message" => "Missing token."
+        ]
+    ]);
+    exit;
 }
 
 
@@ -76,6 +95,7 @@ FROM fleet_booking fb
 WHERE 
     fb.cType IN ('P', 'C')
     {$dateFilter}
+    {$statusFilter}
     AND (
         fb.iDriverID = '{$driverID}' 
     )
@@ -179,6 +199,16 @@ if (empty($trips)) {
                     "id" => 5,
                     "lable" => "5 Stars"
                 ]
+            ],
+            "statusFilter" => [
+                [
+                    "id" => "P",
+                    "lable" => "Paused"
+                ],
+                [
+                    "id" => "C",
+                    "lable" => "Completed"
+                ]
             ]
         ]
     ]);
@@ -236,6 +266,16 @@ $response = [
             [
                 "id" => 5,
                 "lable" => "5 Stars"
+            ]
+        ],
+        "statusFilter" => [
+            [
+                "id" => "P",
+                "lable" => "Paused"
+            ],
+            [
+                "id" => "C",
+                "lable" => "Completed"
             ]
         ]
     ]
