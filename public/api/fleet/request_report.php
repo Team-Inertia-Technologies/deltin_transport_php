@@ -92,7 +92,7 @@ switch ($mode) {
             v.vRnum AS vehicleRegNo,
             vcat.vName AS vehicleCategory,
              ftt.vName as travelTypeName,
-             usr.iUserID as createdBy
+             usr.vName as createdBy
         FROM fleet_booking fb
            LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus='A'
         LEFT JOIN driver dr ON fb.iDriverID = dr.iDriverID AND dr.cStatus='A'
