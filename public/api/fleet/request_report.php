@@ -30,16 +30,8 @@ switch ($mode) {
 
         $fromDate = $_REQUEST['fromDateTime'] ?? '';
         $toDate = $_REQUEST['toDateTime'] ?? '';
-        $vendorId = intval($_REQUEST['vendorId'] ?? 0);
-        $vehicleId = intval($_REQUEST['vehicleId'] ?? 0);
-        $driverId = intval($_REQUEST['driverId'] ?? 0);
-
-        $vendorOpt = [['id' => 0, 'name' => 'All']];
-        $res = sql_query("SELECT iVendorID, vName FROM vendor WHERE cStatus='A' ORDER BY vName");
-        while ($r = sql_fetch_assoc($res)) {
-            $vendorOpt[] = ['id' => intval($r['iVendorID']), 'name' => db_output2($r['vName'])];
-        }
-
+        $vehicleId = isset($_REQUEST['vehicleId']) ? intval($_REQUEST['vehicleId'] ?? 0) : 0 ;
+        $driverId =  isset($_REQUEST['driverId']) ?  intval($_REQUEST['driverId'] ?? 0) : 0 ;
 
         $vehicleOpt = [['id' => 0, 'name' => 'All']];
         $res = sql_query("SELECT iVehicleID, vRnum FROM vehicle WHERE cStatus='A' ORDER BY vRnum");
@@ -60,17 +52,13 @@ switch ($mode) {
                 $LOCATION_ARR[] = array("ID" => $lrow['iFleet_LocationID'], "NAME" => $lrow['vName']);
             }
         }
-
-
         $optArr = [
-            'vendorOpt' => $vendorOpt,
             'vehicleOpt' => $vehicleOpt,
             'driverOpt' => $driverOpt,
             'locationOpt' => $LOCATION_ARR
         ];
 
-
-        $where = "fb.cStatus NOT IN ('X', 'C') AND fb.cType='C'";
+        $where = "fb.cStatus NOT IN ('X', 'C') AND fb.cType != 'C'";
 
         if (!empty($fromDate)) {
             $where .= " AND DATE(fb.vPickUpTime) >= '" . db_input($fromDate) . "'";
@@ -79,11 +67,6 @@ switch ($mode) {
         if (!empty($toDate)) {
             $where .= " AND DATE(fb.vPickUpTime) <= '" . db_input($toDate) . "'";
         }
-
-        if ($vendorId > 0) {
-            $where .= " AND v.iVendorID = $vendorId";
-        }
-
         if ($vehicleId > 0) {
             $where .= " AND fb.iVehicleID = $vehicleId";
         }
@@ -103,19 +86,19 @@ switch ($mode) {
             fb.vPickUpTime,
             fb.cType AS tripStatus,
             fb.cBookingFor as bookedFor,
-            ven.vName AS vendorName,
             dr.vName AS driverName,
             dr.vMobileNum AS driverMobile,
             dr.iType AS driverType,
             v.vRnum AS vehicleRegNo,
             vcat.vName AS vehicleCategory,
-             ftt.vName as travelTypeName
+             ftt.vName as travelTypeName,
+             usr.vName as createdBy
         FROM fleet_booking fb
-        LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID 
-        LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID
-        LEFT JOIN driver dr ON fb.iDriverID = dr.iDriverID
+           LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus='A'
+        LEFT JOIN driver dr ON fb.iDriverID = dr.iDriverID AND dr.cStatus='A'
         LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID
-        LEFT JOIN fleet_traveltype ftt ON fb.iFleet_TrvTypeID = ftt.iFleet_TrvTypeID
+         LEFT JOIN fleet_traveltype ftt ON fb.iFleet_TrvTypeID = ftt.iFleet_TrvTypeID
+           LEFT JOIN users usr ON usr.iUserID = fb.iAdded_UserID
         WHERE $where
         ORDER BY fb.vPickUpTime ASC
     ";
@@ -126,36 +109,6 @@ switch ($mode) {
         while ($row = sql_fetch_assoc($res)) {
 
             $bookingID = intval($row['iFleet_BookingID']);
-
-            /* ===== Duration: S → C ===== */
-
-            $start = '';
-            $end = '';
-            $duration = '';
-
-            $r = sql_query("SELECT dtAdded FROM fleet_booking_log
-                         WHERE iFleet_BookingID=$bookingID AND cRefType='S'
-                         ORDER BY dtAdded ASC LIMIT 1");
-            if (sql_num_rows($r)) {
-                $start = sql_fetch_assoc($r)['dtAdded'];
-            }
-
-            $r = sql_query("SELECT dtAdded FROM fleet_booking_log
-                         WHERE iFleet_BookingID=$bookingID AND cRefType='C'
-                         ORDER BY dtAdded DESC LIMIT 1");
-            if (sql_num_rows($r)) {
-                $end = sql_fetch_assoc($r)['dtAdded'];
-            }
-
-            if ($start && $end) {
-                $diff = strtotime($end) - strtotime($start);
-                if ($diff > 0) {
-                    $h = floor($diff / 3600);
-                    $m = floor(($diff % 3600) / 60);
-                    $duration = sprintf('%02dh %02dm', $h, $m);
-                }
-            }
-
             $vehicle = '';
             if (!empty($row['vehicleRegNo'])) {
                 $vehicle = db_output2($row['vehicleRegNo']);
@@ -175,7 +128,7 @@ switch ($mode) {
                 'pickupTime' => date('h:i a', strtotime($row['vPickUpTime'])),
                 'location' => db_output2($row['vPickUpLocation']),
                 'destination' => db_output2($row['vDropLocation']),
-                'totalDuration' => $duration,
+
                 'vendor' => db_output2($row['vendorName'] ?? ''),
                 'vehicle' => $vehicle,
                 'driver' => [
@@ -184,8 +137,10 @@ switch ($mode) {
                     'type' => $driverType
                 ],
                 'tripStatus' => $row['tripStatus'],
+                'tripStatusText' => isset($FLEET_TRIP_STATUS[$row['tripStatus']]) ? $FLEET_TRIP_STATUS[$row['tripStatus']] : 'Unknown',
                 'bookedFor' => $row['bookedFor'],
-                'travelTypeName' => $row['travelTypeName']
+                'travelTypeName' => $row['travelTypeName'],
+                'createdBy' => $row['createdBy']
             ];
         }
 
