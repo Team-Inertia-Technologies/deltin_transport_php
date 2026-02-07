@@ -968,7 +968,7 @@ switch ($mode) {
                 $description = '';
                 switch ($stageStatus) {
                     case 'S':
-                        $description = "$driverName started the trip";
+                        $description = "$driverName started the trip to pick up $passengerName";
                         break;
                     case 'G':
                         $description = "$driverName picked up $passengerName";
