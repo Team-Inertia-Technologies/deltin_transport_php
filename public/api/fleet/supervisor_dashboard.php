@@ -43,7 +43,7 @@ switch ($mode) {
         $refreshRequestStreamTime = GetXFromYID("select vValue from sys_settings where vCode = 'REQSTREAM_PING_DURATION'");
         $refreshVehicleComponentTime = GetXFromYID("select vValue from sys_settings where vCode = 'VEHICLECOMPONENT_PING_DURATION'");
         $refreshActivityTimelineTime = GetXFromYID("select vValue from sys_settings where vCode = 'ACTIVITYTIMELINE_PING_DURATION'");
-        $overtimelimit = GetXFromYID("SELECT COUNT(*) FROM driver WHERE dtLoggedIn IS NOT NULLAND TIMESTAMPDIFF(HOUR, dtLoggedIn, NOW()) > 8");
+        $overtimelimit = GetXFromYID("SELECT COUNT(*) FROM driver WHERE dtLoggedIn IS NOT NULL AND TIMESTAMPDIFF(HOUR, dtLoggedIn, NOW()) > 8");
 
         $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
         foreach ($FLEET_BOOKING_FOR as $id => $name) {
