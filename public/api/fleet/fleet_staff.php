@@ -172,7 +172,7 @@ switch ($mode) {
     $level        = intval($_REQUEST['level'] ?? 0);
     $reportingTo  = intval($_REQUEST['reportingTo'] ?? 0);
 
-    /* ---- DUPLICATE MOBILE CHECK ---- */
+
     $dup = sql_query("
         SELECT 1 FROM fleet_staff 
         WHERE vMobile='$vMobile' 
@@ -187,7 +187,6 @@ switch ($mode) {
         exit;
     }
 
-    /* ---- UPDATE STAFF ---- */
     sql_query("
         UPDATE fleet_staff
         SET vCode='$vCode',
@@ -201,8 +200,15 @@ switch ($mode) {
         sql_query("SELECT iUserID FROM fleet_staff WHERE iFStaffID=$iFStaffID")
     );
 
-    /* ---- UPDATE USER (ONLY IF LINKED) ---- */
-    if ($isUser && intval($staff['iUserID']) > 0) {
+   if ($isUser) {
+
+    $password = '';
+    if (!empty($_REQUEST['password'])) {
+        $password = htmlspecialchars_decode(db_input($_REQUEST['password']));
+    }
+
+    /* ===== USER ALREADY EXISTS → UPDATE ===== */
+    if (intval($staff['iUserID']) > 0) {
 
         $updateFields = [];
         $updateFields[] = "vName='$vName'";
@@ -214,9 +220,7 @@ switch ($mode) {
         $updateFields[] = "cStatus='D'";
         $updateFields[] = "cAction='AWA'";
 
-        /* ---- PASSWORD UPDATE ONLY IF SENT ---- */
-        if (!empty($_REQUEST['password'])) {
-            $password = htmlspecialchars_decode(db_input($_REQUEST['password'])); 
+        if ($password !== '') {
             $updateFields[] = "vPassword='$password'";
         }
 
@@ -225,7 +229,35 @@ switch ($mode) {
             SET " . implode(',', $updateFields) . "
             WHERE iUserID={$staff['iUserID']}
         ");
+
     }
+    /* ===== USER DOES NOT EXIST → INSERT ===== */
+    else {
+
+        sql_query("
+            INSERT INTO users_temp SET
+                vName='$vName',
+                vUName='$username',
+                vPhone='$vMobile',
+                vPassword='$password',
+                iDepartmentID=$iDepartmentID,
+                iReportingID=$reportingTo,
+                iLevel=$level,
+                cStatus='D',
+                cAction='AWA',
+                dtAdded=NOW()
+        ");
+
+        $newUserID = sql_insert_id();
+
+        /* LINK USER TO STAFF */
+        sql_query("
+            UPDATE fleet_staff
+            SET iUserID=$newUserID
+            WHERE iFStaffID=$iFStaffID
+        ");
+    }
+}
 
     echo json_encode([
         "statusCode" => 200,
