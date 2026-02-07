@@ -61,11 +61,11 @@ FROM fleet_booking fb
 LEFT JOIN vehicle v ON v.iVehicleID = fb.iVehicleID
 LEFT JOIN vehicle_category vc ON vc.iVCatID = v.iCatID
 LEFT JOIN property p ON p.iPropertyID = fb.iPropertyID
-
 WHERE 
     fb.cType = 'N'
-    AND fb.cStatus ='A'
-    AND  fb.iDriverID = '{$driverID}'
+    AND fb.cStatus = 'A'
+    AND fb.iDriverID = '{$driverID}'
+    AND fb.vPickUpTime >= DATE_SUB(NOW(), INTERVAL 4 HOUR)
 ORDER BY fb.vPickUpTime ASC
 ";
 
