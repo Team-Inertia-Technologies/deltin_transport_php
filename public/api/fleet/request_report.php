@@ -129,7 +129,6 @@ switch ($mode) {
                 'location' => db_output2($row['vPickUpLocation']),
                 'destination' => db_output2($row['vDropLocation']),
 
-                'vendor' => db_output2($row['vendorName'] ?? ''),
                 'vehicle' => $vehicle,
                 'driver' => [
                     'name' => db_output2($row['driverName'] ?? ''),
