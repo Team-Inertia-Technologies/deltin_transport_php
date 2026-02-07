@@ -137,7 +137,6 @@ switch ($mode) {
             ];
         }
 
-        // Get filter parameters
         $filterTripStatus = $_REQUEST['filterTripStatus'] ?? '';
         $filterBookedFor = $_REQUEST['filterBookedFor'] ?? '';
         $filterTripType = $_REQUEST['filterTripType'] ?? '';
