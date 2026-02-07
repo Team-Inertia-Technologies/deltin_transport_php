@@ -111,9 +111,9 @@ switch ($mode) {
             v.vRnum AS vehicleRegNo,
             vcat.vName AS vehicleCategory
         FROM fleet_booking fb
+           LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus='A'
         LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID
         LEFT JOIN driver dr ON fb.iDriverID = dr.iDriverID AND dr.cStatus='A'
-        LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus='A'
         LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID
         WHERE $where
         ORDER BY fb.vPickUpTime ASC
