@@ -97,13 +97,8 @@ switch ($mode) {
 
         if ($userInfo['iUserID'] > 0) {
             $uRes = sql_query("
-        SELECT 
-            vUName AS username,
-            vPassword AS password,
-            iLevel AS level,
-            iReportingID AS reportingTo
-        FROM users_temp
-        WHERE iUserID = {$userInfo['iUserID']}
+        SELECT vUName AS username,iLevel AS level,iReportingID AS reportingTo
+        FROM users_temp WHERE iUserID = {$userInfo['iUserID']}
     ");
 
             if ($u = sql_fetch_assoc($uRes)) {
