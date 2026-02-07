@@ -104,7 +104,8 @@ switch ($mode) {
                 "avaiDriver" => $AVAILABLE_DRIVER_COUNT,
                 "totalVehi" => $TOTAL_VEHICLE_COUNT,
                 "avaiVehi" => $AVAILABLE_VEHICLE_COUNT,
-                "optArrs" => $optArr
+                "optArrs" => $optArr,
+                "overtimelimit" => intval($overtimelimit)
             ],
             "statusCode" => 200
         ]);
@@ -578,7 +579,7 @@ switch ($mode) {
                     $prevBookingId     = $prevTrip['ID'];
                     $prevBookingStatus = $prevTrip['STATUS'];
                 }
-            }            
+            }
 
             $driverLoggedIn = GetXFromYID("SELECT dtLoggedIn  FROM driver WHERE iDriverID = " . (int) $vehData['DRIVER_ID'] . " AND dtLoggedIn IS NOT NULL");
             if (!empty($driverLoggedIn)) {
@@ -723,7 +724,7 @@ switch ($mode) {
                         $dateTimePick = date('g:i A', $dtpick);
                     } else {
                         $dateTimePick = date('d M g:i A', $dtpick);
-                    }  
+                    }
 
                     $dtdrop = strtotime($row['vDropTime']);
 
@@ -731,7 +732,7 @@ switch ($mode) {
                         $dateTimeDrop = date('g:i A', $dtdrop);
                     } else {
                         $dateTimeDrop = date('d M g:i A', $dtdrop);
-                    }                    
+                    }
 
                     $tripsArr[] = [
                         'title' => '',
@@ -826,7 +827,7 @@ switch ($mode) {
                         $dateTime = date('g:i A', $dt);
                     } else {
                         $dateTime = date('d M g:i A', $dt);
-                    }                    
+                    }
 
 
                     $LOG_DATA_ARR[] = array("code" => $row['cRefType'], "status" => $FL_LOG_STATUS_ARR[$row['cRefType']], "message" => $description, "dateTime" => $dateTime);
