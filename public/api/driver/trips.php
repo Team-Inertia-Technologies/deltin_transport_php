@@ -53,6 +53,7 @@ SELECT
     fb.iBaggage,
     fb.vPickUpLocation AS fromLocation,
     fb.vDropLocation AS toLocation,
+    fb.vLandmark,
     v.iVehicleID,
     v.vRnum AS vehicleNo,
     vc.vName AS vehicleName,
@@ -135,6 +136,7 @@ while ($row = sql_fetch_assoc($res)) {
         "bags"       => intval($row["iBaggage"]),
         "from" => $row["fromLocation"],
         "to"   => $row["toLocation"],
+        "landmark" => $row["vLandmark"],
         "type" => $row["cBookingFor"] == 'G' ? 'Guest' : 'Staff',
         "active" => true,
         "buttonStatus" => $buttonStatus
