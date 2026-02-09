@@ -117,6 +117,14 @@ while ($row = sql_fetch_assoc($res)) {
         }
     }
 
+    $defaultLogoutTime = null;
+
+    if (!empty($row['dtLoggedIn'])) {
+        $loginTimestamp = strtotime($row['dtLoggedIn']);
+        $defaultLogoutTime = date('Y-m-d H:i:s', $loginTimestamp + $maxLoggedSeconds);
+    }
+
+
     $currentTrip = null;
     $nextTrip    = null;
 
@@ -178,6 +186,8 @@ while ($row = sql_fetch_assoc($res)) {
         "vehicleAllocated" => $row['vehicleAllocated'],
         "loggedInStatus"   => $loggedInStatus,
         "overLoggedLimit"  => $overLoggedLimit,
+        "defaultLogoutTime" => $defaultLogoutTime,
+
         "currentTrip" => $currentTrip ? [
             "id"       => $currentTrip['iFleet_BookingID'],
             "time"     => $currentTrip['vPickUpTime'],
