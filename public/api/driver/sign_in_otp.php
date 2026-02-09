@@ -211,11 +211,13 @@ if ($mode == 'LOGIN') {
         $code = '+91';
         sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','A','0','$otp','$mobile','$TIME','$dtTo','N')", "Resend OTP for staff");
 
-        $message = urlencode('Dear Guest, To access your account on DeltinOne, please use ' . $otp . ' as your one-time password (OTP). Best regards, Deltin wPYrBplEnt1');
-        $templateid = '1307175128414225156';
-        $to = $mobile;
-        if (strlen($to) == 10) $to = '91' . $to;
-        $status = SendSmsCurl2($templateid, $to, $message);
+        $message = urlencode('Your OTP for staff login is: ' . $otp);
+        $message = urlencode('Use code ' . $otp . ' to verify your login for Deltin Transport. This OTP is valid for 5 minutes.');
+        $templateid = '1707176249288519068';
+        $to = $mob;
+        if (strlen($to) == 10)
+            $to = '91' . $to;
+        $sms_response = SendSmsCurl2($templateid, $to, $message);
         SendWhatsappMessage2($to, $otp);
         http_response_code(200);
         header('Content-Type: application/json');
