@@ -137,7 +137,7 @@ while ($row = sql_fetch_assoc($res)) {
         FROM fleet_booking
         WHERE 
             iDriverID = {$row['iRoasterID']}
-            AND cType IN ('S','G', 'P', 'R', 'C')
+            AND cType IN ('S','G', 'P', 'R')
             AND DATE(vPickUpTime) = '$todayDate'
             AND vPickUpTime <= '$currentTimeSql'
             AND cStatus = 'A'
