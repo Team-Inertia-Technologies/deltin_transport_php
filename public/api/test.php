@@ -39,6 +39,10 @@ function SendConfirmationMessage2($to, $name, $from_palce, $date)
 
         ]
     ];
+	
+	DFA($data);
+	exit;
+	
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 
     // Return the response as a string instead of outputting it
