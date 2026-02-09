@@ -67,8 +67,9 @@ if ($mode == 'LOGIN') {
         $code = '+91';
         sql_query("INSERT INTO otp(iOTPID,dtAdded,vCode,cAdded_RefType,iAdded_UserID,cType,iUserID,vOTP,vPhone,dtFrom,dtTo,cUsed) VALUES ('$OtpID','$TIME','$code','S','0','A','0','$otp','$mob','$TIME','$dtTo','N')", "Insert OTP for staff login");
 
-        $message = urlencode('Dear Guest, To access your account on DeltinOne, please use ' . $otp . ' as your one-time password (OTP). Best regards, Deltin wPYrBplEnt1');
-        $templateid = '1307175128414225156';
+        $message = urlencode('Your OTP for Driver login is: ' . $otp);
+        $message = urlencode('Use code ' . $otp . ' to verify your login for Deltin Transport. This OTP is valid for 5 minutes.');
+        $templateid = '1707177002425100620';
         $to = $mob;
         if (strlen($to) == 10) $to = '91' . $to;
         $status = SendSmsCurl2($templateid, $to, $message);
