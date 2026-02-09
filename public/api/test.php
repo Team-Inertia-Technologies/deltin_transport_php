@@ -64,6 +64,7 @@ $from_palce = $_GET['from_palce'];
 $date = $_GET['date'];
 
 $response = SendConfirmationMessage2($to, $name, $from_palce, $date);
+DFA($response);
 exit;
 
 function GetVehicle_BasedOnSearch2_($txttype=0,$txtcatid=0,$show_currentstatus='N',$txtfrom_time='',$txtto_time='')
