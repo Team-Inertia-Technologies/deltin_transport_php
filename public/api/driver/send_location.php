@@ -25,9 +25,9 @@ $token      = trim($request->token ?? '');
 $booking_id = isset($request->id) ? intval($request->id) : 0;
 $lat        = floatval($request->lat ?? 0);
 $long       = floatval($request->log ?? 0);
-$cOnTrip = 'N';
+$cOnTrip = 'Y';
 if (!empty($booking_id) && $booking_id > 0) {
-    $cOnTrip = 'Y';
+    $cOnTrip = 'N';
 }
 
 if (!$token) {
