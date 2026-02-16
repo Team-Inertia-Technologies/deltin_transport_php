@@ -1560,16 +1560,16 @@ switch ($mode) {
         }
 
         // Validate status against allowed values from STAFF_TRIP_STATUS
-        $validStatuses = array_keys($STAFF_TRIP_STATUS);
-        if (!in_array($status, $validStatuses)) {
-            echo json_encode([
-                "error" => [
-                    "message" => "Invalid status. Allowed values: " . implode(', ', $validStatuses)
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
+        // $validStatuses = array_keys($STAFF_TRIP_STATUS);
+        // if (!in_array($status, $validStatuses)) {
+        //     echo json_encode([
+        //         "error" => [
+        //             "message" => "Invalid status. Allowed values: " . implode(', ', $validStatuses)
+        //         ],
+        //         "statusCode" => 400
+        //     ]);
+        //     exit;
+        // }
 
         // Check if trip exists and is not already deleted
         $checkSql = "SELECT iTripID, cStatus FROM st_trips WHERE iTripID = $iTripID";
