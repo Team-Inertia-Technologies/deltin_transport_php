@@ -28,7 +28,6 @@ switch ($mode) {
     // ===================== CASE: ADD_ONLOAD =====================
     case 'ADD_ONLOAD':
 
-    // Fetch staff route & stop
     $staffSql = "SELECT iRouteID, iStopID 
                  FROM staff 
                  WHERE iStaffID = $user_id AND cStatus = 'A'";
@@ -38,7 +37,6 @@ switch ($mode) {
     $staffRouteID = (int) ($staffData['iRouteID'] ?? 0);
     $staffStopID  = (int) ($staffData['iStopID'] ?? 0);
 
-    // Fetch all active routes
     $routesSql = "SELECT iRouteID, vName, vDestination 
                   FROM st_route 
                   WHERE cStatus = 'A' 
@@ -86,7 +84,7 @@ switch ($mode) {
                         AND DATE(dtTrip) <= '" . db_input($maxDate) . "'
                         AND dtTrip >= '" . db_input($twoHoursFromNow) . "'
                         ORDER BY trip_date 
-                        LIMIT 7";
+                        LIMIT 2";
             $daysRes = sql_query($daysSql);
 
             $daysArr = [];

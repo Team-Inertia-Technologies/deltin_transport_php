@@ -1571,7 +1571,7 @@ switch ($mode) {
         //     exit;
         // }
 
-        // Check if trip exists and is not already deleted
+
         $checkSql = "SELECT iTripID, cStatus FROM st_trips WHERE iTripID = $iTripID";
         $checkRes = sql_query($checkSql);
 
