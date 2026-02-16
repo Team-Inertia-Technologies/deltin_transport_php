@@ -504,8 +504,8 @@ switch ($mode) {
             $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
         }
         $kms = isset($_REQUEST['kms']) ? $_REQUEST['kms'] : 0;
-$fromLoc = isset($_REQUEST['fromLoc']) ? db_input($_REQUEST['fromLoc']) : '';
-$toLoc = isset($_REQUEST['toLoc']) ? db_input($_REQUEST['toLoc']) : '';
+        $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : 0;
+        $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : 0;
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
         $vPickUpTime = (isset($_REQUEST['pickUpDateTime']) && !empty($_REQUEST['pickUpDateTime'])) ? $_REQUEST['pickUpDateTime'] : NULL;
 
@@ -521,6 +521,25 @@ $toLoc = isset($_REQUEST['toLoc']) ? db_input($_REQUEST['toLoc']) : '';
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
         $iFStaffID = intval($_REQUEST['staffID'] ?? 0);
+
+        // Fetch KMS from fleet_ratechart
+$ratekms = 0;
+
+$rateSql = "
+    SELECT iKms 
+    FROM fleet_ratechart 
+    WHERE iFleet_LocationID_From = $fromLoc
+      AND iFleet_LocationID_To = $toLoc AND cStatus='A' 
+    LIMIT 1
+";
+
+$rateRes = sql_query($rateSql);
+
+if ($rateRes && sql_num_rows($rateRes) > 0) {
+    $rateRow = sql_fetch_assoc($rateRes);
+    $ratekms = intval($rateRow['iKms']);
+}
+
 
         // Validate required inputs
         if (empty($vName) || empty($vMobileNo) || empty($vPickUpTime)) {
@@ -576,7 +595,7 @@ $toLoc = isset($_REQUEST['toLoc']) ? db_input($_REQUEST['toLoc']) : '';
         VALUES (
             $iFleet_BookingID1,$iBookedBy, '" . db_input($bookedByName) . "','" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
             $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
-            $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $fromLoc, $toLoc,$kms,
+            $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $fromLoc, $toLoc,$kms,$ratekms
             '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal, '" . db_input($dtAdded) . "',$user_id,'A'
         )";
 
@@ -919,10 +938,10 @@ $toLoc = isset($_REQUEST['toLoc']) ? db_input($_REQUEST['toLoc']) : '';
         $vReturnTimeVal = (!empty($vReturnTime)) ? "'" . $vReturnTime . "'" : "NULL";
         $dtNow = date('Y-m-d H:i:s');
 
-                $kms = isset($_REQUEST['kms']) ? $_REQUEST['kms'] : 0;
-$fromLoc = isset($_REQUEST['fromLoc']) ? db_input($_REQUEST['fromLoc']) : '';
-$toLoc = isset($_REQUEST['toLoc']) ? db_input($_REQUEST['toLoc']) : '';
-  
+        $kms = isset($_REQUEST['kms']) ? $_REQUEST['kms'] : 0;
+        $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : '';
+        $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : '';
+
         $updateSql = "
             UPDATE fleet_booking SET
                 iBookedBy = " . intval($iBookedBy) . ",
