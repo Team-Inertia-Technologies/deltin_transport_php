@@ -188,9 +188,11 @@ switch ($mode) {
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
             "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
             "staffFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function ($staff) {
-                return ['id' => $staff['id'], 'name' => $staff['name']]; }, $staffOpt)),
+                return ['id' => $staff['id'], 'name' => $staff['name']];
+            }, $staffOpt)),
             "guestFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function ($guest) {
-                return ['id' => $guest['id'], 'name' => $guest['name']]; }, $guestOpts))
+                return ['id' => $guest['id'], 'name' => $guest['name']];
+            }, $guestOpts))
         ];
 
 
@@ -490,6 +492,7 @@ switch ($mode) {
         $vPickUpLocation = db_input($pickUpLocData['loc'] ?? '');
         $vDropLocation = db_input($dropLocData['loc'] ?? '');
 
+
         // Extract and format lat/lng coordinates
         $vLatLong_From = '';
         if (!empty($pickUpLocData['lat']) && !empty($pickUpLocData['lng'])) {
@@ -500,7 +503,9 @@ switch ($mode) {
         if (!empty($dropLocData['lat']) && !empty($dropLocData['lng'])) {
             $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
         }
-
+        $kms = isset($_REQUEST['kms']) ? $_REQUEST['kms'] : 0;
+$fromLoc = isset($_REQUEST['fromLoc']) ? db_input($_REQUEST['fromLoc']) : '';
+$toLoc = isset($_REQUEST['toLoc']) ? db_input($_REQUEST['toLoc']) : '';
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
         $vPickUpTime = (isset($_REQUEST['pickUpDateTime']) && !empty($_REQUEST['pickUpDateTime'])) ? $_REQUEST['pickUpDateTime'] : NULL;
 
@@ -558,7 +563,7 @@ switch ($mode) {
 
         $cols = "iFleet_BookingID,iBookedBy,vBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vRemarks, vName, vMobileNo, iGuestID, iFStaffID,
-                 iPax, iBaggage, vPickUpLocation, vPickUpTime,
+                 iPax, iBaggage, vPickUpLocation, vPickUpTime,iFleet_LocationID_From, iFleet_LocationID_To,iOriginal_Kms,
                  vDropLocation, vLatLong_From, vLatLong_To,vLandmark, iVehicleCatID, cDisposal, tReturnTime, dtAdded,iAdded_UserID,cStatus";
 
         $iFleet_BookingID1 = NextID('iFleet_BookingID', 'fleet_booking');
@@ -571,7 +576,7 @@ switch ($mode) {
         VALUES (
             $iFleet_BookingID1,$iBookedBy, '" . db_input($bookedByName) . "','" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
             $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
-            $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "',
+            $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $fromLoc, $toLoc,$kms,
             '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal, '" . db_input($dtAdded) . "',$user_id,'A'
         )";
 
@@ -695,7 +700,7 @@ switch ($mode) {
 
         $STAFF_ARR = sql_query("SELECT iFStaffID,vName,iDepartmentID,vMobile,iUserID FROM fleet_staff WHERE cStatus='A' ORDER BY vName");
         $GUEST_ARR = sql_query("SELECT iGuestID,vName,vMobileNo FROM guest WHERE cStatus='A' ORDER BY vName");
-
+        $LOC_ARR = GetXArrFromYID("SELECT iFleet_LocationID, vName from fleet_location where cStatus='A' ORDER BY iRank", "3");
         $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
         foreach ($FLEET_BOOKING_FOR as $id => $name) {
             $bookedForOpt[] = ['id' => $id, 'name' => $name];
@@ -725,8 +730,8 @@ switch ($mode) {
         }
         $travelPurposeTypeOpt = array_values($travelPurposeTypeOpt);
 
-        $propertyOpt = [['id' => 0, 'name' => 'Choose', 'lat'=>"", 'long' =>'']];
-     
+        $propertyOpt = [['id' => 0, 'name' => 'Choose', 'lat' => '', 'long' => '']];
+
         while ($row = sql_fetch_assoc($PROPERTY_ARR)) {
             $propertyOpt[] = [
                 'id' => intval($row['iPropertyID']),
@@ -797,6 +802,10 @@ switch ($mode) {
         foreach ($VEH_CAT as $id => $name) {
             $vehicleCategoryFilterOpt[] = ['id' => intval($id), 'name' => $name];
         }
+        $locOpts = [['id' => 0, 'name' => 'Choose']];
+        foreach ($LOC_ARR as $id => $name) {
+            $locOpts[] = ['id' => intval($id), 'name' => $name];
+        }
 
         $optArr = [
             "bookedForOpt" => $bookedForOpt,
@@ -813,7 +822,8 @@ switch ($mode) {
             "tripStatusFilterOpt" => $tripStatusFilterOpt,
             "bookedForFilterOpt" => $bookedForFilterOpt,
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
-            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt
+            "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
+            "locOpts" => $locOpts
         ];
 
         echo json_encode([
@@ -909,6 +919,10 @@ switch ($mode) {
         $vReturnTimeVal = (!empty($vReturnTime)) ? "'" . $vReturnTime . "'" : "NULL";
         $dtNow = date('Y-m-d H:i:s');
 
+                $kms = isset($_REQUEST['kms']) ? $_REQUEST['kms'] : 0;
+$fromLoc = isset($_REQUEST['fromLoc']) ? db_input($_REQUEST['fromLoc']) : '';
+$toLoc = isset($_REQUEST['toLoc']) ? db_input($_REQUEST['toLoc']) : '';
+  
         $updateSql = "
             UPDATE fleet_booking SET
                 iBookedBy = " . intval($iBookedBy) . ",
@@ -935,6 +949,9 @@ switch ($mode) {
                 iVehicleCatID = " . intval($iVehicleCatID) . ",
                 cDisposal = '" . db_input($cDisposal) . "',
                 tReturnTime = " . $vReturnTimeVal . ",
+                iFleet_LocationID_From  = " . $fromLoc . ",
+                iFleet_LocationID_To = " . $toLoc . ",
+                iOriginal_Kms = " . $kms . ",
                 dtUpdated = '" . db_input($dtNow) . "',
                 iUpdated_UserID = " . intval($user_id) . "
             WHERE iFleet_BookingID = " . intval($iFleet_BookingID) . "
@@ -1849,6 +1866,7 @@ switch ($mode) {
         $STAFF_DEPT = GetXArrFromYID("SELECT iDepartmentID, vName from department where cStatus='A' ORDER BY iRank", "3");
         $STAFF_ARR = sql_query("SELECT iFStaffID, vName, iDepartmentID, vMobile, iUserID from fleet_staff where cStatus='A' ORDER BY vName");
         $GUEST_ARR = sql_query("SELECT iGuestID, vName, vMobileNo from guest where cStatus='A' ORDER BY vName");
+        $LOC_ARR = GetXArrFromYID("SELECT iFleet_LocationID, vName from fleet_location where cStatus='A' ORDER BY iRank", "3");
 
         $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
         foreach ($FLEET_BOOKING_FOR as $id => $name) {
@@ -1895,7 +1913,7 @@ switch ($mode) {
         // Reset array keys (remove gaps)
         $travelPurposeTypeOpt = array_values($travelPurposeTypeOpt);
 
-    $propertyOpt = [['id' => 0, 'name' => 'Choose', 'lat'=>"", 'long' =>'']];
+        $propertyOpt = [['id' => 0, 'name' => 'Choose', 'lat' => '', 'long' => '']];
         while ($row = sql_fetch_assoc($PROPERTY_ARR)) {
             $propertyOpt[] = [
                 'id' => intval($row['iPropertyID']),
@@ -1960,6 +1978,11 @@ switch ($mode) {
             ];
         }
 
+        $locOpts = [['id' => 0, 'name' => 'Choose']];
+        foreach ($LOC_ARR as $id => $name) {
+            $locOpts[] = ['id' => intval($id), 'name' => $name];
+        }
+
         // Get filter parameters
         $filterTripStatus = $_REQUEST['filterTripStatus'] ?? '';
         $filterBookedFor = $_REQUEST['filterBookedFor'] ?? '';
@@ -2009,6 +2032,7 @@ switch ($mode) {
             "bookedForFilterOpt" => $bookedForFilterOpt,
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
             "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
+            "locOpts" => $locOpts
             //  "staffFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($staff) { return ['id' => $staff['id'], 'name' => $staff['name']]; }, $staffOpt)),
             // "guestFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($guest) { return ['id' => $guest['id'], 'name' => $guest['name']]; }, $guestOpts))
         ];
