@@ -31,8 +31,8 @@ switch ($mode) {
         $fromDate = $_REQUEST['fromDate'] ?? '';
         $toDate = $_REQUEST['toDate'] ?? '';
         $routeID = intval($_REQUEST['routeID'] ?? 0);
-         $driverID =  isset($_REQUEST['driverID']) ? intval($_REQUEST['driverID'] ?? 0) : 0;
-          $vendorID = isset($_REQUEST['vendorID']) ? intval($_REQUEST['vendorID'] ?? 0) : 0;
+        $driverID =  isset($_REQUEST['driverID']) ? intval($_REQUEST['driverID'] ?? 0) : 0;
+        $vendorID = isset($_REQUEST['vendorID']) ? intval($_REQUEST['vendorID'] ?? 0) : 0;
 
         // Build WHERE conditions
         $whereConditions = ["t.cStatus != 'X'"];
@@ -48,16 +48,16 @@ switch ($mode) {
         if ($routeID > 0) {
             $whereConditions[] = "t.iRouteID = $routeID";
         }
-         if ($driverID > 0) {
+        if ($driverID > 0) {
             $whereConditions[] = "tva.iDriverID = $driverID";
         }
-         if ($vendorID > 0) {
+        if ($vendorID > 0) {
             $whereConditions[] = "v.iVendorID = $vendorID";
         }
 
         $whereClause = implode(' AND ', $whereConditions);
 
-       
+
         $sql = "SELECT 
                     t.iTripID as id,
                     t.dtTrip,
@@ -141,7 +141,7 @@ switch ($mode) {
                 "pax" => $trip['pax'],
                 "availed" => $trip['availed'],
                 "hasVehicle" => !empty($trip['vehicleNumber']),
-                 "driverID" =>  $trip['driverID'],
+                "driverID" =>  $trip['driverID'],
                 "driverName" => $trip['driverName'],
                 "vendorName" => $trip['vendorName'],
                 "vendorID" => $trip['vendorID'],
@@ -162,7 +162,7 @@ switch ($mode) {
                 "name" => db_output2($routeRow['vName'])
             ];
         }
-         $driverSQL = "SELECT iDriverID, vName FROM driver WHERE cStatus = 'A' ORDER BY vName";
+        $driverSQL = "SELECT iDriverID, vName FROM driver WHERE cStatus = 'A' ORDER BY vName";
         $driverRes = sql_query($driverSQL);
 
         $driverOpt = [
@@ -176,7 +176,7 @@ switch ($mode) {
             ];
         }
 
-             $vendorSQL = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
+        $vendorSQL = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
         $vendorRes = sql_query($vendorSQL);
 
         $vendorOpt = [
@@ -1095,7 +1095,7 @@ switch ($mode) {
 
                         if ($vehID > 0) {
                             $vehicleAssociations[] = [
-                                'tripID' => $tripIDForThisRow, 
+                                'tripID' => $tripIDForThisRow,
                                 'vehicleID' => $vehID,
                                 'driverID' => $driverID,
                                 'assignedBy' => $user_id
@@ -1628,27 +1628,27 @@ switch ($mode) {
         }
         break;
 
-   case 'MARK_STAFF_AS_ENTERED':
+    case 'MARK_STAFF_AS_ENTERED':
 
-    $iTripID = intval($_REQUEST['iTripID'] ?? 0);
-    $staffIds = $_REQUEST['staffIds'] ?? [];
-    $vehicleID = intval($_REQUEST['vehicleID'] ?? 0);
+        $iTripID = intval($_REQUEST['iTripID'] ?? 0);
+        $staffIds = $_REQUEST['staffIds'] ?? [];
+        $vehicleID = intval($_REQUEST['vehicleID'] ?? 0);
 
-    if ($iTripID <= 0 || empty($staffIds) || !is_array($staffIds)) {
-        echo json_encode([
-            "error" => ["message" => "Invalid TripID or staffIds missing"],
-            "statusCode" => 400
-        ]);
-        exit;
-    }
+        if ($iTripID <= 0 || empty($staffIds) || !is_array($staffIds)) {
+            echo json_encode([
+                "error" => ["message" => "Invalid TripID or staffIds missing"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
 
-    $datetime = NOW;
+        $datetime = NOW;
 
 
-    $staffIds = array_map('intval', $staffIds);
-    $idList = implode(',', $staffIds);
+        $staffIds = array_map('intval', $staffIds);
+        $idList = implode(',', $staffIds);
 
-    $updateSql = "
+        $updateSql = "
         UPDATE st_request
         SET 
             dtIn  = IF(dtIn IS NULL OR dtIn = '', '" . db_input($datetime) . "', dtIn),
@@ -1658,22 +1658,20 @@ switch ($mode) {
         AND iTripID = $iTripID
     ";
 
-   $updateRess= sql_query($updateSql);
-   if(!$updateRess){
-        echo json_encode([
-            "error" => ["message" => "Failed to update staff entry status"],
-            "statusCode" => 500
-        ]);
-        exit;
-   }
+        $updateRess = sql_query($updateSql);
+        if ($updateRess) {
+            echo json_encode([
+                "data" => ["message" => "Staff marked as entered successfully"],
+                "statusCode" => 200
+            ]);
+        } else {
+            echo json_encode([
+                "error" => ["message" => "Failed to update staff entry status"],
+                "statusCode" => 500
+            ]);
+        }
 
-    echo json_encode([
-        "data" => ["message" => "Staff marked as entered successfully"],
-        "statusCode" => 200
-    ]);
-
-
-break;
+        break;
 
 
     // ===================== DEFAULT =====================

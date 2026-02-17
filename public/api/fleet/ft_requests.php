@@ -26,7 +26,7 @@ if (sql_num_rows($userCheckRes) == 0) {
 $NOW = NOW;
 function getRoadDistance($startLat, $startLng, $endLat, $endLng) {
 
-    $apiKey =  defined('FIREBASE_PRIVATE_KEY_ID');
+    $apiKey =  HEIGIT_DISTACE_API_KEY;
 
     $url = "https://api.openrouteservice.org/v2/directions/driving-car"
         . "?api_key=" . $apiKey
