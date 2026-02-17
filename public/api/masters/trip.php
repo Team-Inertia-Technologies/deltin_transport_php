@@ -1509,16 +1509,24 @@ switch ($mode) {
         $staffIds = array_map('intval', $staffIds);
         $idList = implode(',', $staffIds);
 
-        $updateSql = "
+    //     $updateSql = "
+    //     UPDATE st_request
+    //     SET 
+    //         dtIn  = IF(dtIn IS NULL, '" . db_input($datetime) . "', dtIn),
+    //         dtOut = IF(dtOut IS NULL, '" . db_input($datetime) . "', dtOut),
+    //         iVehicleID = $vehicleID
+    //     WHERE iStaffID IN ($idList)
+    //     AND iTripID = $iTripID
+    // ";
+     $updateSql = "
         UPDATE st_request
         SET 
-            dtIn  = IF(dtIn IS NULL OR dtIn = '', '" . db_input($datetime) . "', dtIn),
-            dtOut = IF(dtOut IS NULL OR dtOut = '', '" . db_input($datetime) . "', dtOut),
+            dtIn  = '$datetime',
+            dtOut = '$datetime',
             iVehicleID = $vehicleID
         WHERE iStaffID IN ($idList)
         AND iTripID = $iTripID
     ";
-
         $updateRess = sql_query($updateSql);
         if ($updateRess) {
             echo json_encode([
