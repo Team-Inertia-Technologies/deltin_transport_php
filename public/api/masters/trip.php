@@ -1632,6 +1632,7 @@ switch ($mode) {
 
     $iTripID = intval($_REQUEST['iTripID'] ?? 0);
     $staffIds = $_REQUEST['staffIds'] ?? [];
+    $vehicleID = intval($_REQUEST['vehicleID'] ?? 0);
 
     if ($iTripID <= 0 || empty($staffIds) || !is_array($staffIds)) {
         echo json_encode([
@@ -1643,7 +1644,7 @@ switch ($mode) {
 
     $datetime = NOW;
 
-    // sanitize ids
+
     $staffIds = array_map('intval', $staffIds);
     $idList = implode(',', $staffIds);
 
@@ -1651,7 +1652,8 @@ switch ($mode) {
         UPDATE st_request
         SET 
             dtIn  = IF(dtIn IS NULL OR dtIn = '', '" . db_input($datetime) . "', dtIn),
-            dtOut = IF(dtOut IS NULL OR dtOut = '', '" . db_input($datetime) . "', dtOut)
+            dtOut = IF(dtOut IS NULL OR dtOut = '', '" . db_input($datetime) . "', dtOut),
+            iVehicleID = $vehicleID
         WHERE iStaffID IN ($idList)
         AND iTripID = $iTripID
     ";
