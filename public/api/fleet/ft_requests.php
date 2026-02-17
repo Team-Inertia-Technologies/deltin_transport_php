@@ -535,7 +535,7 @@ switch ($mode) {
             $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
         }
         $distance = getRoadDistance($pickUpLocData['lat'], $pickUpLocData['lng'], $dropLocData['lat'], $dropLocData['lng']);
-        $distance = round($distance, 2);
+
         $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : 0;
         $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : 0;
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
@@ -936,7 +936,7 @@ switch ($mode) {
         }
 
         $distance = getRoadDistance($pickUpLocData['lat'], $pickUpLocData['lng'], $dropLocData['lat'], $dropLocData['lng']);
-        $distance = round($distance, 2);
+
 
         $vLandmark = db_input($_REQUEST['landMark'] ?? '');
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
@@ -1026,7 +1026,7 @@ switch ($mode) {
                 tReturnTime = " . $vReturnTimeVal . ",
                 iFleet_LocationID_From  = " . $fromLoc . ",
                 iFleet_LocationID_To = " . $toLoc . ",
-                iOriginal_Kms = " . $distance . ",
+                iOriginal_Kms = " . intval($distance) . ",
                 iActual_Kms = " . $ratekms . ",
                 dtUpdated = '" . db_input($dtNow) . "',
                 iUpdated_UserID = " . intval($user_id) . "

@@ -884,7 +884,7 @@ switch ($mode) {
                         LEFT JOIN st_request req ON t.iTripID = req.iTripID AND req.iStopID = s.iStopID AND req.cStatus = 'A'
                         LEFT JOIN staff st ON req.iStaffID = st.iStaffID AND st.cStatus = 'A'
                         
-                        WHERE t.iGrpID = $iGrpID AND t.cStatus != 'X'
+                        WHERE t.iTripID = $iTripID AND t.cStatus != 'X'
                         ORDER BY s.iRank, st.vName, t.iTripID";
 
         $manifestRes = sql_query($manifestSql);
