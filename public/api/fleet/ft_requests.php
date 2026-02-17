@@ -24,22 +24,36 @@ if (sql_num_rows($userCheckRes) == 0) {
     exit;
 }
 $NOW = NOW;
-function getDistanceInKM($lat1, $lon1, $lat2, $lon2)
-{
-    $earthRadius = 6371; // Radius of earth in KM
+function getRoadDistance($startLat, $startLng, $endLat, $endLng) {
 
-    $dLat = deg2rad($lat2 - $lat1);
-    $dLon = deg2rad($lon2 - $lon1);
+    $apiKey =  defined('FIREBASE_PRIVATE_KEY_ID');
 
-    $a = sin($dLat / 2) * sin($dLat / 2) +
-        cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
-        sin($dLon / 2) * sin($dLon / 2);
+    $url = "https://api.openrouteservice.org/v2/directions/driving-car"
+        . "?api_key=" . $apiKey
+        . "&start=" . $startLng . "," . $startLat
+        . "&end=" . $endLng . "," . $endLat;
 
-    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-    $distance = $earthRadius * $c;
+    $response = curl_exec($ch);
 
-    return $distance; // Distance in KM
+    if(curl_errno($ch)){
+        return "Curl Error: " . curl_error($ch);
+    }
+
+    curl_close($ch);
+
+    $data = json_decode($response, true);
+
+    if(isset($data['features'][0]['properties']['segments'][0]['distance'])) {
+        $distanceInMeters = $data['features'][0]['properties']['segments'][0]['distance'];
+        $distanceInKm = $distanceInMeters / 1000;
+        return round($distanceInKm, 2);
+    }
+
+    return 0;
 }
 switch ($mode) {
 
@@ -520,7 +534,7 @@ switch ($mode) {
         if (!empty($dropLocData['lat']) && !empty($dropLocData['lng'])) {
             $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
         }
-        $distance = getDistanceInKM($pickUpLocData['lat'], $pickUpLocData['lng'], $dropLocData['lat'], $dropLocData['lng']);
+        $distance = getRoadDistance($pickUpLocData['lat'], $pickUpLocData['lng'], $dropLocData['lat'], $dropLocData['lng']);
         $distance = round($distance, 2);
         $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : 0;
         $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : 0;
@@ -921,7 +935,7 @@ switch ($mode) {
             $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
         }
 
-        $distance = getDistanceInKM($pickUpLocData['lat'], $pickUpLocData['lng'], $dropLocData['lat'], $dropLocData['lng']);
+        $distance = getRoadDistance($pickUpLocData['lat'], $pickUpLocData['lng'], $dropLocData['lat'], $dropLocData['lng']);
         $distance = round($distance, 2);
 
         $vLandmark = db_input($_REQUEST['landMark'] ?? '');
