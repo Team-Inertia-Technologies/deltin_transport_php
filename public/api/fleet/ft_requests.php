@@ -24,6 +24,22 @@ if (sql_num_rows($userCheckRes) == 0) {
     exit;
 }
 $NOW = NOW;
+function getDistanceInKM($lat1, $lon1, $lat2, $lon2) {
+    $earthRadius = 6371; // Radius of earth in KM
+
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLon = deg2rad($lon2 - $lon1);
+
+    $a = sin($dLat / 2) * sin($dLat / 2) +
+         cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+         sin($dLon / 2) * sin($dLon / 2);
+
+    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+    $distance = $earthRadius * $c;
+
+    return $distance; // Distance in KM
+}
 switch ($mode) {
 
     // ===================== CASE: LIST =====================
@@ -503,7 +519,8 @@ switch ($mode) {
         if (!empty($dropLocData['lat']) && !empty($dropLocData['lng'])) {
             $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
         }
-        $kms = isset($_REQUEST['kms']) ? $_REQUEST['kms'] : 0;
+       $distance = getDistanceInKM($pickUpLocData['lat'], $pickUpLocData['lng'], $dropLocData['lat'], $dropLocData['lng']);
+$distance = round($distance, 2);
         $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : 0;
         $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : 0;
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
@@ -595,7 +612,7 @@ if ($rateRes && sql_num_rows($rateRes) > 0) {
         VALUES (
             $iFleet_BookingID1,$iBookedBy, '" . db_input($bookedByName) . "','" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
             $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
-            $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $fromLoc, $toLoc,$kms,$ratekms
+            $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $fromLoc, $toLoc,$distance,$ratekms,
             '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal, '" . db_input($dtAdded) . "',$user_id,'A'
         )";
 
@@ -900,6 +917,10 @@ if ($rateRes && sql_num_rows($rateRes) > 0) {
         if (!empty($dropLocData['lat']) && !empty($dropLocData['lng'])) {
             $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
         }
+
+$distance = getDistanceInKM($pickUpLocData['lat'], $pickUpLocData['lng'], $dropLocData['lat'], $dropLocData['lng']);
+$distance = round($distance, 2);
+
         $vLandmark = db_input($_REQUEST['landMark'] ?? '');
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
 
@@ -955,7 +976,7 @@ if ($rateRes && sql_num_rows($rateRes) > 0) {
         $vReturnTimeVal = (!empty($vReturnTime)) ? "'" . $vReturnTime . "'" : "NULL";
         $dtNow = date('Y-m-d H:i:s');
 
-        $kms = isset($_REQUEST['kms']) ? $_REQUEST['kms'] : 0;
+        // $kms = isset($_REQUEST['kms']) ? $_REQUEST['kms'] : 0;
         $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : '';
         $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : '';
 
@@ -987,7 +1008,7 @@ if ($rateRes && sql_num_rows($rateRes) > 0) {
                 tReturnTime = " . $vReturnTimeVal . ",
                 iFleet_LocationID_From  = " . $fromLoc . ",
                 iFleet_LocationID_To = " . $toLoc . ",
-                iOriginal_Kms = " . $kms . ",
+                iOriginal_Kms = " . $distance . ",
                 iActual_Kms = " . $ratekms . ",
                 dtUpdated = '" . db_input($dtNow) . "',
                 iUpdated_UserID = " . intval($user_id) . "
