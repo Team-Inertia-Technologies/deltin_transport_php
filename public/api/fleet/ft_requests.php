@@ -582,7 +582,7 @@ if ($rateRes && sql_num_rows($rateRes) > 0) {
 
         $cols = "iFleet_BookingID,iBookedBy,vBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vRemarks, vName, vMobileNo, iGuestID, iFStaffID,
-                 iPax, iBaggage, vPickUpLocation, vPickUpTime,iFleet_LocationID_From, iFleet_LocationID_To,iOriginal_Kms,
+                 iPax, iBaggage, vPickUpLocation, vPickUpTime,iFleet_LocationID_From, iFleet_LocationID_To,iOriginal_Kms,iActual_Kms,
                  vDropLocation, vLatLong_From, vLatLong_To,vLandmark, iVehicleCatID, cDisposal, tReturnTime, dtAdded,iAdded_UserID,cStatus";
 
         $iFleet_BookingID1 = NextID('iFleet_BookingID', 'fleet_booking');
@@ -934,6 +934,23 @@ if ($rateRes && sql_num_rows($rateRes) > 0) {
             ]);
             exit;
         }
+        $ratekms = 0;
+
+$rateSql = "
+    SELECT iKms 
+    FROM fleet_ratechart 
+    WHERE iFleet_LocationID_From = $fromLoc
+      AND iFleet_LocationID_To = $toLoc AND cStatus='A' 
+    LIMIT 1
+";
+
+$rateRes = sql_query($rateSql);
+
+if ($rateRes && sql_num_rows($rateRes) > 0) {
+    $rateRow = sql_fetch_assoc($rateRes);
+    $ratekms = intval($rateRow['iKms']);
+}
+
 
         $vReturnTimeVal = (!empty($vReturnTime)) ? "'" . $vReturnTime . "'" : "NULL";
         $dtNow = date('Y-m-d H:i:s');
@@ -971,6 +988,7 @@ if ($rateRes && sql_num_rows($rateRes) > 0) {
                 iFleet_LocationID_From  = " . $fromLoc . ",
                 iFleet_LocationID_To = " . $toLoc . ",
                 iOriginal_Kms = " . $kms . ",
+                iActual_Kms = " . $ratekms . ",
                 dtUpdated = '" . db_input($dtNow) . "',
                 iUpdated_UserID = " . intval($user_id) . "
             WHERE iFleet_BookingID = " . intval($iFleet_BookingID) . "
@@ -984,8 +1002,6 @@ if ($rateRes && sql_num_rows($rateRes) > 0) {
             ]);
             exit;
         }
-
-        // Log booking update
         LogBookingUpdated($iFleet_BookingID, $vName, 'Booking details updated', $user_id);
 
         echo json_encode([

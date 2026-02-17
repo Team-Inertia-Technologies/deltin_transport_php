@@ -1628,6 +1628,52 @@ switch ($mode) {
         }
         break;
 
+   case 'MARK_STAFF_AS_ENTERED':
+
+    $iTripID = intval($_REQUEST['iTripID'] ?? 0);
+    $staffIds = $_REQUEST['staffIds'] ?? [];
+
+    if ($iTripID <= 0 || empty($staffIds) || !is_array($staffIds)) {
+        echo json_encode([
+            "error" => ["message" => "Invalid TripID or staffIds missing"],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
+    $datetime = NOW;
+
+    // sanitize ids
+    $staffIds = array_map('intval', $staffIds);
+    $idList = implode(',', $staffIds);
+
+    $updateSql = "
+        UPDATE st_request
+        SET 
+            dtIn  = IF(dtIn IS NULL OR dtIn = '', '" . db_input($datetime) . "', dtIn),
+            dtOut = IF(dtOut IS NULL OR dtOut = '', '" . db_input($datetime) . "', dtOut)
+        WHERE iStaffID IN ($idList)
+        AND iTripID = $iTripID
+    ";
+
+   $updateRess= sql_query($updateSql);
+   if(!$updateRess){
+        echo json_encode([
+            "error" => ["message" => "Failed to update staff entry status"],
+            "statusCode" => 500
+        ]);
+        exit;
+   }
+
+    echo json_encode([
+        "data" => ["message" => "Staff marked as entered successfully"],
+        "statusCode" => 200
+    ]);
+
+
+break;
+
+
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
