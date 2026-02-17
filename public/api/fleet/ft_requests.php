@@ -24,15 +24,16 @@ if (sql_num_rows($userCheckRes) == 0) {
     exit;
 }
 $NOW = NOW;
-function getDistanceInKM($lat1, $lon1, $lat2, $lon2) {
+function getDistanceInKM($lat1, $lon1, $lat2, $lon2)
+{
     $earthRadius = 6371; // Radius of earth in KM
 
     $dLat = deg2rad($lat2 - $lat1);
     $dLon = deg2rad($lon2 - $lon1);
 
     $a = sin($dLat / 2) * sin($dLat / 2) +
-         cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
-         sin($dLon / 2) * sin($dLon / 2);
+        cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+        sin($dLon / 2) * sin($dLon / 2);
 
     $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
 
@@ -519,8 +520,8 @@ switch ($mode) {
         if (!empty($dropLocData['lat']) && !empty($dropLocData['lng'])) {
             $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
         }
-       $distance = getDistanceInKM($pickUpLocData['lat'], $pickUpLocData['lng'], $dropLocData['lat'], $dropLocData['lng']);
-$distance = round($distance, 2);
+        $distance = getDistanceInKM($pickUpLocData['lat'], $pickUpLocData['lng'], $dropLocData['lat'], $dropLocData['lng']);
+        $distance = round($distance, 2);
         $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : 0;
         $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : 0;
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
@@ -540,9 +541,9 @@ $distance = round($distance, 2);
         $iFStaffID = intval($_REQUEST['staffID'] ?? 0);
 
         // Fetch KMS from fleet_ratechart
-$ratekms = 0;
+        $ratekms = 0;
 
-$rateSql = "
+        $rateSql = "
     SELECT iKms 
     FROM fleet_ratechart 
     WHERE iFleet_LocationID_From = $fromLoc
@@ -550,12 +551,12 @@ $rateSql = "
     LIMIT 1
 ";
 
-$rateRes = sql_query($rateSql);
+        $rateRes = sql_query($rateSql);
 
-if ($rateRes && sql_num_rows($rateRes) > 0) {
-    $rateRow = sql_fetch_assoc($rateRes);
-    $ratekms = intval($rateRow['iKms']);
-}
+        if ($rateRes && sql_num_rows($rateRes) > 0) {
+            $rateRow = sql_fetch_assoc($rateRes);
+            $ratekms = intval($rateRow['iKms']);
+        }
 
 
         // Validate required inputs
@@ -707,6 +708,8 @@ if ($rateRes && sql_num_rows($rateRes) > 0) {
                 'lng' => !empty(trim($dropLatLng[1] ?? '')) ? floatval($dropLatLng[1]) : null,
                 'loc' => db_output2($booking['vDropLocation'])
             ],
+            "fromLoc" => intval($booking['iFleet_LocationID_From']),
+            "toLoc" => intval($booking['iFleet_LocationID_To']),
             "landMark" => db_output2($booking['vLandmark']),
             "pickUpDateTime" => $booking['vPickUpTime'],
             "returnTime" => ($booking['tReturnTime'] ?? null),
@@ -918,8 +921,8 @@ if ($rateRes && sql_num_rows($rateRes) > 0) {
             $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
         }
 
-$distance = getDistanceInKM($pickUpLocData['lat'], $pickUpLocData['lng'], $dropLocData['lat'], $dropLocData['lng']);
-$distance = round($distance, 2);
+        $distance = getDistanceInKM($pickUpLocData['lat'], $pickUpLocData['lng'], $dropLocData['lat'], $dropLocData['lng']);
+        $distance = round($distance, 2);
 
         $vLandmark = db_input($_REQUEST['landMark'] ?? '');
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
@@ -955,9 +958,11 @@ $distance = round($distance, 2);
             ]);
             exit;
         }
+        $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : '';
+        $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : '';
         $ratekms = 0;
 
-$rateSql = "
+        $rateSql = "
     SELECT iKms 
     FROM fleet_ratechart 
     WHERE iFleet_LocationID_From = $fromLoc
@@ -965,20 +970,19 @@ $rateSql = "
     LIMIT 1
 ";
 
-$rateRes = sql_query($rateSql);
+        $rateRes = sql_query($rateSql);
 
-if ($rateRes && sql_num_rows($rateRes) > 0) {
-    $rateRow = sql_fetch_assoc($rateRes);
-    $ratekms = intval($rateRow['iKms']);
-}
+        if ($rateRes && sql_num_rows($rateRes) > 0) {
+            $rateRow = sql_fetch_assoc($rateRes);
+            $ratekms = intval($rateRow['iKms']);
+        }
 
 
         $vReturnTimeVal = (!empty($vReturnTime)) ? "'" . $vReturnTime . "'" : "NULL";
         $dtNow = date('Y-m-d H:i:s');
 
         // $kms = isset($_REQUEST['kms']) ? $_REQUEST['kms'] : 0;
-        $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : '';
-        $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : '';
+
 
         $updateSql = "
             UPDATE fleet_booking SET

@@ -1720,7 +1720,7 @@ switch ($mode) {
                 //  'assignedFrom' => $isAssigned ? $vehicleRow['dtAssigned_From'] : null,
                 'nextTripTime' => $nextTripTime,
                 "disposal" => false,
-                "status" => 'A', //static
+                "status" => 'A' 
                 // 'nextTripLocation' => $nextTripLocation,
                 // 'nextTripDestination' => $nextTripDestination
             ];
