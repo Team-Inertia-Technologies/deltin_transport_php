@@ -28,7 +28,6 @@ switch ($mode) {
     // ===================== CASE: ADD_ONLOAD =====================
     case 'ADD_ONLOAD':
 
-    // Fetch staff route & stop
     $staffSql = "SELECT iRouteID, iStopID 
                  FROM staff 
                  WHERE iStaffID = $user_id AND cStatus = 'A'";
@@ -38,7 +37,6 @@ switch ($mode) {
     $staffRouteID = (int) ($staffData['iRouteID'] ?? 0);
     $staffStopID  = (int) ($staffData['iStopID'] ?? 0);
 
-    // Fetch all active routes
     $routesSql = "SELECT iRouteID, vName, vDestination 
                   FROM st_route 
                   WHERE cStatus = 'A' 
@@ -86,7 +84,7 @@ switch ($mode) {
                         AND DATE(dtTrip) <= '" . db_input($maxDate) . "'
                         AND dtTrip >= '" . db_input($twoHoursFromNow) . "'
                         ORDER BY trip_date 
-                        LIMIT 7";
+                        LIMIT 2";
             $daysRes = sql_query($daysSql);
 
             $daysArr = [];
@@ -202,14 +200,14 @@ break;
         // Get the actual time value - support both old (trip ID) and new (time value) structure
         $selectedTimeValue = $_REQUEST['timeValue'] ?? '';
         if (empty($selectedTimeValue)) {
-     echo json_encode([
-                "error" => [
-                    "message" => "Invalid time selected"
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
-}
+            echo json_encode([
+                        "error" => [
+                            "message" => "Invalid time selected"
+                        ],
+                        "statusCode" => 400
+                    ]);
+                    exit;
+        }
 
 
         if (!empty($selectedTimeValue)) {
@@ -247,6 +245,10 @@ break;
             $pickupPointName = db_output2($pickupPointData['vName']);
         }
 
+        // Calculate the maximum allowed date (2 days from now)
+        $currentDate = date('Y-m-d');
+        $maxAllowedDate = date('Y-m-d', strtotime('+2 days'));
+
         $successCount = 0;
         $errors = [];
         $selectedDays = [];
@@ -271,6 +273,18 @@ break;
             $tripDate = date('Y-m-d', strtotime($tripData['dtTrip']));
             $tripDateTime = "$tripDate $selectedTime";
 
+            // **NEW VALIDATION: Check if trip date is within the next 2 days**
+            if ($tripDate > $maxAllowedDate) {
+                $errors['beyondAllowed'][] = date('d M Y', strtotime($tripDate));
+                continue;
+            }
+
+            // Check if trip date is in the past
+            if ($tripDate < $currentDate) {
+                $errors['pastDate'][] = date('d M Y', strtotime($tripDate));
+                continue;
+            }
+
             // Check if trip is within 2 hours from now (booking restriction)
             $currentDateTime = date('Y-m-d H:i:s');
             $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
@@ -279,7 +293,7 @@ break;
             //     $errors[] = "Cannot book trip on $tripDate - bookings must be made at least 2 hours in advance";
             //     continue;
             // }
-   //  Do not allow request if that person already has a request on that day (any route/time)
+            //  Do not allow request if that person already has a request on that day (any route/time)
         $dayConflictSql = "SELECT iTrReqID FROM st_request WHERE iStaffID = $user_id AND dPickup = '" . db_input($tripDate) . "' AND cStatus = 'A' LIMIT 1";
         $dayConflictRes = sql_query($dayConflictSql);
         if (sql_num_rows($dayConflictRes) > 0) {
@@ -422,37 +436,37 @@ break;
             }
         }
 
-$finalErrors = [];
+        $finalErrors = [];
 
-if (!empty($errors['dayConflict'])) {
-    $dates = array_unique($errors['dayConflict']);
-    $finalErrors[] = "Already has request on: " . implode(", ", $dates);
-}
+        if (!empty($errors['dayConflict'])) {
+            $dates = array_unique($errors['dayConflict']);
+            $finalErrors[] = "Already has request on: " . implode(", ", $dates);
+        }
 
-if (!empty($errors['alreadyExists'])) {
-    $dates = array_unique($errors['alreadyExists']);
-    $finalErrors[] = "Request already exists on: " . implode(", ", $dates);
-}
+        if (!empty($errors['alreadyExists'])) {
+            $dates = array_unique($errors['alreadyExists']);
+            $finalErrors[] = "Request already exists on: " . implode(", ", $dates);
+        }
 
-if (!empty($errors['tripNotFound'])) {
-    $ids = array_unique($errors['tripNotFound']);
-    $finalErrors[] = "Trip not found: " . implode(", ", $ids);
-}
+        if (!empty($errors['tripNotFound'])) {
+            $ids = array_unique($errors['tripNotFound']);
+            $finalErrors[] = "Trip not found: " . implode(", ", $ids);
+        }
 
-if (!empty($errors['stopMissing'])) {
-    $finalErrors[] = "Pickup stop not found";
-}
+        if (!empty($errors['stopMissing'])) {
+            $finalErrors[] = "Pickup stop not found";
+        }
 
-if (!empty($errors['saveFailed'])) {
-    $dates = array_unique($errors['saveFailed']);
-    $finalErrors[] = "Failed to save request on: " . implode(", ", $dates);
-}
-if (!empty($errors['capacityFailed'])) {
-    $dates = array_unique($errors['capacityFailed']);
-    $finalErrors[] = "Failed to capacity ";
-}
+        if (!empty($errors['saveFailed'])) {
+            $dates = array_unique($errors['saveFailed']);
+            $finalErrors[] = "Failed to save request on: " . implode(", ", $dates);
+        }
+        if (!empty($errors['capacityFailed'])) {
+            $dates = array_unique($errors['capacityFailed']);
+            $finalErrors[] = "Failed to capacity ";
+        }
 
-$errors = $finalErrors;
+        $errors = $finalErrors;
 
         
 
@@ -484,7 +498,7 @@ $errors = $finalErrors;
                 "statusCode" => 400
             ]);
         }
-        break;
+    break;
     // ===================== CASE: DELETE_REQUEST =====================
     case 'DELETE_REQUEST':
         $requestID = intval($_REQUEST['requestID'] ?? 0);

@@ -31,8 +31,8 @@ switch ($mode) {
         $fromDate = $_REQUEST['fromDate'] ?? '';
         $toDate = $_REQUEST['toDate'] ?? '';
         $routeID = intval($_REQUEST['routeID'] ?? 0);
-         $driverID =  isset($_REQUEST['driverID']) ? intval($_REQUEST['driverID'] ?? 0) : 0;
-          $vendorID = isset($_REQUEST['vendorID']) ? intval($_REQUEST['vendorID'] ?? 0) : 0;
+        $driverID =  isset($_REQUEST['driverID']) ? intval($_REQUEST['driverID'] ?? 0) : 0;
+        $vendorID = isset($_REQUEST['vendorID']) ? intval($_REQUEST['vendorID'] ?? 0) : 0;
 
         // Build WHERE conditions
         $whereConditions = ["t.cStatus != 'X'"];
@@ -48,16 +48,16 @@ switch ($mode) {
         if ($routeID > 0) {
             $whereConditions[] = "t.iRouteID = $routeID";
         }
-         if ($driverID > 0) {
+        if ($driverID > 0) {
             $whereConditions[] = "tva.iDriverID = $driverID";
         }
-         if ($vendorID > 0) {
+        if ($vendorID > 0) {
             $whereConditions[] = "v.iVendorID = $vendorID";
         }
 
         $whereClause = implode(' AND ', $whereConditions);
 
-       
+
         $sql = "SELECT 
                     t.iTripID as id,
                     t.dtTrip,
@@ -141,7 +141,7 @@ switch ($mode) {
                 "pax" => $trip['pax'],
                 "availed" => $trip['availed'],
                 "hasVehicle" => !empty($trip['vehicleNumber']),
-                 "driverID" =>  $trip['driverID'],
+                "driverID" =>  $trip['driverID'],
                 "driverName" => $trip['driverName'],
                 "vendorName" => $trip['vendorName'],
                 "vendorID" => $trip['vendorID'],
@@ -162,7 +162,7 @@ switch ($mode) {
                 "name" => db_output2($routeRow['vName'])
             ];
         }
-         $driverSQL = "SELECT iDriverID, vName FROM driver WHERE cStatus = 'A' ORDER BY vName";
+        $driverSQL = "SELECT iDriverID, vName FROM driver WHERE cStatus = 'A' ORDER BY vName";
         $driverRes = sql_query($driverSQL);
 
         $driverOpt = [
@@ -176,7 +176,7 @@ switch ($mode) {
             ];
         }
 
-             $vendorSQL = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
+        $vendorSQL = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
         $vendorRes = sql_query($vendorSQL);
 
         $vendorOpt = [
@@ -721,9 +721,7 @@ switch ($mode) {
             exit;
         }
 
-        // Single optimized query to get all manifest data for a specific trip
         $manifestSql = "SELECT 
-                            -- Trip and Route Info
                             t.dtTrip,
                             r.iRouteID,
                             r.vName as routeName,
@@ -739,152 +737,17 @@ switch ($mode) {
                             st.vName as staffName,
                             st.vMobile as staffMobile,
                             req.dtIn,
-                            t.iRequested
+                            t.iRequested  as totalPaxRequested          
                         FROM st_trips t
                         LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
-                        LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID 
-                            LEFT JOIN st_route_stops s ON r.iRouteID = s.iRouteID AND s.cStatus = 'A'
-                         LEFT JOIN st_request req ON t.iTripID = req.iTripID AND req.iStopID = s.iStopID AND req.cStatus = 'A'
-                        LEFT JOIN vehicle v ON req.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
-                        LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                        LEFT JOIN staff st ON req.iStaffID = st.iStaffID AND st.cStatus = 'A'
-               WHERE t.iTripID = $iTripID AND t.cStatus != 'X'
-                        ORDER BY s.iRank, st.vName";
-
-        $manifestRes = sql_query($manifestSql);
-
-        // Initialize variables
-        $tripDateTime = '';
-        $routeName = '';
-        $destination = '';
-        $vehicleNumbers = [];
-        $totalCapacity = 0;
-        $totalPaxRequested = 0;
-        $stops = [];
-        $processedVehicles = [];
-        $processedStops = [];
-
-        while ($row = sql_fetch_assoc($manifestRes)) {
-            // Set trip info once (same for all rows)
-            if (empty($tripDateTime)) {
-                $tripDateTime = date('d/m/Y H:i', strtotime($row['dtTrip']));
-                $routeName = $row['routeName'] ?? '';
-                $destination = $row['destination'] ?? '';
-                $totalPaxRequested = (int) ($row['iRequested'] ?? 0);
-            }
-
-            // Process vehicles (avoid duplicates)
-            $vehicleID = (int) ($row['iVehicleID'] ?? 0);
-            if ($vehicleID > 0 && !in_array($vehicleID, $processedVehicles)) {
-                $vehicleCapacity = (int) ($row['vehicleCapacity'] ?? 0);
-                $vehicleNumbers[] = ($row['vehicleNumber'] ?? '') . ' (' . $vehicleCapacity . ')';
-                $totalCapacity += $vehicleCapacity;
-                $processedVehicles[] = $vehicleID;
-            }
-
-            // Process stops and staff
-            $stopID = (int) ($row['iStopID'] ?? 0);
-            if ($stopID > 0) {
-                // Initialize stop if not processed
-                if (!isset($processedStops[$stopID])) {
-                    $offsetMinutes = intval($row['tOffsetFromStart']);
-                    $tripStartTime = date('H:i:s', strtotime($row['dtTrip']));
-                    $pickupTime = date('H:i', strtotime($tripStartTime) + ($offsetMinutes * 60));
-
-                    $processedStops[$stopID] = [
-                        "stopID" => $stopID,
-                        "stopName" => $row['stopName'] ?? '',
-                        "pickupTime" => $pickupTime,
-                        "offsetMinutes" => $offsetMinutes,
-                        "rank" => (int) ($row['stopRank'] ?? 0),
-                        "staff" => [],
-                        "staffCount" => 0
-                    ];
-                }
-
-                // Add staff to stop if exists and not already added
-                $staffID = (int) ($row['iStaffID'] ?? 0);
-                if ($staffID > 0) {
-                    $staffExists = false;
-                    foreach ($processedStops[$stopID]['staff'] as $existingStaff) {
-                        if ($existingStaff['staffID'] == $staffID) {
-                            $staffExists = true;
-                            break;
-                        }
-                    }
-
-                    if (!$staffExists) {
-                        $processedStops[$stopID]['staff'][] = [
-                            "staffID" => $staffID,
-                            "staffName" => $row['staffName'] ?? '',
-                            "staffMobile" => $row['staffMobile'] ?? '',
-                            "vehicleNumber" => $row['vehicleNumber'] ?? '',
-                            "entered" => !empty($row['dtIn']),
-                            "enteredTime" => $row['dtIn'] ? date('H:i', strtotime($row['dtIn'])) : null
-                        ];
-                        $processedStops[$stopID]['staffCount']++;
-                    }
-                }
-            }
-        }
-
-        // Convert processed stops to indexed array and sort by rank
-        $stops = array_values($processedStops);
-        usort($stops, function ($a, $b) {
-            return $a['rank'] - $b['rank'];
-        });
-
-        echo json_encode([
-            "data" => [
-                "iTripID" => $iTripID,
-                "tripDateTime" => $tripDateTime,
-                "routeName" => $routeName,
-                "destination" => $destination,
-                "totalPaxRequested" => $totalPaxRequested,
-                "totalCapacity" => $totalCapacity,
-                "vehicleNumbers" => $vehicleNumbers,
-                "vehicleCount" => count($vehicleNumbers),
-                "stops" => $stops
-            ],
-            "statusCode" => 200
-        ]);
-        $manifestSql = "SELECT 
-                            -- Trip and Route Info
-                            t.dtTrip,
-                            r.iRouteID,
-                            r.vName as routeName,
-                            r.vDestination as destination,
-                            
-                            -- Vehicle Info
-                            tva.iVehicleID,
-                            v.vRnum as vehicleNumber,
-                            vc.iCapacity as vehicleCapacity,
-                            
-                            -- Stop Info
-                            s.iStopID,
-                            s.vName as stopName,
-                            s.tOffsetFromStart,
-                            s.iRank as stopRank,
-                            
-                            -- Staff Info
-                            req.iStaffID,
-                            st.vName as staffName,
-                            st.vMobile as staffMobile,
-                            req.dtIn,
-                            
-                            -- Trip requested pax
-                            t.iRequested  as totalPaxRequested,
-                             
-                        FROM st_trips t
-                        LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
-                        LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID AND v.cStatus = 'A'
+                        LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID AND tva.cStatus IN ('A','C')
                         LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                         LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                         LEFT JOIN st_route_stops s ON r.iRouteID = s.iRouteID AND s.cStatus = 'A'
                         LEFT JOIN st_request req ON t.iTripID = req.iTripID AND req.iStopID = s.iStopID AND req.cStatus = 'A'
                         LEFT JOIN staff st ON req.iStaffID = st.iStaffID AND st.cStatus = 'A'
                         
-                        WHERE t.iGrpID = $iGrpID AND t.cStatus != 'X'
+                        WHERE t.iTripID = $iTripID AND t.cStatus != 'X'
                         ORDER BY s.iRank, st.vName, t.iTripID";
 
         $manifestRes = sql_query($manifestSql);
@@ -918,10 +781,8 @@ switch ($mode) {
                 $processedVehicles[] = $vehicleID;
             }
 
-            // Process stops and staff
             $stopID = (int) ($row['iStopID'] ?? 0);
             if ($stopID > 0) {
-                // Initialize stop if not processed
                 if (!isset($processedStops[$stopID])) {
                     $offsetMinutes = intval($row['tOffsetFromStart']);
                     $tripStartTime = date('H:i:s', strtotime($row['dtTrip']));
@@ -1095,7 +956,7 @@ switch ($mode) {
 
                         if ($vehID > 0) {
                             $vehicleAssociations[] = [
-                                'tripID' => $tripIDForThisRow, 
+                                'tripID' => $tripIDForThisRow,
                                 'vehicleID' => $vehID,
                                 'driverID' => $driverID,
                                 'assignedBy' => $user_id
@@ -1560,18 +1421,18 @@ switch ($mode) {
         }
 
         // Validate status against allowed values from STAFF_TRIP_STATUS
-        $validStatuses = array_keys($STAFF_TRIP_STATUS);
-        if (!in_array($status, $validStatuses)) {
-            echo json_encode([
-                "error" => [
-                    "message" => "Invalid status. Allowed values: " . implode(', ', $validStatuses)
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
+        // $validStatuses = array_keys($STAFF_TRIP_STATUS);
+        // if (!in_array($status, $validStatuses)) {
+        //     echo json_encode([
+        //         "error" => [
+        //             "message" => "Invalid status. Allowed values: " . implode(', ', $validStatuses)
+        //         ],
+        //         "statusCode" => 400
+        //     ]);
+        //     exit;
+        // }
 
-        // Check if trip exists and is not already deleted
+
         $checkSql = "SELECT iTripID, cStatus FROM st_trips WHERE iTripID = $iTripID";
         $checkRes = sql_query($checkSql);
 
@@ -1627,6 +1488,60 @@ switch ($mode) {
             ]);
         }
         break;
+
+    case 'MARK_STAFF_AS_ENTERED':
+
+        $iTripID = intval($_REQUEST['iTripID'] ?? 0);
+        $staffIds = $_REQUEST['staffIds'] ?? [];
+        $vehicleID = intval($_REQUEST['vehicleID'] ?? 0);
+
+        if ($iTripID <= 0 || empty($staffIds) || !is_array($staffIds)) {
+            echo json_encode([
+                "error" => ["message" => "Invalid TripID or staffIds missing"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $datetime = NOW;
+
+
+        $staffIds = array_map('intval', $staffIds);
+        $idList = implode(',', $staffIds);
+
+    //     $updateSql = "
+    //     UPDATE st_request
+    //     SET 
+    //         dtIn  = IF(dtIn IS NULL, '" . db_input($datetime) . "', dtIn),
+    //         dtOut = IF(dtOut IS NULL, '" . db_input($datetime) . "', dtOut),
+    //         iVehicleID = $vehicleID
+    //     WHERE iStaffID IN ($idList)
+    //     AND iTripID = $iTripID
+    // ";
+     $updateSql = "
+        UPDATE st_request
+        SET 
+            dtIn  = '$datetime',
+            dtOut = '$datetime',
+            iVehicleID = $vehicleID
+        WHERE iStaffID IN ($idList)
+        AND iTripID = $iTripID
+    ";
+        $updateRess = sql_query($updateSql);
+        if ($updateRess) {
+            echo json_encode([
+                "data" => ["message" => "Staff marked as entered successfully"],
+                "statusCode" => 200
+            ]);
+        } else {
+            echo json_encode([
+                "error" => ["message" => "Failed to update staff entry status"],
+                "statusCode" => 500
+            ]);
+        }
+
+        break;
+
 
     // ===================== DEFAULT =====================
     default:
