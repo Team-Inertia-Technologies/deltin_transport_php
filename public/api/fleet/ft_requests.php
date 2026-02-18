@@ -862,12 +862,14 @@ switch ($mode) {
         $staffThreshold = GetXFromYID("SELECT vValue from sys_settings where vCode = 'FT_STAFFREQ_THRESHOLD'");
 $staffThreshold = intval($staffThreshold) > 0 ? intval($staffThreshold) : 0; 
 
+
+
 $fleetThresholdRaw = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'FT_REQ_THRESHOLD'");
-$fleetThresholdArr = json_decode($fleetThresholdRaw, true);
-$level = GetXFromYID("SELECT iLevel FROM users WHERE iUserID = $user_id");
+$fleetThresholdArr = json_decode($fleetThresholdRaw, true) ?: [];
 
-$fleetThreshold = $fleetThresholdArr[$level] ?? 2;
+$level = (int) GetXFromYID("SELECT iLevel FROM users WHERE iUserID = $user_id");
 
+$fleetThreshold = isset($fleetThresholdArr[$level]) ? (int)$fleetThresholdArr[$level] : 2;
 
         $optArr = [
             "bookedForOpt" => $bookedForOpt,
