@@ -73,9 +73,11 @@ switch ($mode) {
 
        
             $today = date('Y-m-d');
-            $maxDate = date('Y-m-d', strtotime('+7 days'));
+            
             $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
-
+$maxDays= GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode =ST_REQ_THRESHOLD");
+$maxDays= intval($maxDays);
+$maxDate = date('Y-m-d', strtotime("+$maxDays days"));
             $daysSql = "SELECT iTripID, DATE(dtTrip) AS trip_date
                         FROM st_trips
                         WHERE iRouteID = $routeID AND cStatus = 'A'
@@ -84,7 +86,7 @@ switch ($mode) {
                         AND DATE(dtTrip) <= '" . db_input($maxDate) . "'
                         AND dtTrip >= '" . db_input($twoHoursFromNow) . "'
                         ORDER BY trip_date 
-                        LIMIT 2";
+                        LIMIT $maxDays";
             $daysRes = sql_query($daysSql);
 
             $daysArr = [];

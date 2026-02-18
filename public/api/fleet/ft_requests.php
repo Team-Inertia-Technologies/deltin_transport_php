@@ -1941,6 +1941,15 @@ switch ($mode) {
         $STAFF_ARR = sql_query("SELECT iFStaffID, vName, iDepartmentID, vMobile, iUserID from fleet_staff where cStatus='A' ORDER BY vName");
         $GUEST_ARR = sql_query("SELECT iGuestID, vName, vMobileNo from guest where cStatus='A' ORDER BY vName");
         $LOC_ARR = GetXArrFromYID("SELECT iFleet_LocationID, vName from fleet_location where cStatus='A' ORDER BY iRank", "3");
+$staffThreshold = GetXFromYID("SELECT vValue from sys_settings where vCode = 'FT_STAFFREQ_THRESHOLD'");
+$staffThreshold = intval($staffThreshold) > 0 ? intval($staffThreshold) : 0; 
+
+$fleetThresholdRaw = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'FT_REQ_THRESHOLD'");
+$fleetThresholdArr = json_decode($fleetThresholdRaw, true);
+$level = GetXFromYID("SELECT iLevel FROM users WHERE iUserID = $user_id");
+
+$fleetThreshold = $fleetThresholdArr[$level] ?? 2;
+
 
         $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
         foreach ($FLEET_BOOKING_FOR as $id => $name) {
@@ -2115,7 +2124,9 @@ switch ($mode) {
 
         echo json_encode([
             "data" => [
-                "optArr" => $optArr
+                "optArr" => $optArr,
+                "fleetThresholdArr" => $fleetThresholdArr,
+                "staffThresholdArr" => $staffThresholdArr
             ],
             "statusCode" => 200
         ]);
