@@ -24,7 +24,8 @@ if (sql_num_rows($userCheckRes) == 0) {
     exit;
 }
 $NOW = NOW;
-function getRoadDistance($startLat, $startLng, $endLat, $endLng) {
+function getRoadDistance($startLat, $startLng, $endLat, $endLng)
+{
 
     $apiKey =  HEIGIT_DISTACE_API_KEY;
 
@@ -39,7 +40,7 @@ function getRoadDistance($startLat, $startLng, $endLat, $endLng) {
 
     $response = curl_exec($ch);
 
-    if(curl_errno($ch)){
+    if (curl_errno($ch)) {
         return "Curl Error: " . curl_error($ch);
     }
 
@@ -47,7 +48,7 @@ function getRoadDistance($startLat, $startLng, $endLat, $endLng) {
 
     $data = json_decode($response, true);
 
-    if(isset($data['features'][0]['properties']['segments'][0]['distance'])) {
+    if (isset($data['features'][0]['properties']['segments'][0]['distance'])) {
         $distanceInMeters = $data['features'][0]['properties']['segments'][0]['distance'];
         $distanceInKm = $distanceInMeters / 1000;
         return round($distanceInKm, 2);
@@ -859,18 +860,23 @@ switch ($mode) {
         foreach ($LOC_ARR as $id => $name) {
             $locOpts[] = ['id' => intval($id), 'name' => $name];
         }
-        $staffThreshold = GetXFromYID("SELECT vValue from sys_settings where vCode = 'FT_STAFFREQ_THRESHOLD'");
-$staffThreshold = intval($staffThreshold) > 0 ? intval($staffThreshold) : 0; 
+        // $staffThreshold = GetXFromYID("SELECT vValue from sys_settings where vCode = 'FT_STAFFREQ_THRESHOLD'");
+        // $staffThreshold = intval($staffThreshold) > 0 ? intval($staffThreshold) : 0;
+        $level = GetXFromYID("SELECT iLevel FROM users WHERE iUserID = $user_id");
 
-$fleetThresholdRaw = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'FT_REQ_THRESHOLD'");
-$fleetThresholdArr = json_decode($fleetThresholdRaw, true) ?: [];
+        $staffThresholdRaw = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'FT_STAFFREQ_THRESHOLD'");
+        $staffThresholdArr = json_decode($staffThresholdRaw, true);
+        $staffThreshold = $staffThresholdArr[$level] ?? 2;
 
-$level = trim(GetXFromYID("SELECT iLevel FROM users WHERE iUserID = $user_id"));
-$level = (string)(int)$level; 
 
-$fleetThreshold = array_key_exists($level, $fleetThresholdArr)
-    ? (int)$fleetThresholdArr[$level]
-    : 2;
+        $fleetThresholdRaw = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'FT_FLEETREQ_THRESHOLD'");
+        $fleetThresholdArr = json_decode($fleetThresholdRaw, true) ?: [];
+
+        $level = (string)(int)$level;
+
+        $fleetThreshold = array_key_exists($level, $fleetThresholdArr)
+            ? (int)$fleetThresholdArr[$level]
+            : 2;
 
         $optArr = [
             "bookedForOpt" => $bookedForOpt,
@@ -1955,14 +1961,18 @@ $fleetThreshold = array_key_exists($level, $fleetThresholdArr)
         $STAFF_ARR = sql_query("SELECT iFStaffID, vName, iDepartmentID, vMobile, iUserID from fleet_staff where cStatus='A' ORDER BY vName");
         $GUEST_ARR = sql_query("SELECT iGuestID, vName, vMobileNo from guest where cStatus='A' ORDER BY vName");
         $LOC_ARR = GetXArrFromYID("SELECT iFleet_LocationID, vName from fleet_location where cStatus='A' ORDER BY iRank", "3");
-$staffThreshold = GetXFromYID("SELECT vValue from sys_settings where vCode = 'FT_STAFFREQ_THRESHOLD'");
-$staffThreshold = intval($staffThreshold) > 0 ? intval($staffThreshold) : 0; 
+        // $staffThreshold = GetXFromYID("SELECT vValue from sys_settings where vCode = 'FT_STAFFREQ_THRESHOLD'");
+        // $staffThreshold = intval($staffThreshold) > 0 ? intval($staffThreshold) : 0;
+        $level = GetXFromYID("SELECT iLevel FROM users WHERE iUserID = $user_id");
 
-$fleetThresholdRaw = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'FT_REQ_THRESHOLD'");
-$fleetThresholdArr = json_decode($fleetThresholdRaw, true);
-$level = GetXFromYID("SELECT iLevel FROM users WHERE iUserID = $user_id");
+        $staffThresholdRaw = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'FT_STAFFREQ_THRESHOLD'");
+        $staffThresholdArr = json_decode($staffThresholdRaw, true);
+        $staffThreshold = $staffThresholdArr[$level] ?? 2;
 
-$fleetThreshold = $fleetThresholdArr[$level] ?? 2;
+        $fleetThresholdRaw = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'FT_FLEETREQ_THRESHOLD'");
+        $fleetThresholdArr = json_decode($fleetThresholdRaw, true);
+
+        $fleetThreshold = $fleetThresholdArr[$level] ?? 2;
 
 
         $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
