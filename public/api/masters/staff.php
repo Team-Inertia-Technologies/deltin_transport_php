@@ -808,21 +808,29 @@ switch ($mode) {
         $cnt_inserted = 0;
         $cnt_skipped = 0;
         foreach ($rows as $index => $row) {
+            $vCode = isset($row['code']) ? db_input($row['code']) : '';
+            $vName = isset($row['name']) ? db_input($row['name']) : '';
+            $vMobile = isset($row['mobile']) ? db_input($row['mobile']) : '';
+            $departmentName = isset($row['department']) ? trim($row['department']) : '';
+            $propertyName = isset($row['property']) ? trim($row['property']) : '';
 
-            $vCode = db_input($row['code']) ?? '';
-            $vName = db_input($row['name']) ?? '';
-            $vMobile = db_input($row['mobile']) ?? '';
-            $departmentName = trim($row['department']) ?? '';
-            $propertyName = trim($row['property']) ?? '';
+            if ($vName === '' || $vMobile === '') {
+                $skipped[] = [
+                    "row" => $index + 1,
+                    "code" => $vCode,
+                    "mobile" => $vMobile,
+                    "reason" => "Missing required fields"
+                ];
+                continue;
+            }
+
 
             $iRouteID = 0;
             $iStopID = 0;
             $iDepartmentID = 0;
             $iPropertyID = 0;
 
-            /* --------------------------------------
-            MATCH DEPARTMENT
-        --------------------------------------- */
+
             if ($departmentName !== '') {
                 $deptKey = strtolower($departmentName);
                 if (isset($departmentMap[$deptKey])) {
@@ -838,9 +846,6 @@ switch ($mode) {
                 }
             }
 
-            /* --------------------------------------
-            MATCH PROPERTY
-        --------------------------------------- */
             if ($propertyName !== '') {
                 $propKey = strtolower($propertyName);
                 if (isset($propertyMap[$propKey])) {
@@ -855,15 +860,7 @@ switch ($mode) {
                     continue;
                 }
             }
-            if ($vCode === '' || $vName === '' || $vMobile === '') {
-                $skipped[] = [
-                    "row" => $index + 1,
-                    "code" => $vCode,
-                    "mobile" => $vMobile,
-                    "reason" => "Missing required fields"
-                ];
-                continue;
-            }
+
 
             if (!preg_match('/^[0-9]{10}$/', $vMobile)) {
                 $skipped[] = [
@@ -874,44 +871,48 @@ switch ($mode) {
                 ];
                 continue;
             }
+            $checkSql = "SELECT iStaffID FROM staff 
+             WHERE vMobile = '$vMobile' 
+             AND cStatus != 'X'";
 
-            /* --------------------------------------
-            CHECK IF STAFF EXISTS
-        --------------------------------------- */
-            $checkSql = "SELECT iStaffID FROM staff WHERE (vCode = '$vCode' OR vMobile = '$vMobile') AND cStatus != 'X'";
             $checkRes = sql_query($checkSql);
 
             if (sql_num_rows($checkRes) > 0) {
-                // UPDATE staff
-                // $existing = sql_fetch_assoc($checkRes);
-                // $iStaffID = $existing['iStaffID'];
 
-                // $sql = "UPDATE staff SET 
-                //             vName = '$vName',
-                //             vMobile = '$vMobile',
-                //             iDepartmentID = $iDepartmentID,
-                //             iPropertyID = $iPropertyID
-                //         WHERE iStaffID = $iStaffID";
+                $existing = sql_fetch_assoc($checkRes);
+                $iStaffID = (int)$existing['iStaffID'];
 
-                // if (sql_query($sql)) {
-                //     $updated[] = [
-                //         "row" => $index + 1,
-                //         "id" => $iStaffID,
-                //         "code" => $vCode,
-                //         "mobile" => $vMobile,
-                //         "department" => $departmentName,
-                //         "property" => $propertyName,
-                //         "status" => "Updated"
-                //     ];
-                // } else {
-                $cnt_skipped++;
-                $skipped[] = [
-                    "row" => $index + 1,
-                    "code" => $vCode,
-                    "mobile" => $vMobile,
-                    "reason" => "Staff with this code or mobile already exists"
-                ];
-                //  }
+                // Update everything EXCEPT mobile
+                $sql = "UPDATE staff SET 
+                vName = '$vName',
+                vCode = '$vCode',
+                iDepartmentID = $iDepartmentID,
+                iPropertyID = $iPropertyID
+            WHERE iStaffID = $iStaffID";
+
+                if (sql_query($sql)) {
+
+                    $updated[] = [
+                        "row" => $index + 1,
+                        "id" => $iStaffID,
+                        "code" => $vCode,
+                        "mobile" => $vMobile,
+                        "department" => $departmentName,
+                        "property" => $propertyName,
+                        "status" => "Updated (Mobile unchanged)"
+                    ];
+                } else {
+
+                    $cnt_skipped++;
+
+                    $skipped[] = [
+                        "row" => $index + 1,
+                        "code" => $vCode,
+                        "mobile" => $vMobile,
+                        "reason" => "Failed to update existing staff"
+                    ];
+                }
+
                 continue;
             }
 
@@ -946,16 +947,16 @@ switch ($mode) {
                 ];
             }
         }
-        $message = "";
-        if ($cnt_inserted > 0) {
-            $message = " $cnt_inserted records inserted and $cnt_skipped records skipped.";
-        } else {
-            $message = " No records inserted. $cnt_skipped records skipped.";
-        }
+        $cnt_inserted = count($inserted);
+        $cnt_updated = count($updated);
+        $cnt_skipped = count($skipped);
+
+        $message = "$cnt_inserted inserted, $cnt_updated updated, $cnt_skipped skipped.";
+
         echo json_encode([
             "data" => [
                 "inserted" => $inserted,
-                // "updated" => $updated,
+                "updated" => $updated,
                 "skipped" => $skipped,
                 "message" => $message
             ],
