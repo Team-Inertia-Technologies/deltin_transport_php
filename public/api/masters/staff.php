@@ -778,7 +778,6 @@ switch ($mode) {
             exit;
         }
 
-        // Use the reusable toggle function
         $result = toggleStatus($id, 'staff', 'iStaffID', 'cStatus', 'vName', 'STF', $user_id);
         echo json_encode($result);
         break;
@@ -811,6 +810,7 @@ switch ($mode) {
             $vCode = isset($row['code']) ? db_input($row['code']) : '';
             $vName = isset($row['name']) ? db_input($row['name']) : '';
             $vMobile = isset($row['mobile']) ? db_input($row['mobile']) : '';
+            $vAltMobile = isset($row['altmobile']) ? db_input($row['altmobile']) : '';
             $departmentName = isset($row['department']) ? trim($row['department']) : '';
             $propertyName = isset($row['property']) ? trim($row['property']) : '';
 
@@ -887,7 +887,8 @@ switch ($mode) {
                 vName = '$vName',
                 vCode = '$vCode',
                 iDepartmentID = $iDepartmentID,
-                iPropertyID = $iPropertyID
+                iPropertyID = $iPropertyID,
+                vAltmobile = '$vAltMobile'
             WHERE iStaffID = $iStaffID";
 
                 if (sql_query($sql)) {
@@ -922,9 +923,9 @@ switch ($mode) {
             $cStatus = 'A';
 
             $sql = "INSERT INTO staff 
-                (iStaffID, vCode, vName, vMobile, iRouteID, iStopID, iDepartmentID, iPropertyID, dtRegistered, cStatus)
+                (iStaffID, vCode, vName, vMobile, vAltmobile, iRouteID, iStopID, iDepartmentID, iPropertyID, dtRegistered, cStatus)
                 VALUES 
-                ($iStaffID, '$vCode', '$vName', '$vMobile', $iRouteID, $iStopID, $iDepartmentID, $iPropertyID, '$dtRegistered', '$cStatus')";
+                ($iStaffID, '$vCode', '$vName', '$vMobile', '$vAltmobile', $iRouteID, $iStopID, $iDepartmentID, $iPropertyID, '$dtRegistered', '$cStatus')";
 
             if (sql_query($sql)) {
                 $cnt_inserted++;
