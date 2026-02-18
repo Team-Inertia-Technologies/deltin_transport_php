@@ -859,6 +859,15 @@ switch ($mode) {
         foreach ($LOC_ARR as $id => $name) {
             $locOpts[] = ['id' => intval($id), 'name' => $name];
         }
+        $staffThreshold = GetXFromYID("SELECT vValue from sys_settings where vCode = 'FT_STAFFREQ_THRESHOLD'");
+$staffThreshold = intval($staffThreshold) > 0 ? intval($staffThreshold) : 0; 
+
+$fleetThresholdRaw = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'FT_REQ_THRESHOLD'");
+$fleetThresholdArr = json_decode($fleetThresholdRaw, true);
+$level = GetXFromYID("SELECT iLevel FROM users WHERE iUserID = $user_id");
+
+$fleetThreshold = $fleetThresholdArr[$level] ?? 2;
+
 
         $optArr = [
             "bookedForOpt" => $bookedForOpt,
@@ -882,7 +891,9 @@ switch ($mode) {
         echo json_encode([
             "data" => [
                 "booking" => $response,
-                "optArr" => $optArr
+                "optArr" => $optArr,
+                "fleetThreshold" => $fleetThreshold,
+                "staffThreshold" => $staffThreshold
             ],
             "statusCode" => 200
         ]);
@@ -2125,8 +2136,8 @@ $fleetThreshold = $fleetThresholdArr[$level] ?? 2;
         echo json_encode([
             "data" => [
                 "optArr" => $optArr,
-                "fleetThresholdArr" => $fleetThresholdArr,
-                "staffThresholdArr" => $staffThresholdArr
+                "fleetThreshold" => $fleetThreshold,
+                "staffThreshold" => $staffThreshold
             ],
             "statusCode" => 200
         ]);
