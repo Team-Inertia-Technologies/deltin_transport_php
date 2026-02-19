@@ -1273,8 +1273,8 @@ while ($row = sql_fetch_assoc($fleetRate)) {
             'tripStatus' => isset($booking['currentStatus']) ? $booking['currentStatus'] : 'N',
             'bookingStatus' => isset($booking['bookingStatus']) ? $booking['bookingStatus'] : 'C',
             'canCancel' => $canCancel,
-            'rateID' => intval($iFleet_RateID)?? 0,
-            'stationID' => intval($iFleet_StationID)?? 0
+            'rateID' => intval($booking['iFleet_RateID']),
+            'stationID' => intval($booking['iFleet_StationID'])
             // 'tripStatus' => isset($FLEET_TRIP_STATUS[$booking['currentStatus']]) ? $FLEET_TRIP_STATUS[$booking['currentStatus']] : 'Not Started'
             // "status" => $booking['currentStatus']
         ];
@@ -2327,7 +2327,7 @@ while ($row = sql_fetch_assoc($fleetRate)) {
         }
         break;
 
-           case 'UPDATE_RATECHART_LOOCATION':
+           case 'UPDATE_RATECHART_LOCATION':
         $iFleet_BookingID = intval($_REQUEST['bookingId']) ?? 0;
         $stationID = intval($_REQUEST['stationID']) ?? 0;
          $fleet_RateID = intval($_REQUEST['fleet_RateID']) ?? 0;
