@@ -1088,6 +1088,32 @@ switch ($mode) {
             $tripStatusArr[] = ['id' => $id, 'name' => $name];
         }
 
+         $stationArr = [['id' => 0, 'name' => 'Choose']];
+        $FLEET_STATION = GetXArrFromYID("SELECT iFleet_StationID, vName FROM fleet_station WHERE cStatus='A' ORDER BY iRank", "3");
+        foreach ($FLEET_STATION as $id => $name) {
+            $stationArr[] = ['id' => $id, 'name' => $name];
+        }
+$fleetRate = sql_query("
+    SELECT fr.iFleet_RateID,
+        fr.iFleet_StationID, CONCAT(lf.vName, ' - ', lt.vName) AS vRouteName
+    FROM fleet_ratechart fr
+    LEFT JOIN fleet_location lf 
+        ON lf.iFleet_LocationID = fr.iFleet_LocationID_From
+    LEFT JOIN fleet_location lt 
+        ON lt.iFleet_LocationID = fr.iFleet_LocationID_To
+    WHERE fr.cStatus = 'A'
+    AND '$NOW' BETWEEN fr.dtApplicable_From AND fr.dtApplicable_To
+    ORDER BY fr.iFleet_StationID, fr.iRank
+");
+$fleetRateArr = [];
+
+while ($row = sql_fetch_assoc($fleetRate)) {
+    $fleetRateArr[$row['iFleet_StationID']][] = [
+        'fleet_RateID' => $row['iFleet_RateID'],
+        'routeName'     => $row['vRouteName']
+    ];
+}
+
         $viewSql = "
             SELECT 
                 fb.iFleet_BookingID,
@@ -1109,6 +1135,8 @@ switch ($mode) {
                 fb.cType as currentStatus,
                 fb.iBookedBy as bookedById,
                 fb.vBookedBy as bookedBy,
+                fb.iFleet_RateID,
+                fb.iFleet_StationID,
                 fbc.vName as bookingCategoryName,
                 p.vName as propertyName,
                 d.vName as departmentName,
@@ -1244,7 +1272,9 @@ switch ($mode) {
             ] : null,
             'tripStatus' => isset($booking['currentStatus']) ? $booking['currentStatus'] : 'N',
             'bookingStatus' => isset($booking['bookingStatus']) ? $booking['bookingStatus'] : 'C',
-            'canCancel' => $canCancel
+            'canCancel' => $canCancel,
+            'rateID' => intval($iFleet_RateID)?? 0,
+            'stationID' => intval($iFleet_StationID)?? 0
             // 'tripStatus' => isset($FLEET_TRIP_STATUS[$booking['currentStatus']]) ? $FLEET_TRIP_STATUS[$booking['currentStatus']] : 'Not Started'
             // "status" => $booking['currentStatus']
         ];
@@ -1252,7 +1282,9 @@ switch ($mode) {
             "data" => [
                 "requestDetails" => $requestDetails,
                 "vehicleHistory" => $vehicleHistory,
-                "tripStatusOpts" => $tripStatusArr
+                "tripStatusOpts" => $tripStatusArr,
+                "stationArr" => $stationArr,
+                "fleetRateArr" => $fleetRateArr
             ],
             "statusCode" => 200
         ]);
@@ -2273,6 +2305,65 @@ switch ($mode) {
                 echo json_encode([
                     "data" => [
                         "message" => "Remark updated successfully",
+                        "iFleet_BookingID" => $iFleet_BookingID
+                    ],
+                    "statusCode" => 200
+                ]);
+            } else {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Failed to update remark"
+                    ],
+                    "statusCode" => 500
+                ]);
+            }
+        } else {
+            echo json_encode([
+                "error" => [
+                    "message" => "Database error occurred while updating remark"
+                ],
+                "statusCode" => 500
+            ]);
+        }
+        break;
+
+           case 'UPDATE_RATECHART_LOOCATION':
+        $iFleet_BookingID = intval($_REQUEST['bookingId']) ?? 0;
+        $stationID = intval($_REQUEST['stationID']) ?? 0;
+         $fleet_RateID = intval($_REQUEST['fleet_RateID']) ?? 0;
+
+        // Validate required parameter
+        if ($iFleet_BookingID <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing or invalid iFleet_BookingID parameter"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Check if trip exists and is active
+        $checkSql = "SELECT iFleet_BookingID FROM fleet_booking WHERE iFleet_BookingID = $iFleet_BookingID";
+        $checkRes = sql_query($checkSql);
+
+        if (sql_num_rows($checkRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Booking not found"
+                ],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $completeSql = "UPDATE fleet_booking SET iFleet_StationID = $stationID, iFleet_RateID = $fleet_RateID WHERE iFleet_BookingID=$iFleet_BookingID";
+
+        if (sql_query($completeSql)) {
+            if (sql_affected_rows() > 0) {
+                echo json_encode([
+                    "data" => [
+                        "message" => "Updated successfully",
                         "iFleet_BookingID" => $iFleet_BookingID
                     ],
                     "statusCode" => 200
