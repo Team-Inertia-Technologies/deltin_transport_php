@@ -1088,12 +1088,8 @@ switch ($mode) {
             $tripStatusArr[] = ['id' => $id, 'name' => $name];
         }
 
-         $stationArr = [['id' => 0, 'name' => 'Choose']];
-        $FLEET_STATION = GetXArrFromYID("SELECT iFlt_StationID, vName FROM fleet_station WHERE cStatus='A' ORDER BY iRank", "3");
-        foreach ($FLEET_STATION as $id => $name) {
-            $stationArr[] = ['id' => $id, 'name' => $name];
-        }
-$fleetRate = sql_query("
+
+        $fleetRate = sql_query("
     SELECT fr.iFleet_RateID,
         fr.iFleet_StationID, CONCAT(lf.vName, ' - ', lt.vName) AS vRouteName
     FROM fleet_ratechart fr
@@ -1105,14 +1101,29 @@ $fleetRate = sql_query("
     AND '$NOW' BETWEEN fr.dtApplicable_From AND fr.dtApplicable_To
     ORDER BY fr.iFleet_StationID, fr.iRank
 ");
-$fleetRateArr = [];
+        $fleetRateArr = [];
 
-while ($row = sql_fetch_assoc($fleetRate)) {
-    $fleetRateArr[$row['iFleet_StationID']][] = [
-        'fleet_RateID' => $row['iFleet_RateID'],
-        'routeName'     => $row['vRouteName']
-    ];
-}
+        while ($row = sql_fetch_assoc($fleetRate)) {
+            $fleetRateArr[$row['iFleet_StationID']][] = [
+                'fleet_RateID' => $row['iFleet_RateID'],
+                'routeName'     => $row['vRouteName']
+            ];
+        }
+        $stationArr = [['id' => 0, 'name' => 'Choose', 'routes' => []]];
+
+        $FLEET_STATION = GetXArrFromYID(
+            "SELECT iFlt_StationID, vName FROM fleet_station WHERE cStatus='A' ORDER BY iRank",
+            "3"
+        );
+
+        foreach ($FLEET_STATION as $id => $name) {
+            $stationArr[] = [
+                'id' => $id,
+                'name' => $name,
+                'routes' => isset($fleetRateArr[$id]) ? $fleetRateArr[$id] : []
+            ];
+        }
+
 
         $viewSql = "
             SELECT 
@@ -2327,10 +2338,10 @@ while ($row = sql_fetch_assoc($fleetRate)) {
         }
         break;
 
-           case 'UPDATE_RATECHART_LOCATION':
+    case 'UPDATE_RATECHART_LOCATION':
         $iFleet_BookingID = intval($_REQUEST['bookingId']) ?? 0;
         $stationID = intval($_REQUEST['stationID']) ?? 0;
-         $fleet_RateID = intval($_REQUEST['fleet_RateID']) ?? 0;
+        $fleet_RateID = intval($_REQUEST['fleet_RateID']) ?? 0;
 
         // Validate required parameter
         if ($iFleet_BookingID <= 0) {
