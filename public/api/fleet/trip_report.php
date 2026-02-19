@@ -103,6 +103,8 @@ switch ($mode) {
             fb.vPickUpTime,
             fb.cType AS tripStatus,
             fb.cBookingFor as bookedFor,
+             fb.iOriginal_Kms as calculatedKms,
+            fb.Actual_Kms as ratechartKms,
             ven.vName AS vendorName,
             dr.vName AS driverName,
             dr.vMobileNum AS driverMobile,
@@ -185,7 +187,10 @@ switch ($mode) {
                 ],
                 'tripStatus' => $row['tripStatus'],
                 'bookedFor' => $row['bookedFor'],
-                'travelTypeName' => $row['travelTypeName']
+                'travelTypeName' => $row['travelTypeName'],
+                "calculatedKms" =>$row['calculatedKms'],
+                "ratechartKms" => $row['ratechartKms']
+
             ];
         }
 
