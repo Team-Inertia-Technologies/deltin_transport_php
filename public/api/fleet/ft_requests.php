@@ -1089,7 +1089,7 @@ switch ($mode) {
         }
 
          $stationArr = [['id' => 0, 'name' => 'Choose']];
-        $FLEET_STATION = GetXArrFromYID("SELECT iFleet_StationID, vName FROM fleet_station WHERE cStatus='A' ORDER BY iRank", "3");
+        $FLEET_STATION = GetXArrFromYID("SELECT iFlt_StationID, vName FROM fleet_station WHERE cStatus='A' ORDER BY iRank", "3");
         foreach ($FLEET_STATION as $id => $name) {
             $stationArr[] = ['id' => $id, 'name' => $name];
         }
