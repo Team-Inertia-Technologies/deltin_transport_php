@@ -75,7 +75,7 @@ switch ($mode) {
             $today = date('Y-m-d');
             
             $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
-$maxDays= GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode =ST_REQ_THRESHOLD");
+$maxDays= GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode ='ST_REQ_THRESHOLD'");
 $maxDays= intval($maxDays);
 $maxDate = date('Y-m-d', strtotime("+$maxDays days"));
             $daysSql = "SELECT iTripID, DATE(dtTrip) AS trip_date
