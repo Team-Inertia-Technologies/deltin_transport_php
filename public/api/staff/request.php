@@ -28,57 +28,57 @@ switch ($mode) {
     // ===================== CASE: ADD_ONLOAD =====================
     case 'ADD_ONLOAD':
 
-    $staffSql = "SELECT iRouteID, iStopID 
+        $staffSql = "SELECT iRouteID, iStopID 
                  FROM staff 
                  WHERE iStaffID = $user_id AND cStatus = 'A'";
-    $staffRes = sql_query($staffSql);
-    $staffData = sql_fetch_assoc($staffRes);
+        $staffRes = sql_query($staffSql);
+        $staffData = sql_fetch_assoc($staffRes);
 
-    $staffRouteID = (int) ($staffData['iRouteID'] ?? 0);
-    $staffStopID  = (int) ($staffData['iStopID'] ?? 0);
+        $staffRouteID = (int) ($staffData['iRouteID'] ?? 0);
+        $staffStopID  = (int) ($staffData['iStopID'] ?? 0);
 
-    $routesSql = "SELECT iRouteID, vName, vDestination 
+        $routesSql = "SELECT iRouteID, vName, vDestination 
                   FROM st_route 
                   WHERE cStatus = 'A' 
                   ORDER BY iRank";
-    $routesRes = sql_query($routesSql);
+        $routesRes = sql_query($routesSql);
 
-    $routes = [];
+        $routes = [];
 
-    while ($routeRow = sql_fetch_assoc($routesRes)) {
+        while ($routeRow = sql_fetch_assoc($routesRes)) {
 
-        $routeID   = (int) $routeRow['iRouteID'];
-        $routeName = db_output2($routeRow['vName']);
+            $routeID   = (int) $routeRow['iRouteID'];
+            $routeName = db_output2($routeRow['vName']);
 
-        // Query stops for this route (used later for each time slot)
-        $stopsSql = "SELECT iStopID, vName, tOffsetFromStart 
+            // Query stops for this route (used later for each time slot)
+            $stopsSql = "SELECT iStopID, vName, tOffsetFromStart 
                      FROM st_route_stops 
                      WHERE iRouteID = $routeID AND cStatus = 'A'
                      ORDER BY iRank";
 
-        // ---- FETCH AVAILABLE TIME SLOTS ----
-        $timeSql = "SELECT TIME(dtTrip) AS trip_time
+            // ---- FETCH AVAILABLE TIME SLOTS ----
+            $timeSql = "SELECT TIME(dtTrip) AS trip_time
                     FROM st_trips
                     WHERE iRouteID = $routeID AND cStatus = 'A'
                     GROUP BY TIME(dtTrip)
                     ORDER BY trip_time";
-        $timeRes = sql_query($timeSql);
+            $timeRes = sql_query($timeSql);
 
-        $timeOpt = [];
-        $timeIndex = 1;
+            $timeOpt = [];
+            $timeIndex = 1;
 
-        while ($timeRow = sql_fetch_assoc($timeRes)) {
+            while ($timeRow = sql_fetch_assoc($timeRes)) {
 
-            $tripTime = $timeRow['trip_time']; // base time for this slot (HH:MM:SS)
+                $tripTime = $timeRow['trip_time']; // base time for this slot (HH:MM:SS)
 
-       
-            $today = date('Y-m-d');
-            
-            $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
-$maxDays= GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode ='ST_REQ_THRESHOLD'");
-$maxDays= intval($maxDays);
-$maxDate = date('Y-m-d', strtotime("+$maxDays days"));
-            $daysSql = "SELECT iTripID, DATE(dtTrip) AS trip_date
+
+                $today = date('Y-m-d');
+
+                $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
+                $maxDays = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode ='ST_REQ_THRESHOLD'");
+                $maxDays = intval($maxDays);
+                $maxDate = date('Y-m-d', strtotime("+$maxDays days"));
+                $daysSql = "SELECT iTripID, DATE(dtTrip) AS trip_date
                         FROM st_trips
                         WHERE iRouteID = $routeID AND cStatus = 'A'
                         AND TIME(dtTrip) = '" . db_input($tripTime) . "'
@@ -87,75 +87,75 @@ $maxDate = date('Y-m-d', strtotime("+$maxDays days"));
                         AND dtTrip >= '" . db_input($twoHoursFromNow) . "'
                         ORDER BY trip_date 
                         LIMIT $maxDays";
-            $daysRes = sql_query($daysSql);
+                $daysRes = sql_query($daysSql);
 
-            $daysArr = [];
-            if (sql_num_rows($daysRes) > 0) {
-                $daysArr[] = ["id" => 0, "name" => "Select All"];
+                $daysArr = [];
+                if (sql_num_rows($daysRes) > 0) {
+                    $daysArr[] = ["id" => 0, "name" => "Select All"];
+                }
+
+                while ($dayRow = sql_fetch_assoc($daysRes)) {
+                    $daysArr[] = [
+                        "id"   => (int) $dayRow['iTripID'],
+                        "name" => date('l, j F', strtotime($dayRow['trip_date']))
+                    ];
+                }
+
+                // Skip this time slot if no valid days
+                if (count($daysArr) <= 1) {
+                    continue;
+                }
+
+                // ---- PICKUP OPTIONS FOR THIS TIME SLOT ----
+                $pickUpOpt = [];
+                $stopsRes = sql_query($stopsSql);
+
+                while ($stopRow = sql_fetch_assoc($stopsRes)) {
+
+                    $offsetMinutes = intval($stopRow['tOffsetFromStart']);
+
+                    // stopTime = tripTime + offset
+                    $stopTime = date('H:i', strtotime($tripTime) + ($offsetMinutes * 60));
+
+                    $pickUpOpt[] = [
+                        "id"   => (int) $stopRow['iStopID'],
+                        "name" => db_output2($stopRow['vName']) . " | " . $stopTime
+                    ];
+                }
+
+                // Final time slot entry
+                $timeOpt[] = [
+                    "id"       => $timeIndex,
+                    "name"     => date('H:i', strtotime($tripTime)),
+                    "time"     => $tripTime,
+                    "daysArr"  => $daysArr,
+                    "pickUpOpt" => $pickUpOpt
+                ];
+
+                $timeIndex++;
             }
 
-            while ($dayRow = sql_fetch_assoc($daysRes)) {
-                $daysArr[] = [
-                    "id"   => (int) $dayRow['iTripID'],
-                    "name" => date('l, j F', strtotime($dayRow['trip_date']))
+            // Include route only if time options exist
+            if (!empty($timeOpt)) {
+                $routes[] = [
+                    "id"        => $routeID,
+                    "name"      => $routeName,
+                    //    "pickUpOpt" => [],        
+                    "timeOpt"   => $timeOpt
                 ];
             }
-
-            // Skip this time slot if no valid days
-            if (count($daysArr) <= 1) {
-                continue;
-            }
-
-            // ---- PICKUP OPTIONS FOR THIS TIME SLOT ----
-            $pickUpOpt = [];
-            $stopsRes = sql_query($stopsSql); 
-
-            while ($stopRow = sql_fetch_assoc($stopsRes)) {
-
-                $offsetMinutes = intval($stopRow['tOffsetFromStart']);
-
-                // stopTime = tripTime + offset
-                $stopTime = date('H:i', strtotime($tripTime) + ($offsetMinutes * 60));
-
-                $pickUpOpt[] = [
-                    "id"   => (int) $stopRow['iStopID'],
-                    "name" => db_output2($stopRow['vName']) . " | " . $stopTime
-                ];
-            }
-
-            // Final time slot entry
-            $timeOpt[] = [
-                "id"       => $timeIndex,
-                "name"     => date('H:i', strtotime($tripTime)),
-                "time"     => $tripTime,
-                "daysArr"  => $daysArr,
-                "pickUpOpt"=> $pickUpOpt  
-            ];
-
-            $timeIndex++;
         }
 
-        // Include route only if time options exist
-        if (!empty($timeOpt)) {
-            $routes[] = [
-                "id"        => $routeID,
-                "name"      => $routeName,
-            //    "pickUpOpt" => [],        
-                "timeOpt"   => $timeOpt
-            ];
-        }
-    }
+        echo json_encode([
+            "data" => [
+                "routes"       => $routes,
+                "staffRouteID" => $staffRouteID,
+                "staffStopID"  => $staffStopID
+            ],
+            "statusCode" => 200
+        ]);
 
-    echo json_encode([
-        "data" => [
-            "routes"       => $routes,
-            "staffRouteID" => $staffRouteID,
-            "staffStopID"  => $staffStopID
-        ],
-        "statusCode" => 200
-    ]);
-
-break;
+        break;
 
 
     // ===================== CASE: ADD_REQUEST =====================
@@ -163,8 +163,15 @@ break;
         $route = intval($_REQUEST['route'] ?? 0);
         $pickUp = intval($_REQUEST['pickUp'] ?? 0);
         $time = intval($_REQUEST['time'] ?? 0);
-       // $timeValue = $_REQUEST['timeValue'] ?? '';
+        // $timeValue = $_REQUEST['timeValue'] ?? '';
         $days = $_REQUEST['days'] ?? [];
+        $flag = isset($_REQUEST['flag']) ? $_REQUEST['flag'] : 'APP';
+        $staffID = isset($_REQUEST['staffID']) ? intval($_REQUEST['staffID'] ?? 0) : 0;
+        if ($flag == 'CTRL') {
+            $staff = $staffID > 0 ? $staffID : $user_id;
+        } else {
+            $staff = $user_id;
+        }
 
         // Validate required fields
         if ($route == 0 || $pickUp == 0 || $time == 0 || empty($days)) {
@@ -203,12 +210,12 @@ break;
         $selectedTimeValue = $_REQUEST['timeValue'] ?? '';
         if (empty($selectedTimeValue)) {
             echo json_encode([
-                        "error" => [
-                            "message" => "Invalid time selected"
-                        ],
-                        "statusCode" => 400
-                    ]);
-                    exit;
+                "error" => [
+                    "message" => "Invalid time selected"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
         }
 
 
@@ -296,16 +303,16 @@ break;
             //     continue;
             // }
             //  Do not allow request if that person already has a request on that day (any route/time)
-        $dayConflictSql = "SELECT iTrReqID FROM st_request WHERE iStaffID = $user_id AND dPickup = '" . db_input($tripDate) . "' AND cStatus = 'A' LIMIT 1";
-        $dayConflictRes = sql_query($dayConflictSql);
-        if (sql_num_rows($dayConflictRes) > 0) {
-            $errors['dayConflict'][] = $tripDate;
+            $dayConflictSql = "SELECT iTrReqID FROM st_request WHERE iStaffID = $staff AND dPickup = '" . db_input($tripDate) . "' AND cStatus = 'A' LIMIT 1";
+            $dayConflictRes = sql_query($dayConflictSql);
+            if (sql_num_rows($dayConflictRes) > 0) {
+                $errors['dayConflict'][] = $tripDate;
 
-            continue;
-        }
+                continue;
+            }
             // Check if request already exists for this staff, route, and trip
             $existingSql = "SELECT iTrReqID FROM st_request 
-                           WHERE iStaffID = $user_id AND iRouteID = $route AND iTripID = $tripID AND cStatus = 'A'";
+                           WHERE iStaffID = $staff AND iRouteID = $route AND iTripID = $tripID AND cStatus = 'A'";
             $existingRes = sql_query($existingSql);
 
             if (sql_num_rows($existingRes) > 0) {
@@ -332,7 +339,7 @@ break;
 
             // Get next ID and rank
             $iTrReqID = NextID('iTrReqID', 'st_request');
-            $nextRank = GetMaxRank('st_request', "iStaffID=$user_id and cStatus='A'", 'iRank');
+            $nextRank = GetMaxRank('st_request', "", 'iRank');
 
             // Find the best available trip for this request
             $finalTripID = $tripID;
@@ -376,6 +383,7 @@ break;
             // Insert request
             $currentDateTime = date('Y-m-d H:i:s');
 
+
             $insertSql = "INSERT INTO st_request (
                 iTrReqID,
                 iStaffID, 
@@ -389,7 +397,7 @@ break;
                 cStatus
             ) VALUES (
                 $iTrReqID,
-                $user_id,
+                $staff,
                 $route,
                 '" . db_input($tripDate) . "',
                 '" . db_input($pickupTime) . "',
@@ -414,14 +422,12 @@ break;
                     $deleteSql = "DELETE FROM st_request WHERE iTrReqID = $iTrReqID";
                     sql_query($deleteSql);
                     $errors['capacityFailed'][] = $tripDate;
-
                 }
             } else {
-               $errors['saveFailed'][] = $tripDate;
-
+                $errors['saveFailed'][] = $tripDate;
             }
         }
-        $staffCheckSql = "SELECT iRouteID, iStopID FROM staff WHERE iStaffID = $user_id AND cStatus = 'A'";
+        $staffCheckSql = "SELECT iRouteID, iStopID FROM staff WHERE iStaffID = $staff AND cStatus = 'A'";
         $staffCheckRes = sql_query($staffCheckSql);
 
         if (sql_num_rows($staffCheckRes) > 0) {
@@ -432,7 +438,7 @@ break;
 
                 $updateStaffSql = "UPDATE staff 
                            SET iRouteID = $route, iStopID = $pickUp 
-                           WHERE iStaffID = $user_id AND cStatus = 'A'";
+                           WHERE iStaffID = $staff AND cStatus = 'A'";
 
                 sql_query($updateStaffSql);
             }
@@ -470,7 +476,7 @@ break;
 
         $errors = $finalErrors;
 
-        
+
 
         // Prepare response
         if ($successCount > 0) {
@@ -500,7 +506,7 @@ break;
                 "statusCode" => 400
             ]);
         }
-    break;
+        break;
     // ===================== CASE: DELETE_REQUEST =====================
     case 'DELETE_REQUEST':
         $requestID = intval($_REQUEST['requestID'] ?? 0);
