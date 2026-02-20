@@ -782,143 +782,150 @@ switch ($mode) {
         echo json_encode($result);
         break;
     // ===================== CASE 9: IMPORT_STAFF =====================
-   case 'IMPORT_STAFF':
+    case 'IMPORT_STAFF':
 
-    $rows = $_REQUEST['staffData'] ?? [];
-    $inserted = [];
-    $updated = [];
-    $skipped = [];
+        $rows = $_REQUEST['staffData'] ?? [];
+        $inserted = [];
+        $updated = [];
+        $skipped = [];
 
-    
-    // STEP 1: Prepare Lookups
-    
 
-    $departmentMap = [];
-    $departmentQuery = "SELECT iDepartmentID, vName FROM department WHERE cStatus = 'A'";
-    $departmentResult = sql_query($departmentQuery);
+        // STEP 1: Prepare Lookups
 
-    while ($deptRow = sql_fetch_assoc($departmentResult)) {
-        $departmentMap[strtolower(trim($deptRow['vName']))] = (int)$deptRow['iDepartmentID'];
-    }
 
-    $propertyMap = [];
-    $propertyQuery = "SELECT iPropertyID, vName FROM property WHERE cStatus = 'A'";
-    $propertyResult = sql_query($propertyQuery);
+        $departmentMap = [];
+        $departmentQuery = "SELECT iDepartmentID, vName FROM department WHERE cStatus = 'A'";
+        $departmentResult = sql_query($departmentQuery);
 
-    while ($propRow = sql_fetch_assoc($propertyResult)) {
-        $propertyMap[strtolower(trim($propRow['vName']))] = (int)$propRow['iPropertyID'];
-    }
-
-    
-    // STEP 2: VALIDATION PASS
-    
-
-    $validatedRows = [];
-
-    foreach ($rows as $index => $row) {
-
-        $vCode = isset($row['code']) ? db_input($row['code']) : '';
-        $vName = isset($row['name']) ? db_input($row['name']) : '';
-        $vMobile = isset($row['mobile']) ? db_input($row['mobile']) : '';
-        $vAltMobile = isset($row['altmobile']) ? db_input($row['altmobile']) : '';
-        $departmentName = isset($row['department']) ? trim($row['department']) : '';
-        $propertyName = isset($row['property']) ? trim($row['property']) : '';
-
-        $vMobile = preg_replace('/\s+/', '', $vMobile);
-
-        // Required fields
-        if ($vName === '' || $vMobile === '') {
-            $skipped[] = [
-                "row" => $index + 1,
-                "reason" => "Missing required fields"
-            ];
-            continue;
+        while ($deptRow = sql_fetch_assoc($departmentResult)) {
+            $departmentMap[strtolower(trim($deptRow['vName']))] = (int)$deptRow['iDepartmentID'];
         }
 
-        // Mobile format
-        if (!preg_match('/^[0-9]{10}$/', $vMobile)) {
-            $skipped[] = [
-                "row" => $index + 1,
-                "mobile" => $vMobile,
-                "reason" => "Invalid mobile number format"
-            ];
-            continue;
+        $propertyMap = [];
+        $propertyQuery = "SELECT iPropertyID, vName FROM property WHERE cStatus = 'A'";
+        $propertyResult = sql_query($propertyQuery);
+
+        while ($propRow = sql_fetch_assoc($propertyResult)) {
+            $propertyMap[strtolower(trim($propRow['vName']))] = (int)$propRow['iPropertyID'];
         }
 
-        // Department check
-        $iDepartmentID = 0;
-        if ($departmentName !== '') {
-            $deptKey = strtolower($departmentName);
-            if (!isset($departmentMap[$deptKey])) {
+
+        // STEP 2: VALIDATION PASS
+
+
+        $validatedRows = [];
+
+        foreach ($rows as $index => $row) {
+
+            $vCode = isset($row['code']) ? db_input($row['code']) : '';
+            $vName = isset($row['name']) ? db_input($row['name']) : '';
+            $vMobile = isset($row['mobile']) ? db_input($row['mobile']) : '';
+            $vAltMobile = isset($row['altmobile']) ? db_input($row['altmobile']) : '';
+            $departmentName = isset($row['department']) ? trim($row['department']) : '';
+            $propertyName = isset($row['property']) ? trim($row['property']) : '';
+
+            $vMobile = preg_replace('/\s+/', '', $vMobile);
+
+            // Required fields
+            if ($vName === '' || $vMobile === '') {
                 $skipped[] = [
                     "row" => $index + 1,
-                    "reason" => "Department '$departmentName' not found"
+                    "name" => $vName,
+                    "mobile" => $vMobile,
+                    "reason" => "Missing required fields"
                 ];
                 continue;
             }
-            $iDepartmentID = $departmentMap[$deptKey];
-        }
 
-        // Property check
-        $iPropertyID = 0;
-        if ($propertyName !== '') {
-            $propKey = strtolower($propertyName);
-            if (!isset($propertyMap[$propKey])) {
+            // Mobile format
+            if (!preg_match('/^[0-9]{10}$/', $vMobile)) {
                 $skipped[] = [
                     "row" => $index + 1,
-                    "reason" => "Property '$propertyName' not found"
+                    "name" => $vName,
+                    "mobile" => $vMobile,
+                    "reason" => "Invalid mobile number format"
                 ];
                 continue;
             }
-            $iPropertyID = $propertyMap[$propKey];
+
+            // Department check
+            $iDepartmentID = 0;
+            if ($departmentName !== '') {
+                $deptKey = strtolower($departmentName);
+                if (!isset($departmentMap[$deptKey])) {
+                    $skipped[] = [
+                        "row" => $index + 1,
+                        "name" => $vName,
+                        "mobile" => $vMobile,
+                        "reason" => "Department '$departmentName' not found"
+                    ];
+                    continue;
+                }
+                $iDepartmentID = $departmentMap[$deptKey];
+            }
+
+            // Property check
+            $iPropertyID = 0;
+            if ($propertyName !== '') {
+                $propKey = strtolower($propertyName);
+                if (!isset($propertyMap[$propKey])) {
+                    $skipped[] = [
+                        "row" => $index + 1,
+                        "name" => $vName,
+                        "mobile" => $vMobile,
+                        "reason" => "Property '$propertyName' not found"
+                    ];
+                    continue;
+                }
+                $iPropertyID = $propertyMap[$propKey];
+            }
+
+            // Store validated row for second pass
+            $validatedRows[] = [
+                "index" => $index,
+                "vCode" => $vCode,
+                "vName" => $vName,
+                "vMobile" => $vMobile,
+                "vAltMobile" => $vAltMobile,
+                "iDepartmentID" => $iDepartmentID,
+                "iPropertyID" => $iPropertyID
+            ];
         }
 
-        // Store validated row for second pass
-        $validatedRows[] = [
-            "index" => $index,
-            "vCode" => $vCode,
-            "vName" => $vName,
-            "vMobile" => $vMobile,
-            "vAltMobile" => $vAltMobile,
-            "iDepartmentID" => $iDepartmentID,
-            "iPropertyID" => $iPropertyID
-        ];
-    }
 
-    
-    // STOP if ANY errors
-    
+        // STOP if ANY errors
 
-    if (!empty($skipped)) {
-        echo json_encode([
-            "data" => [
-                "skipped" => $skipped,
-                "message" => "Import failed. Fix errors and try again."
-            ],
-            "statusCode" => 400
-        ]);
-        exit;
-    }
 
-    
-    // STEP 3: INSERT/UPDATE PASS
-    
+        if (!empty($skipped)) {
+            echo json_encode([
+                "data" => [
+                    "skipped" => $skipped,
+                    "message" => "Import failed. Fix errors and try again."
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
 
-    foreach ($validatedRows as $data) {
 
-        extract($data);
+        // STEP 3: INSERT/UPDATE PASS
 
-        $checkSql = "SELECT iStaffID FROM staff 
+
+        foreach ($validatedRows as $data) {
+
+            extract($data);
+
+            $checkSql = "SELECT iStaffID FROM staff 
                      WHERE vMobile = '$vMobile' 
                      AND cStatus != 'X'";
-        $checkRes = sql_query($checkSql);
+            $checkRes = sql_query($checkSql);
 
-        if (sql_num_rows($checkRes) > 0) {
+            if (sql_num_rows($checkRes) > 0) {
 
-            $existing = sql_fetch_assoc($checkRes);
-            $iStaffID = (int)$existing['iStaffID'];
+                $existing = sql_fetch_assoc($checkRes);
+                $iStaffID = (int)$existing['iStaffID'];
 
-            $sql = "UPDATE staff SET 
+                $sql = "UPDATE staff SET 
                         vName = '$vName',
                         vCode = '$vCode',
                         iDepartmentID = $iDepartmentID,
@@ -926,20 +933,19 @@ switch ($mode) {
                         vAltmobile = '$vAltMobile'
                     WHERE iStaffID = $iStaffID";
 
-            sql_query($sql);
+                sql_query($sql);
 
-            $updated[] = [
-                "row" => $data['index'] + 1,
-                "id" => $iStaffID,
-                "status" => "Updated"
-            ];
+                $updated[] = [
+                    "row" => $data['index'] + 1,
+                    "id" => $iStaffID,
+                    "status" => "Updated"
+                ];
+            } else {
 
-        } else {
+                $iStaffID = NextID('iStaffID', 'staff');
+                $dtRegistered = NOW;
 
-            $iStaffID = NextID('iStaffID', 'staff');
-            $dtRegistered = NOW;
-
-            $sql = "INSERT INTO staff 
+                $sql = "INSERT INTO staff 
                 (iStaffID, vCode, vName, vMobile, vAltmobile, 
                  iRouteID, iStopID, iDepartmentID, iPropertyID, 
                  dtRegistered, cStatus)
@@ -948,26 +954,26 @@ switch ($mode) {
                  0, 0, $iDepartmentID, $iPropertyID,
                  '$dtRegistered', 'A')";
 
-            sql_query($sql);
+                sql_query($sql);
 
-            $inserted[] = [
-                "row" => $data['index'] + 1,
-                "id" => $iStaffID,
-                "status" => "Inserted"
-            ];
+                $inserted[] = [
+                    "row" => $data['index'] + 1,
+                    "id" => $iStaffID,
+                    "status" => "Inserted"
+                ];
+            }
         }
-    }
 
-    echo json_encode([
-        "data" => [
-            "inserted" => $inserted,
-            "updated" => $updated,
-            "message" => count($inserted) . " inserted, " .
-                         count($updated) . " updated."
-        ],
-        "statusCode" => 200
-    ]);
-    exit;
+        echo json_encode([
+            "data" => [
+                "inserted" => $inserted,
+                "updated" => $updated,
+                "message" => count($inserted) . " inserted, " .
+                    count($updated) . " updated."
+            ],
+            "statusCode" => 200
+        ]);
+        exit;
 
 
         // ===================== DEFAULT =====================
