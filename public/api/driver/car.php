@@ -52,7 +52,7 @@ FROM vehicle v
 INNER JOIN driver_vehicle_assoc vda ON vda.iVehicleID = v.iVehicleID
 INNER JOIN vehicle_category vc ON vc.iVCatID = v.iCatID
 WHERE vda.iDriverID = $driverID
-AND v.cStatus = 'A'
+AND vda.cStatus = 'A'
 ";
 
 $r = sql_query($sql, 'DRIVER.CAR');
