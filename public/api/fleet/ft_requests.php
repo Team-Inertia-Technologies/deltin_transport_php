@@ -537,8 +537,8 @@ switch ($mode) {
         }
         $distance = getRoadDistance($pickUpLocData['lat'], $pickUpLocData['lng'], $dropLocData['lat'], $dropLocData['lng']);
 
-        $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : 0;
-        $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : 0;
+        // $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : 0;
+        // $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : 0;
         $vPickUpTime = db_input($_REQUEST['pickUpDateTime'] ?? null);
         $vPickUpTime = (isset($_REQUEST['pickUpDateTime']) && !empty($_REQUEST['pickUpDateTime'])) ? $_REQUEST['pickUpDateTime'] : NULL;
 
@@ -556,22 +556,22 @@ switch ($mode) {
         $iFStaffID = intval($_REQUEST['staffID'] ?? 0);
 
         // Fetch KMS from fleet_ratechart
-        $ratekms = 0;
+      //  $ratekms = 0;
 
-        $rateSql = "
-    SELECT iKms 
-    FROM fleet_ratechart 
-    WHERE iFleet_LocationID_From = $fromLoc
-      AND iFleet_LocationID_To = $toLoc AND cStatus='A' 
-    LIMIT 1
-";
+//         $rateSql = "
+//     SELECT iKms 
+//     FROM fleet_ratechart 
+//     WHERE iFleet_LocationID_From = $fromLoc
+//       AND iFleet_LocationID_To = $toLoc AND cStatus='A' 
+//     LIMIT 1
+// ";
 
-        $rateRes = sql_query($rateSql);
+        // $rateRes = sql_query($rateSql);
 
-        if ($rateRes && sql_num_rows($rateRes) > 0) {
-            $rateRow = sql_fetch_assoc($rateRes);
-            $ratekms = intval($rateRow['iKms']);
-        }
+        // if ($rateRes && sql_num_rows($rateRes) > 0) {
+        //     $rateRow = sql_fetch_assoc($rateRes);
+        //     $ratekms = intval($rateRow['iKms']);
+        // }
 
 
         // Validate required inputs
@@ -615,7 +615,7 @@ switch ($mode) {
 
         $cols = "iFleet_BookingID,iBookedBy,vBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vRemarks, vName, vMobileNo, iGuestID, iFStaffID,
-                 iPax, iBaggage, vPickUpLocation, vPickUpTime,iFleet_LocationID_From, iFleet_LocationID_To,iOriginal_Kms,iActual_Kms,
+                 iPax, iBaggage, vPickUpLocation, vPickUpTime,iOriginal_Kms,
                  vDropLocation, vLatLong_From, vLatLong_To,vLandmark, iVehicleCatID, cDisposal, tReturnTime, dtAdded,iAdded_UserID,cStatus";
 
         $iFleet_BookingID1 = NextID('iFleet_BookingID', 'fleet_booking');
@@ -628,7 +628,7 @@ switch ($mode) {
         VALUES (
             $iFleet_BookingID1,$iBookedBy, '" . db_input($bookedByName) . "','" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
             $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
-            $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $fromLoc, $toLoc,$distance,$ratekms,
+            $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $distance,
             '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal, '" . db_input($dtAdded) . "',$user_id,'A'
         )";
 
@@ -992,24 +992,24 @@ switch ($mode) {
             ]);
             exit;
         }
-        $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : '';
-        $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : '';
-        $ratekms = 0;
+//         $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : '';
+//         $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : '';
+//         $ratekms = 0;
 
-        $rateSql = "
-    SELECT iKms 
-    FROM fleet_ratechart 
-    WHERE iFleet_LocationID_From = $fromLoc
-      AND iFleet_LocationID_To = $toLoc AND cStatus='A' 
-    LIMIT 1
-";
+//         $rateSql = "
+//     SELECT iKms 
+//     FROM fleet_ratechart 
+//     WHERE iFleet_LocationID_From = $fromLoc
+//       AND iFleet_LocationID_To = $toLoc AND cStatus='A' 
+//     LIMIT 1
+// ";
 
-        $rateRes = sql_query($rateSql);
+//         $rateRes = sql_query($rateSql);
 
-        if ($rateRes && sql_num_rows($rateRes) > 0) {
-            $rateRow = sql_fetch_assoc($rateRes);
-            $ratekms = intval($rateRow['iKms']);
-        }
+//         if ($rateRes && sql_num_rows($rateRes) > 0) {
+//             $rateRow = sql_fetch_assoc($rateRes);
+//             $ratekms = intval($rateRow['iKms']);
+//         }
 
 
         $vReturnTimeVal = (!empty($vReturnTime)) ? "'" . $vReturnTime . "'" : "NULL";
@@ -1043,11 +1043,8 @@ switch ($mode) {
                 vLandmark ='" . db_input($vLandmark) . "',
                 iVehicleCatID = " . intval($iVehicleCatID) . ",
                 cDisposal = '" . db_input($cDisposal) . "',
-                tReturnTime = " . $vReturnTimeVal . ",
-                iFleet_LocationID_From  = " . $fromLoc . ",
-                iFleet_LocationID_To = " . $toLoc . ",
+                tReturnTime = " . $vReturnTimeVal . ",   
                 iOriginal_Kms = " . intval($distance) . ",
-                iActual_Kms = " . $ratekms . ",
                 dtUpdated = '" . db_input($dtNow) . "',
                 iUpdated_UserID = " . intval($user_id) . "
             WHERE iFleet_BookingID = " . intval($iFleet_BookingID) . "
@@ -1088,6 +1085,43 @@ switch ($mode) {
             $tripStatusArr[] = ['id' => $id, 'name' => $name];
         }
 
+
+        $fleetRate = sql_query("
+    SELECT fr.iFleet_RateID,
+        fr.iFleet_StationID, CONCAT(lf.vName, ' to ', lt.vName) AS vRouteName
+    FROM fleet_ratechart fr
+    LEFT JOIN fleet_location lf 
+        ON lf.iFleet_LocationID = fr.iFleet_LocationID_From
+    LEFT JOIN fleet_location lt 
+        ON lt.iFleet_LocationID = fr.iFleet_LocationID_To
+    WHERE fr.cStatus = 'A'
+    AND '$NOW' BETWEEN fr.dtApplicable_From AND fr.dtApplicable_To
+    ORDER BY fr.iFleet_StationID, fr.iRank
+");
+        $fleetRateArr = [];
+
+        while ($row = sql_fetch_assoc($fleetRate)) {
+            $fleetRateArr[$row['iFleet_StationID']][] = [
+                'fleet_RateID' => $row['iFleet_RateID'],
+                'routeName'     => $row['vRouteName']
+            ];
+        }
+        $stationArr = [['id' => 0, 'name' => 'Choose', 'routes' => []]];
+
+        $FLEET_STATION = GetXArrFromYID(
+            "SELECT iFlt_StationID, vName FROM fleet_station WHERE cStatus='A' ORDER BY iRank",
+            "3"
+        );
+
+        foreach ($FLEET_STATION as $id => $name) {
+            $stationArr[] = [
+                'id' => $id,
+                'name' => $name,
+                'routes' => isset($fleetRateArr[$id]) ? $fleetRateArr[$id] : []
+            ];
+        }
+
+
         $viewSql = "
             SELECT 
                 fb.iFleet_BookingID,
@@ -1109,6 +1143,8 @@ switch ($mode) {
                 fb.cType as currentStatus,
                 fb.iBookedBy as bookedById,
                 fb.vBookedBy as bookedBy,
+                fb.iFleet_RateID,
+                fb.iFleet_StationID,
                 fbc.vName as bookingCategoryName,
                 p.vName as propertyName,
                 d.vName as departmentName,
@@ -1244,7 +1280,9 @@ switch ($mode) {
             ] : null,
             'tripStatus' => isset($booking['currentStatus']) ? $booking['currentStatus'] : 'N',
             'bookingStatus' => isset($booking['bookingStatus']) ? $booking['bookingStatus'] : 'C',
-            'canCancel' => $canCancel
+            'canCancel' => $canCancel,
+            'rateID' => intval($booking['iFleet_RateID']),
+            'stationID' => intval($booking['iFleet_StationID'])
             // 'tripStatus' => isset($FLEET_TRIP_STATUS[$booking['currentStatus']]) ? $FLEET_TRIP_STATUS[$booking['currentStatus']] : 'Not Started'
             // "status" => $booking['currentStatus']
         ];
@@ -1252,7 +1290,9 @@ switch ($mode) {
             "data" => [
                 "requestDetails" => $requestDetails,
                 "vehicleHistory" => $vehicleHistory,
-                "tripStatusOpts" => $tripStatusArr
+                "tripStatusOpts" => $tripStatusArr,
+                "stationArr" => $stationArr
+               // "fleetRateArr" => $fleetRateArr
             ],
             "statusCode" => 200
         ]);
@@ -2273,6 +2313,65 @@ switch ($mode) {
                 echo json_encode([
                     "data" => [
                         "message" => "Remark updated successfully",
+                        "iFleet_BookingID" => $iFleet_BookingID
+                    ],
+                    "statusCode" => 200
+                ]);
+            } else {
+                echo json_encode([
+                    "error" => [
+                        "message" => "Failed to update remark"
+                    ],
+                    "statusCode" => 500
+                ]);
+            }
+        } else {
+            echo json_encode([
+                "error" => [
+                    "message" => "Database error occurred while updating remark"
+                ],
+                "statusCode" => 500
+            ]);
+        }
+        break;
+
+    case 'UPDATE_RATECHART_LOCATION':
+        $iFleet_BookingID = intval($_REQUEST['bookingId']) ?? 0;
+        $stationID = intval($_REQUEST['stationID']) ?? 0;
+        $fleet_RateID = intval($_REQUEST['fleet_RateID']) ?? 0;
+
+        // Validate required parameter
+        if ($iFleet_BookingID <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Missing or invalid iFleet_BookingID parameter"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Check if trip exists and is active
+        $checkSql = "SELECT iFleet_BookingID FROM fleet_booking WHERE iFleet_BookingID = $iFleet_BookingID";
+        $checkRes = sql_query($checkSql);
+
+        if (sql_num_rows($checkRes) == 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Booking not found"
+                ],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+        $kms = GetXFromYID("SELECT iKms FROM fleet_ratechart WHERE iFleet_StationID = $stationID AND iFleet_RateID = $fleet_RateID AND cStatus='A' AND '$NOW' BETWEEN dtApplicable_From AND dtApplicable_To LIMIT 1");
+        $completeSql = "UPDATE fleet_booking SET iFleet_StationID = $stationID, iFleet_RateID = $fleet_RateID,iActual_Kms='$kms' WHERE iFleet_BookingID=$iFleet_BookingID";
+
+        if (sql_query($completeSql)) {
+            if (sql_affected_rows() > 0) {
+                echo json_encode([
+                    "data" => [
+                        "message" => "Updated successfully",
                         "iFleet_BookingID" => $iFleet_BookingID
                     ],
                     "statusCode" => 200
