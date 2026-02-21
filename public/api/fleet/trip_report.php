@@ -104,7 +104,7 @@ switch ($mode) {
             fb.cType AS tripStatus,
             fb.cBookingFor as bookedFor,
              fb.iOriginal_Kms as calculatedKms,
-            fb.Actual_Kms as ratechartKms,
+            fb.iActual_Kms as ratechartKms,
             ven.vName AS vendorName,
             dr.vName AS driverName,
             dr.vMobileNum AS driverMobile,

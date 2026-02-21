@@ -2364,7 +2364,7 @@ switch ($mode) {
             ]);
             exit;
         }
-        $kms = GetXFromYID("SELECT iKms FROM fleet_ratechart WHERE iFleet_StationID = $stationID AND iFleet_RateID = $fleet_RateID AND cStatus='A' AND '$NOW' BETWEEN fr.dtApplicable_From AND fr.dtApplicable_To LIMIT 1");
+        $kms = GetXFromYID("SELECT iKms FROM fleet_ratechart WHERE iFleet_StationID = $stationID AND iFleet_RateID = $fleet_RateID AND cStatus='A' AND '$NOW' BETWEEN dtApplicable_From AND dtApplicable_To LIMIT 1");
         $completeSql = "UPDATE fleet_booking SET iFleet_StationID = $stationID, iFleet_RateID = $fleet_RateID,iActual_Kms='$kms' WHERE iFleet_BookingID=$iFleet_BookingID";
 
         if (sql_query($completeSql)) {
