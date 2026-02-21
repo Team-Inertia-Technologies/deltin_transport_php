@@ -2116,15 +2116,7 @@ switch ($mode) {
                 'mobile' => $row['vMobileNo']
             ];
         }
-        $guestOpts = [];
-        while ($row = sql_fetch_assoc($GUEST_ARR)) {
-            $guestOpts[] = [
-                'id' => intval($row['iGuestID']),
-                'name' => $row['vName'],
-                'mobile' => $row['vMobileNo']
-            ];
-        }
-
+    
         $locOpts = [['id' => 0, 'name' => 'Choose']];
         foreach ($LOC_ARR as $id => $name) {
             $locOpts[] = ['id' => intval($id), 'name' => $name];
