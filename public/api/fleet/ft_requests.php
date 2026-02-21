@@ -2307,9 +2307,6 @@ switch ($mode) {
 
         if (sql_query($completeSql)) {
 
-
-
-            if (sql_affected_rows() > 0) {
                 echo json_encode([
                     "data" => [
                         "message" => "Remark updated successfully",
@@ -2317,14 +2314,7 @@ switch ($mode) {
                     ],
                     "statusCode" => 200
                 ]);
-            } else {
-                echo json_encode([
-                    "error" => [
-                        "message" => "Failed to update remark"
-                    ],
-                    "statusCode" => 500
-                ]);
-            }
+            
         } else {
             echo json_encode([
                 "error" => [
