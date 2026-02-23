@@ -2116,15 +2116,7 @@ switch ($mode) {
                 'mobile' => $row['vMobileNo']
             ];
         }
-        $guestOpts = [];
-        while ($row = sql_fetch_assoc($GUEST_ARR)) {
-            $guestOpts[] = [
-                'id' => intval($row['iGuestID']),
-                'name' => $row['vName'],
-                'mobile' => $row['vMobileNo']
-            ];
-        }
-
+    
         $locOpts = [['id' => 0, 'name' => 'Choose']];
         foreach ($LOC_ARR as $id => $name) {
             $locOpts[] = ['id' => intval($id), 'name' => $name];
@@ -2307,9 +2299,6 @@ switch ($mode) {
 
         if (sql_query($completeSql)) {
 
-
-
-            if (sql_affected_rows() > 0) {
                 echo json_encode([
                     "data" => [
                         "message" => "Remark updated successfully",
@@ -2317,14 +2306,7 @@ switch ($mode) {
                     ],
                     "statusCode" => 200
                 ]);
-            } else {
-                echo json_encode([
-                    "error" => [
-                        "message" => "Failed to update remark"
-                    ],
-                    "statusCode" => 500
-                ]);
-            }
+            
         } else {
             echo json_encode([
                 "error" => [
