@@ -82,10 +82,10 @@ while ($row = sql_fetch_assoc($noteResult)) {
 
 // -------------------- SEND RESPONSE --------------------
 if (!sql_num_rows($r)) {
-    http_response_code(400);
+    http_response_code(200);
     header('Content-Type: application/json');
     echo json_encode([
-        'statusCode' => 400,
+        'statusCode' => 200,
         'message' => 'No car associated with this driver.'
     ]);
     exit;
