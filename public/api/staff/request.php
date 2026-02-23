@@ -27,7 +27,7 @@ switch ($mode) {
 
     // ===================== CASE: ADD_ONLOAD =====================
     case 'ADD_ONLOAD':
-
+        $flag = isset($_REQUEST['flag']) ? $_REQUEST['flag'] : 'APP';
         $staffSql = "SELECT iRouteID, iStopID 
                  FROM staff 
                  WHERE iStaffID = $user_id AND cStatus = 'A'";
@@ -73,20 +73,25 @@ switch ($mode) {
 
 
                 $today = date('Y-m-d');
-
-                $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
                 $maxDays = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode ='ST_REQ_THRESHOLD'");
                 $maxDays = intval($maxDays);
                 $maxDate = date('Y-m-d', strtotime("+$maxDays days"));
+
+                if ($flag == 'APP') {
+                    $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
+                    $timeCondition = " AND dtTrip >= '" . db_input($twoHoursFromNow) . "'";
+                }
+
                 $daysSql = "SELECT iTripID, DATE(dtTrip) AS trip_date
-                        FROM st_trips
-                        WHERE iRouteID = $routeID AND cStatus = 'A'
-                        AND TIME(dtTrip) = '" . db_input($tripTime) . "'
-                        AND DATE(dtTrip) >= '" . db_input($today) . "' 
-                        AND DATE(dtTrip) <= '" . db_input($maxDate) . "'
-                        AND dtTrip >= '" . db_input($twoHoursFromNow) . "'
-                        ORDER BY trip_date 
-                        LIMIT $maxDays";
+                    FROM st_trips
+                    WHERE iRouteID = $routeID
+                    AND cStatus = 'A'
+                    AND TIME(dtTrip) = '" . db_input($tripTime) . "'
+                    AND DATE(dtTrip) >= '" . db_input($today) . "'
+                    AND DATE(dtTrip) <= '" . db_input($maxDate) . "'
+                    $timeCondition
+                    ORDER BY trip_date
+                    LIMIT $maxDays";
                 $daysRes = sql_query($daysSql);
 
                 $daysArr = [];
