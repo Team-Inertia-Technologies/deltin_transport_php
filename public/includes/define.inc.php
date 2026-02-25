@@ -321,7 +321,7 @@ $BENEFICIARY_STAGE_ARR = array("P" => "Pending", "N" => "Notified", "V" => "View
 
 //$SERVICE_OFFERED= array("F" => "Fleet", "B" => "Bus", "T" => "Both");
 
-$VEHICLE_DRIVER_TYPE= array("1" => "Hired", "2" => "Contract" , "3"=>"Owned");
+$VEHICLE_DRIVER_TYPE= array("1" => "Hired", "2" => "Contract" , "3"=>"Self");
 $FLEET_BOOKING_FOR= array("S" => "Staff", "G" => "Guest" );
 $FLEET_TRAVEL_TYPE= array("1" => "One Way Trip", "2" => "Return Trip",  "3" => "Vehicle Disposal" );
 $VEHICLE_SERVICE_TYPE= array("F" => "Fleet", "S" => "Staff", "B" => "Both");
@@ -329,7 +329,7 @@ $VEHICLE_SERVICE_TYPE= array("F" => "Fleet", "S" => "Staff", "B" => "Both");
 $FLEET_TRIP_STATUS= array("N" => "Not started", "S" => "Enroute", "G"=>"Picked Up", "P" => "Paused","R"=>"Resumed", "C" => "Completed");
 
  $VEHICLE_STATUS_ARR = array("A"=>"Available", "R"=>"Returning", "E"=>"Enroute", "U"=>"Unavailable");
-$VEHICLE_STATUS_ARR2 = array("A"=>"Available", "U"=>"Unavailable");
+$VEHICLE_STATUS_ARR2 = array("A"=>"Available", "U"=>"Unavailable", "I"=>"Idle");
 
 $STAFF_TRIP_STATUS= array("D"=>"Draft", "A" => "Active", "NS" => "No Show", "XP" => "Cancel with payment","XN" => "Cancel without payment", "C" => "Complete", "X" => "Remove");
 
