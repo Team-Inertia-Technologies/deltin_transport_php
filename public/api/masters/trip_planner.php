@@ -153,13 +153,16 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
 
                 // Extract unique timings from trips
                 $uniqueTimings = [];
+
                 foreach ($groupData['trips'] as $trip) {
-                    $timeKey = $trip['tripTime'];
-                    if (!in_array($timeKey, $uniqueTimings)) {
-                        $uniqueTimings[] = $timeKey;
+
+                    // Convert time to proper 07:33 format
+                    $formattedTime = date('H:i', strtotime($trip['tripTime']));
+
+                    if (!in_array($formattedTime, $uniqueTimings)) {
+                        $uniqueTimings[] = $formattedTime;
                     }
                 }
-
                 // Sort timings
                 sort($uniqueTimings);
 
