@@ -31,6 +31,7 @@ switch ($mode) {
     // ===================== CASE: DASHBOARD_COMPONENTS =====================	
     case 'DASHBOARD_COMPONENTS':
 
+        $NOW = NOW;
         $VEH_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('F','B') ORDER BY iRank", "3");
         $TODAY = date('Y-m-d');
         $TOTAL_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where cStatus = 'A' and cServiceType IN ('F','B')");
@@ -83,6 +84,41 @@ switch ($mode) {
             }
         }
 
+        $fleetRate = sql_query("
+    SELECT fr.iFleet_RateID,
+        fr.iFleet_StationID, CONCAT(lf.vName, ' to ', lt.vName) AS vRouteName
+    FROM fleet_ratechart fr
+    LEFT JOIN fleet_location lf 
+        ON lf.iFleet_LocationID = fr.iFleet_LocationID_From
+    LEFT JOIN fleet_location lt 
+        ON lt.iFleet_LocationID = fr.iFleet_LocationID_To
+    WHERE fr.cStatus = 'A'
+    AND '$NOW' BETWEEN fr.dtApplicable_From AND fr.dtApplicable_To
+    ORDER BY fr.iFleet_StationID, fr.iRank
+");
+        $fleetRateArr = [];
+
+        while ($row = sql_fetch_assoc($fleetRate)) {
+            $fleetRateArr[$row['iFleet_StationID']][] = [
+                'fleet_RateID' => $row['iFleet_RateID'],
+                'routeName'     => $row['vRouteName']
+            ];
+        }
+        $stationArr = [['id' => 0, 'name' => 'Choose', 'routes' => []]];
+
+        $FLEET_STATION = GetXArrFromYID(
+            "SELECT iFlt_StationID, vName FROM fleet_station WHERE cStatus='A' ORDER BY iRank",
+            "3"
+        );
+
+        foreach ($FLEET_STATION as $id => $name) {
+            $stationArr[] = [
+                'id' => $id,
+                'name' => $name,
+                'routes' => isset($fleetRateArr[$id]) ? $fleetRateArr[$id] : []
+            ];
+        }        
+
         $optArr = [
             "requestTypeArr" => $requestTypeArr,
             "bookedForArr" => $bookedForOpt,
@@ -91,6 +127,7 @@ switch ($mode) {
             "driverTypeArr" => $vehiTypeArr,
             "vehiStatusArr" => $vehiStatusArr,
             "vehiStatusLocArr" => $vehiStatusLocArr,
+            "stationArr" => $stationArr,
             "locationArr" => $LOCATION_ARR,
             "refreshRequestStreamTime" => (int) $refreshRequestStreamTime,
             "refreshVehicleComponentTime" => (int) $refreshVehicleComponentTime,
@@ -181,7 +218,7 @@ switch ($mode) {
         }
 
         // Fetch booking data
-        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments from fleet_booking where 1 $cond and cType <> 'C' and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments from fleet_booking where 1 $cond and cType NOT IN ('C','S','G','P','R') and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         //echo $bookingSql."<br>";
         $bookingRes = sql_query($bookingSql);
 
@@ -606,7 +643,7 @@ switch ($mode) {
                 'prevTripTime' => $prevTripDateTime,
                 'bookingId' => (int) $nextBookingId,
                 'disposal' => false,
-                'status' => $nextBookingStatus,
+                'status' => (isset($nextBookingStatus) && !empty($nextBookingStatus))?$nextBookingStatus:'A',
                 'driverStatus' => $driverStatus,
                 //'bookings' => $vehData['BOOKINGS'] // Include booking details for reference
             ];
@@ -726,12 +763,18 @@ switch ($mode) {
                         $dateTimePick = date('d M g:i A', $dtpick);
                     }
 
+                    $dateTimeDrop = "N/A";
+
+                    if(!empty($row['vDropTime'])){
+
                     $dtdrop = strtotime($row['vDropTime']);
 
                     if (date('Y-m-d', $dtdrop) === date('Y-m-d')) {
                         $dateTimeDrop = date('g:i A', $dtdrop);
                     } else {
                         $dateTimeDrop = date('d M g:i A', $dtdrop);
+                    }
+
                     }
 
                     $tripsArr[] = [
