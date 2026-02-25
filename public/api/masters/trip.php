@@ -207,10 +207,11 @@ switch ($mode) {
     // ===================== CASE ADD_ONLOAD =====================
     case 'ADD_ONLOAD':
         $vehicleSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity 
-                      FROM vehicle v
-                      LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                      WHERE v.cStatus = 'A'
-                      ORDER BY v.vRnum";
+              FROM vehicle v
+              LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+              WHERE v.cStatus = 'A'
+              AND v.cServiceType IN ('S','B')
+              ORDER BY v.vRnum";
         $vehicleRes = sql_query($vehicleSql);
 
         $vehiOpt = [
@@ -270,28 +271,49 @@ switch ($mode) {
                 "dest" => db_output2($routeRow['vDestination'] ?? '')
             ];
         }
-
-        // Get table array with vehicle details and vendor-specific drivers
-        $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, ven.vName as vOwner, ven.iVendorID
-                       FROM vehicle v
-                       LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                       LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' and ven.cType IN ('B','S') 
-                       WHERE v.cStatus = 'A'
-                       ORDER BY v.vRnum";
+        $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, 
+                       ven.vName as vOwner, ven.iVendorID, v.iType
+               FROM vehicle v
+               LEFT JOIN vehicle_category vc 
+                    ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+               LEFT JOIN vendor ven 
+                    ON v.iVendorID = ven.iVendorID 
+                    AND ven.cStatus = 'A' 
+                    AND ven.cType IN ('B','S') 
+               WHERE v.cStatus = 'A'
+               AND v.cServiceType IN ('S','B')
+               ORDER BY v.vRnum";
         $tableArrRes = sql_query($tableArrSql);
 
         $tableArr = [];
 
         while ($tableRow = sql_fetch_assoc($tableArrRes)) {
             $vendorID = (int) ($tableRow['iVendorID'] ?? 0);
+            $vehicleType = (int) ($tableRow['iType'] ?? 0);
 
-            // Get drivers for this specific vendor only
             $vhDriver = [];
+
             if ($vendorID > 0) {
+
+                // Normal vendor drivers
                 $vendorDriversSql = "SELECT d.iDriverID, d.vName as drName, d.cStatus
-                                   FROM driver d
-                                   WHERE d.cStatus = 'A' AND d.iVendorID = $vendorID
-                                   ORDER BY d.vName";
+                         FROM driver d
+                         WHERE d.cStatus = 'A'
+                         AND d.iVendorID = $vendorID
+                         ORDER BY d.vName";
+            } elseif ($vendorID == 0 && $vehicleType == 3) {
+
+                // Company vehicle type 3 → get drivers of type 3
+                $vendorDriversSql = "SELECT d.iDriverID, d.vName as drName, d.cStatus
+                         FROM driver d
+                         WHERE d.cStatus = 'A'
+                         AND d.iType = 3
+                         ORDER BY d.vName";
+            } else {
+                $vendorDriversSql = "";
+            }
+
+            if (!empty($vendorDriversSql)) {
                 $vendorDriversRes = sql_query($vendorDriversSql);
 
                 while ($driverRow = sql_fetch_assoc($vendorDriversRes)) {
