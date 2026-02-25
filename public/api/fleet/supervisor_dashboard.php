@@ -726,12 +726,18 @@ switch ($mode) {
                         $dateTimePick = date('d M g:i A', $dtpick);
                     }
 
+                    $dateTimeDrop = "";
+
+                    if(!empty($row['vDropTime'])){
+
                     $dtdrop = strtotime($row['vDropTime']);
 
                     if (date('Y-m-d', $dtdrop) === date('Y-m-d')) {
                         $dateTimeDrop = date('g:i A', $dtdrop);
                     } else {
                         $dateTimeDrop = date('d M g:i A', $dtdrop);
+                    }
+
                     }
 
                     $tripsArr[] = [
