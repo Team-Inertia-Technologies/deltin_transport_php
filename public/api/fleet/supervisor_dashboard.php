@@ -499,162 +499,182 @@ switch ($mode) {
         $currentlyAssigned = [];
         $availableVehicles = [];
 
-        foreach ($vehicleData as $vehicleID => $vehData) {
-            // Apply keyword filter if provided
-            if (!empty($searchtxt)) {
-                $keywordMatch = false;
-                if (
-                    stripos($vehData['NUM'], $searchtxt) !== false ||
-                    stripos($vehData['NAME'], $searchtxt) !== false
-                ) {
-                    $keywordMatch = true;
-                }
-                if (!$keywordMatch)
-                    continue;
-            }
+foreach ($vehicleData as $vehicleID => $vehData) {
 
-            // Get vehicle category details
-            $categoryName = '';
-            $capacity = 0;
-            foreach ($vehicleCategories as $cat) {
-                if ($cat['id'] == $vehData['CAT_ID']) {
-                    $categoryName = $cat['name'];
-                    $capacity = $cat['capacity'];
-                    break;
-                }
-            }
+    /* =========================
+       RESET ALL VARIABLES FIRST
+    ========================== */
 
-            // Check if this vehicle is currently assigned to the booking
-            $assignedVeh = false;
-            $tripAssignmentSql = "SELECT iVehicleID FROM fleet_booking 
-                                 WHERE 1 
-                                 AND iVehicleID = $vehicleID 
-                                 AND cStatus = 'A'";
-            $tripAssignmentRes = sql_query($tripAssignmentSql);
-            if (sql_num_rows($tripAssignmentRes) > 0) {
-                $assignedVeh = true;
-            }
+    $lastAssignedTime   = null;
+    $lastAssigned       = false;
+    $assignedVeh        = false;
 
-            // Get next trip time from BOOKINGS array
-            $lastAssignedTime = null;
-            $lastAssigned = false;
-            $nextTripTime = null;
-            $dateTime = null;
-            $bookingId = null;
-            $bookingStatus = 'A';
-            $driverStatus = false;
+    $nextTripDateTime   = null;
+    $nextBookingId      = null;
+    $nextBookingStatus  = null;
 
-            // BOOKINGS array contains future trips, get the earliest one as next trip
-            if (!empty($vehData['BOOKINGS'])) {
-                // Sort by pickup time ascending to get the next trip
-                $bookings = $vehData['BOOKINGS'];
-                usort($bookings, function ($a, $b) {
-                    return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
-                });
-                $nextTripTime = $bookings[0]['PICKUP_TIME'];
-                if (!empty($nextTripTime)) {
-                    if (date('Y-m-d', strtotime($nextTripTime)) === date('Y-m-d')) {
-                        $dateTime = date('g:i A', strtotime($nextTripTime));
-                    } else {
-                        $dateTime = date('d M g:i A', strtotime($nextTripTime));
-                    }
-                }
+    $prevTripDateTime   = null;
+    $prevBookingId      = null;
+    $prevBookingStatus  = null;
 
-                $bookingId = $bookings[0]['ID'];
-                $bookingStatus = $bookings[0]['STATUS'];
-            }
+    $driverStatus       = false;
 
-            if (!empty($vehData['BOOKINGS'])) {
+    /* =========================
+       KEYWORD FILTER
+    ========================== */
 
-                $now = time();
-                $bookings = $vehData['BOOKINGS'];
+    if (!empty($searchtxt)) {
+        $keywordMatch = false;
 
-                /* =======================
-                NEXT / ONGOING TRIP
-                ======================== */
-
-                $futureBookings = array_filter($bookings, function ($b) use ($now) {
-                    return strtotime($b['PICKUP_TIME']) >= $now;
-                });
-
-                if (!empty($futureBookings)) {
-                    usort($futureBookings, function ($a, $b) {
-                        return strtotime($a['PICKUP_TIME']) <=> strtotime($b['PICKUP_TIME']);
-                    });
-
-                    $nextTrip = $futureBookings[0];
-                    $nextTripTime = $nextTrip['PICKUP_TIME'];
-
-                    $nextTripDateTime = (date('Y-m-d', strtotime($nextTripTime)) === date('Y-m-d'))
-                        ? date('g:i A', strtotime($nextTripTime))
-                        : date('d M g:i A', strtotime($nextTripTime));
-
-                    $nextBookingId     = $nextTrip['ID'];
-                    $nextBookingStatus = $nextTrip['STATUS'];
-                }
-
-                /* =======================
-                PREVIOUS TRIP
-                ======================== */
-
-                $pastBookings = array_filter($bookings, function ($b) use ($now) {
-                    return strtotime($b['PICKUP_TIME']) < $now;
-                });
-
-                if (!empty($pastBookings)) {
-                    usort($pastBookings, function ($a, $b) {
-                        return strtotime($b['PICKUP_TIME']) <=> strtotime($a['PICKUP_TIME']);
-                    });
-
-                    $prevTrip = $pastBookings[0];
-                    $prevTripTime = $prevTrip['PICKUP_TIME'];
-
-                    $prevTripDateTime = (date('Y-m-d', strtotime($prevTripTime)) === date('Y-m-d'))
-                        ? date('g:i A', strtotime($prevTripTime))
-                        : date('d M g:i A', strtotime($prevTripTime));
-
-                    $prevBookingId     = $prevTrip['ID'];
-                    $prevBookingStatus = $prevTrip['STATUS'];
-                }
-            }
-
-            $driverLoggedIn = GetXFromYID("SELECT dtLoggedIn  FROM driver WHERE iDriverID = " . (int) $vehData['DRIVER_ID'] . " AND dtLoggedIn IS NOT NULL");
-            if (!empty($driverLoggedIn)) {
-                $driverStatus = true;
-            }
-
-
-
-            $vehicleDataFormatted = [
-                'id' => intval($vehicleID),
-                'regNo' => db_output2($vehData['NUM']),
-                'vehicletype' => intval($vehData['TYPE_ID']),
-                'categoryId' => intval($vehData['CAT_ID']),
-                'categoryName' => db_output2(GetXFromYID("select vName from vehicle_category where iVCatID = " . $vehData['CAT_ID'] . "")),
-                'capacity' => intval(GetXFromYID("select iCapacity from vehicle_category where iVCatID = " . $vehData['CAT_ID'] . "")),
-                'lastAssigned' => $lastAssigned,
-                'lastAssignedTime' => $lastAssignedTime,
-                'alreadyAssigned' => $assignedVeh,
-                'driverID' => intval($vehData['DRIVER_ID'] ?? 0),
-                'driverName' => db_output2($vehData['DRIVER_NAME'] ?? ''),
-                'driverMobile' => db_output2($vehData['DRIVER_NUM'] ?? ''),
-                'driverType' => $vehData['DRIVER_TYPE'] ?? '',
-                'nextTripTime' => $nextTripDateTime,
-                'prevTripTime' => $prevTripDateTime,
-                'bookingId' => (int) $nextBookingId,
-                'disposal' => false,
-                'status' => (isset($nextBookingStatus) && !empty($nextBookingStatus))?$nextBookingStatus:'A',
-                'driverStatus' => $driverStatus,
-                //'bookings' => $vehData['BOOKINGS'] // Include booking details for reference
-            ];
-
-            // Separate currently assigned vehicles to show them first
-            if ($assignedVeh) {
-                $currentlyAssigned[] = $vehicleDataFormatted;
-            } else {
-                $availableVehicles[] = $vehicleDataFormatted;
-            }
+        if (
+            stripos($vehData['NUM'], $searchtxt) !== false ||
+            stripos($vehData['NAME'], $searchtxt) !== false
+        ) {
+            $keywordMatch = true;
         }
+
+        if (!$keywordMatch) {
+            continue;
+        }
+    }
+
+    /* =========================
+       CHECK IF VEHICLE ASSIGNED
+    ========================== */
+
+    $tripAssignmentSql = "
+        SELECT iVehicleID 
+        FROM fleet_booking 
+        WHERE iVehicleID = " . (int)$vehicleID . " 
+        AND cStatus = 'A'
+    ";
+
+    $tripAssignmentRes = sql_query($tripAssignmentSql);
+
+    if (sql_num_rows($tripAssignmentRes) > 0) {
+        $assignedVeh = true;
+    }
+
+    /* =========================
+       BOOKING LOGIC
+    ========================== */
+
+    if (!empty($vehData['BOOKINGS'])) {
+
+        $now = time();
+        $bookings = $vehData['BOOKINGS'];
+
+        /* ===== NEXT / FUTURE TRIP ===== */
+
+        $futureBookings = array_filter($bookings, function ($b) use ($now) {
+            return strtotime($b['PICKUP_TIME']) >= $now;
+        });
+
+        if (!empty($futureBookings)) {
+
+            usort($futureBookings, function ($a, $b) {
+                return strtotime($a['PICKUP_TIME']) <=> strtotime($b['PICKUP_TIME']);
+            });
+
+            $nextTrip = $futureBookings[0];
+            $nextTripTime = $nextTrip['PICKUP_TIME'];
+
+            $nextTripDateTime =
+                (date('Y-m-d', strtotime($nextTripTime)) === date('Y-m-d'))
+                ? date('g:i A', strtotime($nextTripTime))
+                : date('d M g:i A', strtotime($nextTripTime));
+
+            $nextBookingId     = $nextTrip['ID'];
+            $nextBookingStatus = $nextTrip['STATUS'];
+        }
+
+        /* ===== PREVIOUS TRIP ===== */
+
+        $pastBookings = array_filter($bookings, function ($b) use ($now) {
+            return strtotime($b['PICKUP_TIME']) < $now;
+        });
+
+        if (!empty($pastBookings)) {
+
+            usort($pastBookings, function ($a, $b) {
+                return strtotime($b['PICKUP_TIME']) <=> strtotime($a['PICKUP_TIME']);
+            });
+
+            $prevTrip = $pastBookings[0];
+            $prevTripTime = $prevTrip['PICKUP_TIME'];
+
+            $prevTripDateTime =
+                (date('Y-m-d', strtotime($prevTripTime)) === date('Y-m-d'))
+                ? date('g:i A', strtotime($prevTripTime))
+                : date('d M g:i A', strtotime($prevTripTime));
+
+            $prevBookingId     = $prevTrip['ID'];
+            $prevBookingStatus = $prevTrip['STATUS'];
+        }
+    }
+
+    /* =========================
+       DRIVER LOGIN STATUS
+    ========================== */
+
+    if (!empty($vehData['DRIVER_ID'])) {
+
+        $driverLoggedIn = GetXFromYID(
+            "SELECT dtLoggedIn 
+             FROM driver 
+             WHERE iDriverID = " . (int)$vehData['DRIVER_ID'] . " 
+             AND dtLoggedIn IS NOT NULL"
+        );
+
+        if (!empty($driverLoggedIn)) {
+            $driverStatus = true;
+        }
+    }
+
+    /* =========================
+       FORMAT FINAL OUTPUT
+    ========================== */
+
+    $vehicleDataFormatted = [
+        'id'              => (int)$vehicleID,
+        'regNo'           => db_output2($vehData['NUM']),
+        'vehicletype'     => (int)$vehData['TYPE_ID'],
+        'categoryId'      => (int)$vehData['CAT_ID'],
+        'categoryName'    => db_output2(
+                                GetXFromYID("SELECT vName 
+                                             FROM vehicle_category 
+                                             WHERE iVCatID = " . (int)$vehData['CAT_ID'])
+                            ),
+        'capacity'        => (int)GetXFromYID(
+                                "SELECT iCapacity 
+                                 FROM vehicle_category 
+                                 WHERE iVCatID = " . (int)$vehData['CAT_ID']
+                            ),
+        'lastAssigned'    => $lastAssigned,
+        'lastAssignedTime'=> $lastAssignedTime,
+        'alreadyAssigned' => $assignedVeh,
+        'driverID'        => (int)($vehData['DRIVER_ID'] ?? 0),
+        'driverName'      => db_output2($vehData['DRIVER_NAME'] ?? ''),
+        'driverMobile'    => db_output2($vehData['DRIVER_NUM'] ?? ''),
+        'driverType'      => $vehData['DRIVER_TYPE'] ?? '',
+        'nextTripTime'    => $nextTripDateTime ?? null,
+        'prevTripTime'    => $prevTripDateTime ?? null,
+        'bookingId'       => $nextBookingId ? (int)$nextBookingId : 0,
+        'disposal'        => false,
+        'status'          => !empty($nextBookingStatus) ? $nextBookingStatus : 'A',
+        'driverStatus'    => $driverStatus,
+    ];
+
+    /* =========================
+       SEPARATE ASSIGNED FIRST
+    ========================== */
+
+    if ($assignedVeh) {
+        $currentlyAssigned[] = $vehicleDataFormatted;
+    } else {
+        $availableVehicles[] = $vehicleDataFormatted;
+    }
+}
 
         // Merge arrays with currently assigned vehicles first
         $rowData = array_merge($currentlyAssigned, $availableVehicles);
