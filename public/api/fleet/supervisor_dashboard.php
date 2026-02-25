@@ -1999,6 +1999,9 @@ LEFT JOIN vehicle_category vc ON vc.iVCatID = v.iCatID
         while ($row = sql_fetch_assoc($res)) {
             if ($row['status'] == 'N') {
                 $status = 'U';
+            }
+             elseif ($row['status'] == 'I') {
+                $status = 'I';
             } else {
                 $status = 'A';
             }

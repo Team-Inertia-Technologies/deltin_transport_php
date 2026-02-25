@@ -412,15 +412,15 @@ switch ($mode) {
             exit;
         }
 
-        if ($vendorID <= 0) {
-            echo json_encode([
-                "error" => [
-                    "message" => "Vendor is required"
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
+        // if ($vendorID <= 0) {
+        //     echo json_encode([
+        //         "error" => [
+        //             "message" => "Vendor is required"
+        //         ],
+        //         "statusCode" => 400
+        //     ]);
+        //     exit;
+        // }
 
         // Validate duplicates
         $validation = validateDriverData($mobNum, $empCode, 0);
