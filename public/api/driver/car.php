@@ -86,7 +86,10 @@ if (!sql_num_rows($r)) {
     header('Content-Type: application/json');
     echo json_encode([
         'statusCode' => 200,
-        'message' => 'No car associated with this driver.'
+        'message' => 'No car associated with this driver.',
+        'carDetails' => [
+            'vehicleID' => 0,
+        ]
     ]);
     exit;
 }
