@@ -243,7 +243,7 @@ switch ($mode) {
         $vendorSql = "SELECT DISTINCT ven.iVendorID, ven.vName 
                      FROM vendor ven 
                      INNER JOIN vehicle v ON v.iVendorID = ven.iVendorID 
-                     WHERE v.cStatus = 'A' AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
+                     WHERE v.cStatus = 'A' AND ven.cStatus = 'A' AND ven.cType IN ('B','S')
                      ORDER BY ven.vName";
         $vendorRes = sql_query($vendorSql);
 
@@ -275,7 +275,7 @@ switch ($mode) {
         $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, ven.vName as vOwner, ven.iVendorID
                        FROM vehicle v
                        LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                       LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' and ven.cType IN ('B','T') 
+                       LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' and ven.cType IN ('B','S') 
                        WHERE v.cStatus = 'A'
                        ORDER BY v.vRnum";
         $tableArrRes = sql_query($tableArrSql);
@@ -365,7 +365,7 @@ switch ($mode) {
                 LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID
                 LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                 LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
+                LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' AND ven.cType IN ('B','S')
                 LEFT JOIN driver d ON tva.iDriverID = d.iDriverID AND d.cStatus = 'A'
                 WHERE t.iTripID = $iTripID AND t.cStatus != 'X'
                 ORDER BY tva.iTVAID";
@@ -605,7 +605,7 @@ switch ($mode) {
         $vendorSql = "SELECT DISTINCT ven.iVendorID, ven.vName 
                      FROM vendor ven 
                      INNER JOIN vehicle v ON v.iVendorID = ven.iVendorID 
-                     WHERE v.cStatus = 'A' AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
+                     WHERE v.cStatus = 'A' AND ven.cStatus = 'A' AND ven.cType IN ('B','S')
                      ORDER BY ven.vName";
         $vendorRes = sql_query($vendorSql);
 
@@ -631,7 +631,7 @@ switch ($mode) {
                 LEFT JOIN vendor ven 
                     ON v.iVendorID = ven.iVendorID 
                     AND ven.cStatus = 'A' 
-                    AND ven.cType IN ('B','T') 
+                    AND ven.cType IN ('B','S') 
                 WHERE v.cStatus = 'A'
                 ORDER BY v.vRnum";
         $tableArrRes = sql_query($tableArrSql);
