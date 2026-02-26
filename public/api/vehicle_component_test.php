@@ -2,7 +2,7 @@
 $NO_REDIRECT = 1;
 include "api_includes.php";
 
-function GetVehicle_BasedOnSearch2($txttype=0,$txtcatid=0,$show_currentstatus='N',$txtfrom_time='',$txtto_time='',$cmbstatus='')
+/*function GetVehicle_BasedOnSearch2($txttype=0,$txtcatid=0,$show_currentstatus='N',$txtfrom_time='',$txtto_time='',$cmbstatus='')
 {
 	$arr = $arr2 = array();
 	$cond = '';
@@ -64,7 +64,7 @@ function GetVehicle_BasedOnSearch2($txttype=0,$txtcatid=0,$show_currentstatus='N
 	}
 
 	return $arr;
-}
+}*/
 $vehitype = "";
 $txtcatid = "";
 $current_status = "Y";
