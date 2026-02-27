@@ -315,8 +315,8 @@ switch ($mode) {
                 'vehicle' => (isset($row['iVehicleID']) && !empty($row['iVehicleID'])) ? db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']] . " " . $VEHICLE_ARR[$row['iVehicleID']]['REG']) : "",
                 'vehicleType' => (isset($row['iVehicleID']) && !empty($row['iVehicleID'])) ? $VEHICLE_ARR[$row['iVehicleID']]['TYPE'] : 0,
                 'borderColor' => $border,
-                'fleetRateId' => $row['iFleet_RateID'],
-                'fleetStationId' => $row['iFleet_StationID']
+                'fleetRateId' => (int) $row['iFleet_RateID'],
+                'fleetStationId' => (int) $row['iFleet_StationID']
             ];
         }
         echo json_encode([
