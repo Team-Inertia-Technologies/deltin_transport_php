@@ -9,7 +9,7 @@ function sendStaffVehicleNotification(
     string $deviceToken,
     string $vehicleNumber,
     array $details = [],
-    array $serviceAccountConfig = null,
+    ?array $serviceAccountConfig = null,
     int $timeoutCurl = 10
 ) {
     // Validate
@@ -67,7 +67,7 @@ function sendStaffVehicleNotification(
     // Build title/body
     $title = "Vehicle Assignment: " . $vehicleNumber;
     $bodyParts = ["Vehicle $vehicleNumber has been assigned"];
-   
+
     if (!empty($details['route'])) {
         $bodyParts[] = "Route: " . $details['route'];
     }
@@ -199,14 +199,16 @@ function sendBulkStaffVehicleNotification(
 
     return $results;
 }
-function getStaffByToken($token) {
+function getStaffByToken($token)
+{
     $token = db_input($token);
     $sql = "SELECT iStaffID, vPhone AS phone FROM staff WHERE vDeviceToken = '$token' LIMIT 1";
     $res = sql_query($sql);
     return sql_fetch_assoc($res) ?: null;
 }
 
-function getStaffTokensByTripId($tripId) {
+function getStaffTokensByTripId($tripId)
+{
     $tokens = [];
     $tripId = intval($tripId);
     if ($tripId <= 0) {
@@ -214,8 +216,14 @@ function getStaffTokensByTripId($tripId) {
     }
 
     $query = "
-SELECT DISTINCT m.vDeviceToken FROM staff m INNER JOIN st_request ts ON m.iStaffID = ts.iStaffID WHERE ts.iTrReqID  = $tripId AND m.vDeviceToken IS NOT NULL AND m.vDeviceToken != ''
-          AND m.cActive = 'Y' ";
+        SELECT DISTINCT s.vDeviceToken 
+        FROM staff s 
+        INNER JOIN st_request req ON s.iStaffID = req.iStaffID 
+        WHERE req.iTripID = $tripId 
+        AND s.vDeviceToken IS NOT NULL 
+        AND s.vDeviceToken != ''
+        AND s.cStatus = 'A'
+        AND req.cStatus = 'A'";
 
     $result = sql_query($query);
     if ($result) {
@@ -228,7 +236,8 @@ SELECT DISTINCT m.vDeviceToken FROM staff m INNER JOIN st_request ts ON m.iStaff
     }
     return $tokens;
 }
-function notifyTripStaffVehicleAssignment($tripId, $vehicleNumber, $additionalDetails = []) {
+function notifyTripStaffVehicleAssignment($tripId, $vehicleNumber, $additionalDetails = [])
+{
     $staffTokens = getStaffTokensByTripId($tripId);
     if (empty($staffTokens)) {
         return [
@@ -249,69 +258,76 @@ function notifyTripStaffVehicleAssignment($tripId, $vehicleNumber, $additionalDe
 function sendVehicleAssignedNotification($trip)
 {
     $tripId = $trip['iTripID'];
-    $trReqId = $trip['iTrReqID'];
     $vehicleNumber = $trip['vRnum'];
-    // $driverName = $trip['driver_name'] ?? '';
-    $departureTime = $trip['dPickup'] .' '. $trip['tPickup'];
+    $departureTime = date('d M Y H:i', strtotime($trip['dtTrip']));
     $route = $trip['route_name'] ?? '';
 
     $details = [
-       // 'driver_name' => $driverName,
         'route' => $route,
-        'departure_time' => $departureTime
+        'departure_time' => $departureTime,
+        'trip_id' => $tripId
     ];
 
-    $tokens = getStaffTokensByTripId($trReqId);
+    $tokens = getStaffTokensByTripId($tripId);
 
-  if (!empty($tokens)) {
-    $res = sendBulkStaffVehicleNotification($tokens, $vehicleNumber, $details);
+    if (!empty($tokens)) {
+        $res = sendBulkStaffVehicleNotification($tokens, $vehicleNumber, $details);
 
-    foreach ($tokens as $token) {
-        $staff = getStaffByToken($token);
-        $staffId = $staff['iStaffID'] ?? 0;
-        $phone = $staff['phone'] ?? '';
+        foreach ($tokens as $token) {
+            $staff = getStaffByToken($token);
+            $staffId = $staff['iStaffID'] ?? 0;
+            $phone = $staff['phone'] ?? '';
 
-        // Notification record insert (only if sent successfully)
-        $status = isset($res['errors'][$token]) ? 'F' : 'A';
-$now=NOW;
-        $insertSql = "
-            INSERT INTO st_notification 
-            (iUserID, vDeviceToken, dtSent, vPhoneNo, iRefID, cRefType, cStatus)
-            VALUES 
-            ($staffId, '$token', '$now', '$phone', {$trip['iTripID']}, 'T', '$status')
-        ";
-        sql_query($insertSql);
+            // Notification record insert (only if sent successfully)
+            $status = isset($res['errors'][$token]) ? 'F' : 'A';
+            $now = NOW;
+            $insertSql = "
+                INSERT INTO st_notification 
+                (iUserID, vDeviceToken, dtSent, vPhoneNo, iRefID, cRefType, cStatus)
+                VALUES 
+                ($staffId, '$token', '$now', '$phone', $tripId, 'T', '$status')
+            ";
+            sql_query($insertSql);
+        }
+
+        // Trip mark notified if at least one success
+        if ($res['success'] > 0) {
+            sql_query("UPDATE st_trips SET cNotified = 'Y' WHERE iTripID = $tripId");
+        }
     }
-
-    // Trip mark notified if at least one success
-    if ($res['success'] > 0) {
-        sql_query("UPDATE st_trips SET cNotified = 'Y' WHERE iTripID = {$trip['iTripID']}");
-    }
-}
-
 }
 
 function getUpcomingTrips()
 {
     $now = date('Y-m-d H:i:s');
-    $twoHoursLater = date('Y-m-d H:i:s', strtotime('+2 hours'));
+    $notifi_offset = intval(GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'STAFF_NOTIFICATION_OFFSET'")) ?? 0;
+
+    $twoHoursLater = date('Y-m-d H:i:s', strtotime("+{$notifi_offset} hours"));
+    $today = date('Y-m-d');
 
     $sql = "
         SELECT 
-            ts.iTrReqID,
             t.iTripID,
-            ts.dPickup,
-            ts.tPickup,
+            t.dtTrip,
             t.cNotified,
+            tva.iVehicleID,
             v.vRnum,
             r.vName AS route_name
         FROM st_trips t
-        INNER JOIN st_request ts ON t.iTripID = ts.iTrReqID
-        INNER JOIN vehicle v ON ts.iVehicleID = v.iVehicleID
-        LEFT JOIN st_route r ON ts.iRouteID = r.iRouteID
-        WHERE t.dtTrip BETWEEN '$now' AND '$twoHoursLater'
+        INNER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID AND tva.cStatus = 'A'
+        INNER JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
+        LEFT JOIN st_route r ON t.iRouteID = r.iRouteID AND r.cStatus = 'A'
+        WHERE DATE(t.dtTrip) = '$today'
+        AND t.dtTrip BETWEEN '$now' AND '$twoHoursLater'
         AND t.cNotified = 'N'
+        AND t.cStatus = 'A'
         AND v.vRnum IS NOT NULL
+        AND EXISTS (
+            SELECT 1 FROM st_request req 
+            WHERE req.iTripID = t.iTripID 
+            AND req.cStatus = 'A'
+        )
+        ORDER BY t.dtTrip ASC
     ";
 
     $result = sql_query($sql);
@@ -335,4 +351,3 @@ echo json_encode([
     "checked" => count($trips)
 ]);
 exit;
-?>
