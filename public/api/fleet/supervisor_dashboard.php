@@ -218,7 +218,7 @@ switch ($mode) {
         }
 
         // Fetch booking data
-        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments from fleet_booking where 1 $cond and cType NOT IN ('C','S','G','P','R') and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments, iFleet_StationID, iFleet_RateID from fleet_booking where 1 $cond and cType NOT IN ('C','S','G','P','R') and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         //echo $bookingSql."<br>";
         $bookingRes = sql_query($bookingSql);
 
@@ -314,7 +314,9 @@ switch ($mode) {
                 'vehicleAssigned' => (isset($row['iVehicleID']) && !empty($row['iVehicleID'])) ? true : false,
                 'vehicle' => (isset($row['iVehicleID']) && !empty($row['iVehicleID'])) ? db_output2($VEHICLE_CAT_ARR[$row['iVehicleCatID']] . " " . $VEHICLE_ARR[$row['iVehicleID']]['REG']) : "",
                 'vehicleType' => (isset($row['iVehicleID']) && !empty($row['iVehicleID'])) ? $VEHICLE_ARR[$row['iVehicleID']]['TYPE'] : 0,
-                'borderColor' => $border
+                'borderColor' => $border,
+                'fleetRateId' => $row['iFleet_RateID'],
+                'fleetStationId' => $row['iFleet_StationID']
             ];
         }
         echo json_encode([
