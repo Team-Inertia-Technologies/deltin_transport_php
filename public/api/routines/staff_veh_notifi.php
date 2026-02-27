@@ -80,7 +80,7 @@ function sendStaffVehicleNotification(
         'type' => 'vehicle_assignment',
         'vehicle_number' => (string)$vehicleNumber,
         'timestamp' => date('Y-m-d H:i:s'),
-        'url' => 'https://staff-stage.deltin.com/home'
+        'url' => STAFF_APP_URL . '/home'
     ];
     foreach ($details as $k => $v) {
         $dataPayload[$k] = is_scalar($v) ? (string)$v : json_encode($v);
