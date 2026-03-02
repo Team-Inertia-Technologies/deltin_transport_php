@@ -202,7 +202,7 @@ function sendBulkStaffVehicleNotification(
 function getStaffByToken($token)
 {
     $token = db_input($token);
-    $sql = "SELECT iStaffID, vPhone AS phone FROM staff WHERE vDeviceToken = '$token' LIMIT 1";
+    $sql = "SELECT iStaffID, vMobile AS phone FROM staff WHERE vDeviceToken = '$token' LIMIT 1";
     $res = sql_query($sql);
     return sql_fetch_assoc($res) ?: null;
 }

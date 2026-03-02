@@ -175,7 +175,7 @@ switch ($mode) {
         // $timeValue = $_REQUEST['timeValue'] ?? '';
         $days = $_REQUEST['days'] ?? [];
         $flag = isset($_REQUEST['flag']) ? $_REQUEST['flag'] : 'APP';
-        $staffID = isset($_REQUEST['staffID']) ? intval($_REQUEST['staffID'] ?? 0) : 0;
+        $staffID = isset($_REQUEST['staffId']) ? intval($_REQUEST['staffId'] ?? 0) : 0;
         if ($flag == 'CTRL') {
             $staff = $staffID > 0 ? $staffID : $user_id;
         } else {
