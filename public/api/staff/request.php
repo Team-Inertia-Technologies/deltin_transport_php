@@ -76,7 +76,7 @@ switch ($mode) {
                 $maxDays = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode ='ST_REQ_THRESHOLD'");
                 $maxDays = intval($maxDays);
                 $maxDate = date('Y-m-d', strtotime("+$maxDays days"));
-
+ $timeCondition ='';
                 if ($flag == 'APP') {
                     $req_offset = intval(GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'STAFF_REQUEST_OFFSET'")) ?? 0;
 
