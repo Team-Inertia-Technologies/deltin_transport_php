@@ -167,6 +167,7 @@ switch ($mode) {
 
 
     // ===================== CASE: ADD_REQUEST =====================
+
     case 'ADD_REQUEST':
         $route = intval($_REQUEST['route'] ?? 0);
         $pickUp = intval($_REQUEST['pickUp'] ?? 0);
@@ -318,9 +319,27 @@ switch ($mode) {
 
                 continue;
             }
-            // Check if request already exists for this staff, route, and trip
+            // Find the correct trip for this specific date, route, and time
+            // Instead of using the passed tripID directly, find the actual trip for this date/time/route
+            $correctTripSql = "SELECT iTripID FROM st_trips 
+                              WHERE iRouteID = $route 
+                              AND DATE(dtTrip) = '" . db_input($tripDate) . "' 
+                              AND TIME(dtTrip) = '" . db_input($selectedTime) . "' 
+                              AND cStatus = 'A' 
+                              LIMIT 1";
+            $correctTripRes = sql_query($correctTripSql);
+            
+            if (sql_num_rows($correctTripRes) == 0) {
+                $errors['tripNotFound'][] = "No trip found for $tripDate at $selectedTime";
+                continue;
+            }
+            
+            $correctTripData = sql_fetch_assoc($correctTripRes);
+            $actualTripID = (int) $correctTripData['iTripID'];
+
+            // Check if request already exists for this staff, route, and the CORRECT trip
             $existingSql = "SELECT iTrReqID FROM st_request 
-                           WHERE iStaffID = $staff AND iRouteID = $route AND iTripID = $tripID AND cStatus = 'A'";
+                           WHERE iStaffID = $staff AND iRouteID = $route AND iTripID = $actualTripID AND cStatus = 'A'";
             $existingRes = sql_query($existingSql);
 
             if (sql_num_rows($existingRes) > 0) {
@@ -349,44 +368,8 @@ switch ($mode) {
             $iTrReqID = NextID('iTrReqID', 'st_request');
             $nextRank = GetMaxRank('st_request', "", 'iRank');
 
-            // Find the best available trip for this request
-            $finalTripID = $tripID;
-
-            // Get the group ID for this trip
-            // $grpSql = "SELECT iGrpID FROM st_trips WHERE iTripID = $tripID AND cStatus = 'A'";
-            // $grpRes = sql_query($grpSql);
-
-            // if (sql_num_rows($grpRes) > 0) {
-            //     $grpData = sql_fetch_assoc($grpRes);
-            //     $grpID = (int) $grpData['iGrpID'];
-
-            //     // Get all trips in this group with their current capacity status
-            //     $groupTripsSql = "SELECT iTripID, iCapacity, iRequested 
-            //                      FROM st_trips 
-            //                      WHERE iGrpID = $grpID AND cStatus = 'A' 
-            //                      ORDER BY iTripID";
-            //     $groupTripsRes = sql_query($groupTripsSql);
-
-            //     $availableTrip = null;
-            //     $lastTrip = null;
-
-            //     while ($groupTripRow = sql_fetch_assoc($groupTripsRes)) {
-            //         $currentTripID = (int) $groupTripRow['iTripID'];
-            //         $capacity = (int) $groupTripRow['iCapacity'];
-            //         $requested = (int) $groupTripRow['iRequested'];
-
-            //         $lastTrip = $currentTripID; // Keep track of last trip
-
-            //         // Check if this trip has available capacity
-            //         if ($requested < $capacity) {
-            //             $availableTrip = $currentTripID;
-            //             break; // Found available trip, use it
-            //         }
-            //     }
-
-            //     // Use available trip if found, otherwise use the last trip in group
-            //     $finalTripID = $availableTrip ?? $lastTrip ?? $tripID;
-            // }
+            // Use the correct trip ID we found earlier
+            $finalTripID = $actualTripID;
 
             // Insert request
             $currentDateTime = date('Y-m-d H:i:s');
@@ -465,8 +448,8 @@ switch ($mode) {
         }
 
         if (!empty($errors['tripNotFound'])) {
-            $ids = array_unique($errors['tripNotFound']);
-            $finalErrors[] = "Trip not found: " . implode(", ", $ids);
+            $messages = array_unique($errors['tripNotFound']);
+            $finalErrors[] = "Trip not found: " . implode(", ", $messages);
         }
 
         if (!empty($errors['stopMissing'])) {
