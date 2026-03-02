@@ -104,5 +104,9 @@ if (isset($_ENV["FIREBASE_UNIVERSE_DOMAIN"]) && !empty($_ENV["FIREBASE_UNIVERSE_
 if (isset($_ENV["HEIGIT_DISTACE_API_KEY"]) && !empty($_ENV["HEIGIT_DISTACE_API_KEY"])) {
     define('HEIGIT_DISTACE_API_KEY', $_ENV["HEIGIT_DISTACE_API_KEY"]);
 }
+if (isset($_ENV["STAFF_APP_URL"]) && !empty($_ENV["STAFF_APP_URL"])) {
+    define('STAFF_APP_URL', $_ENV["STAFF_APP_URL"]);
+}
+
 
 ?>

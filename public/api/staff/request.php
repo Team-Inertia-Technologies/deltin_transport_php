@@ -76,9 +76,12 @@ switch ($mode) {
                 $maxDays = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode ='ST_REQ_THRESHOLD'");
                 $maxDays = intval($maxDays);
                 $maxDate = date('Y-m-d', strtotime("+$maxDays days"));
-
+ $timeCondition ='';
                 if ($flag == 'APP') {
-                    $twoHoursFromNow = date('Y-m-d H:i:s', strtotime('+2 hours'));
+                    $req_offset = intval(GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'STAFF_REQUEST_OFFSET'")) ?? 0;
+
+                    $twoHoursFromNow = date('Y-m-d H:i:s', strtotime("+{$req_offset} hours"));
+
                     $timeCondition = " AND dtTrip >= '" . db_input($twoHoursFromNow) . "'";
                 }
 

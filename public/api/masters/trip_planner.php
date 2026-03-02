@@ -28,7 +28,6 @@ switch ($mode) {
 
     // ===================== CASE 1: LIST_PLANNER =====================
     case 'LIST_PLANNER':
-        // Get all trips data
         $sql = "SELECT 
     t.iTripID,
     DATE(t.dtTrip) AS dtTrip,
