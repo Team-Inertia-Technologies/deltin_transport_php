@@ -275,17 +275,16 @@ function sendVehicleAssignedNotification($trip)
     $tripId = intval($trip['iTripID']);
 
     // LOCK trip immediately (prevent double cron)
-    sql_query("
-        UPDATE st_trips 
-        SET cNotified = 'P' 
-        WHERE iTripID = $tripId 
-        AND cNotified = 'N'
-    ");
+   $result = sql_query("
+    UPDATE st_trips 
+    SET cNotified = 'P' 
+    WHERE iTripID = $tripId 
+    AND cNotified = 'N'
+");
 
-    if (mysqli_affected_rows($GLOBALS['___mysqli_ston']) == 0) {
-        // Already processed by another cron
-        return;
-    }
+if (!$result || sql_affected_rows() == 0) {
+    return;
+}
 
     $vehicleNumber = $trip['vRnum'];
     $departureTime = date('d M Y H:i', strtotime($trip['dtTrip']));
