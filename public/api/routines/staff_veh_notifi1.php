@@ -1,19 +1,4 @@
 <?php
-/*
- * Staff Vehicle Notification Cron Job
- * 
- * Workflow:
- * 1. When cron runs, first dump all notifications to st_notification table with status 'Q' (Queued)
- * 2. Then process all queued notifications by calling Firebase
- * 3. Update notification status based on Firebase response ('A' for success, 'F' for failure)
- * 4. Mark trips as completed when all notifications are processed
- * 
- * Required st_notification table columns:
- * - vTitle: Notification title
- * - vMessage: Notification message
- * - vErrorMsg: Error message if Firebase fails
- * - dtProcessed: Timestamp when notification was processed
- */
 include "../../includes/common_api.php";
 require_once(__DIR__ . '/../api_common.php');
 require_once(__DIR__ . '/../../includes/libs/google_client/vendor/autoload.php');
@@ -275,7 +260,7 @@ function sendVehicleAssignedNotification($trip)
     $tripId = intval($trip['iTripID']);
 
     // LOCK trip immediately (prevent double cron)
-    sql_query("
+    $updated = sql_query("
         UPDATE st_trips 
         SET cNotified = 'P' 
         WHERE iTripID = $tripId 
@@ -291,110 +276,41 @@ function sendVehicleAssignedNotification($trip)
     $departureTime = date('d M Y H:i', strtotime($trip['dtTrip']));
     $route = $trip['route_name'] ?? '';
 
+    $details = [
+        'route' => $route,
+        'departure_time' => $departureTime,
+        'trip_id' => $tripId
+    ];
+
     $tokens = getStaffTokensByTripId($tripId);
 
     if (!empty($tokens)) {
-        // First, dump all notifications to st_notification table with status 'Q'
+
+        $res = sendBulkStaffVehicleNotification($tokens, $vehicleNumber, $details);
+
         foreach ($tokens as $token) {
             $staff = getStaffByToken($token);
             $staffId = $staff['iStaffID'] ?? 0;
             $phone = $staff['phone'] ?? '';
+
+            $status = isset($res['errors'][$token]) ? 'F' : 'A';
             $now = NOW;
 
-            // Create notification record with status 'Q' (Queued)
             sql_query("
                 INSERT INTO st_notification 
-                (iUserID, vDeviceToken, dtSent, vPhoneNo, iRefID, cRefType, cStatus, vTitle, vMessage)
+                (iUserID, vDeviceToken, dtSent, vPhoneNo, iRefID, cRefType, cStatus)
                 VALUES 
-                ($staffId, '$token', '$now', '$phone', $tripId, 'T', 'Q', 
-                'Vehicle Assignment: $vehicleNumber', 
-                'Vehicle $vehicleNumber assigned | Route: $route | Departure: $departureTime')
+                ($staffId, '$token', '$now', '$phone', $tripId, 'T', '$status')
             ");
         }
 
-        // Mark trip as notifications queued
+        // Final mark as completed
         sql_query("
             UPDATE st_trips 
-            SET cNotified = 'Q' 
+            SET cNotified = 'Y' 
             WHERE iTripID = $tripId
         ");
     }
-}
-
-function processQueuedNotifications()
-{
-    // Get all queued notifications
-    $sql = "
-        SELECT 
-            n.iNotificationID,
-            n.iUserID,
-            n.vDeviceToken,
-            n.vPhoneNo,
-            n.iRefID as iTripID,
-            n.vTitle,
-            n.vMessage,
-            t.dtTrip,
-            t.vRnum,
-            r.vName AS route_name
-        FROM st_notification n
-        INNER JOIN st_trips t ON n.iRefID = t.iTripID
-        LEFT JOIN st_route r ON t.iRouteID = r.iRouteID AND r.cStatus = 'A'
-        WHERE n.cStatus = 'Q' 
-        AND n.cRefType = 'T'
-        ORDER BY n.dtSent ASC
-    ";
-
-    $result = sql_query($sql);
-    $processedCount = 0;
-
-    while ($notification = sql_fetch_assoc($result)) {
-        $notificationId = $notification['iNotificationID'];
-        $token = $notification['vDeviceToken'];
-        $tripId = $notification['iTripID'];
-        $vehicleNumber = $notification['vRnum'];
-        
-        // Prepare trip details
-        $departureTime = date('d M Y H:i', strtotime($notification['dtTrip']));
-        $route = $notification['route_name'] ?? '';
-        
-        $details = [
-            'route' => $route,
-            'departure_time' => $departureTime,
-            'trip_id' => $tripId
-        ];
-
-        // Send Firebase notification
-        $firebaseResult = sendStaffVehicleNotification($token, $vehicleNumber, $details);
-        
-        // Update notification status based on Firebase result
-        $status = ($firebaseResult === true) ? 'A' : 'F';
-        $errorMsg = ($firebaseResult === true) ? '' : substr($firebaseResult, 0, 500);
-        
-        sql_query("
-            UPDATE st_notification 
-            SET cStatus = '$status', 
-                vErrorMsg = '" . db_input($errorMsg) . "',
-                dtProcessed = '" . NOW . "'
-            WHERE iNotificationID = $notificationId
-        ");
-        
-        $processedCount++;
-    }
-
-    // Update trips that have all notifications processed
-    sql_query("
-        UPDATE st_trips t
-        SET cNotified = 'Y'
-        WHERE cNotified = 'Q'
-        AND NOT EXISTS (
-            SELECT 1 FROM st_notification n 
-            WHERE n.iRefID = t.iTripID 
-            AND n.cRefType = 'T' 
-            AND n.cStatus = 'Q'
-        )
-    ");
-
-    return $processedCount;
 }
 
 function getUpcomingTrips()
@@ -440,22 +356,14 @@ function getUpcomingTrips()
     return $trips;
 }
 
-// First, queue notifications for upcoming trips
 $trips = getUpcomingTrips();
-$queuedTrips = 0;
 
 foreach ($trips as $trip) {
     sendVehicleAssignedNotification($trip);
-    $queuedTrips++;
 }
-
-// Then, process queued notifications (send to Firebase)
-$processedNotifications = processQueuedNotifications();
 
 echo json_encode([
     "status" => "Cron Executed",
-    "queued_trips" => $queuedTrips,
-    "processed_notifications" => $processedNotifications,
-    "message" => "Queued $queuedTrips trips, processed $processedNotifications notifications"
+    "checked" => count($trips)
 ]);
 exit;
