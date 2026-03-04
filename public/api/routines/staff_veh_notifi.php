@@ -333,11 +333,13 @@ function processQueuedNotifications()
             n.vTitle,
             n.vMessage,
             t.dtTrip,
-            t.vRnum,
+            v.vRnum,
             r.vName AS route_name
         FROM st_notification n
         INNER JOIN st_trips t ON n.iRefID = t.iTripID
+         INNER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID AND tva.cStatus = 'A'
         LEFT JOIN st_route r ON t.iRouteID = r.iRouteID AND r.cStatus = 'A'
+         INNER JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
         WHERE n.cStatus = 'Q' 
         AND n.cRefType = 'T'
         ORDER BY n.dtSent ASC
