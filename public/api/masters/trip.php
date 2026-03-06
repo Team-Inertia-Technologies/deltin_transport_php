@@ -642,18 +642,13 @@ switch ($mode) {
             ];
         }
 
-        $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, 
-                       ven.vName as vOwner, 
-                       ven.iVendorID,
-                       v.iVendorID as vehicleVendorID,
-                       v.iType
+        $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, ven.vName as vOwner, ven.iVendorID,v.iVendorID as vehicleVendorID,v.iType
                 FROM vehicle v
-                LEFT JOIN vehicle_category vc 
-                    ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                LEFT JOIN vendor ven 
-                    ON v.iVendorID = ven.iVendorID 
+                LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+                LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID 
                     AND ven.cStatus = 'A' 
                     AND ven.cType IN ('B','S') 
+                    AND v.cServiceType IN ('S','B')
                 WHERE v.cStatus = 'A'
                 ORDER BY v.vRnum";
         $tableArrRes = sql_query($tableArrSql);
@@ -880,7 +875,7 @@ switch ($mode) {
 
         echo json_encode([
             "data" => [
-                "iGrpID" => $iGrpID,
+                "iGrpID" => $iTripID,
                 "tripDateTime" => $tripDateTime,
                 "routeName" => $routeName,
                 "destination" => $destination,
