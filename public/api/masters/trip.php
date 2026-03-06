@@ -648,8 +648,7 @@ switch ($mode) {
                 LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID 
                     AND ven.cStatus = 'A' 
                     AND ven.cType IN ('B','S') 
-                    AND v.cServiceType IN ('S','B')
-                WHERE v.cStatus = 'A'
+                WHERE v.cStatus = 'A'  AND v.cServiceType IN ('S','B')
                 ORDER BY v.vRnum";
         $tableArrRes = sql_query($tableArrSql);
 
