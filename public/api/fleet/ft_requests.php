@@ -1719,7 +1719,7 @@ switch ($mode) {
             $dtAdded = NOW;
 
             // Send WhatsApp
-            SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $driverData['vMobileNum']);
+            SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum']);
 
             sql_query("
         INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)VALUES ('C', '+91', '$vMobileNo', 'WA', '$dtAdded', $user_id)
