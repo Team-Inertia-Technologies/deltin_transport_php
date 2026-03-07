@@ -15,8 +15,10 @@ $sql = "SELECT d.vMobileNum as driver_phone
         ORDER BY 
             CASE 
                 WHEN fb.cType IN ('S', 'G', 'P', 'R') THEN 1  -- Active trips first
-                WHEN fb.cType = 'N' AND fb.vPickUpTime >= '$NOW' THEN 2  -- Upcoming bookings
-                ELSE 3
+                WHEN fb.cType = 'N' AND fb.vPickUpTime >= '$NOW' THEN 2  -- Future bookings
+                WHEN fb.cType = 'N' AND fb.vPickUpTime < '$NOW' AND 
+                     TIMESTAMPDIFF(HOUR, fb.vPickUpTime, '$NOW') <= 2 THEN 3  -- Recent bookings within 2 hours
+                ELSE 4
             END,
             ABS(TIMESTAMPDIFF(MINUTE, '$NOW', fb.vPickUpTime)) ASC  -- Closest to pickup time
         LIMIT 1";
