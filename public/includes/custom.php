@@ -18,33 +18,35 @@ function GetSingleDataFromID($table, $pk_field, $pk_id, $cond = "")
 }
 function FillComboGroup($selected, $ctrl, $comp, $values, $class = "form-control", $groupclass = "bg-gray", $optionclass = "bg-white", $fn = "")
 {
-?>
+    ?>
     <select name="<?php echo $ctrl; ?>" id="<?php echo $ctrl; ?>" class="<?php echo $class; ?>" <?php echo $fn; ?>>
         <?php
         if (!empty($comp)) {
             $selected_str = ('' === $selected) ? 'selected' : '';
-        ?>
-            <option class="<?php echo $optionclass; ?>" value="" <?php echo $selected_str; ?>> - <?php echo $comp; ?> - </option>
-        <?php
+            ?>
+            <option class="<?php echo $optionclass; ?>" value="" <?php echo $selected_str; ?>> - <?php echo $comp; ?> -
+            </option>
+            <?php
         }
         foreach ($values as $key1 => $val1) {
-        ?>
+            ?>
             <optgroup label="<?php echo $val1['name']; ?>" class="<?php echo $groupclass; ?>">
                 <?php
                 foreach ($val1['opt'] as $key2 => $val2) {
                     $key = "{$key1}~{$key2}";
                     $selected_str = ($key === $selected) ? 'selected' : '';
-                ?>
-                    <option class="<?php echo $optionclass; ?>" value="<?php echo $key; ?>" <?php echo $selected_str; ?>><?php echo $val2; ?></option>
-                <?php
+                    ?>
+                    <option class="<?php echo $optionclass; ?>" value="<?php echo $key; ?>" <?php echo $selected_str; ?>>
+                        <?php echo $val2; ?></option>
+                    <?php
                 }
                 ?>
             </optgroup>
-        <?php
+            <?php
         }
         ?>
     </select>
-<?php
+    <?php
 }
 
 function GetDataFromID($table, $pk_field, $pk_id, $cond = "")
@@ -66,7 +68,8 @@ function GetDataFromQuery($q)
 {
     $arr = array();
     $r = sql_query($q, "CUSTOM.06");
-    if (sql_num_rows($r)) $arr = sql_get_data($r);
+    if (sql_num_rows($r))
+        $arr = sql_get_data($r);
     return $arr;
 }
 
@@ -165,7 +168,7 @@ function GetCountFromTable($table, $cond = "")
 
 function GetXArrFromYID2($table, $values, $cond = '', $mode = "1")
 {
-    $q  = "select $values from $table where 1 $cond";
+    $q = "select $values from $table where 1 $cond";
     $arr = array();
     $r = sql_query($q, 'COM39');
 
@@ -200,9 +203,12 @@ function GetStatusPills($status = "", $status_arr = "")
     $text = isset($status_arr[$status]) ? $status_arr[$status] : '';
 
     if (!empty($text)) {
-        if ($status == 'U') $bd_col = 'badge-primary';
-        else if ($status == 'D') $bd_col = 'badge-danger';
-        else if ($status == 'A') $bd_col =  'badge-success';
+        if ($status == 'U')
+            $bd_col = 'badge-primary';
+        else if ($status == 'D')
+            $bd_col = 'badge-danger';
+        else if ($status == 'A')
+            $bd_col = 'badge-success';
 
         $pill_str = '<div class="mb-2 mr-2 badge ' . $bd_col . '">' . $text . '</div>';
     }
@@ -327,7 +333,8 @@ function PostRequest($url, $referer, $_data)
 {
     // convert variables array to string:
     $data = array();
-    while (list($n, $v) =
+    while (
+            list($n, $v) =
         each($_data)
     ) {
         $data[] = "$n=$v";
@@ -560,7 +567,7 @@ function SendConfirmationMessage($to, $name, $from_palce, $date)
     // Close the cURL session
     curl_close($ch);
 
-    return  $response;
+    return $response;
 }
 
 function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num)
@@ -616,6 +623,37 @@ function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num)
     // Close the cURL session
     curl_close($ch);
 
-    return  $response;
+    return $response;
+}
+
+
+function connectCustomerToDriver($customer_number, $driver_number)
+{
+
+    $token = '5f1f43db51a120f9027c32fbecc3de88410a92a0396c9da0';
+    $sid = 'deltacorp1';
+    $virtual_number = "9876543210";
+
+    $url = "https://api.exotel.com/v1/Accounts/$sid/Calls/connect";
+
+    $postData = http_build_query([
+        'From' => $customer_number,
+        'To' => $driver_number,
+        'CallerId' => $virtual_number
+    ]);
+
+    $ch = curl_init();
+
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_USERPWD, "$sid:$token");
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    $response = curl_exec($ch);
+
+    curl_close($ch);
+
+    return $response;
 }
 ?>
