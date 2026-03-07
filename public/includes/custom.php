@@ -563,7 +563,7 @@ function SendConfirmationMessage($to, $name, $from_palce, $date)
     return  $response;
 }
 
-function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num,$driver_contact)
+function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num)
 {
     $ch = curl_init();
 
@@ -595,7 +595,7 @@ function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num,$driver
                 '1' => $name,
                 '2' => $driver_name,
                 '3' => $vehicle_num,
-                '4' => $driver_contact
+                '4' => '07314852425'
             ]
 
         ]

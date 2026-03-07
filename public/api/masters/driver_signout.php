@@ -80,7 +80,6 @@ if ($mode === 'SINGLE') {
     }
 
     $driverIds[] = $driverId;
-
 } else {
 
     if (
@@ -147,7 +146,7 @@ if (!empty($request->vehicle_ids) && is_array($request->vehicle_ids)) {
 
 foreach ($driverIds as $driverId) {
 
-    $sql = "UPDATE driver SET dtLoggedOut = '$logoutDateTime', dtLoggedIn = NULL WHERE iDriverID = {$driverId}";
+    $sql = "UPDATE driver SET dtLoggedOut = '$logoutDateTime', dtLoggedIn = NULL, iVehicleID=0 WHERE iDriverID = {$driverId}";
     $result = sql_query($sql);
     if ($result && sql_affected_rows() > 0) {
         if (!empty($vehicleIds)) {
