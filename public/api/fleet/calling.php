@@ -39,7 +39,7 @@ if($row = $result->fetch_assoc()){
     $driver_number = $row['driver_phone'];
 
     // Exotel format
-    $driver_number = '0'.$driver_number;
+   // $driver_number = '0'.$driver_number;
 
     echo json_encode([
         "Number" => $driver_number
