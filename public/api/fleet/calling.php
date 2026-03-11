@@ -13,12 +13,18 @@ function triggerExotelExoMLCall($fromNumber, $tonumber)
 
     $url = "https://api.exotel.com/v1/Accounts/$sid/Calls/connect.json";
 
+    // $data = [
+    //     'From'     => $fromNumber,
+    //     'To'       => $tonumber,
+    //     'CallerId' => $callerId,
+    //     'Record'   => 'true'
+    // ];
     $data = [
-        'From'     => $fromNumber,
-        'To'       => $tonumber,
-        'CallerId' => $callerId,
-        'Record'   => 'true'
-    ];
+    'From'     => $callerId,      // Exotel virtual number
+    'To'       => $fromNumber,    // Customer
+    'CallTo'   => $tonumber,      // Driver
+    'Record'   => 'true'
+];
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
