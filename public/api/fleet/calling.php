@@ -95,9 +95,11 @@ if($row = $result->fetch_assoc()){
 
     $driver_number = $row['driver_phone'];
 
-    // Exotel format
-    $driver_number = '0'.$driver_number;
-    $customer_number = '0'.$customer_number;
+    // // Exotel format
+    // $driver_number = '0'.$driver_number;
+    // $customer_number = '0'.$customer_number;
+    $driver_number = '+91'.$driver_number;
+$customer_number = '+91'.$customer_number;
 
     // trigger call
     $callResponse = triggerExotelExoMLCall($customer_number, $driver_number);
