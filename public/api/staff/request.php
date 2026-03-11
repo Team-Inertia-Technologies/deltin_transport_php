@@ -291,7 +291,7 @@ switch ($mode) {
             $tripDate = date('Y-m-d', strtotime($tripData['dtTrip']));
             $tripDateTime = "$tripDate $selectedTime";
 
-            // **NEW VALIDATION: Check if trip date is within the next 2 days**
+            // **Check if trip date is within the next 2 days**
             if ($tripDate > $maxAllowedDate) {
                 $errors['beyondAllowed'][] = date('d M Y', strtotime($tripDate));
                 continue;
@@ -319,8 +319,7 @@ switch ($mode) {
 
                 continue;
             }
-            // Find the correct trip for this specific date, route, and time
-            // Instead of using the passed tripID directly, find the actual trip for this date/time/route
+
             $correctTripSql = "SELECT iTripID FROM st_trips 
                               WHERE iRouteID = $route 
                               AND DATE(dtTrip) = '" . db_input($tripDate) . "' 
@@ -364,14 +363,12 @@ switch ($mode) {
             // Calculate pickup time: trip start time + stop offset
             $pickupTime = date('H:i:s', strtotime($selectedTime) + $offsetMinutes * 60);
 
-            // Get next ID and rank
             $iTrReqID = NextID('iTrReqID', 'st_request');
             $nextRank = GetMaxRank('st_request', "", 'iRank');
 
-            // Use the correct trip ID we found earlier
             $finalTripID = $actualTripID;
 
-            // Insert request
+    
             $currentDateTime = date('Y-m-d H:i:s');
 
 
