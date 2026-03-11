@@ -14,8 +14,8 @@ function triggerExotelExoMLCall($fromNumber, $tonumber)
     $url = "https://api.exotel.com/v1/Accounts/$sid/Calls/connect.json";
 
     $data = [
-        'From'     => $tonumber,
-        'To'       => $fromNumber,
+        'From'     => $fromNumber,
+        'To'       => $tonumber,
         'CallerId' => $callerId,
         'Record'   => 'true'
     ];
