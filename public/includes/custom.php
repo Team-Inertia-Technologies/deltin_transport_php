@@ -515,7 +515,7 @@ function SendWhatsappMessage2($mobile, $otp)
     return $response;
 }
 
-function SendConfirmationMessage($to, $name, $from_palce, $date)
+function SendConfirmationMessage($to, $name, $from_palce, $date, $drop_location = '', $pickup_time = '')
 {
     $ch = curl_init();
 
@@ -546,7 +546,9 @@ function SendConfirmationMessage($to, $name, $from_palce, $date)
             'parameters' => [
                 '1' => $name,
                 '2' => $from_palce,
-                '3' => $date
+                '3' => $date,
+                '4' => $drop_location,
+                '5' => $pickup_time
             ]
 
         ]
@@ -570,7 +572,8 @@ function SendConfirmationMessage($to, $name, $from_palce, $date)
     return $response;
 }
 
-function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num)
+
+function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num,$pickup_loc, $pickup_time)
 {
     $ch = curl_init();
 
@@ -602,7 +605,10 @@ function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num)
                 '1' => $name,
                 '2' => $driver_name,
                 '3' => $vehicle_num,
-                '4' => '07314852425'
+                '4' => '07314852425',
+                '5' => $pickup_loc,
+                '6' => $pickup_time
+
             ]
 
         ]
