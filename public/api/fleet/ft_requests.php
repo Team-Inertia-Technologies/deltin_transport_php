@@ -643,8 +643,8 @@ switch ($mode) {
             exit;
         } else {
             $date = date('d/m/Y', strtotime($vPickUpTime));
-
-            SendConfirmationMessage($vMobileNo, db_input($vName), $vPickUpLocation, $date);
+          $pickup_time = !empty($vPickUpTime) ? date('h:i A', strtotime($vPickUpTime)) : '';
+            SendConfirmationMessage($vMobileNo, db_input($vName), $vPickUpLocation, $date, $vDropLocation, $pickup_time);
             sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
         }
 
@@ -1604,7 +1604,7 @@ switch ($mode) {
         }
 
         // Check if booking exists and is active
-        $bookingCheckSql = "SELECT iFleet_BookingID, vName,vMobileNo, vPickUpTime FROM fleet_booking 
+        $bookingCheckSql = "SELECT iFleet_BookingID, vName,vMobileNo, vPickUpTime,vPickUpLocation FROM fleet_booking 
                            WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
         $bookingCheckRes = sql_query($bookingCheckSql);
 
@@ -1716,10 +1716,11 @@ switch ($mode) {
 
             $vMobileNo = $bookingData['vMobileNo'] ?? '';
             $vName = db_output2($bookingData['vName']) ?? '';
+            $pickup_time = !empty($bookingData['vPickUpTime']) ? date('h:i A', strtotime($bookingData['vPickUpTime'])) : '';
             $dtAdded = NOW;
 
             // Send WhatsApp
-            SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum']);
+            SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $vPickUpLocation,$pickup_time);
 
             sql_query("
         INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)VALUES ('C', '+91', '$vMobileNo', 'WA', '$dtAdded', $user_id)
