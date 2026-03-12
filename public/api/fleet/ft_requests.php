@@ -1716,6 +1716,7 @@ switch ($mode) {
 
             $vMobileNo = $bookingData['vMobileNo'] ?? '';
             $vName = db_output2($bookingData['vName']) ?? '';
+             $vPickUpLocation = db_output2($bookingData['vPickUpLocation']) ?? '';
             $pickup_time = !empty($bookingData['vPickUpTime']) ? date('h:i A', strtotime($bookingData['vPickUpTime'])) : '';
             $dtAdded = NOW;
 

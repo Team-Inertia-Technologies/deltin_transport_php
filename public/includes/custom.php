@@ -37,7 +37,8 @@ function FillComboGroup($selected, $ctrl, $comp, $values, $class = "form-control
                     $selected_str = ($key === $selected) ? 'selected' : '';
                     ?>
                     <option class="<?php echo $optionclass; ?>" value="<?php echo $key; ?>" <?php echo $selected_str; ?>>
-                        <?php echo $val2; ?></option>
+                        <?php echo $val2; ?>
+                    </option>
                     <?php
                 }
                 ?>
@@ -546,8 +547,8 @@ function SendConfirmationMessage($to, $name, $from_palce, $date, $drop_location 
             'parameters' => [
                 '1' => $name,
                 '2' => $from_palce,
-                '3' => $date,
-                '4' => $drop_location,
+                '3' => $drop_location,
+                '4' => $date,
                 '5' => $pickup_time
             ]
 
@@ -573,7 +574,7 @@ function SendConfirmationMessage($to, $name, $from_palce, $date, $drop_location 
 }
 
 
-function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num,$pickup_loc, $pickup_time)
+function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num, $pickup_loc, $pickup_time)
 {
     $ch = curl_init();
 
