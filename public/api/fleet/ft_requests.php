@@ -1304,6 +1304,7 @@ switch ($mode) {
         $categoryID = intval($_REQUEST['categoryID'] ?? 0);
         $typeID = intval($_REQUEST['typeID'] ?? 0);
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
+        $driverName = isset(($_REQUEST['driverName'])) ? db_input($_REQUEST['driverName']): '';
 
         // Get vehicle categories for dropdown options
         $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cType IN ('B','F') AND cStatus = 'A' ORDER BY vName";
@@ -1345,6 +1346,16 @@ switch ($mode) {
                     $keywordMatch = true;
                 }
                 if (!$keywordMatch)
+                    continue;
+            }
+
+            // Apply driver name filter if provided
+            if (!empty($driverName)) {
+                $driverNameMatch = false;
+                if (!empty($vehData['DRIVER_NAME']) && stripos($vehData['DRIVER_NAME'], $driverName) !== false) {
+                    $driverNameMatch = true;
+                }
+                if (!$driverNameMatch)
                     continue;
             }
 
