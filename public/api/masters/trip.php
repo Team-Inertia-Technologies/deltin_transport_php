@@ -31,7 +31,7 @@ switch ($mode) {
         $fromDate = $_REQUEST['fromDate'] ?? '';
         $toDate = $_REQUEST['toDate'] ?? '';
         $routeID = intval($_REQUEST['routeID'] ?? 0);
-        $driverID =  isset($_REQUEST['driverID']) ? intval($_REQUEST['driverID'] ?? 0) : 0;
+        $driverID = isset($_REQUEST['driverID']) ? intval($_REQUEST['driverID'] ?? 0) : 0;
         $vendorID = isset($_REQUEST['vendorID']) ? intval($_REQUEST['vendorID'] ?? 0) : 0;
 
         // Build WHERE conditions
@@ -141,7 +141,7 @@ switch ($mode) {
                 "pax" => $trip['pax'],
                 "availed" => $trip['availed'],
                 "hasVehicle" => !empty($trip['vehicleNumber']),
-                "driverID" =>  $trip['driverID'],
+                "driverID" => $trip['driverID'],
                 "driverName" => $trip['driverName'],
                 "vendorName" => $trip['vendorName'],
                 "vendorID" => $trip['vendorID'],
@@ -526,6 +526,7 @@ switch ($mode) {
                                     st.iStaffID,
                                     st.vName as staffName,
                                     st.vMobile as staffMobile,
+                                    st.vCode as staffCode,
                                     req.iTripID,
                                     tva.iVehicleID,
                                     v.vRnum as vehicleNumber,
@@ -545,7 +546,8 @@ switch ($mode) {
                         $staffList[] = [
                             "staffID" => (int) $staffRow['iStaffID'],
                             "staffName" => $staffRow['staffName'] ?? '',
-                            "staffMobile" => $staffRow['staffMobile'] ?? '',
+                            'staffMobile' => maskMobileNumber($staffRow['staffMobile']),
+                            "staffCode" => $staffRow['staffCode'] ?? '',
                             "vehicleNumber" => $staffRow['vehicleNumber'] ?? '',
                             "entered" => !empty($staffRow['dtIn']),
                             "enteredTime" => $staffRow['dtIn'] ? date('H:i', strtotime($staffRow['dtIn'])) : null
@@ -776,6 +778,7 @@ switch ($mode) {
                             s.iRank as stopRank,
                             req.iStaffID,
                             st.vName as staffName,
+                            st.vCode as staffCode,
                             st.vMobile as staffMobile,
                             req.dtIn,
                             t.iRequested  as totalPaxRequested          
@@ -855,7 +858,8 @@ switch ($mode) {
                         $processedStops[$stopID]['staff'][] = [
                             "staffID" => $staffID,
                             "staffName" => $row['staffName'] ?? '',
-                            "staffMobile" => $row['staffMobile'] ?? '',
+                            'staffMobile' => maskMobileNumber($row['staffMobile']),
+                            "staffCode" => $staffRow['staffCode'] ?? '',
                             "vehicleNumber" => $row['vehicleNumber'] ?? '',
                             "entered" => !empty($row['dtIn']),
                             "enteredTime" => $row['dtIn'] ? date('H:i', strtotime($row['dtIn'])) : null

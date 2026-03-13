@@ -293,13 +293,13 @@ switch ($mode) {
 
             // **Check if trip date is within the next 2 days**
             if ($tripDate > $maxAllowedDate) {
-                $errors['beyondAllowed'][] = date('d M Y', strtotime($tripDate));
+                $errors['beyondAllowed'][] = date('d m Y', strtotime($tripDate));
                 continue;
             }
 
             // Check if trip date is in the past
             if ($tripDate < $currentDate) {
-                $errors['pastDate'][] = date('d M Y', strtotime($tripDate));
+                $errors['pastDate'][] = date('d m Y', strtotime($tripDate));
                 continue;
             }
 
@@ -315,7 +315,7 @@ switch ($mode) {
             $dayConflictSql = "SELECT iTrReqID FROM st_request WHERE iStaffID = $staff AND dPickup = '" . db_input($tripDate) . "' AND cStatus = 'A' LIMIT 1";
             $dayConflictRes = sql_query($dayConflictSql);
             if (sql_num_rows($dayConflictRes) > 0) {
-                $errors['dayConflict'][] = $tripDate;
+                $errors['dayConflict'][] = date('d m Y', strtotime($tripDate));
 
                 continue;
             }
@@ -342,7 +342,7 @@ switch ($mode) {
             $existingRes = sql_query($existingSql);
 
             if (sql_num_rows($existingRes) > 0) {
-                $errors['alreadyExists'][] = $tripDate;
+                $errors['alreadyExists'][] =  date('d m Y', strtotime($tripDate));;
                 continue;
             }
 
