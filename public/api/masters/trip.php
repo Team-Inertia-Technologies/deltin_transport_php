@@ -453,8 +453,33 @@ switch ($mode) {
                     }
                 }
 
-                $tripStatusText = "";
+                // Determine status based on time, capacity and cStatus (same logic as staff_dashboard.php)
+                $tripTime = date('H:i', strtotime($tripDateTime));
+                $currentTime = date('H:i');
+                $currentDate = date('Y-m-d');
+                $tripDate = date('Y-m-d', strtotime($tripDateTime));
+                
+                $status = "pending"; // Default status
                 $tripStatus = $row['tripStatus'];
+                
+                // Check if trip is over (past time on same date or past date)
+                if ($tripDate < $currentDate || ($tripDate == $currentDate && $tripTime < $currentTime)) {
+                    if ($tripStatus === 'C') {
+                        $status = "complete";
+                    } else {
+                        $status = "success";
+                    }
+                }
+                // Check if requested pax exceeds vehicle capacity
+                else if ($totalRequestedPax > $vehicleCapacity) {
+                    $status = "overbooked";
+                }
+                // Check if trip is upcoming (future time on same date or future date)
+                else if ($tripDate > $currentDate || ($tripDate == $currentDate && $tripTime > $currentTime)) {
+                    $status = "scheduled";
+                }
+                
+                $tripStatusText = "";
                 if ($tripStatus != 'A' && $tripStatus != 'D') {
                     $tripStatusText = isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tripStatus] : "";
                 }
@@ -471,6 +496,7 @@ switch ($mode) {
                     "driverMobile" => $row['driverMobile'] ?? '',
                     "tripStatus" => $tripStatus,
                     "tripStatusText" => $tripStatusText,
+                    "status" => $status, // Add the calculated status like in staff_dashboard.php
                     "vhDriver" => $vhDriver,
                     "cancellationReason" => $row['vCancellationReason'] ?? '',
                     "iTVAID" => $row['iTVAID'] ?? ''
