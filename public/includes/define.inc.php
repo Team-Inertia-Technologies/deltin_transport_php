@@ -331,7 +331,7 @@ $FLEET_TRIP_STATUS= array("N" => "Not started", "S" => "Enroute", "G"=>"Picked U
  $VEHICLE_STATUS_ARR = array("A"=>"Available", "R"=>"Returning", "E"=>"Enroute", "U"=>"Unavailable");
 $VEHICLE_STATUS_ARR2 = array("A"=>"Available", "U"=>"Unavailable", "I"=>"Idle");
 
-$STAFF_TRIP_STATUS= array("D"=>"Draft", "A" => "Active", "NS" => "No Show", "XP" => "Cancel with payment","XN" => "Cancel without payment", "C" => "Complete", "X" => "Remove");
+$STAFF_TRIP_STATUS= array("D"=>"Draft", "A" => "Active", "NS" => "No Show", "XP" => "Cancel with payment","XN" => "Cancel without payment", "C" => "Completed", "X" => "Removed");
 
 $FL_LOG_STATUS_ARR = array("S"=>"Trip Started", "G"=>"Guest Picked Up", "P"=>"Trip Paused", "R"=>"Trip Resumed", "C"=>"Trip Completed");
 

@@ -859,7 +859,7 @@ switch ($mode) {
                             "staffID" => $staffID,
                             "staffName" => $row['staffName'] ?? '',
                             'staffMobile' => maskMobileNumber($row['staffMobile']),
-                            "staffCode" => $staffRow['staffCode'] ?? '',
+                            "staffCode" => $row['staffCode'] ?? '',
                             "vehicleNumber" => $row['vehicleNumber'] ?? '',
                             "entered" => !empty($row['dtIn']),
                             "enteredTime" => $row['dtIn'] ? date('H:i', strtotime($row['dtIn'])) : null
