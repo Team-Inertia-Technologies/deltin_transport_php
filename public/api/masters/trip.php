@@ -410,6 +410,7 @@ switch ($mode) {
         $totalRequestedPax = 0;
         $totalAvailedPax = 0;
         $tripDateTime = '';
+        $overallTripStatus = '';
 
         while ($row = sql_fetch_assoc($res)) {
 
@@ -422,6 +423,7 @@ switch ($mode) {
                 $tripDateTime = $row['dtTrip'];
                 $totalRequestedPax = (int) ($row['requestedPax'] ?? 0);
                 $totalAvailedPax = (int) ($row['availedPax'] ?? 0);
+                $overallTripStatus = $row['tripStatus'] ?? '';
             }
 
 
@@ -453,33 +455,8 @@ switch ($mode) {
                     }
                 }
 
-                // Determine status based on time, capacity and cStatus (same logic as staff_dashboard.php)
-                $tripTime = date('H:i', strtotime($tripDateTime));
-                $currentTime = date('H:i');
-                $currentDate = date('Y-m-d');
-                $tripDate = date('Y-m-d', strtotime($tripDateTime));
-                
-                $status = "pending"; // Default status
-                $tripStatus = $row['tripStatus'];
-                
-                // Check if trip is over (past time on same date or past date)
-                if ($tripDate < $currentDate || ($tripDate == $currentDate && $tripTime < $currentTime)) {
-                    if ($tripStatus === 'C') {
-                        $status = "complete";
-                    } else {
-                        $status = "success";
-                    }
-                }
-                // Check if requested pax exceeds vehicle capacity
-                else if ($totalRequestedPax > $vehicleCapacity) {
-                    $status = "overbooked";
-                }
-                // Check if trip is upcoming (future time on same date or future date)
-                else if ($tripDate > $currentDate || ($tripDate == $currentDate && $tripTime > $currentTime)) {
-                    $status = "scheduled";
-                }
-                
                 $tripStatusText = "";
+                $tripStatus = $row['tripStatus'];
                 if ($tripStatus != 'A' && $tripStatus != 'D') {
                     $tripStatusText = isset($STAFF_TRIP_STATUS[$tripStatus]) ? $STAFF_TRIP_STATUS[$tripStatus] : "";
                 }
@@ -517,6 +494,31 @@ switch ($mode) {
         $routeInfo["totalCapacity"] = $totalCapacity;
         $routeInfo["totalRequestedPax"] = $totalRequestedPax;
         $routeInfo["totalAvailedPax"] = $totalAvailedPax;
+
+        // Calculate overall trip status (same logic as staff_dashboard.php)
+        $tripTime = date('H:i', strtotime($tripDateTime));
+        $currentTime = date('H:i');
+        $currentDate = date('Y-m-d');
+        $tripDate = date('Y-m-d', strtotime($tripDateTime));
+        
+        $status = "pending"; // Default status
+        
+        // Check if trip is over (past time on same date or past date)
+        if ($tripDate < $currentDate || ($tripDate == $currentDate && $tripTime < $currentTime)) {
+            if ($overallTripStatus === 'C') {
+                $status = "complete";
+            } else {
+                $status = "success";
+            }
+        }
+        // Check if requested pax exceeds total vehicle capacity
+        else if ($totalRequestedPax > $totalCapacity) {
+            $status = "overbooked";
+        }
+        // Check if trip is upcoming (future time on same date or future date)
+        else if ($tripDate > $currentDate || ($tripDate == $currentDate && $tripTime > $currentTime)) {
+            $status = "scheduled";
+        }
 
         // Get stops information for this route and trip
         $stops = [];
