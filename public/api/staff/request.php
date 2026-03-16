@@ -150,6 +150,7 @@ switch ($mode) {
                     "name"      => $routeName,
                     //    "pickUpOpt" => [],        
                     "timeOpt"   => $timeOpt
+            
                 ];
             }
         }
@@ -158,7 +159,8 @@ switch ($mode) {
             "data" => [
                 "routes"       => $routes,
                 "staffRouteID" => $staffRouteID,
-                "staffStopID"  => $staffStopID
+                "staffStopID"  => $staffStopID,
+                "reqOffset"  => $req_offset . " hours"
             ],
             "statusCode" => 200
         ]);
