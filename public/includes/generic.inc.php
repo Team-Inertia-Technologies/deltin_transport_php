@@ -1803,11 +1803,11 @@ function FillRadiosYN($is_selected, $ctrl, $yes_str = 'Yes', $no_str = 'No', $wi
 	return $str;
 }
 
-function maskMobileNumber($mobileNumber)
-{
-	$maskedNumber = str_repeat('*', strlen($mobileNumber) - 4) . substr($mobileNumber, -4);
-	return $maskedNumber;
-}
+// function maskMobileNumber($mobileNumber)
+// {
+// 	$maskedNumber = str_repeat('*', strlen($mobileNumber) - 4) . substr($mobileNumber, -4);
+// 	return $maskedNumber;
+// }
 
 function GetPriorityImg($priority)
 {
