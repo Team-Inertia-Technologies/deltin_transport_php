@@ -134,7 +134,7 @@ $response = [
             "id"           => $row["iFleet_BookingID"],
             "dateTime"     => $row["vPickUpTime"],
             "name"         => $row["guestName"],
-            "guest_mobile" => $row["guestMobile"],
+            "guest_mobile" => maskMobileNumber($row["guestMobile"]),
             "pax"          => intval($row["iPax"]),
             "bags"         => intval($row["iBaggage"]),
             "from"         => $row["fromLocation"],
@@ -143,7 +143,7 @@ $response = [
             "instru"       => $row["vRemarks"],
             "supervisor"   => [
                 "name"   => $supervisorName,
-                "number" => $supervisorMobile
+                "number" => maskMobileNumber($supervisorMobile)
             ],
            "fromLoc" => [
                 "lat" => $fromLat,
