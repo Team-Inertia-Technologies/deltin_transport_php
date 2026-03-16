@@ -364,6 +364,7 @@ switch ($mode) {
         $sql = "SELECT 
                     t.iTripID,
                     t.dtTrip,
+                    t.iCapacity as tripCapacity,
                     r.vName as routeName,
                     r.vDestination as destination,
                     tva.iVehicleID,
@@ -424,6 +425,7 @@ switch ($mode) {
                 $totalRequestedPax = (int) ($row['requestedPax'] ?? 0);
                 $totalAvailedPax = (int) ($row['availedPax'] ?? 0);
                 $overallTripStatus = $row['tripStatus'] ?? '';
+                $totalCapacity = (int) ($row['tripCapacity'] ?? 0); // Use trip capacity from st_trips table
             }
 
 
@@ -433,9 +435,8 @@ switch ($mode) {
                 $vendorID = (int) ($row['iVendorID'] ?? 0);
                 $driverID = (int) ($row['iDriverID'] ?? 0);
 
-                // Calculate capacity
+                // Calculate capacity (using trip capacity from st_trips, not individual vehicle capacity)
                 $vehicleCapacity = (int) ($row['vehicleCapacity'] ?? 0);
-                $totalCapacity += $vehicleCapacity;
 
                 // Get all drivers for this specific vehicle's vendor
                 $vhDriver = [];
@@ -795,6 +796,7 @@ switch ($mode) {
 
         $manifestSql = "SELECT 
                             t.dtTrip,
+                            t.iCapacity as tripCapacity,
                             r.iRouteID,
                             r.vName as routeName,
                             r.vDestination as destination,
@@ -843,6 +845,7 @@ switch ($mode) {
                 $routeName = $row['routeName'] ?? '';
                 $destination = $row['destination'] ?? '';
                 $totalPaxRequested = (int) ($row['totalPaxRequested'] ?? 0);
+                $totalCapacity = (int) ($row['tripCapacity'] ?? 0); // Use trip capacity from st_trips table
             }
 
             // Process vehicles (avoid duplicates)
@@ -850,7 +853,7 @@ switch ($mode) {
             if ($vehicleID > 0 && !in_array($vehicleID, $processedVehicles)) {
                 $vehicleCapacity = (int) ($row['vehicleCapacity'] ?? 0);
                 $vehicleNumbers[] = ($row['vehicleNumber'] ?? '') . ' (' . $vehicleCapacity . ')';
-                $totalCapacity += $vehicleCapacity;
+                // Don't add to totalCapacity here - use trip capacity instead
                 $processedVehicles[] = $vehicleID;
             }
 
