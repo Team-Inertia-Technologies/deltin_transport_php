@@ -39,6 +39,7 @@ switch ($mode) {
                     s.iDepartmentID,
                     s.iPropertyID,
                     s.cStatus,
+                    s.dtLastLogin,
                     r.vName as routeName,
                     st.vName as stopName,
                     d.vName as departmentName,
@@ -54,7 +55,9 @@ switch ($mode) {
         $res = sql_query($sql);
         $staffList = [];
 
+
         while ($row = sql_fetch_assoc($res)) {
+
             $staffList[] = [
                 'id' => (int) $row['iStaffID'],
                 'code' => db_output2($row['vCode']),
@@ -69,6 +72,8 @@ switch ($mode) {
                 'departmentName' => db_output2($row['departmentName'] ?? ''),
                 'propertyId' => (int) ($row['iPropertyID'] ?? 0),
                 'propertyName' => db_output2($row['propertyName'] ?? ''),
+                'loginDate' => isset($row['dtLastLogin']) ? date('d-m-Y', strtotime($row['dtLastLogin'])) : '',
+                'loginTime' => isset($row['dtLastLogin']) ? date('h:i A', strtotime($row['dtLastLogin'])) : '',
                 'status' => $row['cStatus']
             ];
         }
@@ -720,16 +725,16 @@ switch ($mode) {
         $rowData = [];
         while ($row = sql_fetch_assoc($overviewRes)) {
             $rowItem = [
-                "requestId"   => (int)$row['iTrReqID'],
-                "staffid"     => (int)$row['staffid'],
-                "date"        => date('j M Y', strtotime($row['date'])),
+                "requestId" => (int) $row['iTrReqID'],
+                "staffid" => (int) $row['staffid'],
+                "date" => date('j M Y', strtotime($row['date'])),
                 //"status"      => db_output2($row['status']),
-                "route"       => db_output2($row['route']),
-                "pickup"      => db_output2($row['pickup']),
-                "pickupTime"  => date('H:i', strtotime($row['pickupTime'])),
+                "route" => db_output2($row['route']),
+                "pickup" => db_output2($row['pickup']),
+                "pickupTime" => date('H:i', strtotime($row['pickupTime'])),
                 "enteredTime" => $row['enteredTime'] ? date('H:i', strtotime($row['enteredTime'])) : "",
-                "status"  => $row['sendStatus'],
-                "vehiNum"  => db_output2($row['vehiNum'])
+                "status" => $row['sendStatus'],
+                "vehiNum" => db_output2($row['vehiNum'])
             ];
 
             // // Only include vehicle number if it exists and is not empty
@@ -750,7 +755,7 @@ switch ($mode) {
 
         exit;
 
-        // ===================== CASE 8: TOGGLE_STATUS =====================
+    // ===================== CASE 8: TOGGLE_STATUS =====================
     case 'TOGGLE_STATUS':
         $id = intval($_REQUEST['iStaffID'] ?? 0);
 
@@ -798,7 +803,7 @@ switch ($mode) {
         $departmentResult = sql_query($departmentQuery);
 
         while ($deptRow = sql_fetch_assoc($departmentResult)) {
-            $departmentMap[strtolower(trim($deptRow['vName']))] = (int)$deptRow['iDepartmentID'];
+            $departmentMap[strtolower(trim($deptRow['vName']))] = (int) $deptRow['iDepartmentID'];
         }
 
         $propertyMap = [];
@@ -806,7 +811,7 @@ switch ($mode) {
         $propertyResult = sql_query($propertyQuery);
 
         while ($propRow = sql_fetch_assoc($propertyResult)) {
-            $propertyMap[strtolower(trim($propRow['vName']))] = (int)$propRow['iPropertyID'];
+            $propertyMap[strtolower(trim($propRow['vName']))] = (int) $propRow['iPropertyID'];
         }
 
 
@@ -923,7 +928,7 @@ switch ($mode) {
             if (sql_num_rows($checkRes) > 0) {
 
                 $existing = sql_fetch_assoc($checkRes);
-                $iStaffID = (int)$existing['iStaffID'];
+                $iStaffID = (int) $existing['iStaffID'];
 
                 $sql = "UPDATE staff SET 
                         vName = '$vName',
@@ -976,7 +981,7 @@ switch ($mode) {
         exit;
 
 
-        // ===================== DEFAULT =====================
+    // ===================== DEFAULT =====================
     default:
         echo json_encode([
             "error" => [
