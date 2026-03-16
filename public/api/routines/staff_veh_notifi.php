@@ -324,7 +324,7 @@ function processQueuedNotifications()
 {
     // Get all queued notifications
     $sql = "
-        SELECT 
+        SELECT DISTINCT
             n.iNotificationID,
             n.iUserID,
             n.vDeviceToken,
