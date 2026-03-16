@@ -496,7 +496,7 @@ switch ($mode) {
                     "driverMobile" => $row['driverMobile'] ?? '',
                     "tripStatus" => $tripStatus,
                     "tripStatusText" => $tripStatusText,
-                    "status" => $status, // Add the calculated status like in staff_dashboard.php
+                   
                     "vhDriver" => $vhDriver,
                     "cancellationReason" => $row['vCancellationReason'] ?? '',
                     "iTVAID" => $row['iTVAID'] ?? ''
@@ -770,7 +770,8 @@ switch ($mode) {
                 "vendorOpt" => $vendorOpt,
                 "stops" => $stops,
                 "cancelOpt" => $cancelOpt,
-                "addVehButton" => $addVehButton
+                "addVehButton" => $addVehButton,
+                 "status" => $status, 
             ],
             "statusCode" => 200
         ]);
