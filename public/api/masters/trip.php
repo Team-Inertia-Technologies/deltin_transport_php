@@ -557,13 +557,10 @@ switch ($mode) {
                                     st.vMobile as staffMobile,
                                     st.vCode as staffCode,
                                     req.iTripID,
-                                    tva.iVehicleID,
-                                    v.vRnum as vehicleNumber,
-                                    req.dtIn
+                                    req.dtIn,
+                                    req.iVehicleID
                                 FROM st_request req
                                 INNER JOIN staff st ON req.iStaffID = st.iStaffID AND st.cStatus = 'A'
-                                LEFT OUTER JOIN st_trip_vehicle_assoc tva ON req.iTripID = tva.iTripID
-                                LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
                                 WHERE req.iTripID = $iTripID 
                                 AND req.iStopID = $stopID 
                                 AND req.cStatus = 'A'
@@ -572,12 +569,22 @@ switch ($mode) {
 
                     $staffList = [];
                     while ($staffRow = sql_fetch_assoc($staffRes)) {
+                        // Get vehicle number if staff has been assigned to a vehicle
+                        $vehicleNumber = '';
+                        if (!empty($staffRow['iVehicleID'])) {
+                            $vehSql = "SELECT v.vRnum FROM vehicle v WHERE v.iVehicleID = " . intval($staffRow['iVehicleID']) . " AND v.cStatus = 'A'";
+                            $vehRes = sql_query($vehSql);
+                            if ($vehRow = sql_fetch_assoc($vehRes)) {
+                                $vehicleNumber = $vehRow['vRnum'];
+                            }
+                        }
+                        
                         $staffList[] = [
                             "staffID" => (int) $staffRow['iStaffID'],
                             "staffName" => $staffRow['staffName'] ?? '',
                             'staffMobile' => maskMobileNumber($staffRow['staffMobile']),
                             "staffCode" => $staffRow['staffCode'] ?? '',
-                            "vehicleNumber" => $staffRow['vehicleNumber'] ?? '',
+                            "vehicleNumber" => $vehicleNumber,
                             "entered" => !empty($staffRow['dtIn']),
                             "enteredTime" => $staffRow['dtIn'] ? date('H:i', strtotime($staffRow['dtIn'])) : null
                         ];
