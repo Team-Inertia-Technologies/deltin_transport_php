@@ -16,22 +16,24 @@ header('Content-Type: application/json');
  * COMMON MISTAKE: Passing +91 format causes Exotel to silently drop
  * the second leg — call rings then cuts, To not shown in dashboard.
  */
-function triggerExotelCall(string $driverNumber): array
+function triggerExotelCall(string $customerNumber, string $driverNumber): array
 {
     $api_key   = 'ab4f6f769ee189fa5e4d57b79789de3b987fab33a413819f';
     $api_token = '5f1f43db51a120f9027c32fbecc3de88410a92a0396c9da0';
     $sid       = 'deltacorp1';
-    $callerId  = '07314852425';
-    $appletUrl = 'http://my.exotel.com/deltacorp1/exoml/start_voice/1199974';
-    $url = "https://api.exotel.com/v1/Accounts/$sid/Calls/connect.json";
+    $callerId  = '07314852425'; // Your ExoPhone in 0XXXXXXXXXX format
 
-    // From     = the driver — Exotel calls this number directly
-    // CallerId = ExoPhone — shown to the driver as caller ID
-    // Url      = your Exotel call flow (AppletID) that handles what happens next
+    $url = "https://api.exotel.com/v1/Accounts/{$sid}/Calls/connect.json";
+
+    // From      = called FIRST (customer)
+    // To        = called SECOND after From picks up (driver)
+    // CallerId  = ExoPhone — shown to both parties as caller ID
+    // MUST use 0XXXXXXXXXX format — NOT +91
     $data = [
-        'From'     => $driverNumber,
+        'From'     => $customerNumber,
+        'To'       => $driverNumber,
         'CallerId' => $callerId,
-        'Url'      => $appletUrl
+        'Record'   => 'true',
     ];
 
     $ch = curl_init();
@@ -54,7 +56,7 @@ function triggerExotelCall(string $driverNumber): array
     }
 
     $decoded = json_decode($response, true);
-    error_log("[Exotel] HTTP {$http_code} | From(Driver)={$driverNumber} | CallerId={$callerId} | " . $response);
+    error_log("[Exotel] HTTP {$http_code} | From={$customerNumber} | To={$driverNumber} | " . $response);
 
     if ($http_code === 200 && isset($decoded['Call']['Sid'])) {
         return [
@@ -148,7 +150,7 @@ if ($row = $result->fetch_assoc()) {
         exit;
     }
 
-    $callResponse = triggerExotelCall($driver_number);
+     $callResponse = triggerExotelCall($customer_number, $driver_number);
 
     echo json_encode([
         'customer_number' => $customer_number,
