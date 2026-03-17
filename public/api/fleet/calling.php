@@ -150,7 +150,7 @@ if ($row = $result->fetch_assoc()) {
         exit;
     }
 
-    // $callResponse = triggerExotelCall($customer_number, $driver_number);
+     $callResponse = triggerExotelCall($customer_number, $driver_number);
 
     echo json_encode([
         'customer_number' => $customer_number,
