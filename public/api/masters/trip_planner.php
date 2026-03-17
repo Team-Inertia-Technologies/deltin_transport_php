@@ -439,11 +439,11 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
         $tripData = sql_fetch_assoc($findTripsRes);
         $tripCount = $tripData['tripCount'];
 
-        // Get vehicle options like ADD_ONLOAD
         $vehicleSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity 
                       FROM vehicle v
                       LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                       WHERE v.cStatus = 'A'
+                      AND v.cServiceType IN ('S','B')
                       ORDER BY v.vRnum";
         $vehicleRes = sql_query($vehicleSql);
 
@@ -493,7 +493,6 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
             ];
         }
 
-        // Get routes for rdOpt 
         $routesSql = "SELECT iRouteID, vName, vDestination FROM st_route WHERE cStatus = 'A' ORDER BY iRank";
         $routesRes = sql_query($routesSql);
 
@@ -507,7 +506,6 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
             ];
         }
 
-        // Get actual trip assignments for each timing
         $timingsWithAssignments = [];
         foreach ($timings as $timing) {
             $tripAssignmentsSql = "SELECT DISTINCT
@@ -521,8 +519,8 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                                     d.vName as driverName,
                                     d.vMobileNum as driverMobile
                                 FROM st_trips t
-                                LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID
-                                LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
+                                INNER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID
+                                INNER JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A' AND v.cServiceType IN ('S','B')
                                 LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                                 LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
                                 LEFT JOIN driver d ON tva.iDriverID = d.iDriverID AND d.cStatus = 'A'
@@ -531,6 +529,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                                 AND TIME(t.dtTrip) = '" . db_input($timing) . "'
                                 AND t.cStatus = 'A'
                                 AND t.cStatus != 'X'
+                                AND tva.iVehicleID > 0
                                 ORDER BY v.vRnum";
 
             $assignmentsRes = sql_query($tripAssignmentsSql);
@@ -561,6 +560,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                        LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                        LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' and ven.cType IN ('B','T') 
                        WHERE v.cStatus = 'A'
+                       AND v.cServiceType IN ('S','B')
                        ORDER BY v.vRnum";
         $tableArrRes = sql_query($tableArrSql);
 
