@@ -478,7 +478,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
         $vendorSql = "SELECT DISTINCT ven.iVendorID, ven.vName 
                      FROM vendor ven 
                      INNER JOIN vehicle v ON v.iVendorID = ven.iVendorID 
-                     WHERE v.cStatus = 'A' AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
+                     WHERE v.cStatus = 'A' AND ven.cStatus = 'A' AND ven.cType IN ('B','S')
                      ORDER BY ven.vName";
         $vendorRes = sql_query($vendorSql);
 
@@ -522,7 +522,7 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
                                 INNER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID
                                 INNER JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A' AND v.cServiceType IN ('S','B')
                                 LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                                LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' AND ven.cType IN ('B','T')
+                                LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' AND ven.cType IN ('B','S')
                                 LEFT JOIN driver d ON tva.iDriverID = d.iDriverID AND d.cStatus = 'A'
                                 WHERE t.iRouteID = $routeID
                                 AND DATE(t.dtTrip) BETWEEN '$fromDateFormatted' AND '$toDateFormatted'
@@ -555,10 +555,10 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
         }
 
         // Get table array with vehicle details and vendor-specific drivers
-        $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, ven.vName as vOwner, ven.iVendorID
+        $tableArrSql = "SELECT v.iVehicleID, v.vRnum, vc.iCapacity, ven.vName as vOwner, ven.iVendorID, v.iType
                        FROM vehicle v
                        LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                       LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' and ven.cType IN ('B','T') 
+                       LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' and ven.cType IN ('B','S') 
                        WHERE v.cStatus = 'A'
                        AND v.cServiceType IN ('S','B')
                        ORDER BY v.vRnum";
@@ -568,14 +568,31 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip);
 
         while ($tableRow = sql_fetch_assoc($tableArrRes)) {
             $vendorID = (int) ($tableRow['iVendorID'] ?? 0);
+            $vehicleType = (int) ($tableRow['iType'] ?? 0);
 
-            // Get drivers for this specific vendor only
             $vhDriver = [];
+
             if ($vendorID > 0) {
+
+                // Normal vendor drivers
                 $vendorDriversSql = "SELECT d.iDriverID, d.vName as drName, d.cStatus
-                                   FROM driver d
-                                   WHERE d.cStatus = 'A' AND d.iVendorID = $vendorID
-                                   ORDER BY d.vName";
+                         FROM driver d
+                         WHERE d.cStatus = 'A'
+                         AND d.iVendorID = $vendorID
+                         ORDER BY d.vName";
+            } elseif ($vendorID == 0 && $vehicleType == 3) {
+
+                // Company vehicle type 3 → get drivers of type 3
+                $vendorDriversSql = "SELECT d.iDriverID, d.vName as drName, d.cStatus
+                         FROM driver d
+                         WHERE d.cStatus = 'A'
+                         AND d.iType = 3
+                         ORDER BY d.vName";
+            } else {
+                $vendorDriversSql = "";
+            }
+
+            if (!empty($vendorDriversSql)) {
                 $vendorDriversRes = sql_query($vendorDriversSql);
 
                 while ($driverRow = sql_fetch_assoc($vendorDriversRes)) {
