@@ -23,7 +23,7 @@ function triggerExotelCall(string $driverNumber): array
     $sid       = 'deltacorp1';
     $callerId  = '07314852425';
     $appletUrl = 'http://my.exotel.com/deltacorp1/exoml/start_voice/1199974';
-    $url = "https://api.exotel.com/v1/Accounts/{$sid}/Calls/connect";
+    $url = "https://api.exotel.com/v1/Accounts/$sid/Calls/connect.json";
 
     // From     = the driver — Exotel calls this number directly
     // CallerId = ExoPhone — shown to the driver as caller ID
@@ -31,8 +31,7 @@ function triggerExotelCall(string $driverNumber): array
     $data = [
         'From'     => $driverNumber,
         'CallerId' => $callerId,
-        'Url'      => $appletUrl,
-        'Record'   => 'true',
+        'Url'      => $appletUrl
     ];
 
     $ch = curl_init();
