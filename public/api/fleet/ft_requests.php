@@ -1304,7 +1304,7 @@ switch ($mode) {
         $categoryID = intval($_REQUEST['categoryID'] ?? 0);
         $typeID = intval($_REQUEST['typeID'] ?? 0);
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
-        $driverName = isset(($_REQUEST['driverName'])) ? db_input($_REQUEST['driverName']): '';
+        $status = $_REQUEST['status'] ?? '';
 
         // Get vehicle categories for dropdown options
         $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cType IN ('B','F') AND cStatus = 'A' ORDER BY vName";
@@ -1319,6 +1319,11 @@ switch ($mode) {
             $tripStatusOpts[] = ['id' => $id, 'name' => $name];
         }
 
+        $requestTypeArr = [['id' => 0, 'name' => 'All']];
+        foreach ($REQUEST_TYPE_ARR as $id => $name) {
+            $requestTypeArr[] = ['id' => $id, 'name' => $name];
+        }
+
         $vehicleCategories = [];
         while ($categoryRow = sql_fetch_assoc($vehicleCategoryRes)) {
             $vehicleCategories[] = [
@@ -1329,33 +1334,24 @@ switch ($mode) {
         }
 
         // Get vehicles using the generic function with current status
-        $vehicleData = GetVehicle_BasedOnSearch2($typeID, $categoryID, 'Y');
+        $vehicleData = GetVehicle_BasedOnSearch2($typeID, $categoryID, 'Y', '', '', $status);
 
         $vehicles = [];
         $currentlyAssigned = [];
         $availableVehicles = [];
 
         foreach ($vehicleData as $vehicleID => $vehData) {
-            // Apply keyword filter if provided
+            // Apply keyword filter if provided (matches vehicle reg no, name, or driver name)
             if (!empty($keyword)) {
                 $keywordMatch = false;
                 if (
                     stripos($vehData['NUM'], $keyword) !== false ||
-                    stripos($vehData['NAME'], $keyword) !== false
+                    stripos($vehData['NAME'], $keyword) !== false ||
+                    (!empty($vehData['DRIVER_NAME']) && stripos($vehData['DRIVER_NAME'], $keyword) !== false)
                 ) {
                     $keywordMatch = true;
                 }
                 if (!$keywordMatch)
-                    continue;
-            }
-
-            // Apply driver name filter if provided
-            if (!empty($driverName)) {
-                $driverNameMatch = false;
-                if (!empty($vehData['DRIVER_NAME']) && stripos($vehData['DRIVER_NAME'], $driverName) !== false) {
-                    $driverNameMatch = true;
-                }
-                if (!$driverNameMatch)
                     continue;
             }
 
@@ -1385,6 +1381,7 @@ switch ($mode) {
             $lastAssignedTime = null;
             $lastAssigned = false;
             $nextTripTime = null;
+            $bookingStatus = 'I';
 
             // BOOKINGS array contains future trips, get the earliest one as next trip
             if (!empty($vehData['BOOKINGS'])) {
@@ -1394,6 +1391,7 @@ switch ($mode) {
                     return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
                 });
                 $nextTripTime = $bookings[0]['PICKUP_TIME'];
+                $bookingStatus = $bookings[0]['STATUS'];
             }
 
             $vehicleDataFormatted = [
@@ -1411,7 +1409,7 @@ switch ($mode) {
                 'driverMobile' => db_output2($vehData['DRIVER_NUM'] ?? ''),
                 'nextTripTime' => $nextTripTime,
                 'disposal' => false,
-                'status' => 'A',
+                'status' => $bookingStatus,
                 'bookings' => $vehData['BOOKINGS'] // Include booking details for reference
             ];
 
@@ -1576,6 +1574,7 @@ switch ($mode) {
                 "vehicles" => $vehicles,
                 "vehicleTypeOpt" => $vehicleTypeOpt,
                 "tripStatusOpts" => $tripStatusOpts
+              //  "requestTypeArr" => $requestTypeArr
             ],
             "statusCode" => 200
         ]);

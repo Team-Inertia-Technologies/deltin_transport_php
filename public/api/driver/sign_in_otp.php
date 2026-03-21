@@ -332,7 +332,7 @@ if ($mode == 'LOGIN') {
         ]);
         exit;
     }
-    $otp_query = "SELECT iOTPID FROM otp WHERE vOTP='$OTP' AND vPhone='$mobile' AND cAdded_RefType='S' AND cUsed!='X' AND '$TIME' < dtTo";
+    $otp_query = "SELECT iOTPID FROM otp WHERE vOTP='$OTP' AND vPhone='$mobile' AND cAdded_RefType='S' AND cUsed!='X'";
     $otp_result = sql_query($otp_query, "Check if OTP exists for staff");
 
     if (sql_num_rows($otp_result)) {
