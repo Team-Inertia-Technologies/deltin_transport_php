@@ -1407,7 +1407,7 @@ switch ($mode) {
                 'driverID' => intval($vehData['DRIVER_ID'] ?? 0),
                 'driverName' => db_output2($vehData['DRIVER_NAME'] ?? ''),
                 'driverMobile' => db_output2($vehData['DRIVER_NUM'] ?? ''),
-                'nextTripTime' => $nextTripTime,
+'nextTripTime' => $nextTripTime ? date('d/m/Y H:i', strtotime($nextTripTime)) : null,
                 'disposal' => false,
                 'status' => $bookingStatus,
                 'bookings' => $vehData['BOOKINGS'] // Include booking details for reference
