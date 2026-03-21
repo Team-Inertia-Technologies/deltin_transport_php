@@ -565,9 +565,9 @@ foreach ($vehicleData as $vehicleID => $vehData) {
 
         $now = time();
         $bookings = $vehData['BOOKINGS'];
-        $status =  $bookings[0]['STATUS'];
+        $_status =  $bookings[0]['STATUS'];
 
-        if(in_array($status, array(''))){
+        if(in_array($_status, array(''))){
 
         }
 
@@ -668,7 +668,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
         'prevTripTime'    => $prevTripDateTime ?? '',
         'bookingId'       => $nextBookingId ? (int)$nextBookingId : 0,
         'disposal'        => false,
-        'status'          => (isset($status) && !empty($status))?$status:'I', //!empty($nextBookingStatus) ? $nextBookingStatus : 'A',
+        'status'          => (isset($_status) && !empty($_status))?$_status:'I', //!empty($nextBookingStatus) ? $nextBookingStatus : 'A',
         'driverStatus'    => $driverStatus,
     ];
 
