@@ -1392,7 +1392,7 @@ switch ($mode) {
                     return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
                 });
                 $nextTripTime = $bookings[0]['PICKUP_TIME'];
-                $bookingStatus = $bookings[0]['STATUS'];
+                $bookingStatus = $bookings[0]['TYPE_ID'];
             }
 
             $vehicleDataFormatted = [

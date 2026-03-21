@@ -2015,9 +2015,11 @@ foreach ($vehicleData as $vehicleID => $vehData) {
         }
         if ($status) {
             if ($status == 'A') {
-                $filters[] = "d.cAvailable  = 'Y'";
+                $filters[] = "d.cAvailable = 'Y'";
+            } elseif ($status == 'I') {
+                $filters[] = "d.cAvailable = 'I'";
             } else {
-                $filters[] = "d.cAvailable  = 'N'";
+                $filters[] = "d.cAvailable = 'N'";
             }
         }
         if ($keyword != '') {
