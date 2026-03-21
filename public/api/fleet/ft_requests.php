@@ -378,7 +378,7 @@ switch ($mode) {
             $endTimeRes = sql_query($endTimeSql);
             if (sql_num_rows($endTimeRes) > 0) {
                 $endTimeRow = sql_fetch_assoc($endTimeRes);
-                $endTime = !empty($endTimeRow['dtAdded']) ? date('d-m-Y H:i', strtotime($startTimeRow['dtAdded'])) : '';
+                $endTime = !empty($endTimeRow['dtAdded']) ? date('d-m-Y H:i', strtotime($endTimeRow['dtAdded'])) : '';
             }
             if ($tripStatusCode == 'G' || $tripStatusCode == 'P' || $tripStatusCode == 'R' || $tripStatusCode == 'C' || $tripStatusCode == 'S') {
                 $isTrip = 'Y';
@@ -1951,9 +1951,17 @@ switch ($mode) {
 
         // Calculate simple pause count for display
         $pauseCount = 0;
+        $actualPickupDateTime = '';
+        $actualDropDateTime = '';
         foreach ($tripStages as $stage) {
             if ($stage['stageCode'] === 'P') {
                 $pauseCount++;
+            }
+            if ($stage['stageCode'] === 'G' && empty($actualPickupDateTime)) {
+                $actualPickupDateTime = $stage['dateTime'];
+            }
+            if ($stage['stageCode'] === 'C') {
+                $actualDropDateTime = $stage['dateTime'];
             }
         }
 
@@ -1968,8 +1976,8 @@ switch ($mode) {
             'pax' => sprintf('%02d', intval($tripData['iPax'] ?? 0)),
             'bookedBy' => db_output2($tripData['bookedByName'] ?? ''),
             'category' => db_output2($tripData['bookingCategoryName'] ?? ''),
-            'pickupDateTime' => !empty($tripData['vPickUpTime']) ? date('d/m/Y, H:i', strtotime($tripData['vPickUpTime'])) : '',
-            'dropDateTime' => !empty($tripData['tReturnTime']) ? date('d/m/Y, H:i', strtotime($tripData['tReturnTime'])) : '',
+            'pickupDateTime' => $actualPickupDateTime,
+            'dropDateTime' => $actualDropDateTime,
             'pickupFrom' => db_output2($tripData['vPickUpLocation'] ?? ''),
             'dropTo' => db_output2($tripData['vDropLocation'] ?? ''),
             'pickedupBy' => [
