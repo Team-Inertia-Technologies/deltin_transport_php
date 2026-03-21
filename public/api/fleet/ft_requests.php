@@ -1304,7 +1304,7 @@ switch ($mode) {
         $categoryID = intval($_REQUEST['categoryID'] ?? 0);
         $typeID = intval($_REQUEST['typeID'] ?? 0);
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
-        $status = $_REQUEST['status'] ?? '';
+        $status = (isset($_REQUEST['status']) && $_REQUEST['status'] != 0 ) ? $_REQUEST['status'] : '';
 
         // Get vehicle categories for dropdown options
         $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cType IN ('B','F') AND cStatus = 'A' ORDER BY vName";
@@ -1314,7 +1314,7 @@ switch ($mode) {
         foreach ($VEHICLE_DRIVER_TYPE as $id => $name) {
             $vehicleTypeOpt[] = ['id' => intval($id), 'name' => $name];
         }
-
+ $tripStatusOpts = [['id' => 0, 'name' => 'All']];
         foreach ($FLEET_TRIP_STATUS as $id => $name) {
             $tripStatusOpts[] = ['id' => $id, 'name' => $name];
         }
@@ -1334,6 +1334,7 @@ switch ($mode) {
         }
 
         // Get vehicles using the generic function with current status
+
         $vehicleData = GetVehicle_BasedOnSearch2($typeID, $categoryID, 'Y', '', '', $status);
 
         $vehicles = [];
