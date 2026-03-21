@@ -531,7 +531,7 @@ switch ($mode) {
         $typeID = intval($_REQUEST['typeID'] ?? 0);
         
         // Get vehicle categories array
-        $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cStatus = 'A' ORDER BY vName";
+        $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category AND cType IN ('B','F') WHERE cStatus = 'A' ORDER BY vName";
         $vehicleCategoryRes = sql_query($vehicleCategorySql);
         
 
