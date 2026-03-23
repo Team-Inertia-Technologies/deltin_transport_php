@@ -164,7 +164,7 @@ switch ($mode) {
 
 
         if (!empty($searchtxt)) {
-            $cond .= " and ((vName like '%$searchtxt%') or (vMobileNo like '%$searchtxt%') or (vPickUpLocation like '%$searchtxt%') or (vDropLocation like '%$searchtxt%'))";
+            $cond .= " and ((vName like '%$searchtxt%') or (iBookingID = '$searchtxt') or (vMobileNo like '%$searchtxt%') or (vPickUpLocation like '%$searchtxt%') or (vDropLocation like '%$searchtxt%'))";
         }
 
         if (!empty($bookedFor)) {
@@ -436,6 +436,7 @@ switch ($mode) {
     case 'VEHICLE_COMPONENT':
 
         $cond = "";
+        $cond_driver = ""; 
 
         $currentDate = date('Y-m-d');
         $searchtxt = $_REQUEST['searchtxt'] ?? '';
@@ -475,6 +476,7 @@ switch ($mode) {
 
         if (!empty($searchtxt)) {
             $cond .= " and ((vc.vName like '%$searchtxt%') or (d.vMobileNo like '%$searchtxt%') or (d.vName like '%$searchtxt%') or (v.vRnum like '%$searchtxt%'))";
+            $cond_driver .= " and (d.vMobileNo like '%$searchtxt%') or (d.vName like '%$searchtxt%')";
         }
 
         if (!empty($category)) {
@@ -629,7 +631,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
         $driverLoggedIn = GetXFromYID(
             "SELECT dtLoggedIn 
              FROM driver 
-             WHERE iDriverID = " . (int)$vehData['DRIVER_ID'] . " 
+             WHERE iDriverID = " . (int)$vehData['DRIVER_ID'] . " ".$driver_cond." 
              AND dtLoggedIn IS NOT NULL"
         );
 
