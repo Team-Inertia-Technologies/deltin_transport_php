@@ -33,7 +33,8 @@ switch ($mode) {
         $isUser        = ($_REQUEST['isUser'] ?? 'N') === 'Y';
         $username     = db_input($_REQUEST['username'] ?? '');
         $password = htmlspecialchars_decode($_REQUEST['password'] ?? '');
-        $level        = intval($_REQUEST['level'] ?? 0);
+       // $level        = intval($_REQUEST['level'] ?? 0);
+        $level        = 7;
         $reportingTo  = intval($_REQUEST['reportingTo'] ?? 0);
 
         /* ---- DUPLICATE MOBILE CHECK ---- */
@@ -56,11 +57,11 @@ switch ($mode) {
 
             sql_query("
                 INSERT INTO users_temp
-                (iUserID,vName,vUName,vPassword,vPhone,iDepartmentID,iReportingID,iLevel,
+                (iUserID,vName,vUName,vPassword,vPhone,iDepartmentID,iReportingID,iLevel,cRefType,
                  cStatus,cAction,dtCreated,iCreated_UserID)
                 VALUES
                 ($iUserID,'$vName','$username','$password','$vMobile',
-                 $iDepartmentID,$reportingTo,$level,'D','AWA','$NOW',$sess_user_id)
+                 $iDepartmentID,$reportingTo,$level,'A','D','AWA','$NOW',$sess_user_id)
             ");
 
             sql_query("UPDATE fleet_staff SET iUserID=$iUserID WHERE iFStaffID=$iFStaffID");
@@ -78,7 +79,9 @@ switch ($mode) {
 
         $iFStaffID = intval($_REQUEST['iFStaffID']);
 
-
+        $res = sql_query("SELECT iFStaffID,vCode,vName,vMobile,iDepartmentID,
+        iUserID,cStatus FROM fleet_staff WHERE iFStaffID = $iFStaffID AND cStatus != 'X'");
+        
         if (sql_num_rows($res) == 0) {
             echo json_encode([
                 "statusCode" => 400,
@@ -86,9 +89,6 @@ switch ($mode) {
             ]);
             exit;
         }
-
-        $res = sql_query("SELECT iFStaffID,vCode,vName,vMobile,iDepartmentID,
-        iUserID,cStatus FROM fleet_staff WHERE iFStaffID = $iFStaffID AND cStatus != 'X'");
 
 
         $userInfo = sql_fetch_assoc($res);
@@ -169,7 +169,7 @@ switch ($mode) {
     $isUser        = ($_REQUEST['isUser'] ?? 'N') === 'Y';
 
     $username     = db_input($_REQUEST['username'] ?? '');
-    $level        = intval($_REQUEST['level'] ?? 0);
+    $level        = 7;
     $reportingTo  = intval($_REQUEST['reportingTo'] ?? 0);
 
 
