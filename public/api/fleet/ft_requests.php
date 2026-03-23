@@ -1617,7 +1617,7 @@ $vBookingCode = date('ym') . $last_char;
         }
 
         // Check if booking exists and is active
-        $bookingCheckSql = "SELECT iFleet_BookingID, vName,vMobileNo, vPickUpTime,vPickUpLocation FROM fleet_booking 
+        $bookingCheckSql = "SELECT iFleet_BookingID, vName,vMobileNo, vPickUpTime,vPickUpLocation, vBookingCode FROM fleet_booking 
                            WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
         $bookingCheckRes = sql_query($bookingCheckSql);
 
@@ -1732,9 +1732,10 @@ $vBookingCode = date('ym') . $last_char;
              $vPickUpLocation = db_output2($bookingData['vPickUpLocation']) ?? '';
             $pickup_time = !empty($bookingData['vPickUpTime']) ? date('h:i A', strtotime($bookingData['vPickUpTime'])) : '';
             $dtAdded = NOW;
+            $booking_code= $bookingData['vBookingCode'] ?? '';
 
             // Send WhatsApp
-            SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $vPickUpLocation,$pickup_time);
+            SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $vPickUpLocation,$pickup_time, $booking_code);
 
             sql_query("
         INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)VALUES ('C', '+91', '$vMobileNo', 'WA', '$dtAdded', $user_id)
