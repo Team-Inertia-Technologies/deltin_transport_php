@@ -290,7 +290,7 @@ switch ($mode) {
                 'id' => intval($row['iFleet_BookingID']),
                 'bookingCode' => (isset($row['vBookingCode']) && !empty($row['vBookingCode']))?db_output2($row['vBookingCode']):"N/A",
                 'passengerName' => db_output2($row['vName'] ?? ''),
-                'mobNum' => db_output2($row['vMobileNo'] ?? ''),
+                'mobNum' => db_output2(maskMobileNumber($row['vMobileNo']) ?? ''),
                 'staff' => $is_staff,
                 'guest' => $is_guest,
                 'from' => db_output2($row['vPickUpLocation'] ?? ''),
