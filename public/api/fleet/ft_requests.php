@@ -422,7 +422,7 @@ switch ($mode) {
             $rowDataItem = [
                 'id' => $bookingID,
                 'fullName' => db_output2($row['vName'] ?? ''),
-                'phone' => db_output2($row['vMobileNo'] ?? ''),
+                'phone' => maskMobileNumber($row['vMobileNo']),
                 'from' => strtolower($row['cBookingFor'] ?? ''),
                 'location' => db_output2($row['vPickUpLocation'] ?? ''),
                 'destination' => db_output2($row['vDropLocation'] ?? ''),
