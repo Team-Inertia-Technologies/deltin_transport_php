@@ -532,7 +532,8 @@ foreach ($vehicleData as $vehicleID => $vehData) {
 
         if (
             stripos($vehData['NUM'], $searchtxt) !== false ||
-            stripos($vehData['NAME'], $searchtxt) !== false
+            stripos($vehData['NAME'], $searchtxt) !== false ||
+            (!empty($vehData['DRIVER_NAME']) && stripos($vehData['DRIVER_NAME'], $searchtxt) !== false)
         ) {
             $keywordMatch = true;
         }
