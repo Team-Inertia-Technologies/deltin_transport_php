@@ -164,7 +164,7 @@ switch ($mode) {
 
 
         if (!empty($searchtxt)) {
-            $cond .= " and ((vName like '%$searchtxt%') or (iFleet_BookingID = '$searchtxt') or (vMobileNo like '%$searchtxt%') or (vPickUpLocation like '%$searchtxt%') or (vDropLocation like '%$searchtxt%'))";
+            $cond .= " and ((vName like '%$searchtxt%') or (vBookingCode like '%$searchtxt%') or (vMobileNo like '%$searchtxt%') or (vPickUpLocation like '%$searchtxt%') or (vDropLocation like '%$searchtxt%'))";
         }
 
         if (!empty($bookedFor)) {
