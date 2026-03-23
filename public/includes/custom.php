@@ -574,7 +574,7 @@ function SendConfirmationMessage($to, $name, $from_palce, $date, $drop_location 
 }
 
 
-function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num, $pickup_loc, $pickup_time)
+function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num, $pickup_loc, $pickup_time, $booking_code)
 {
     $ch = curl_init();
 
@@ -608,7 +608,8 @@ function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num, $picku
                 '3' => $vehicle_num,
                 '4' => '07314852425',
                 '5' => $pickup_loc,
-                '6' => $pickup_time
+                '6' => $pickup_time,
+                '7' => $booking_code
 
             ]
 
