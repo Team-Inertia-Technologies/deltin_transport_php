@@ -164,7 +164,7 @@ switch ($mode) {
 
 
         if (!empty($searchtxt)) {
-            $cond .= " and ((vName like '%$searchtxt%') or (vMobileNo like '%$searchtxt%') or (vPickUpLocation like '%$searchtxt%') or (vDropLocation like '%$searchtxt%'))";
+            $cond .= " and ((vName like '%$searchtxt%') or (vBookingCode like '%$searchtxt%') or (vMobileNo like '%$searchtxt%') or (vPickUpLocation like '%$searchtxt%') or (vDropLocation like '%$searchtxt%'))";
         }
 
         if (!empty($bookedFor)) {
@@ -218,7 +218,7 @@ switch ($mode) {
         }
 
         // Fetch booking data
-        $bookingSql = "select iFleet_BookingID, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments, iFleet_StationID, iFleet_RateID from fleet_booking where 1 $cond and cType NOT IN ('C','S','G','P','R') and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+        $bookingSql = "select iFleet_BookingID, vBookingCode, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments, iFleet_StationID, iFleet_RateID from fleet_booking where 1 $cond and cType NOT IN ('C','S','G','P','R') and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         //echo $bookingSql."<br>";
         $bookingRes = sql_query($bookingSql);
 
@@ -288,8 +288,9 @@ switch ($mode) {
 
             $rowData[] = [
                 'id' => intval($row['iFleet_BookingID']),
+                'bookingCode' => (isset($row['vBookingCode']) && !empty($row['vBookingCode']))?db_output2($row['vBookingCode']):"N/A",
                 'passengerName' => db_output2($row['vName'] ?? ''),
-                'mobNum' => db_output2($row['vMobileNo'] ?? ''),
+                'mobNum' => db_output2(maskMobileNumber($row['vMobileNo']) ?? ''),
                 'staff' => $is_staff,
                 'guest' => $is_guest,
                 'from' => db_output2($row['vPickUpLocation'] ?? ''),
@@ -436,6 +437,7 @@ switch ($mode) {
     case 'VEHICLE_COMPONENT':
 
         $cond = "";
+        $cond_driver = ""; 
 
         $currentDate = date('Y-m-d');
         $searchtxt = $_REQUEST['searchtxt'] ?? '';
@@ -475,6 +477,7 @@ switch ($mode) {
 
         if (!empty($searchtxt)) {
             $cond .= " and ((vc.vName like '%$searchtxt%') or (d.vMobileNo like '%$searchtxt%') or (d.vName like '%$searchtxt%') or (v.vRnum like '%$searchtxt%'))";
+            $cond_driver .= " and (d.vMobileNo like '%$searchtxt%') or (d.vName like '%$searchtxt%')";
         }
 
         if (!empty($category)) {
@@ -530,7 +533,8 @@ foreach ($vehicleData as $vehicleID => $vehData) {
 
         if (
             stripos($vehData['NUM'], $searchtxt) !== false ||
-            stripos($vehData['NAME'], $searchtxt) !== false
+            stripos($vehData['NAME'], $searchtxt) !== false ||
+            (!empty($vehData['DRIVER_NAME']) && stripos($vehData['DRIVER_NAME'], $searchtxt) !== false)
         ) {
             $keywordMatch = true;
         }
@@ -629,7 +633,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
         $driverLoggedIn = GetXFromYID(
             "SELECT dtLoggedIn 
              FROM driver 
-             WHERE iDriverID = " . (int)$vehData['DRIVER_ID'] . " 
+             WHERE iDriverID = " . (int)$vehData['DRIVER_ID'] . " ".$driver_cond." 
              AND dtLoggedIn IS NOT NULL"
         );
 

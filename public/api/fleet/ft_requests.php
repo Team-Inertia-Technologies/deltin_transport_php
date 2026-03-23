@@ -422,7 +422,7 @@ switch ($mode) {
             $rowDataItem = [
                 'id' => $bookingID,
                 'fullName' => db_output2($row['vName'] ?? ''),
-                'phone' => db_output2($row['vMobileNo'] ?? ''),
+                'phone' => maskMobileNumber($row['vMobileNo']),
                 'from' => strtolower($row['cBookingFor'] ?? ''),
                 'location' => db_output2($row['vPickUpLocation'] ?? ''),
                 'destination' => db_output2($row['vDropLocation'] ?? ''),
@@ -611,9 +611,10 @@ switch ($mode) {
                 $iGuestID = $guest_id;
             }
         }
+$last_char = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
+$vBookingCode = date('ym') . $last_char;
 
-
-        $cols = "iFleet_BookingID,iBookedBy,vBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
+        $cols = "iFleet_BookingID,vBookingCode,iBookedBy,vBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vRemarks, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,iOriginal_Kms,
                  vDropLocation, vLatLong_From, vLatLong_To,vLandmark, iVehicleCatID, cDisposal, tReturnTime, dtAdded,iAdded_UserID,cStatus";
@@ -626,7 +627,7 @@ switch ($mode) {
         $sql1 = "
         INSERT INTO fleet_booking ($cols)
         VALUES (
-            $iFleet_BookingID1,$iBookedBy, '" . db_input($bookedByName) . "','" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
+            $iFleet_BookingID1,'$vBookingCode',$iBookedBy, '" . db_input($bookedByName) . "','" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
             $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
             $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $distance,
             '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal, '" . db_input($dtAdded) . "',$user_id,'A'
@@ -1305,6 +1306,7 @@ switch ($mode) {
         $typeID = intval($_REQUEST['typeID'] ?? 0);
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
         $status = (isset($_REQUEST['status']) && $_REQUEST['status'] != 0 ) ? $_REQUEST['status'] : '';
+// error_log("status:  $status");
 
         // Get vehicle categories for dropdown options
         $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cType IN ('B','F') AND cStatus = 'A' ORDER BY vName";
@@ -1615,7 +1617,7 @@ switch ($mode) {
         }
 
         // Check if booking exists and is active
-        $bookingCheckSql = "SELECT iFleet_BookingID, vName,vMobileNo, vPickUpTime,vPickUpLocation FROM fleet_booking 
+        $bookingCheckSql = "SELECT iFleet_BookingID, vName,vMobileNo, vPickUpTime,vPickUpLocation, vBookingCode FROM fleet_booking 
                            WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
         $bookingCheckRes = sql_query($bookingCheckSql);
 
@@ -1730,9 +1732,10 @@ switch ($mode) {
              $vPickUpLocation = db_output2($bookingData['vPickUpLocation']) ?? '';
             $pickup_time = !empty($bookingData['vPickUpTime']) ? date('h:i A', strtotime($bookingData['vPickUpTime'])) : '';
             $dtAdded = NOW;
+            $booking_code= $bookingData['vBookingCode'] ?? '';
 
             // Send WhatsApp
-            SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $vPickUpLocation,$pickup_time);
+            SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $vPickUpLocation,$pickup_time, $booking_code);
 
             sql_query("
         INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)VALUES ('C', '+91', '$vMobileNo', 'WA', '$dtAdded', $user_id)
