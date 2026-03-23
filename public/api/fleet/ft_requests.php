@@ -1305,7 +1305,8 @@ switch ($mode) {
         $typeID = intval($_REQUEST['typeID'] ?? 0);
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
         $status = (isset($_REQUEST['status']) && $_REQUEST['status'] != 0 ) ? $_REQUEST['status'] : '';
-error_log("status: ", $status);
+error_log("status:  $status");
+
         // Get vehicle categories for dropdown options
         $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cType IN ('B','F') AND cStatus = 'A' ORDER BY vName";
         $vehicleCategoryRes = sql_query($vehicleCategorySql);
