@@ -33,7 +33,7 @@ switch ($mode) {
         $isUser        = ($_REQUEST['isUser'] ?? 'N') === 'Y';
         $username     = db_input($_REQUEST['username'] ?? '');
         $password = htmlspecialchars_decode($_REQUEST['password'] ?? '');
-       // $level        = intval($_REQUEST['level'] ?? 0);
+        // $level        = intval($_REQUEST['level'] ?? 0);
         $level        = 7;
         $reportingTo  = intval($_REQUEST['reportingTo'] ?? 0);
 
@@ -69,8 +69,10 @@ switch ($mode) {
 
         echo json_encode([
             "statusCode" => 200,
-            "message" => "Staff added successfully",
-            "data" => ["iFStaffID" => $iFStaffID]
+            "data" => [
+                "iFStaffID" => $iFStaffID,
+                "message" => "Staff added successfully"
+            ]
         ]);
         exit;
 
@@ -81,7 +83,7 @@ switch ($mode) {
 
         $res = sql_query("SELECT iFStaffID,vCode,vName,vMobile,iDepartmentID,
         iUserID,cStatus FROM fleet_staff WHERE iFStaffID = $iFStaffID AND cStatus != 'X'");
-        
+
         if (sql_num_rows($res) == 0) {
             echo json_encode([
                 "statusCode" => 400,
@@ -159,35 +161,35 @@ switch ($mode) {
 
 
         /* ================= UPDATE STAFF ================= */
-   case 'UPDATE_STAFF':
+    case 'UPDATE_STAFF':
 
-    $iFStaffID     = intval($_REQUEST['iFStaffID']);
-    $vCode         = db_input($_REQUEST['vCode']);
-    $vName         = db_input($_REQUEST['vName']);
-    $vMobile       = db_input($_REQUEST['vMobile']);
-    $iDepartmentID = intval($_REQUEST['iDepartmentID']);
-    $isUser        = ($_REQUEST['isUser'] ?? 'N') === 'Y';
+        $iFStaffID     = intval($_REQUEST['iFStaffID']);
+        $vCode         = db_input($_REQUEST['vCode']);
+        $vName         = db_input($_REQUEST['vName']);
+        $vMobile       = db_input($_REQUEST['vMobile']);
+        $iDepartmentID = intval($_REQUEST['iDepartmentID']);
+        $isUser        = ($_REQUEST['isUser'] ?? 'N') === 'Y';
 
-    $username     = db_input($_REQUEST['username'] ?? '');
-    $level        = 7;
-    $reportingTo  = intval($_REQUEST['reportingTo'] ?? 0);
+        $username     = db_input($_REQUEST['username'] ?? '');
+        $level        = 7;
+        $reportingTo  = intval($_REQUEST['reportingTo'] ?? 0);
 
 
-    $dup = sql_query("
+        $dup = sql_query("
         SELECT 1 FROM fleet_staff 
         WHERE vMobile='$vMobile' 
           AND iFStaffID!=$iFStaffID 
           AND cStatus!='X'
     ");
-    if (sql_num_rows($dup) > 0) {
-        echo json_encode([
-            "statusCode" => 409,
-            "message" => "Mobile number already exists"
-        ]);
-        exit;
-    }
+        if (sql_num_rows($dup) > 0) {
+            echo json_encode([
+                "statusCode" => 409,
+                "message" => "Mobile number already exists"
+            ]);
+            exit;
+        }
 
-    sql_query("
+        sql_query("
         UPDATE fleet_staff
         SET vCode='$vCode',
             vName='$vName',
@@ -196,45 +198,43 @@ switch ($mode) {
         WHERE iFStaffID=$iFStaffID
     ");
 
-    $staff = sql_fetch_assoc(
-        sql_query("SELECT iUserID FROM fleet_staff WHERE iFStaffID=$iFStaffID")
-    );
+        $staff = sql_fetch_assoc(
+            sql_query("SELECT iUserID FROM fleet_staff WHERE iFStaffID=$iFStaffID")
+        );
 
-   if ($isUser) {
+        if ($isUser) {
 
-    $password = '';
-    if (!empty($_REQUEST['password'])) {
-        $password = htmlspecialchars_decode(db_input($_REQUEST['password']));
-    }
+            $password = '';
+            if (!empty($_REQUEST['password'])) {
+                $password = htmlspecialchars_decode(db_input($_REQUEST['password']));
+            }
 
-    /* ===== USER ALREADY EXISTS → UPDATE ===== */
-    if (intval($staff['iUserID']) > 0) {
+            /* ===== USER ALREADY EXISTS → UPDATE ===== */
+            if (intval($staff['iUserID']) > 0) {
 
-        $updateFields = [];
-        $updateFields[] = "vName='$vName'";
-        $updateFields[] = "vUName='$username'";
-        $updateFields[] = "vPhone='$vMobile'";
-        $updateFields[] = "iDepartmentID=$iDepartmentID";
-        $updateFields[] = "iReportingID=$reportingTo";
-        $updateFields[] = "iLevel=$level";
-        $updateFields[] = "cStatus='D'";
-        $updateFields[] = "cAction='AWA'";
+                $updateFields = [];
+                $updateFields[] = "vName='$vName'";
+                $updateFields[] = "vUName='$username'";
+                $updateFields[] = "vPhone='$vMobile'";
+                $updateFields[] = "iDepartmentID=$iDepartmentID";
+                $updateFields[] = "iReportingID=$reportingTo";
+                $updateFields[] = "iLevel=$level";
+                $updateFields[] = "cStatus='D'";
+                $updateFields[] = "cAction='AWA'";
 
-        if ($password !== '') {
-            $updateFields[] = "vPassword='$password'";
-        }
+                if ($password !== '') {
+                    $updateFields[] = "vPassword='$password'";
+                }
 
-        sql_query("
+                sql_query("
             UPDATE users_temp
             SET " . implode(',', $updateFields) . "
             WHERE iUserID={$staff['iUserID']}
         ");
+            }
+            /* ===== USER DOES NOT EXIST → INSERT ===== */ else {
 
-    }
-    /* ===== USER DOES NOT EXIST → INSERT ===== */
-    else {
-
-        sql_query("
+                sql_query("
             INSERT INTO users_temp SET
                 vName='$vName',
                 vUName='$username',
@@ -248,22 +248,25 @@ switch ($mode) {
                 dtAdded=NOW()
         ");
 
-        $newUserID = sql_insert_id();
+                $newUserID = sql_insert_id();
 
-        /* LINK USER TO STAFF */
-        sql_query("
+                /* LINK USER TO STAFF */
+                sql_query("
             UPDATE fleet_staff
             SET iUserID=$newUserID
             WHERE iFStaffID=$iFStaffID
         ");
-    }
-}
+            }
+        }
 
-    echo json_encode([
-        "statusCode" => 200,
-        "message" => "Staff updated successfully"
-    ]);
-    exit;
+        echo json_encode([
+            "statusCode" => 200,
+            "data" => [
+                "iFStaffID" => $iFStaffID,
+                "message" => "Staff updated successfully"
+            ]
+        ]);
+        exit;
 
 
         /* ================= LIST ================= */
