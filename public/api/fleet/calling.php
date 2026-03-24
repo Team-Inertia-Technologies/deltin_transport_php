@@ -54,15 +54,21 @@ $sql = "SELECT d.vMobileNum AS driver_phone
         )
         AND fb.cStatus NOT IN ('X', 'C')
         AND d.vMobileNum IS NOT NULL
-        ORDER BY
-            CASE
-                WHEN fb.cType IN ('S', 'G', 'P', 'R') THEN 1
-                WHEN fb.cType = 'N' AND fb.vPickUpTime >= '{$NOW}' THEN 2
-                WHEN fb.cType = 'N' AND fb.vPickUpTime < '{$NOW}'
-                     AND TIMESTAMPDIFF(HOUR, fb.vPickUpTime, '{$NOW}') <= 2 THEN 3
-                ELSE 4
-            END,
-            ABS(TIMESTAMPDIFF(MINUTE, '{$NOW}', fb.vPickUpTime)) ASC
+   ORDER BY
+    CASE
+        WHEN fb.cType IN ('N','S','G','P','R') 
+             AND fb.vPickUpTime >= '{$NOW}' THEN 1
+
+        WHEN fb.cType = 'N' 
+             AND fb.vPickUpTime < '{$NOW}' 
+             AND TIMESTAMPDIFF(HOUR, fb.vPickUpTime, '{$NOW}') <= 2 THEN 2
+
+        WHEN fb.cType IN ('N','S','G','P','R') 
+             AND fb.vPickUpTime < '{$NOW}' THEN 3
+
+        ELSE 4
+    END,
+    ABS(TIMESTAMPDIFF(MINUTE, '{$NOW}', fb.vPickUpTime)) ASC
         LIMIT 1";
 
 $result = sql_query($sql);
