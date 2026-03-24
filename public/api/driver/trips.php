@@ -131,6 +131,7 @@ while ($row = sql_fetch_assoc($res)) {
         "id"            => $row["iFleet_BookingID"],
         "dateTime"   => $row["vPickUpTime"],
         "name"    => $row["guestName"],
+        "masked_mobile" => maskMobileNumber($row["guestMobile"]),
         "mobile"  => $row["guestMobile"],
         "pax"           => intval($row["iPax"]),
         "bags"       => intval($row["iBaggage"]),
