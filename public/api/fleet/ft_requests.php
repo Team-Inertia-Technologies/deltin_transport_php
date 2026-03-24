@@ -1,5 +1,6 @@
 <?php
-// ini_set('display_errors', 1);
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
 include "../../includes/common_api.php";
 include "../api_common.php";
@@ -336,7 +337,7 @@ switch ($mode) {
                 END,
                 fb.vPickUpTime ASC
         ";
-     
+
         $bookingRes = sql_query($bookingSql);
 
         $rowData = [];
@@ -536,7 +537,16 @@ switch ($mode) {
         if (!empty($dropLocData['lat']) && !empty($dropLocData['lng'])) {
             $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
         }
-        $distance = getRoadDistance($pickUpLocData['lat'], $pickUpLocData['lng'], $dropLocData['lat'], $dropLocData['lng']);
+        $distance = getRoadDistance(
+    $pickUpLocData['lat'] ?? '',
+    $pickUpLocData['lng'] ?? '',
+    $dropLocData['lat'] ?? '',
+    $dropLocData['lng'] ?? ''
+);
+
+if (!$distance) {
+    $distance = 0;
+}
 
         // $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : 0;
         // $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : 0;
@@ -557,15 +567,15 @@ switch ($mode) {
         $iFStaffID = intval($_REQUEST['staffID'] ?? 0);
 
         // Fetch KMS from fleet_ratechart
-      //  $ratekms = 0;
+        //  $ratekms = 0;
 
-//         $rateSql = "
-//     SELECT iKms 
-//     FROM fleet_ratechart 
-//     WHERE iFleet_LocationID_From = $fromLoc
-//       AND iFleet_LocationID_To = $toLoc AND cStatus='A' 
-//     LIMIT 1
-// ";
+        //         $rateSql = "
+        //     SELECT iKms 
+        //     FROM fleet_ratechart 
+        //     WHERE iFleet_LocationID_From = $fromLoc
+        //       AND iFleet_LocationID_To = $toLoc AND cStatus='A' 
+        //     LIMIT 1
+        // ";
 
         // $rateRes = sql_query($rateSql);
 
@@ -612,8 +622,8 @@ switch ($mode) {
                 $iGuestID = $guest_id;
             }
         }
-$last_char = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
-$vBookingCode = date('ym') . $last_char;
+        $last_char = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
+        $vBookingCode = date('ym') . $last_char;
 
         $cols = "iFleet_BookingID,vBookingCode,iBookedBy,vBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vRemarks, vName, vMobileNo, iGuestID, iFStaffID,
@@ -633,20 +643,22 @@ $vBookingCode = date('ym') . $last_char;
             $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $distance,
             '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal, '" . db_input($dtAdded) . "',$user_id,'A'
         )";
-   echo "SQL Query: " . $sql1; // Debug: Output the generated SQL query
-        exit;
+        //    echo "SQL Query: " . $sql1; // Debug: Output the generated SQL query
+        //         exit;
+
         $ok1 = sql_query($sql1);
         if (!$ok1) {
             echo json_encode([
                 "error" => [
-                    "message" => "Failed to add booking"
+                    "message" => "Failed to add booking",
+                    "query" => $sql1
                 ],
                 "statusCode" => 500
             ]);
             exit;
         } else {
             $date = date('d/m/Y', strtotime($vPickUpTime));
-          $pickup_time = !empty($vPickUpTime) ? date('h:i A', strtotime($vPickUpTime)) : '';
+            $pickup_time = !empty($vPickUpTime) ? date('h:i A', strtotime($vPickUpTime)) : '';
             SendConfirmationMessage($vMobileNo, db_input($vName), $vPickUpLocation, $date, $vDropLocation, $pickup_time);
             sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
         }
@@ -995,24 +1007,24 @@ $vBookingCode = date('ym') . $last_char;
             ]);
             exit;
         }
-//         $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : '';
-//         $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : '';
-//         $ratekms = 0;
+        //         $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : '';
+        //         $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : '';
+        //         $ratekms = 0;
 
-//         $rateSql = "
-//     SELECT iKms 
-//     FROM fleet_ratechart 
-//     WHERE iFleet_LocationID_From = $fromLoc
-//       AND iFleet_LocationID_To = $toLoc AND cStatus='A' 
-//     LIMIT 1
-// ";
+        //         $rateSql = "
+        //     SELECT iKms 
+        //     FROM fleet_ratechart 
+        //     WHERE iFleet_LocationID_From = $fromLoc
+        //       AND iFleet_LocationID_To = $toLoc AND cStatus='A' 
+        //     LIMIT 1
+        // ";
 
-//         $rateRes = sql_query($rateSql);
+        //         $rateRes = sql_query($rateSql);
 
-//         if ($rateRes && sql_num_rows($rateRes) > 0) {
-//             $rateRow = sql_fetch_assoc($rateRes);
-//             $ratekms = intval($rateRow['iKms']);
-//         }
+        //         if ($rateRes && sql_num_rows($rateRes) > 0) {
+        //             $rateRow = sql_fetch_assoc($rateRes);
+        //             $ratekms = intval($rateRow['iKms']);
+        //         }
 
 
         $vReturnTimeVal = (!empty($vReturnTime)) ? "'" . $vReturnTime . "'" : "NULL";
@@ -1295,7 +1307,7 @@ $vBookingCode = date('ym') . $last_char;
                 "vehicleHistory" => $vehicleHistory,
                 "tripStatusOpts" => $tripStatusArr,
                 "stationArr" => $stationArr
-               // "fleetRateArr" => $fleetRateArr
+                // "fleetRateArr" => $fleetRateArr
             ],
             "statusCode" => 200
         ]);
@@ -1307,8 +1319,8 @@ $vBookingCode = date('ym') . $last_char;
         $categoryID = intval($_REQUEST['categoryID'] ?? 0);
         $typeID = intval($_REQUEST['typeID'] ?? 0);
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
-        $status = (isset($_REQUEST['status']) && $_REQUEST['status'] != 0 ) ? $_REQUEST['status'] : '';
-// error_log("status:  $status");
+        $status = (isset($_REQUEST['status']) && $_REQUEST['status'] != 0) ? $_REQUEST['status'] : '';
+        // error_log("status:  $status");
 
         // Get vehicle categories for dropdown options
         $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cType IN ('B','F') AND cStatus = 'A' ORDER BY vName";
@@ -1318,7 +1330,7 @@ $vBookingCode = date('ym') . $last_char;
         foreach ($VEHICLE_DRIVER_TYPE as $id => $name) {
             $vehicleTypeOpt[] = ['id' => intval($id), 'name' => $name];
         }
- $tripStatusOpts = [['id' => 0, 'name' => 'All']];
+        $tripStatusOpts = [['id' => 0, 'name' => 'All']];
         foreach ($FLEET_TRIP_STATUS as $id => $name) {
             $tripStatusOpts[] = ['id' => $id, 'name' => $name];
         }
@@ -1412,7 +1424,7 @@ $vBookingCode = date('ym') . $last_char;
                 'driverID' => intval($vehData['DRIVER_ID'] ?? 0),
                 'driverName' => db_output2($vehData['DRIVER_NAME'] ?? ''),
                 'driverMobile' => db_output2($vehData['DRIVER_NUM'] ?? ''),
-'nextTripTime' => $nextTripTime ? date('d/m/Y H:i', strtotime($nextTripTime)) : null,
+                'nextTripTime' => $nextTripTime ? date('d/m/Y H:i', strtotime($nextTripTime)) : null,
                 'disposal' => false,
                 'status' => $bookingStatus,
                 'bookings' => $vehData['BOOKINGS'] // Include booking details for reference
@@ -1579,7 +1591,7 @@ $vBookingCode = date('ym') . $last_char;
                 "vehicles" => $vehicles,
                 "vehicleTypeOpt" => $vehicleTypeOpt,
                 "tripStatusOpts" => $tripStatusOpts
-              //  "requestTypeArr" => $requestTypeArr
+                //  "requestTypeArr" => $requestTypeArr
             ],
             "statusCode" => 200
         ]);
@@ -1731,13 +1743,13 @@ $vBookingCode = date('ym') . $last_char;
 
             $vMobileNo = $bookingData['vMobileNo'] ?? '';
             $vName = db_output2($bookingData['vName']) ?? '';
-             $vPickUpLocation = db_output2($bookingData['vPickUpLocation']) ?? '';
+            $vPickUpLocation = db_output2($bookingData['vPickUpLocation']) ?? '';
             $pickup_time = !empty($bookingData['vPickUpTime']) ? date('h:i A', strtotime($bookingData['vPickUpTime'])) : '';
             $dtAdded = NOW;
-            $booking_code= $bookingData['vBookingCode'] ?? '';
+            $booking_code = $bookingData['vBookingCode'] ?? '';
 
             // Send WhatsApp
-            SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $vPickUpLocation,$pickup_time, $booking_code);
+            SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $vPickUpLocation, $pickup_time, $booking_code);
 
             sql_query("
         INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)VALUES ('C', '+91', '$vMobileNo', 'WA', '$dtAdded', $user_id)
@@ -2142,7 +2154,7 @@ $vBookingCode = date('ym') . $last_char;
                 'mobile' => $row['vMobileNo']
             ];
         }
-    
+
         $locOpts = [['id' => 0, 'name' => 'Choose']];
         foreach ($LOC_ARR as $id => $name) {
             $locOpts[] = ['id' => intval($id), 'name' => $name];
@@ -2325,14 +2337,13 @@ $vBookingCode = date('ym') . $last_char;
 
         if (sql_query($completeSql)) {
 
-                echo json_encode([
-                    "data" => [
-                        "message" => "Remark updated successfully",
-                        "iFleet_BookingID" => $iFleet_BookingID
-                    ],
-                    "statusCode" => 200
-                ]);
-            
+            echo json_encode([
+                "data" => [
+                    "message" => "Remark updated successfully",
+                    "iFleet_BookingID" => $iFleet_BookingID
+                ],
+                "statusCode" => 200
+            ]);
         } else {
             echo json_encode([
                 "error" => [
