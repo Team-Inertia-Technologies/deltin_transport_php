@@ -1,6 +1,6 @@
 <?php
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// ini_set('display_errors', 1);
+// error_reporting(E_ALL);
 
 include "../../includes/common_api.php";
 include "../api_common.php";
@@ -1421,7 +1421,7 @@ if (!$distance) {
                     return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
                 });
                 $nextTripTime = $bookings[0]['PICKUP_TIME'];
-                $bookingStatus = $bookings[0]['TYPE_ID'];
+             //   $bookingStatus = $bookings[0]['TYPE_ID'];
             }
 
             $vehicleDataFormatted = [
@@ -1439,7 +1439,7 @@ if (!$distance) {
                 'driverMobile' => db_output2($vehData['DRIVER_NUM'] ?? ''),
                 'nextTripTime' => $nextTripTime ? date('d/m/Y H:i', strtotime($nextTripTime)) : null,
                 'disposal' => false,
-                'status' => $bookingStatus,
+                'status' => 'A',
                 'bookings' => $vehData['BOOKINGS'] // Include booking details for reference
             ];
 
