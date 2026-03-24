@@ -336,6 +336,8 @@ switch ($mode) {
                 END,
                 fb.vPickUpTime ASC
         ";
+        echo "SQL Query: " . $bookingSql; // Debug: Output the generated SQL query
+        exit;
         $bookingRes = sql_query($bookingSql);
 
         $rowData = [];
