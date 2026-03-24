@@ -336,8 +336,7 @@ switch ($mode) {
                 END,
                 fb.vPickUpTime ASC
         ";
-        echo "SQL Query: " . $bookingSql; // Debug: Output the generated SQL query
-        exit;
+     
         $bookingRes = sql_query($bookingSql);
 
         $rowData = [];
@@ -634,7 +633,8 @@ $vBookingCode = date('ym') . $last_char;
             $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $distance,
             '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal, '" . db_input($dtAdded) . "',$user_id,'A'
         )";
-
+   echo "SQL Query: " . $sql1; // Debug: Output the generated SQL query
+        exit;
         $ok1 = sql_query($sql1);
         if (!$ok1) {
             echo json_encode([
