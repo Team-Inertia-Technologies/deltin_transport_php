@@ -27,8 +27,17 @@ if (sql_num_rows($userCheckRes) == 0) {
 $NOW = NOW;
 function getRoadDistance($startLat, $startLng, $endLat, $endLng)
 {
+    // ✅ Safe check for API key
+    if (!defined('HEIGIT_DISTACE_API_KEY') || empty(HEIGIT_DISTACE_API_KEY)) {
+        return 0; // fallback if key missing
+    }
 
-    $apiKey =  HEIGIT_DISTACE_API_KEY;
+    $apiKey = HEIGIT_DISTACE_API_KEY;
+
+    // ✅ Validate coordinates
+    if (empty($startLat) || empty($startLng) || empty($endLat) || empty($endLng)) {
+        return 0;
+    }
 
     $url = "https://api.openrouteservice.org/v2/directions/driving-car"
         . "?api_key=" . $apiKey
@@ -36,23 +45,28 @@ function getRoadDistance($startLat, $startLng, $endLat, $endLng)
         . "&end=" . $endLng . "," . $endLat;
 
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10 // ✅ prevent hanging
+    ]);
 
     $response = curl_exec($ch);
 
+    // ✅ Handle curl error
     if (curl_errno($ch)) {
-        return "Curl Error: " . curl_error($ch);
+        curl_close($ch);
+        return 0;
     }
 
     curl_close($ch);
 
     $data = json_decode($response, true);
 
+    // ✅ Safe parsing
     if (isset($data['features'][0]['properties']['segments'][0]['distance'])) {
         $distanceInMeters = $data['features'][0]['properties']['segments'][0]['distance'];
-        $distanceInKm = $distanceInMeters / 1000;
-        return round($distanceInKm, 2);
+        return round($distanceInMeters / 1000, 2);
     }
 
     return 0;
