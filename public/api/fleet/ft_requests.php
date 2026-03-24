@@ -1,6 +1,6 @@
 <?php
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// ini_set('display_errors', 1);
+// error_reporting(E_ALL);
 
 include "../../includes/common_api.php";
 include "../api_common.php";
@@ -27,33 +27,34 @@ if (sql_num_rows($userCheckRes) == 0) {
 $NOW = NOW;
 function getRoadDistance($startLat, $startLng, $endLat, $endLng)
 {
-    // ✅ Safe check for API key
     if (!defined('HEIGIT_DISTACE_API_KEY') || empty(HEIGIT_DISTACE_API_KEY)) {
-        return 0; // fallback if key missing
-    }
-
-    $apiKey = HEIGIT_DISTACE_API_KEY;
-
-    // ✅ Validate coordinates
-    if (empty($startLat) || empty($startLng) || empty($endLat) || empty($endLng)) {
         return 0;
     }
 
-    $url = "https://api.openrouteservice.org/v2/directions/driving-car"
-        . "?api_key=" . $apiKey
-        . "&start=" . $startLng . "," . $startLat
-        . "&end=" . $endLng . "," . $endLat;
+    if ($startLat === null || $startLng === null || $endLat === null || $endLng === null) {
+        return 0;
+    }
 
     $ch = curl_init();
     curl_setopt_array($ch, [
-        CURLOPT_URL => $url,
+        CURLOPT_URL => "https://api.openrouteservice.org/v2/directions/driving-car",
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 10 // ✅ prevent hanging
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_HTTPHEADER => [
+            "Authorization: " . HEIGIT_DISTACE_API_KEY,
+            "Content-Type: application/json"
+        ],
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode([
+            "coordinates" => [
+                [(float)$startLng, (float)$startLat],
+                [(float)$endLng, (float)$endLat]
+            ]
+        ])
     ]);
 
     $response = curl_exec($ch);
 
-    // ✅ Handle curl error
     if (curl_errno($ch)) {
         curl_close($ch);
         return 0;
@@ -63,10 +64,8 @@ function getRoadDistance($startLat, $startLng, $endLat, $endLng)
 
     $data = json_decode($response, true);
 
-    // ✅ Safe parsing
-    if (isset($data['features'][0]['properties']['segments'][0]['distance'])) {
-        $distanceInMeters = $data['features'][0]['properties']['segments'][0]['distance'];
-        return round($distanceInMeters / 1000, 2);
+    if (isset($data['routes'][0]['summary']['distance'])) {
+        return round($data['routes'][0]['summary']['distance'] / 1000, 2);
     }
 
     return 0;
@@ -1422,7 +1421,7 @@ if (!$distance) {
                     return strtotime($a['PICKUP_TIME']) - strtotime($b['PICKUP_TIME']);
                 });
                 $nextTripTime = $bookings[0]['PICKUP_TIME'];
-                $bookingStatus = $bookings[0]['TYPE_ID'];
+             //   $bookingStatus = $bookings[0]['TYPE_ID'];
             }
 
             $vehicleDataFormatted = [
@@ -1440,7 +1439,7 @@ if (!$distance) {
                 'driverMobile' => db_output2($vehData['DRIVER_NUM'] ?? ''),
                 'nextTripTime' => $nextTripTime ? date('d/m/Y H:i', strtotime($nextTripTime)) : null,
                 'disposal' => false,
-                'status' => $bookingStatus,
+                'status' => 'A',
                 'bookings' => $vehData['BOOKINGS'] // Include booking details for reference
             ];
 
