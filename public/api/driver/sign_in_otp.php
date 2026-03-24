@@ -319,6 +319,23 @@ if ($mode == 'LOGIN') {
 } elseif ($mode == 'VERIFY_GUEST') {
     $mobile = db_input($_REQUEST['mobile'] ?? '');
     $OTP = db_input($_REQUEST['otp'] ?? '');
+    $token      = trim($_REQUEST['token'] ?? '');
+    $booking_id =   isset($_REQUEST['id']) ? intval($_REQUEST['id']) : 0;
+
+    if (!$token || !$booking_id) {
+        http_response_code(400);
+        header('Content-Type: application/json');
+        echo json_encode([
+            "statusCode" => 400,
+            "error" => [
+                "message" => "Missing token or booking_id."
+            ]
+        ]);
+        exit;
+    }
+
+    $userid = DecodeParam($token);
+
 
     if (empty($mobile) || empty($OTP)) {
         http_response_code(400);
@@ -340,14 +357,16 @@ if ($mode == 'LOGIN') {
         sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='$iOTPID'");
         $staff_query = "SELECT iGuestID, vName FROM guest WHERE vMobileNo='$mobile' AND cStatus='A'";
         $staff_result = sql_query($staff_query, "Get staff details");
-
+        $query = "UPDATE fleet_booking SET cType='G' WHERE iFleet_BookingID='$booking_id' AND iDriverID='$driverID'";
+        $result = sql_query($query, 'TRIP.START');
+        $log_id = NextID('iLogID', 'fleet_booking_log');
+        $NOW = NOW;
+        sql_query("INSERT INTO fleet_booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, '$booking_id', 'G', 'Guest Picked Up', '$NOW', '$driverID', 'A')", 'TRIP.LOG');
         if (sql_num_rows($staff_result)) {
             [$staffId, $staffName] = sql_fetch_row($staff_result);
 
             $USER_DATA = [
-                'token' => EncodeParam($staffId),
                 'name' => db_output($staffName),
-                'pic'  => '',
             ];
 
             // Log the signin
@@ -356,7 +375,7 @@ if ($mode == 'LOGIN') {
             header('Content-Type: application/json');
             echo json_encode([
                 'statusCode' => 200,
-                'message' => 'Login successful',
+                'message' => 'guest verification successful',
                 'data' => $USER_DATA,
 
             ]);
