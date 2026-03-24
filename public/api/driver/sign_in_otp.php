@@ -316,19 +316,107 @@ if ($mode == 'LOGIN') {
     }
 
     exit;
+// } elseif ($mode == 'VERIFY_GUEST') {
+//     $mobile = db_input($_REQUEST['mobile'] ?? '');
+//     $OTP = db_input($_REQUEST['otp'] ?? '');
+//     $token  = trim($_REQUEST['token'] ?? '');
+//     $booking_id = isset($_REQUEST['id']) ? intval($_REQUEST['id']) : 0;
+
+//     if (!$token || !$booking_id) {
+//         http_response_code(400);
+//         header('Content-Type: application/json');
+//         echo json_encode([
+//             "statusCode" => 400,
+//             "error" => [
+//                 "message" => "Missing token or booking_id."
+//             ]
+//         ]);
+//         exit;
+//     }
+
+//     $userid = DecodeParam($token);
+
+
+//     if (empty($mobile) || empty($OTP)) {
+//         http_response_code(400);
+//         header('Content-Type: application/json');
+//         echo json_encode([
+//             "statusCode" => 400,
+//             "error" => [
+//                 "message" => "Mobile number and OTP are required"
+//             ]
+
+//         ]);
+//         exit;
+//     }
+//     $otp_query = "SELECT iOTPID FROM otp WHERE vOTP='$OTP' AND vPhone='$mobile' AND cAdded_RefType='S' AND cUsed!='X'";
+//     $otp_result = sql_query($otp_query, "Check if OTP exists for staff");
+
+//     if (sql_num_rows($otp_result)) {
+//         [$iOTPID] = sql_fetch_row($otp_result);
+//         sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='$iOTPID'");
+//         $staff_query = "SELECT iGuestID, vName FROM guest WHERE vMobileNo='$mobile' AND cStatus='A'";
+//         $staff_result = sql_query($staff_query, "Get staff details");
+//         $query = "UPDATE fleet_booking SET cType='G' WHERE iFleet_BookingID='$booking_id' AND iDriverID='$driverID'";
+//         $result = sql_query($query, 'TRIP.START');
+//         $log_id = NextID('iLogID', 'fleet_booking_log');
+//         $NOW = NOW;
+//         sql_query("INSERT INTO fleet_booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, '$booking_id', 'G', 'Guest Picked Up', '$NOW', '$driverID', 'A')", 'TRIP.LOG');
+//         if (sql_num_rows($staff_result)) {
+//             [$staffId, $staffName] = sql_fetch_row($staff_result);
+
+//             $USER_DATA = [
+//                 'name' => db_output($staffName),
+//             ];
+
+//             // Log the signin
+//             sql_query("INSERT INTO st_log_signin (dDate, cRefType, iRefID, dtEntry, vIPAddress, vBrowser, cStatus) VALUES ('" . TODAY . "', 'S', '$staffId', '" . NOW . "', '" . ($_SERVER['REMOTE_ADDR'] ?? '') . "', '" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "', 'A')", "Log staff signin");
+//             http_response_code(200);
+//             header('Content-Type: application/json');
+//             echo json_encode([
+//                 'statusCode' => 200,
+//                 'message' => 'guest verification successful',
+//                 'data' => $USER_DATA,
+
+//             ]);
+//             exit;
+//         } else {
+//             http_response_code(400);
+//             header('Content-Type: application/json');
+//             echo json_encode([
+//                 "statusCode" => 400,
+//                 "error" => [
+//                     "message" => "Driver not found"
+//                 ]
+
+//             ]);
+//             exit;
+//         }
+//     } else {
+//         http_response_code(400);
+//         header('Content-Type: application/json');
+//         echo json_encode([
+//             "statusCode" => 400,
+//             "error" => [
+//                 "message" => "Invalid or expired OTP. Please request a new OTP."
+//             ]
+
+//         ]);
+//         exit;
+//     }
+// } 
 } elseif ($mode == 'VERIFY_GUEST') {
-    $mobile = db_input($_REQUEST['mobile'] ?? '');
-    $OTP = db_input($_REQUEST['otp'] ?? '');
+
+    $code       = db_input($_REQUEST['code'] ?? '');
     $token      = trim($_REQUEST['token'] ?? '');
-    $booking_id =   isset($_REQUEST['id']) ? intval($_REQUEST['id']) : 0;
+    $booking_id = intval($_REQUEST['id'] ?? 0);
 
     if (!$token || !$booking_id) {
         http_response_code(400);
-        header('Content-Type: application/json');
         echo json_encode([
             "statusCode" => 400,
             "error" => [
-                "message" => "Missing token or booking_id."
+                "message" => "Missing token or booking id."
             ]
         ]);
         exit;
@@ -336,75 +424,57 @@ if ($mode == 'LOGIN') {
 
     $userid = DecodeParam($token);
 
-
-    if (empty($mobile) || empty($OTP)) {
+    if (empty($code)) {
         http_response_code(400);
-        header('Content-Type: application/json');
         echo json_encode([
             "statusCode" => 400,
             "error" => [
-                "message" => "Mobile number and OTP are required"
+                "message" => "Code is required"
             ]
-
         ]);
         exit;
     }
-    $otp_query = "SELECT iOTPID FROM otp WHERE vOTP='$OTP' AND vPhone='$mobile' AND cAdded_RefType='S' AND cUsed!='X'";
-    $otp_result = sql_query($otp_query, "Check if OTP exists for staff");
 
-    if (sql_num_rows($otp_result)) {
-        [$iOTPID] = sql_fetch_row($otp_result);
-        sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='$iOTPID'");
-        $staff_query = "SELECT iGuestID, vName FROM guest WHERE vMobileNo='$mobile' AND cStatus='A'";
-        $staff_result = sql_query($staff_query, "Get staff details");
-        $query = "UPDATE fleet_booking SET cType='G' WHERE iFleet_BookingID='$booking_id' AND iDriverID='$driverID'";
+    $code_query = "SELECT vBookingCode FROM fleet_booking WHERE vBookingCode = '$code'AND iFleet_BookingID = $booking_id AND iDriverID = $userid AND cType = 'S' AND cStatus = 'A'";
+    $code_result = sql_query($code_query, "CHECK.CODE");
+
+    if (sql_num_rows($code_result)) {
+        $query = "UPDATE fleet_booking SET cType = 'G' WHERE iFleet_BookingID = $booking_id AND iDriverID = $userid AND cType = 'S' AND cStatus = 'A' ";
         $result = sql_query($query, 'TRIP.START');
-        $log_id = NextID('iLogID', 'fleet_booking_log');
-        $NOW = NOW;
-        sql_query("INSERT INTO fleet_booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, '$booking_id', 'G', 'Guest Picked Up', '$NOW', '$driverID', 'A')", 'TRIP.LOG');
-        if (sql_num_rows($staff_result)) {
-            [$staffId, $staffName] = sql_fetch_row($staff_result);
-
-            $USER_DATA = [
-                'name' => db_output($staffName),
-            ];
-
-            // Log the signin
-            sql_query("INSERT INTO st_log_signin (dDate, cRefType, iRefID, dtEntry, vIPAddress, vBrowser, cStatus) VALUES ('" . TODAY . "', 'S', '$staffId', '" . NOW . "', '" . ($_SERVER['REMOTE_ADDR'] ?? '') . "', '" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "', 'A')", "Log staff signin");
+        if ($result) {
+            $log_id = NextID('iLogID', 'fleet_booking_log');
+            $NOW = NOW;
+            sql_query("INSERT INTO fleet_booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, $booking_id, 'G', 'Guest Picked Up', '$NOW', $userid, 'A')", 'TRIP.LOG');
             http_response_code(200);
-            header('Content-Type: application/json');
             echo json_encode([
                 'statusCode' => 200,
-                'message' => 'guest verification successful',
-                'data' => $USER_DATA,
-
+                'message' => 'Guest verification successful',
+                'data' => []
             ]);
             exit;
+
         } else {
             http_response_code(400);
-            header('Content-Type: application/json');
             echo json_encode([
                 "statusCode" => 400,
                 "error" => [
-                    "message" => "Driver not found"
+                    "message" => "Failed to update booking status. Please try again."
                 ]
-
             ]);
             exit;
         }
     } else {
         http_response_code(400);
-        header('Content-Type: application/json');
         echo json_encode([
             "statusCode" => 400,
             "error" => [
-                "message" => "Invalid or expired OTP. Please request a new OTP."
+                "message" => "Invalid or expired code."
             ]
-
         ]);
         exit;
     }
-} elseif ($mode == 'RESEND_GUEST_OTP') {
+} 
+elseif ($mode == 'RESEND_GUEST_OTP') {
     $mobile = db_input($_REQUEST['mobile'] ?? '');
 
     if (empty($mobile)) {
