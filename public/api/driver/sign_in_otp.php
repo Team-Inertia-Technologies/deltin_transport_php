@@ -468,7 +468,7 @@ if ($mode == 'LOGIN') {
         echo json_encode([
             "statusCode" => 400,
             "error" => [
-                "message" => "Invalid or expired code."
+                "message" => "Code Already Used or Invalid Code."
             ]
         ]);
         exit;
