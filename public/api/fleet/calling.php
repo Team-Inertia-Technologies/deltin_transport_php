@@ -53,6 +53,7 @@ $sql = "SELECT d.vMobileNum AS driver_phone
             OR fb.vMobileNo = '0{$customer_10}'
         )
         AND fb.cStatus NOT IN ('X', 'C')
+        AND fb.cType != 'C'
         AND d.vMobileNum IS NOT NULL
    ORDER BY
     CASE

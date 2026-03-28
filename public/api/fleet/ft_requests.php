@@ -636,7 +636,8 @@ if (!$distance) {
             }
         }
         $last_char = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
-        $vBookingCode = date('ym') . $last_char;
+        //$vBookingCode = date('ym') . $last_char;
+         $vBookingCode = $last_char;
 
         $cols = "iFleet_BookingID,vBookingCode,iBookedBy,vBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vRemarks, vName, vMobileNo, iGuestID, iFStaffID,
