@@ -83,19 +83,28 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip)";
             $patternGroups = [];
 
             foreach ($routeInfo['dates'] as $date => $data) {
-                $timings = array_keys($data['timings']);
 
-                /* FORCE CLEAN */
-                $timings = array_map(function ($t) {
-                    return date('H:i', strtotime(trim($t)));
-                }, $timings);
+                $timings = [];
 
-                $timings = array_map('trim', $timings);
-                $timings = array_unique($timings);
+                foreach ($trips as $trip) {
+                    $time = trim($trip['tripTime']);
+                    $time = date('H:i', strtotime($time));
+                    $timings[$time] = true; // remove duplicates instantly
+                }
+
+                $timings = array_keys($timings);
                 sort($timings);
 
-                $statuses = array_keys($data['statuses']);
+                /* ===== CLEAN STATUS ===== */
+                $statuses = [];
+
+                foreach ($trips as $trip) {
+                    $statuses[$trip['status']] = true;
+                }
+
+                $statuses = array_keys($statuses);
                 sort($statuses);
+
 
                 $patternKey = implode('|', $timings) . '::' . implode('|', $statuses);
 

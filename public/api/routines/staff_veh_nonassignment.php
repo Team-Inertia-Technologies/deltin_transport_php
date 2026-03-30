@@ -72,14 +72,12 @@ if (sql_num_rows($result) > 0) {
             </style>
         </head>
         <body>
-            <div class='header'>
-                <h2> Vehicle Assignment Required</h2>
-            </div>
+          
             
             <div class='content'>
                 <p>Dear Front Office Team,</p>
                 
-                <p class='urgent'>The following " . count($unassignedTrips) . " trip(s) scheduled for the next 4 hours do not have vehicles assigned:</p>
+                <p>The following " . count($unassignedTrips) . " trip(s) scheduled for the next 4 hours do not have vehicles assigned:</p>
                 
                 <table class='trip-table'>
                     <thead>
@@ -108,23 +106,23 @@ if (sql_num_rows($result) > 0) {
                         </tr>";
         }
         
-        $email_content .= "
-                    </tbody>
-                </table>
+        // $email_content .= "
+        //             </tbody>
+        //         </table>
                 
-                <div class='footer'>
-                    <h3>⚠️ Action Required:</h3>
-                    <ul>
-                        <li>Please assign vehicles to these trips immediately</li>
-                        <li>Ensure driver assignments are also completed</li>
-                    </ul>
+        //         <div class='footer'>
+        //             <h3>⚠️ Action Required:</h3>
+        //             <ul>
+        //                 <li>Please assign vehicles to these trips immediately</li>
+        //                 <li>Ensure driver assignments are also completed</li>
+        //             </ul>
                     
-                    <p><strong>Time Generated:</strong> " . date('d/m/Y g:i A') . "</p>
-                    <p><strong>System:</strong> Staff Transport Management - Automated Alert</p>
-                </div>
-            </div>
-        </body>
-        </html>";
+        //             <p><strong>Time Generated:</strong> " . date('d/m/Y g:i A') . "</p>
+        //             <p><strong>System:</strong> Staff Transport Management - Automated Alert</p>
+        //         </div>
+        //     </div>
+        // </body>
+        // </html>";
         
         // Email recipients
         $toEmails = "shivani@teaminertia.com"; 
