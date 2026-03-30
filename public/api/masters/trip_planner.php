@@ -85,14 +85,20 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip)";
             foreach ($routeInfo['dates'] as $date => $data) {
 
           /* ===== USE PRE-GROUPED DATA ===== */
-$timings = array_map(function ($t) {
-    return date('H:i', strtotime(trim($t)));
-}, array_keys($data['timings']));
+$timings = array_keys($data['timings']);
+sort($timings);
 
 $timings = array_values(array_unique($timings));
 sort($timings);
 $statuses = array_keys($data['statuses']);
-sort($statuses);
+
+if (count($statuses) > 1) {
+    if (in_array('A', $statuses)) $statuses = ['A'];
+    elseif (in_array('P', $statuses)) $statuses = ['P'];
+    elseif (in_array('D', $statuses)) $statuses = ['D'];
+    elseif (in_array('C', $statuses)) $statuses = ['C'];
+    else $statuses = ['Mixed'];
+}
 
 
                 $patternKey = implode('|', $timings) . '::' . implode('|', $statuses);
