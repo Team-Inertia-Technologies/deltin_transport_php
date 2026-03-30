@@ -27,188 +27,180 @@ $NOW = NOW;
 switch ($mode) {
 
     // ===================== CASE 1: LIST_PLANNER =====================
-case 'LIST_PLANNER':
+    case 'LIST_PLANNER':
 
-    $sql = "SELECT 
-        t.iTripID,
-        DATE(t.dtTrip) AS dtTrip,
-        TIME(t.dtTrip) AS tripTime,
-        t.iRouteID,
-        r.vName AS route,
-        r.vDestination AS destination,
-        tva.iVehicleID,
-        v.vRnum AS vehicleRegNo,
-        v.vName AS vehicleName,
-        t.cStatus AS status
-    FROM st_trips t
-    LEFT OUTER JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID
-    LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
-    LEFT JOIN vehicle v ON tva.iVehicleID = v.iVehicleID
-    WHERE t.cStatus != 'X'
-    ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip)";
+        $sql = "SELECT 
+    DATE(t.dtTrip) AS dtTrip,
+    TIME(t.dtTrip) AS tripTime,
+    t.iRouteID,
+    r.vName AS route,
+    r.vDestination AS destination,
+    t.cStatus AS status
+FROM st_trips t
+LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
+WHERE t.cStatus != 'X'
+ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip)";
 
-    $res = sql_query($sql);
+        $res = sql_query($sql);
 
-    $routeData = [];
+        $routeData = [];
 
-    // ================= FIRST PASS =================
-    // Group by route → date
-    while ($row = sql_fetch_assoc($res)) {
+        /* ================= GROUP BY ROUTE + DATE ================= */
+        while ($row = sql_fetch_assoc($res)) {
 
-        $routeID = $row['iRouteID'];
-        $dtTrip  = $row['dtTrip'];
+            $routeID = $row['iRouteID'];
+            $date = $row['dtTrip'];
+            $time = date('H:i', strtotime($row['tripTime']));
+            $status = $row['status'];
 
-        if (!isset($routeData[$routeID])) {
-            $routeData[$routeID] = [
-                'route' => $row['route'],
-                'destination' => $row['destination'],
-                'dates' => []
-            ];
-        }
-
-        $routeData[$routeID]['dates'][$dtTrip][] = $row;
-    }
-
-    $rowData = [];
-
-    // ================= SECOND PASS =================
-    foreach ($routeData as $routeID => $routeInfo) {
-
-        $dateGroups = [];
-
-        // -------- GROUP BY TIMING + STATUS --------
-        foreach ($routeInfo['dates'] as $date => $trips) {
-
-            $timingPattern = [];
-            $statusPattern = [];
-
-            foreach ($trips as $trip) {
-                $timingPattern[] = date('H:i', strtotime($trip['tripTime']));
-                $statusPattern[] = $trip['status'];
-            }
-
-            sort($timingPattern);
-
-            $uniqueStatuses = array_unique($statusPattern);
-            sort($uniqueStatuses);
-
-            $patternKey = implode('|', $timingPattern) . '::' . implode('|', $uniqueStatuses);
-
-            if (!isset($dateGroups[$patternKey])) {
-                $dateGroups[$patternKey] = [
-                    'dates' => [],
-                    'trips' => [],
-                    'statuses' => $uniqueStatuses
+            if (!isset($routeData[$routeID])) {
+                $routeData[$routeID] = [
+                    'route' => $row['route'],
+                    'destination' => $row['destination'],
+                    'dates' => []
                 ];
             }
 
-            $dateGroups[$patternKey]['dates'][] = $date;
-            $dateGroups[$patternKey]['trips'] = array_merge(
-                $dateGroups[$patternKey]['trips'],
-                $trips
-            );
+            if (!isset($routeData[$routeID]['dates'][$date])) {
+                $routeData[$routeID]['dates'][$date] = [
+                    'timings' => [],
+                    'statuses' => []
+                ];
+            }
+
+            $routeData[$routeID]['dates'][$date]['timings'][$time] = true;
+            $routeData[$routeID]['dates'][$date]['statuses'][$status] = true;
         }
 
-        // -------- PROCESS EACH GROUP --------
-        foreach ($dateGroups as $groupData) {
+        $rowData = [];
 
-            $dates = $groupData['dates'];
+        /* ================= PROCESS EACH ROUTE ================= */
+        foreach ($routeData as $routeID => $routeInfo) {
 
-            if (empty($dates)) continue;
+            $patternGroups = [];
 
-            sort($dates);
+            /* ===== CREATE PATTERN KEY ===== */
+            foreach ($routeInfo['dates'] as $date => $data) {
 
-            // ===== SPLIT INTO CONTINUOUS RANGES =====
-            $ranges = [];
-            $start = $dates[0];
-            $prev  = $dates[0];
+                $timings = array_keys($data['timings']);
+                sort($timings);
 
-            for ($i = 1; $i < count($dates); $i++) {
-                $current = $dates[$i];
+                $statuses = array_keys($data['statuses']);
+                sort($statuses);
 
-                if (strtotime($current) == strtotime($prev . ' +1 day')) {
-                    $prev = $current;
+                $patternKey = implode('|', $timings) . '::' . implode('|', $statuses);
+
+                if (!isset($patternGroups[$patternKey])) {
+                    $patternGroups[$patternKey] = [
+                        'dates' => [],
+                        'timings' => $timings,
+                        'statuses' => $statuses
+                    ];
+                }
+
+                $patternGroups[$patternKey]['dates'][] = $date;
+            }
+
+            /* ===== BUILD CONTINUOUS RANGES ===== */
+            foreach ($patternGroups as $group) {
+
+                $dates = $group['dates'];
+                sort($dates);
+
+                $ranges = [];
+                $start = $dates[0];
+                $prev = $dates[0];
+
+                for ($i = 1; $i < count($dates); $i++) {
+                    $curr = $dates[$i];
+
+                    if (strtotime($curr) == strtotime($prev . ' +1 day')) {
+                        $prev = $curr;
+                    } else {
+                        $ranges[] = [$start, $prev];
+                        $start = $curr;
+                        $prev = $curr;
+                    }
+                }
+                $ranges[] = [$start, $prev];
+
+                /* ===== STATUS LOGIC ===== */
+                $statuses = $group['statuses'];
+
+                if (count($statuses) == 1) {
+                    $statusCode = $statuses[0];
                 } else {
-                    $ranges[] = [$start, $prev];
-                    $start = $current;
-                    $prev  = $current;
+                    if (in_array('A', $statuses))
+                        $statusCode = 'A';
+                    elseif (in_array('P', $statuses))
+                        $statusCode = 'P';
+                    elseif (in_array('D', $statuses))
+                        $statusCode = 'D';
+                    elseif (in_array('C', $statuses))
+                        $statusCode = 'C';
+                    else
+                        $statusCode = 'Mixed';
+                }
+
+                switch ($statusCode) {
+                    case 'A':
+                        $statusText = 'Active';
+                        break;
+                    case 'C':
+                        $statusText = 'Completed';
+                        break;
+                    case 'P':
+                        $statusText = 'Pending';
+                        break;
+                    case 'D':
+                        $statusText = 'Draft';
+                        break;
+                    default:
+                        $statusText = 'Unknown';
+                        break;
+                }
+
+                /* ===== FINAL ROW BUILD ===== */
+                foreach ($ranges as $range) {
+
+                    list($fromDate, $toDate) = $range;
+
+                    $dayCount = (strtotime($toDate) - strtotime($fromDate)) / 86400 + 1;
+
+                    $rowData[] = [
+                        "routeID" => (int) $routeID,
+                        "route" => db_output2($routeInfo['route']),
+                        "destination" => db_output2($routeInfo['destination']),
+                        "fromDate" => date('d/m/Y', strtotime($fromDate)),
+                        "toDate" => date('d/m/Y', strtotime($toDate)),
+                        "dayCount" => $dayCount,
+                        "status" => $statusText,
+                        "statusCode" => $statusCode,
+                        "timings" => $group['timings'],
+                        "totalTrips" => count($group['timings']) * $dayCount
+                    ];
                 }
             }
-            $ranges[] = [$start, $prev];
-
-            // ===== STATUS LOGIC =====
-            $allStatuses = $groupData['statuses'];
-
-            if (count($allStatuses) == 1) {
-                $overallStatusCode = $allStatuses[0];
-            } else {
-                if (in_array('A', $allStatuses)) $overallStatusCode = 'A';
-                elseif (in_array('P', $allStatuses)) $overallStatusCode = 'P';
-                elseif (in_array('D', $allStatuses)) $overallStatusCode = 'D';
-                elseif (in_array('C', $allStatuses)) $overallStatusCode = 'C';
-                else $overallStatusCode = 'Mixed';
-            }
-
-            switch ($overallStatusCode) {
-                case 'A': $overallStatus = 'Active'; break;
-                case 'C': $overallStatus = 'Completed'; break;
-                case 'P': $overallStatus = 'Pending'; break;
-                case 'D': $overallStatus = 'Draft'; break;
-                default:  $overallStatus = 'Unknown'; break;
-            }
-
-            // ===== UNIQUE TIMINGS =====
-            $uniqueTimings = [];
-
-            foreach ($groupData['trips'] as $trip) {
-                $time = date('H:i', strtotime($trip['tripTime']));
-                $uniqueTimings[$time] = true;
-            }
-
-            $uniqueTimings = array_keys($uniqueTimings);
-            sort($uniqueTimings);
-
-            // ===== BUILD FINAL ROWS =====
-            foreach ($ranges as $range) {
-
-                list($fromDate, $toDate) = $range;
-
-                $dayCount = (strtotime($toDate) - strtotime($fromDate)) / 86400 + 1;
-
-                $rowData[] = [
-                    "routeID" => (int)$routeID,
-                    "route" => db_output2($routeInfo['route'] ?? ''),
-                    "destination" => db_output2($routeInfo['destination'] ?? ''),
-                    "fromDate" => date('d/m/Y', strtotime($fromDate)),
-                    "toDate" => date('d/m/Y', strtotime($toDate)),
-                    "dayCount" => $dayCount,
-                    "status" => $overallStatus,
-                    "statusCode" => $overallStatusCode,
-                    "timings" => $uniqueTimings,
-                    "totalTrips" => count($uniqueTimings) * $dayCount
-                ];
-            }
         }
-    }
 
-    // ================= SORT =================
-    usort($rowData, function ($a, $b) {
-        if ($a['routeID'] == $b['routeID']) {
-            return strtotime(str_replace('/', '-', $b['fromDate']))
-                 - strtotime(str_replace('/', '-', $a['fromDate']));
-        }
-        return $a['routeID'] - $b['routeID'];
-    });
+        /* ================= SORT ================= */
+        usort($rowData, function ($a, $b) {
+            if ($a['routeID'] == $b['routeID']) {
+                return strtotime(str_replace('/', '-', $b['fromDate']))
+                    - strtotime(str_replace('/', '-', $a['fromDate']));
+            }
+            return $a['routeID'] - $b['routeID'];
+        });
 
-    echo json_encode([
-        "data" => [
-            "rowData" => $rowData,
-            "totalGroups" => count($rowData)
-        ],
-        "statusCode" => 200
-    ]);
+        echo json_encode([
+            "data" => [
+                "rowData" => $rowData,
+                "totalGroups" => count($rowData)
+            ],
+            "statusCode" => 200
+        ]);
 
-break;
+        break;
 
     // ===================== CASE APPROVE_TRIP_PLANNER =====================
     case 'APPROVE_TRIP_PLANNER':
