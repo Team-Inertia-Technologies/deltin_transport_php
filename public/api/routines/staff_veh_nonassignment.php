@@ -21,19 +21,18 @@ $sql = "SELECT
             r.vName as routeName,
             r.vDestination as destination,
             t.iCapacity,
-            COUNT(DISTINCT req.iStaffID) as requestedPax,
+            t.iRequested as requestedPax,
             COUNT(DISTINCT tva.iVehicleID) as assignedVehicles
         FROM st_trips t
         LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
-        LEFT JOIN st_request req ON t.iTripID = req.iTripID AND req.cStatus = 'A'
         LEFT JOIN st_trip_vehicle_assoc tva ON t.iTripID = tva.iTripID AND tva.cStatus = 'A'
         WHERE t.cStatus = 'A'
         AND t.dtTrip BETWEEN '$checkFromTime' AND '$checkToTime'
         GROUP BY t.iTripID, t.dtTrip, r.vName, r.vDestination, t.iCapacity
         HAVING assignedVehicles = 0 AND requestedPax > 0
         ORDER BY t.dtTrip ASC";
-        echo $sql;
-        exit;
+        // echo $sql;
+        // exit;
 
 $result = sql_query($sql);
 
