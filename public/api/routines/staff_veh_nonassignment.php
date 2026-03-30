@@ -10,9 +10,9 @@ include "../../includes/_send_mail.php";
 date_default_timezone_set('Asia/Kolkata');
 $NOW = date('Y-m-d H:i:s');
 
-// Calculate time window - next 4 hours
-$checkFromTime = date('Y-m-d H:i:s', strtotime('+1 hour'));
-$checkToTime = date('Y-m-d H:i:s', strtotime('+4 hours'));
+
+ $checkFromTime = date('Y-m-d H:i:s');
+ $checkToTime = date('Y-m-d H:i:s', strtotime('+4 hours'));
 
 // Query to find trips without vehicle assignments in the next 4 hours
 $sql = "SELECT 
@@ -32,6 +32,8 @@ $sql = "SELECT
         GROUP BY t.iTripID, t.dtTrip, r.vName, r.vDestination, t.iCapacity
         HAVING assignedVehicles = 0 AND requestedPax > 0
         ORDER BY t.dtTrip ASC";
+        echo $sql;
+        exit;
 
 $result = sql_query($sql);
 
