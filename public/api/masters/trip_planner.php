@@ -50,7 +50,8 @@ ORDER BY t.iRouteID, DATE(t.dtTrip), TIME(t.dtTrip)";
 
             $routeID = $row['iRouteID'];
             $date = $row['dtTrip'];
-            $time = date('H:i', strtotime($row['tripTime']));
+          //  $time = date('H:i', strtotime($row['tripTime']));
+          $time = substr($row['tripTime'], 0, 5);
             $status = $row['status'];
 
             if (!isset($routeData[$routeID])) {
