@@ -82,13 +82,13 @@ if (sql_num_rows($result) > 0) {
                 <table class='trip-table'>
                     <thead>
                         <tr>
-                            <th>Trip ID</th>
+                         
                             <th>Date</th>
                             <th>Time</th>
                             <th>Route</th>
                             <th>Destination</th>
                             <th>Passengers</th>
-                            <th>Required Capacity</th>
+                 
                         </tr>
                     </thead>
                     <tbody>";
@@ -96,13 +96,13 @@ if (sql_num_rows($result) > 0) {
         foreach ($unassignedTrips as $trip) {
             $email_content .= "
                         <tr>
-                            <td>{$trip['tripID']}</td>
+                          
                             <td>{$trip['date']}</td>
                             <td><strong>{$trip['time']}</strong></td>
                             <td><strong>{$trip['routeName']}</strong></td>
                             <td>{$trip['destination']}</td>
                             <td>{$trip['requestedPax']}</td>
-                            <td>{$trip['capacity']}</td>
+    
                         </tr>";
         }
         
