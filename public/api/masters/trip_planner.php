@@ -586,9 +586,7 @@ if (count($statuses) > 1) {
                                 WHERE t.iRouteID = $routeID
                                 AND DATE(t.dtTrip) BETWEEN '$fromDateFormatted' AND '$toDateFormatted'
                                 AND TIME(t.dtTrip) = '" . db_input($timing) . "'
-                                AND t.cStatus = 'A'
-                                AND t.cStatus != 'X'
-                                AND tva.iVehicleID > 0
+                                AND t.cStatus != 'X' AND tva.cStatus != 'X' AND tva.iVehicleID > 0
                                 ORDER BY v.vRnum";
 
             $assignmentsRes = sql_query($tripAssignmentsSql);

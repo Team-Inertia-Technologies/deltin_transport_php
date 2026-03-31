@@ -613,6 +613,7 @@ switch ($mode) {
                                   WHERE t.dtTrip = '$currentTripDateTime'
                                   AND t.iTripID != $iTripID
                                   AND t.cStatus != 'X'
+                                   AND tva.cStatus != 'X'
                                   AND tva.iVehicleID > 0";
         $conflictingVehiclesRes = sql_query($conflictingVehiclesSql);
 
