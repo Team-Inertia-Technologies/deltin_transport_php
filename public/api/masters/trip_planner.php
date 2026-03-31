@@ -587,7 +587,7 @@ if (count($statuses) > 1) {
                                 AND DATE(t.dtTrip) BETWEEN '$fromDateFormatted' AND '$toDateFormatted'
                                 AND TIME(t.dtTrip) = '" . db_input($timing) . "'
                                 AND t.cStatus != 'X' AND tva.cStatus != 'X' AND tva.iVehicleID > 0
-                                ORDER BY v.vRnum";
+                               ORDER BY t.iTripID DESC LIMIT 2";
 
             $assignmentsRes = sql_query($tripAssignmentsSql);
             $assignments = [];
@@ -616,7 +616,7 @@ if (count($statuses) > 1) {
                        FROM vehicle v
                        LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                        LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID AND ven.cStatus = 'A' and ven.cType IN ('B','S') 
-                       WHERE v.cStatus = 'A' AND v.cServiceType IN ('S','B') ORDER BY t.iTripID DESC LIMIT 2";
+                       WHERE v.cStatus = 'A' AND v.cServiceType IN ('S','B') ORDER BY v.vRnum";
         $tableArrRes = sql_query($tableArrSql);
 
         $tableArr = [];
