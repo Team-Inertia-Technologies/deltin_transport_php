@@ -27,161 +27,166 @@ if (sql_num_rows($userCheckRes) == 0) {
 switch ($mode) {
 
     // ===================== CASE : VIEW =====================
-    case 'VIEW':
-        $TODAY = TODAY;
-        $date = !empty($_REQUEST['date']) ? $_REQUEST['date'] : $TODAY;
-        $fromTime = $_REQUEST['fromTime'] ?? '';
-        $toTime = $_REQUEST['toTime'] ?? '';
+  case 'VIEW':
 
-        if (empty($date)) {
-            echo json_encode([
-                "error" => [
-                    "message" => "Date parameter is required"
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
+    $TODAY = TODAY;
+    $date = !empty($_REQUEST['date']) ? $_REQUEST['date'] : $TODAY;
+    $fromTime = $_REQUEST['fromTime'] ?? '';
+    $toTime = $_REQUEST['toTime'] ?? '';
+
+    if (empty($date)) {
+        echo json_encode([
+            "error" => ["message" => "Date parameter is required"],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
+    $dateObj = DateTime::createFromFormat('Y-m-d', $date);
+    if (!$dateObj || $dateObj->format('Y-m-d') !== $date) {
+        echo json_encode([
+            "error" => ["message" => "Invalid date format. Use YYYY-MM-DD"],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
+    // WHERE conditions
+    $whereConditions = [
+        "DATE(t.dtTrip) = '" . db_input($date) . "'",
+        "t.cStatus != 'X'"
+    ];
+
+    if (!empty($fromTime)) {
+        $whereConditions[] = "TIME(t.dtTrip) >= '" . db_input($fromTime) . "'";
+    }
+
+    if (!empty($toTime)) {
+        $whereConditions[] = "TIME(t.dtTrip) <= '" . db_input($toTime) . "'";
+    }
+
+    $whereClause = implode(' AND ', $whereConditions);
+
+    $sql = "SELECT 
+                t.iTripID,
+                t.iGrpID,
+                t.dtTrip,
+                t.cStatus,
+                r.vName as routeName,
+                r.vDestination as destination,
+                t.iRequested as requestedPax,
+                v.vRnum as vehicleNumber,
+                vc.iCapacity as vehicleCapacity
+            FROM st_trips t
+            LEFT JOIN st_trip_vehicle_assoc tv 
+                ON t.iTripID = tv.iTripID AND tv.cStatus IN ('A','C')
+            LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
+            LEFT JOIN vehicle v ON tv.iVehicleID = v.iVehicleID
+            LEFT JOIN vehicle_category vc 
+                ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
+            WHERE $whereClause
+            ORDER BY t.dtTrip, t.iTripID";
+
+    $res = sql_query($sql);
+
+    $groupedTrips = [];
+    $processedTrips = []; 
+
+    $currentTime = date('H:i');
+    $currentDate = date('Y-m-d');
+
+    while ($row = sql_fetch_assoc($res)) {
+
+        $routeName = db_output2($row['routeName'] ?? '');
+        $destination = db_output2($row['destination'] ?? '');
+        $routeKey = $routeName . '|' . $destination;
+
+        $tripID = (int)$row['iTripID'];
+        $grpID = (int)$row['iGrpID'];
+        $tripTime = date('H:i', strtotime($row['dtTrip']));
+        $tripStatus = $row['cStatus'] ?? '';
+
+        $vehicleCapacity = (int)($row['vehicleCapacity'] ?? 0);
+        $vehicleNumber = db_output2($row['vehicleNumber'] ?? '');
+
+        $paxToAdd = 0;
+        if (!isset($processedTrips[$tripID])) {
+            $paxToAdd = (int)($row['requestedPax'] ?? 0);
+            $processedTrips[$tripID] = true;
         }
 
-        $dateObj = DateTime::createFromFormat('Y-m-d', $date);
-        if (!$dateObj || $dateObj->format('Y-m-d') !== $date) {
-            echo json_encode([
-                "error" => [
-                    "message" => "Invalid date format. Use YYYY-MM-DD"
-                ],
-                "statusCode" => 400
-            ]);
-            exit;
+        // Initialize route
+        if (!isset($groupedTrips[$routeKey])) {
+            $groupedTrips[$routeKey] = [
+                "from" => $routeName,
+                "to" => $destination,
+                "vehicleInfo" => []
+            ];
         }
 
-        // Build WHERE conditions
-        $whereConditions = ["DATE(t.dtTrip) = '" . db_input($date) . "'", "t.cStatus != 'X'"];
+        // Create unique key for time slot
+        $timeKey = $tripTime;
 
-        // Add time filtering if provided
-        if (!empty($fromTime)) {
-            $whereConditions[] = "TIME(t.dtTrip) >= '" . db_input($fromTime) . "'";
-        }
+        if (!isset($groupedTrips[$routeKey]['vehicleInfo'][$timeKey])) {
 
-        if (!empty($toTime)) {
-            $whereConditions[] = "TIME(t.dtTrip) <= '" . db_input($toTime) . "'";
-        }
+            // Determine status
+            $status = "pending";
 
-        $whereClause = implode(' AND ', $whereConditions);
-
-        $sql = "SELECT 
-                    t.iTripID,
-                    t.iGrpID,
-                    t.dtTrip,
-                    t.cStatus,
-                    r.vName as routeName,
-                    r.vDestination as destination,
-                    t.iCapacity,
-                    t.iRequested as requestedPax,
-                    t.iAvaialed as availedPax,
-                    v.vRnum as vehicleNumber,
-                    vc.iCapacity as vehicleCapacity
-                FROM st_trips t
-                LEFT OUTER JOIN st_trip_vehicle_assoc tv ON t.iTripID = tv.iTripID AND tv.cStatus IN ('A', 'C')
-                LEFT JOIN st_route r ON t.iRouteID = r.iRouteID
-                LEFT JOIN vehicle v ON tv.iVehicleID = v.iVehicleID
-                LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                WHERE $whereClause
-                ORDER BY t.dtTrip, t.iTripID";
-
-        $res = sql_query($sql);
-        $groupedTrips = [];
-
-        // Group trips by route (same from and to)
-        while ($row = sql_fetch_assoc($res)) {
-            $routeName = db_output2($row['routeName'] ?? '');
-            $destination = db_output2($row['destination'] ?? '');
-            $routeKey = $routeName . '|' . $destination; // Create unique key for same route
-
-            $tripTime = date('H:i', strtotime($row['dtTrip']));
-            $currentTime = date('H:i');
-            $currentDate = date('Y-m-d');
-
-            if (!isset($groupedTrips[$routeKey])) {
-                $groupedTrips[$routeKey] = [
-                    "from" => $routeName,
-                    "to" => $destination,
-                    "vehicleInfo" => []
-                ];
-            }
-
-            // Determine status based on time, capacity and cStatus
-            $status = "pending"; // Default status
-            $totalRequestedPax = (int) ($row['requestedPax'] ?? 0);
-            $vehicleCapacity = (int) ($row['vehicleCapacity'] ?? 0);
-            $tripStatus = $row['cStatus'] ?? '';
-
-            // Check if trip is over (past time on same date or past date)
             if ($date < $currentDate || ($date == $currentDate && $tripTime < $currentTime)) {
-                if ($tripStatus === 'C') {
-                    $status = "complete";
-                } else {
-                    $status = "success";
-                }
-            }
-            // Check if requested pax exceeds vehicle capacity
-            else if ($totalRequestedPax > $vehicleCapacity) {
-                $status = "overbooked";
-            }
-            // Check if trip is upcoming (future time on same date or future date)
-            else if ($date > $currentDate || ($date == $currentDate && $tripTime > $currentTime)) {
+                $status = ($tripStatus === 'C') ? "complete" : "success";
+            } else {
                 $status = "scheduled";
             }
 
-            // Find existing vehicleInfo entry for this time or create new one
-            $timeExists = false;
-            foreach ($groupedTrips[$routeKey]['vehicleInfo'] as &$vehicleInfo) {
-                if ($vehicleInfo['time'] === $tripTime) {
-                    // Add vehicle to existing time slot
-                    $vehicleInfo['vehiNum'][] = [
-                        "num" => db_output2($row['vehicleNumber'] ?? ''),
-                        "count" => $vehicleCapacity
-                    ];
-                    $vehicleInfo['pax'] += $totalRequestedPax;
-                    // Update grpID if not already set or if current grpID is different
-                    if (!isset($vehicleInfo['grpID']) || $vehicleInfo['grpID'] === 0) {
-                        $vehicleInfo['grpID'] = (int) ($row['iGrpID'] ?? 0);
-                    }
-                    $timeExists = true;
-                    break;
-                }
-            }
-
-            if (!$timeExists) {
-                $groupedTrips[$routeKey]['vehicleInfo'][] = [
-                    "time" => $tripTime,
-                    "pax" => $totalRequestedPax,
-                    "status" => $status,
-                    "grpID" => (int) ($row['iGrpID'] ?? 0),
-                    "iTripID"=> (int) ($row['iTripID'] ?? 0),
-                    "vehiNum" => [
-                        [
-                            "num" => db_output2($row['vehicleNumber'] ?? ''),
-                            "count" => $vehicleCapacity
-                        ]
-                    ]
-                ];
-            }
+            $groupedTrips[$routeKey]['vehicleInfo'][$timeKey] = [
+                "time" => $tripTime,
+                "pax" => 0,
+                "status" => $status,
+                "grpID" => $grpID,
+                "iTripID" => $tripID,
+                "vehiNum" => []
+            ];
         }
 
-        // Convert grouped trips to the required format
-        $trips = [];
-        foreach ($groupedTrips as $routeKey => $tripData) {
-            $trips[] = $tripData;
+   
+        $groupedTrips[$routeKey]['vehicleInfo'][$timeKey]['pax'] += $paxToAdd;
+
+
+        if (!empty($vehicleNumber)) {
+            $groupedTrips[$routeKey]['vehicleInfo'][$timeKey]['vehiNum'][] = [
+                "num" => $vehicleNumber,
+                "count" => $vehicleCapacity
+            ];
         }
 
-        echo json_encode([
-            "data" => [
-                "message" => "Success",
-                "trips" => $trips
-            ],
-            "statusCode" => 200
-        ]);
-        break;
+
+        $totalCapacity = array_sum(array_column(
+            $groupedTrips[$routeKey]['vehicleInfo'][$timeKey]['vehiNum'],
+            'count'
+        ));
+
+        if ($groupedTrips[$routeKey]['vehicleInfo'][$timeKey]['pax'] > $totalCapacity) {
+            $groupedTrips[$routeKey]['vehicleInfo'][$timeKey]['status'] = "overbooked";
+        }
+    }
+
+    // Reset indexes (important for JSON)
+    $finalTrips = [];
+
+    foreach ($groupedTrips as $routeData) {
+        $routeData['vehicleInfo'] = array_values($routeData['vehicleInfo']);
+        $finalTrips[] = $routeData;
+    }
+
+    echo json_encode([
+        "data" => [
+            "message" => "Success",
+            "trips" => $finalTrips
+        ],
+        "statusCode" => 200
+    ]);
+
+    break;
 
 
     case 'HEADER':
