@@ -934,203 +934,204 @@ switch ($mode) {
 
 
     // ===================== CASE ADD_TRIP =====================
-    case 'ADD_TRIP':
-        $fromDate = $_REQUEST['fromDate'] ?? '';
-        $toDate = $_REQUEST['toDate'] ?? '';
-        $routeID = intval($_REQUEST['routeID'] ?? 0);
-        $tripInfo = $_REQUEST['tripInfo'] ?? [];
+   case 'ADD_TRIP':
 
-        // Validate required parameters
-        if (empty($fromDate) || empty($toDate) || $routeID <= 0 || empty($tripInfo)) {
+    $fromDate = $_REQUEST['fromDate'] ?? '';
+    $toDate = $_REQUEST['toDate'] ?? '';
+    $routeID = intval($_REQUEST['routeID'] ?? 0);
+    $tripInfo = $_REQUEST['tripInfo'] ?? [];
+
+    // Validate required parameters
+    if (empty($fromDate) || empty($toDate) || $routeID <= 0 || empty($tripInfo)) {
+        echo json_encode([
+            "error" => ["message" => "Missing required parameters"],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
+    // Validate date range
+    $fromDateTime = DateTime::createFromFormat('Y-m-d', $fromDate);
+    $toDateTime = DateTime::createFromFormat('Y-m-d', $toDate);
+
+    if (!$fromDateTime || !$toDateTime || $fromDateTime > $toDateTime) {
+        echo json_encode([
+            "error" => ["message" => "Invalid date range"],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+
+    $errors = [];
+    $insertValues = [];
+    $vehicleAssociations = [];
+
+    $cStatus = checkUserModuleAccess($user_id, 'STAFF_TRIP_APPROVE') ? 'A' : 'D';
+
+    // Generate date range
+    $dateRange = [];
+    $currentDate = clone $fromDateTime;
+    while ($currentDate <= $toDateTime) {
+        $dateRange[] = $currentDate->format('Y-m-d');
+        $currentDate->add(new DateInterval('P1D'));
+    }
+
+    // Get TripID start
+    $currentTripID = NextID('iTripID', 'st_trips');
+
+    foreach ($tripInfo as $tripIndex => $trip) {
+
+        $time = $trip['time'] ?? '';
+        $vehicles = $trip['vehicle'] ?? [];
+
+        if (empty($time)) {
             echo json_encode([
-                "error" => [
-                    "message" => "Missing required parameters: fromDate, toDate, routeID, or tripInfo"
-                ],
+                "error" => ["message" => "Time missing at index $tripIndex"],
                 "statusCode" => 400
             ]);
             exit;
         }
 
-        // Validate date format and range
-        $fromDateTime = DateTime::createFromFormat('Y-m-d', $fromDate);
-        $toDateTime = DateTime::createFromFormat('Y-m-d', $toDate);
+        $cleanTime = trim(str_replace(' ', '', $time));
+        if (strlen($cleanTime) == 5) {
+            $cleanTime .= ':00';
+        }
 
-        if (!$fromDateTime || !$toDateTime || $fromDateTime > $toDateTime) {
+        if (!preg_match('/^([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/', $cleanTime)) {
             echo json_encode([
-                "error" => [
-                    "message" => "Invalid date range"
-                ],
+                "error" => ["message" => "Invalid time format at index $tripIndex"],
                 "statusCode" => 400
             ]);
             exit;
         }
+        $vehicleIDs = [];
+        foreach ($vehicles as $v) {
+            $vehID = intval($v['vhId'] ?? $v['vehID'] ?? 0);
+            if ($vehID > 0) {
+                $vehicleIDs[] = $vehID;
+            }
+        }
 
-        $errors = [];
-        $insertValues = [];
-        $vehicleAssociations = [];
-        if (checkUserModuleAccess($user_id, 'STAFF_TRIP_APPROVE')) {
-            $cStatus = 'A'; // approved
+        $vehicleCapacityMap = [];
+
+        if (!empty($vehicleIDs)) {
+            $ids = implode(',', $vehicleIDs);
+
+            $res = sql_query("SELECT v.iVehicleID, vc.iCapacity FROM vehicle v INNER JOIN vehicle_category vc ON vc.iVCatID = v.iCatID WHERE v.iVehicleID IN ($ids) ");
+
+            while ($row = sql_fetch_assoc($res)) {
+                $vehicleCapacityMap[$row['iVehicleID']] = $row['iCapacity'];
+            }
+        }
+
+        // Process each date
+        foreach ($dateRange as $date) {
+
+            $tripDateTime = $date . ' ' . $cleanTime;
+
+
+            $duplicateCheck = checkDuplicateTrip($routeID, $tripDateTime);
+            if ($duplicateCheck['duplicate_exists']) {
+                $errors[] = "Skipped $tripDateTime - " . $duplicateCheck['message'];
+                continue;
+            }
+
+            $tripIDForThisRow = $currentTripID; 
+            $totalCapacity = 0;
+            if (!empty($vehicles)) {
+                foreach ($vehicles as $vehicle) {
+
+                    $vehID = intval($vehicle['vhId'] ?? $vehicle['vehID'] ?? 0);
+                    $driverID = intval($vehicle['driverId'] ?? $vehicle['driverID'] ?? 0);
+
+                    if ($vehID > 0) {
+
+                        $totalCapacity += $vehicleCapacityMap[$vehID] ?? 0;
+
+                        $vehicleAssociations[] = [
+                            'tripID' => $tripIDForThisRow,
+                            'vehicleID' => $vehID,
+                            'driverID' => $driverID,
+                            'assignedBy' => $user_id
+                        ];
+                    }
+                }
+            }
+
+            $insertValues[] = "(
+                $tripIDForThisRow,
+                $tripIDForThisRow,
+                $routeID,
+                '" . db_input($tripDateTime) . "',
+                $totalCapacity,
+                $user_id,
+                1,
+                '$NOW',
+                '$cStatus'
+            )";
+
+            $currentTripID++;
+        }
+    }
+
+    // Execute insert
+    if (!empty($insertValues)) {
+
+        sql_query("LOCK TABLES st_trips WRITE, st_trip_vehicle_assoc WRITE");
+
+        $insertSql = "INSERT INTO st_trips (
+            iTripID, iGrpID, iRouteID, dtTrip,
+            iCapacity, iTripAddedBy, iRank, dtAdded, cStatus
+        ) VALUES " . implode(',', $insertValues);
+
+        if (sql_query($insertSql)) {
+
+            // Insert vehicle associations
+            if (!empty($vehicleAssociations)) {
+
+                $assocValues = [];
+                $currentTVAID = NextID('iTVAID', 'st_trip_vehicle_assoc');
+
+                foreach ($vehicleAssociations as $assoc) {
+                    $assocValues[] = "(
+                        $currentTVAID,
+                        {$assoc['tripID']},
+                        {$assoc['vehicleID']},
+                        {$assoc['driverID']},
+                        {$assoc['assignedBy']},
+                        '$NOW',
+                        'A'
+                    )";
+                    $currentTVAID++;
+                }
+
+                if (!empty($assocValues)) {
+                    $assocSql = "INSERT INTO st_trip_vehicle_assoc (
+                        iTVAID, iTripID, iVehicleID, iDriverID,
+                        iVehAssignedBy, dtAdded, cStatus
+                    ) VALUES " . implode(',', $assocValues);
+
+                    if (!sql_query($assocSql)) {
+                        $errors[] = "Vehicle association insert failed";
+                    }
+                }
+            }
+
         } else {
-            $cStatus = 'D'; // draft
-        }
-        // Generate date range
-        $dateRange = [];
-        $currentDate = clone $fromDateTime;
-        while ($currentDate <= $toDateTime) {
-            $dateRange[] = $currentDate->format('Y-m-d');
-            $currentDate->add(new DateInterval('P1D'));
+            $errors[] = "Trip insert failed";
+            error_log("SQL Error: " . $insertSql);
         }
 
-        // Get starting iTripID using NextID function
-        $startingTripID = NextID('iTripID', 'st_trips');
-        $currentTripID = $startingTripID;
+        sql_query("UNLOCK TABLES");
+    }
 
-        // Process each trip in tripInfo array
-        foreach ($tripInfo as $tripIndex => $trip) {
-            $time = $trip['time'] ?? '';
-            $vehicles = $trip['vehicle'] ?? [];
+    echo json_encode([
+        "data" => ["message" => "Trip creation completed"],
+        "statusCode" => 200,
+        "warnings" => $errors
+    ]);
 
-            if (empty($time)) {
-                echo json_encode([
-                    "error" => [
-                        "message" => "Time is required for trip at index $tripIndex. Please provide a valid time."
-                    ],
-                    "statusCode" => 400
-                ]);
-                exit;
-            }
-
-            // Clean up time format - remove extra spaces and ensure proper format
-            $cleanTime = trim(str_replace(' ', '', $time));
-            // Ensure time is in HH:MM:SS format
-            if (strlen($cleanTime) == 5 && substr_count($cleanTime, ':') == 1) {
-                $cleanTime .= ':00'; // Add seconds if missing
-            }
-
-            // Validate time format
-            if (!preg_match('/^([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/', $cleanTime)) {
-                echo json_encode([
-                    "error" => [
-                        "message" => "Invalid time format for trip at index $tripIndex. Please use HH:MM or HH:MM:SS format."
-                    ],
-                    "statusCode" => 400
-                ]);
-                exit;
-            }
-
-            // Process each date in the range
-            foreach ($dateRange as $date) {
-                $tripDateTime = $date . ' ' . $cleanTime;
-
-                // Check if trip already exists for this route, date and time
-                $duplicateCheck = checkDuplicateTrip($routeID, $tripDateTime);
-                if ($duplicateCheck['duplicate_exists']) {
-                    $errors[] = "Skipped creating trip for " . $tripDateTime . " - " . $duplicateCheck['message'];
-                    continue;
-                }
-
-
-                $tripIDForThisRow = $currentTripID; // LOCK TripID
-
-                $insertValues[] = "($tripIDForThisRow,$tripIDForThisRow, $routeID, '" . db_input($tripDateTime) . "', 0, $user_id, 1, '$NOW', '$cStatus')";
-
-                if (!empty($vehicles)) {
-                    foreach ($vehicles as $vehicle) {
-                        $vehID = intval($vehicle['vhId'] ?? $vehicle['vehID'] ?? 0);
-                        $driverID = intval($vehicle['driverId'] ?? $vehicle['driverID'] ?? 0);
-
-                        if ($vehID > 0) {
-                            $vehicleAssociations[] = [
-                                'tripID' => $tripIDForThisRow,
-                                'vehicleID' => $vehID,
-                                'driverID' => $driverID,
-                                'assignedBy' => $user_id
-                            ];
-                        }
-                    }
-                }
-
-                $currentTripID++;
-            }
-        }
-
-        $insertedCount = 0;
-
-
-
-        if (!empty($insertValues)) {
-
-            sql_query("LOCK TABLES st_trips WRITE, st_trip_vehicle_assoc WRITE");
-
-            $insertSql = "INSERT INTO st_trips (
-                iTripID,
-                iGrpID,
-                iRouteID, 
-                dtTrip, 
-                iCapacity, 
-                iTripAddedBy,
-                iRank, 
-                dtAdded,
-                cStatus
-            ) VALUES " . implode(', ', $insertValues);
-
-            if (sql_query($insertSql)) {
-                $insertedCount = count($insertValues);
-
-                if (!empty($vehicleAssociations)) {
-                    $assocInsertValues = [];
-                    $startingTVAID = NextID('iTVAID', 'st_trip_vehicle_assoc');
-                    $currentTVAID = $startingTVAID;
-
-                    foreach ($vehicleAssociations as $assoc) {
-                        $assocInsertValues[] = "($currentTVAID, {$assoc['tripID']}, {$assoc['vehicleID']}, {$assoc['driverID']}, {$assoc['assignedBy']}, '$NOW', 'A')";
-                        $currentTVAID++;
-                    }
-
-                    if (!empty($assocInsertValues)) {
-                        $assocInsertSql = "INSERT INTO st_trip_vehicle_assoc (
-                            iTVAID,
-                            iTripID,
-                            iVehicleID,
-                            iDriverID,
-                            iVehAssignedBy,
-                            dtAdded,
-                            cStatus
-                        ) VALUES " . implode(', ', $assocInsertValues);
-
-                        if (!sql_query($assocInsertSql)) {
-                            $errors[] = "Failed to insert vehicle associations. SQL Error: ";
-                        }
-                    }
-                }
-            } else {
-
-                $errors[] = "Failed to insert trips. SQL Error: " . $sqlError;
-                // Also log the problematic query for debugging
-                error_log("Failed SQL Query: " . $insertSql);
-            }
-
-            // Unlock tables
-            sql_query("UNLOCK TABLES");
-        }
-
-        // Prepare response
-        $response = [
-            "data" => [
-                "message" => "Trip creation completed",
-                // "insertedCount" => $insertedCount,
-                // "dateRange" => count($dateRange),
-                // "tripCount" => count($tripInfo)
-            ],
-            "statusCode" => 200
-        ];
-
-        if (!empty($errors)) {
-            $response["warnings"] = $errors;
-        }
-
-        echo json_encode($response);
-        break;
+    break;
 
     // ===================== CASE UPDATE_TRIP =====================
     case 'UPDATE_TRIP':
