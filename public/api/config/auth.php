@@ -235,6 +235,10 @@ if (true) {
 					// if(!empty($IS_SALE_DASHBOARD) && $IS_SALE_DASHBOARD!='-1')
 					// 	$URL = 'home2.php';
 					$NOW= NOW;
+
+					// Count staff pending approval
+					$pendingStaffCount = (int) GetXFromYID("SELECT COUNT(*) FROM staff WHERE cStatus = 'P'");
+
 					$response = array(
 						"data" => array(
 							"userInfo" => array(
@@ -247,7 +251,8 @@ if (true) {
 							"token" => $token,
 							"modules" => $MODULE_ACCESS_ARR,
 							"menuIds" => $MENU_ACCESS_ARR,
-							"menu_details"=> $MENU_DETAILS
+							"menu_details"=> $MENU_DETAILS,
+							"pendingStaffCount" => $pendingStaffCount
 						),
 						"statusCode" => 200,
 					);
