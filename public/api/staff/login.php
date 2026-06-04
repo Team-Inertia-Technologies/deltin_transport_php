@@ -170,7 +170,7 @@ if ($mode == 'LOGIN') {
 
             // Create new staff record
             $iStaffID = NextID('iStaffID', 'staff');
-            $cStatus = 'A';
+            $cStatus = 'P';
             $dtRegistered = NOW;
 
             $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile, iRouteID, iStopID, dtRegistered, cStatus) 

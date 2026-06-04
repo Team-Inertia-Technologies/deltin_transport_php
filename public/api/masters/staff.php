@@ -49,8 +49,8 @@ switch ($mode) {
                 LEFT JOIN st_route_stops st ON s.iStopID = st.iStopID AND st.cStatus = 'A'
                 LEFT JOIN department d ON s.iDepartmentID = d.iDepartmentID AND d.cStatus = 'A'
                 LEFT JOIN property p ON s.iPropertyID = p.iPropertyID AND p.cStatus = 'A'
-                WHERE s.cStatus IN ('A', 'I')
-                ORDER BY s.dtRegistered DESC";
+                WHERE s.cStatus IN ('A', 'I','P')
+                ORDER BY CASE WHEN s.cStatus = 'P' THEN 0 ELSE 1 END ASC, s.dtRegistered DESC";
 
         $res = sql_query($sql);
         $staffList = [];
@@ -979,6 +979,213 @@ switch ($mode) {
         ]);
         exit;
 
+
+    // ===================== CASE: APPROVE_STAFF =====================
+    case 'APPROVE_STAFF':
+        $ids = $_REQUEST['ids'] ?? [];
+
+        // Accept a single id as well for convenience
+        if (empty($ids) && !empty($_REQUEST['id'])) {
+            $ids = [$_REQUEST['id']];
+        }
+
+        if (empty($ids) || !is_array($ids)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Staff IDs are required (pass as 'ids' array)"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Check if the user has approval rights
+        $canApprove = checkUserModuleAccess($user_id, 'STAFF_APPROVE');
+        if (!$canApprove) {
+            echo json_encode([
+                "error" => [
+                    "message" => "You do not have permission to approve staff"
+                ],
+                "statusCode" => 403
+            ]);
+            exit;
+        }
+
+        // Sanitize IDs — keep only positive integers
+        $sanitizedIds = array_filter(array_map('intval', $ids), fn($v) => $v > 0);
+
+        if (empty($sanitizedIds)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "No valid Staff IDs provided"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $idList = implode(',', $sanitizedIds);
+
+        // Fetch all matching pending staff in one query
+        $fetchSql = "SELECT iStaffID, cStatus FROM staff WHERE iStaffID IN ($idList) AND cStatus != 'X'";
+        $fetchRes = sql_query($fetchSql);
+
+        $foundIds    = [];
+        $notPending  = [];
+
+        while ($row = sql_fetch_assoc($fetchRes)) {
+            if ($row['cStatus'] === 'P') {
+                $foundIds[] = (int) $row['iStaffID'];
+            } else {
+                $notPending[] = (int) $row['iStaffID'];
+            }
+        }
+
+        // IDs that weren't found at all
+        $allFound   = array_merge($foundIds, $notPending);
+        $notFound   = array_values(array_diff($sanitizedIds, $allFound));
+
+        if (empty($foundIds)) {
+            echo json_encode([
+                "error" => [
+                    "message" => "No pending staff members found to approve",
+                    "notFound"  => $notFound,
+                    "notPending" => $notPending
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Bulk approve in one UPDATE
+        $approveIdList = implode(',', $foundIds);
+        $approveSql = "UPDATE staff SET cStatus = 'A' WHERE iStaffID IN ($approveIdList) AND cStatus = 'P'";
+
+        if (sql_query($approveSql)) {
+            echo json_encode([
+                "data" => [
+                    "approved"   => $foundIds,
+                    "notFound"   => $notFound,
+                    "notPending" => $notPending,
+                    "message"    => count($foundIds) . " staff member(s) approved successfully"
+                ],
+                "statusCode" => 200
+            ]);
+        } else {
+            echo json_encode([
+                "error" => [
+                    "message" => "Failed to approve staff members"
+                ],
+                "statusCode" => 500
+            ]);
+        }
+        break;
+
+    // ===================== CASE: BULK_STATUS =====================
+    // Set status of multiple staff to 'A' (Active) or 'I' (Inactive)
+    case 'BULK_APPROVE_INACTIVE_STATUS':
+        $ids        = $_REQUEST['ids'] ?? [];
+        $newStatus  = strtoupper(trim($_REQUEST['status'] ?? ''));
+
+        // Accept a single id as well for convenience
+        if (empty($ids) && !empty($_REQUEST['id'])) {
+            $ids = [$_REQUEST['id']];
+        }
+
+        if (empty($ids) || !is_array($ids)) {
+            echo json_encode([
+                "error" => ["message" => "Staff IDs are required (pass as 'ids' array)"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $allowedStatuses = ['A', 'I'];
+        if (!in_array($newStatus, $allowedStatuses, true)) {
+            echo json_encode([
+                "error" => ["message" => "Invalid status. Allowed values: A (Active), I (Inactive)"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Permission check
+        $canApprove = checkUserModuleAccess($user_id, 'STAFF_APPROVE');
+        if (!$canApprove) {
+            echo json_encode([
+                "error" => ["message" => "You do not have permission to update staff status"],
+                "statusCode" => 403
+            ]);
+            exit;
+        }
+
+        // Sanitize IDs
+        $sanitizedIds = array_values(array_filter(array_map('intval', $ids), fn($v) => $v > 0));
+
+        if (empty($sanitizedIds)) {
+            echo json_encode([
+                "error" => ["message" => "No valid Staff IDs provided"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $idList = implode(',', $sanitizedIds);
+
+        // Fetch existing staff (exclude deleted)
+        $fetchSql = "SELECT iStaffID, cStatus FROM staff WHERE iStaffID IN ($idList) AND cStatus != 'X'";
+        $fetchRes = sql_query($fetchSql);
+
+        $toUpdate    = [];  // eligible for the status change
+        $alreadySet  = [];  // already in the target status
+        $foundAll    = [];
+
+        while ($row = sql_fetch_assoc($fetchRes)) {
+            $sid = (int) $row['iStaffID'];
+            $foundAll[] = $sid;
+            if ($row['cStatus'] === $newStatus) {
+                $alreadySet[] = $sid;
+            } else {
+                $toUpdate[] = $sid;
+            }
+        }
+
+        $notFound = array_values(array_diff($sanitizedIds, $foundAll));
+
+        if (empty($toUpdate)) {
+            echo json_encode([
+                "data" => [
+                    "updated"    => [],
+                    "alreadySet" => $alreadySet,
+                    "notFound"   => $notFound,
+                    "message"    => "All provided staff are already set to status '$newStatus'"
+                ],
+                "statusCode" => 200
+            ]);
+            exit;
+        }
+
+        $updateIdList = implode(',', $toUpdate);
+        $statusLabel  = $newStatus === 'A' ? 'Active' : 'Inactive';
+        $updateSql    = "UPDATE staff SET cStatus = '$newStatus' WHERE iStaffID IN ($updateIdList) AND cStatus != 'X'";
+
+        if (sql_query($updateSql)) {
+            echo json_encode([
+                "data" => [
+                    "updated"    => $toUpdate,
+                    "alreadySet" => $alreadySet,
+                    "notFound"   => $notFound,
+                    "message"    => count($toUpdate) . " staff member(s) set to $statusLabel"
+                ],
+                "statusCode" => 200
+            ]);
+        } else {
+            echo json_encode([
+                "error" => ["message" => "Failed to update staff status"],
+                "statusCode" => 500
+            ]);
+        }
+        break;
 
     // ===================== DEFAULT =====================
     default:
