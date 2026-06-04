@@ -632,7 +632,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
 
         $driverLoggedIn = GetXFromYID(
             "SELECT dtLoggedIn 
-             FROM driver 
+             FROM driver d
              WHERE iDriverID = " . (int)$vehData['DRIVER_ID'] . " ".$cond_driver." 
              AND dtLoggedIn IS NOT NULL"
         );
