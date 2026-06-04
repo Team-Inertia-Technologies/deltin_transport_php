@@ -477,7 +477,7 @@ switch ($mode) {
 
         if (!empty($searchtxt)) {
             $cond .= " and ((vc.vName like '%$searchtxt%') or (d.vMobileNo like '%$searchtxt%') or (d.vName like '%$searchtxt%') or (v.vRnum like '%$searchtxt%'))";
-            $cond_driver .= " and (d.vMobileNum like '%$searchtxt%') or (d.vName like '%$searchtxt%')";
+            $cond_driver .= " and (vMobileNum like '%$searchtxt%') or (vName like '%$searchtxt%')";
         }
 
         if (!empty($category)) {
@@ -632,7 +632,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
 
         $driverLoggedIn = GetXFromYID(
             "SELECT dtLoggedIn 
-             FROM driver 
+             FROM driver
              WHERE iDriverID = " . (int)$vehData['DRIVER_ID'] . " ".$cond_driver." 
              AND dtLoggedIn IS NOT NULL"
         );
