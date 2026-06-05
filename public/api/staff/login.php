@@ -27,11 +27,35 @@ if ($mode == 'LOGIN') {
         exit;
     }
 
-    $sql = "SELECT vMobile, cStatus FROM staff WHERE vMobile = '" . db_input($mob) . "' AND cStatus = 'A'";
+    $sql = "SELECT vMobile, cStatus FROM staff WHERE vMobile = '" . db_input($mob) . "' AND cStatus IN ('A','I','P')";
     $res = sql_query($sql);
 
     if (sql_num_rows($res) > 0) {
-        // User exists - Generate and send OTP
+        $staffRow = sql_fetch_assoc($res);
+        $staffStatus = $staffRow['cStatus'];
+
+        // Block login based on status before generating OTP
+        if ($staffStatus === 'P') {
+            echo json_encode([
+                "error" => [
+                    "message" => "Your login is currently in pending state. Please wait for approval."
+                ],
+                "statusCode" => 403
+            ]);
+            exit;
+        }
+
+        if ($staffStatus === 'I') {
+            echo json_encode([
+                "error" => [
+                    "message" => "Your account is currently deactivated. Please contact your administrator."
+                ],
+                "statusCode" => 403
+            ]);
+            exit;
+        }
+
+        // Status is 'A' - proceed with OTP
         $OtpID = NextID('iOTPID', 'otp');
         $dtTo = date('Y-m-d H:i:s', strtotime('+5 minutes'));
         $otp = GenerateRandomCode('4', 'vOTP', 'otp');
@@ -113,6 +137,8 @@ if ($mode == 'LOGIN') {
 
         // Deactivate the OTP
         sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='" . db_input($iOTPID) . "'");
+
+        /* --- OLD FLOW: newUser registration via OTP verify - commented out ---
         if ($newUser) {
             // Get registration data from request
             $vCode = db_input($_REQUEST['code'] ?? '');
@@ -207,8 +233,10 @@ if ($mode == 'LOGIN') {
                 exit;
             }
         } else {
-            // This is a login OTP or existing user verification
-            // Check if user exists in staff table
+        --- END OLD FLOW --- */
+
+        {
+            // This is a login OTP - existing user verification only
             $staff_query = "SELECT iStaffID, vName, vMobile FROM staff WHERE vMobile='" . db_input($mobile) . "' AND cStatus='A'";
             $staff_result = sql_query($staff_query, "Get staff details");
 
