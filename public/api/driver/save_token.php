@@ -10,7 +10,7 @@ $request = json_decode($postdata);
 $Token = $request->token;
 $driver_ID = intval(DecodeParam($Token));
 $deviceToken = $request->device_token;
-if (!$MEM_ID || !$deviceToken) {
+if (!$driver_ID || !$deviceToken) {
     $output = array(
         'statusCode' => 400,
         'message' => 'Missing driver ID or Device Token'
