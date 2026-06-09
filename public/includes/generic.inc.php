@@ -143,6 +143,8 @@ function FillTreeData($selected, $ctr, $tp, $comp, $flds, $tbl, $cond, $fn = "",
 
 function sendFcmNotification2($deviceToken, $tripID, $title, $body)
 {
+	// Load Google Client library
+	require_once(DOCROOT . 'includes/libs/google_client/vendor/autoload.php');
 
 	$tripID = strval($tripID);
 
