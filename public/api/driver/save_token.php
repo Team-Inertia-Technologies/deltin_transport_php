@@ -7,7 +7,7 @@ include "../../includes/common_api.php";
 $postdata = file_get_contents("php://input");
 $request = json_decode($postdata);
 
-$Token = $request->Token;
+$Token = $request->token;
 $driver_ID = intval(DecodeParam($Token));
 $deviceToken = $request->device_token;
 if (!$MEM_ID || !$deviceToken) {
