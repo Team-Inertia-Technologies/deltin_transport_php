@@ -1677,7 +1677,7 @@ if (!$distance) {
         $vehicleData = sql_fetch_assoc($vehicleCheckRes);
 
         // Check if driver exists and is active
-        $driverCheckSql = "SELECT iDriverID, vName, vMobileNum FROM driver 
+        $driverCheckSql = "SELECT iDriverID, vName, vMobileNum, vDeviceToken FROM driver 
                           WHERE iDriverID = $iDriverID AND cStatus = 'A' LIMIT 1";
         $driverCheckRes = sql_query($driverCheckSql);
 
@@ -1769,6 +1769,21 @@ if (!$distance) {
         INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)VALUES ('C', '+91', '$vMobileNo', 'WA', '$dtAdded', $user_id)
 ");
             LogVehicleAllocated($iFleet_BookingID, $iVehicleID, $iDriverID, $vName, $user_id);
+            
+            // Send FCM notification to driver
+            $deviceToken = $driverData['vDeviceToken'] ?? '';
+            $phoneNo = $driverData['vMobileNum'] ?? '';
+            $vNotifiText = "New trip assigned: Pick up " . db_input($vName) . " from " . $vPickUpLocation . " at " . $pickup_time;
+            
+            // Create notification record in database
+            if (!empty($deviceToken)) {
+                createNotification1($iDriverID, $deviceToken, $phoneNo, $iFleet_BookingID, $vNotifiText);
+                
+                // Send FCM push notification
+                $title = "Trip Assigned";
+                $body = "Pick up " . db_input($vName) . " from " . $vPickUpLocation . " at " . $pickup_time;
+                sendFcmNotification2($deviceToken, $iFleet_BookingID, $title, $body);
+            }
         }
 
         // Log vehicle allocation
