@@ -176,36 +176,42 @@ function sendFcmNotification2($deviceToken, $tripID, $title, $body)
 	$token = $client->fetchAccessTokenWithAssertion()['access_token'];
 
 	$payload = [
-		'message' => [
-			'token' => $deviceToken,
-			'data' => [
-				'type' => "tripAllocation",
-				'tripID' => $tripID,
-				'push' => 'true',
-				'InApp' => 'true',
-				'title' => $title,
-				'body' => $body,
-			],
+    'message' => [
+        'token' => $deviceToken,
 
-			'android' => [
-				'priority' => 'high',
-			],
-			   'apns' => [
-                'headers' => [
-                    'apns-priority' => '5',
-                    //'apns-push-type' => 'alert', // required for iOS 13+
-                    'apns-push-type' => 'background',
-                ],
-                'payload' => [
-                    'aps' => [
-                       
-                        'content-available' => 1, // important for background/killed
-                    ],
+        'notification' => [
+            'title' => $title,
+            'body'  => $body,
+        ],
+
+        'data' => [
+            'type'   => 'tripAllocation',
+            'tripID' => (string)$tripID,
+            'push'   => 'true',
+            'InApp'  => 'true',
+        ],
+
+        'android' => [
+            'priority' => 'high',
+            'notification' => [
+                'channel_id' => 'trip-channel',
+                'sound'      => 'notif',
+            ],
+        ],
+
+        'apns' => [
+            'headers' => [
+                'apns-priority' => '5',
+                'apns-push-type' => 'background',
+            ],
+            'payload' => [
+                'aps' => [
+                    'content-available' => 1,
                 ],
             ],
-
-		],
-	];
+        ],
+    ],
+];
 
 	// Define the FCM URL for HTTP v1 API
 	$fcmUrl = "https://fcm.googleapis.com/v1/projects/" . FIREBASE2_PROJECT_ID . "/messages:send";
