@@ -197,7 +197,7 @@ function sendFcmNotification2($deviceToken, $tripID, $title, $body)
             'priority' => 'high',
             'notification' => [
                 'channel_id' => 'trip-channel',
-                'sound'      => 'notif',
+                'sound'      => 'horn',
             ],
         ],
 
