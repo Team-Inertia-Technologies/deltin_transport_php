@@ -27,7 +27,7 @@ if ($mode == 'LOGIN') {
         exit;
     }
 
-    $sql = "SELECT vMobile, cStatus FROM staff WHERE vMobile = '" . db_input($mob) . "' AND cStatus IN ('A','I','P')";
+    $sql = "SELECT vMobile, cStatus FROM staff WHERE vMobile = '" . db_input($mob) . "' AND cStatus IN ('A','I','P') AND cStatus != 'X'";
     $res = sql_query($sql);
 
     if (sql_num_rows($res) > 0) {
@@ -35,6 +35,16 @@ if ($mode == 'LOGIN') {
         $staffStatus = $staffRow['cStatus'];
 
         // Block login based on status before generating OTP
+        if ($staffStatus === 'X') {
+            echo json_encode([
+                "data" => [
+                    "userAvai" => false
+                ],
+                "statusCode" => 200
+            ]);
+            exit;
+        }
+
         if ($staffStatus === 'P') {
             echo json_encode([
                 "error" => [
