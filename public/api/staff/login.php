@@ -27,7 +27,8 @@ if ($mode == 'LOGIN') {
         exit;
     }
 
-    $sql = "SELECT vMobile, cStatus FROM staff WHERE vMobile = '" . db_input($mob) . "' AND cStatus IN ('A','I','P') AND cStatus != 'X'";
+    // First check if user exists with any status
+    $sql = "SELECT vMobile, cStatus FROM staff WHERE vMobile = '" . db_input($mob) . "'";
     $res = sql_query($sql);
 
     if (sql_num_rows($res) > 0) {
@@ -35,6 +36,7 @@ if ($mode == 'LOGIN') {
         $staffStatus = $staffRow['cStatus'];
 
         // Block login based on status before generating OTP
+        // Status 'X' means deleted/non-existent - return userAvai: false
         if ($staffStatus === 'X') {
             echo json_encode([
                 "data" => [
@@ -61,6 +63,17 @@ if ($mode == 'LOGIN') {
                     "message" => "Your account is currently deactivated. Please contact your administrator."
                 ],
                 "statusCode" => 403
+            ]);
+            exit;
+        }
+
+        // Only proceed if status is 'A' (Active)
+        if ($staffStatus !== 'A') {
+            echo json_encode([
+                "data" => [
+                    "userAvai" => false
+                ],
+                "statusCode" => 200
             ]);
             exit;
         }
