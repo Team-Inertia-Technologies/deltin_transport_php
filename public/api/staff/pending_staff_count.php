@@ -18,7 +18,6 @@
         case 'PENDING_STAFF_COUNT':
            $pendingStaffCount = 0;
                $pendingStaffCount = (int) GetXFromYID("SELECT COUNT(*) FROM staff WHERE cStatus = 'P'");
-                sql_query($pendingStaffCount);
                     $output = array(
                         'statusCode' => 200,
                         "data" => [
