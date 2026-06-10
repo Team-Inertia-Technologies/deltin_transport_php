@@ -1086,6 +1086,7 @@ switch ($mode) {
     case 'BULK_APPROVE_INACTIVE_STATUS':
         $ids        = $_REQUEST['ids'] ?? [];
         $newStatus  = strtoupper(trim($_REQUEST['status'] ?? ''));
+        $statusChangedBy =!empty($_REQUEST['statusChangedBy']) ? intval($_REQUEST['statusChangedBy']) : 1;
 
         // Accept a single id as well for convenience
         if (empty($ids) && !empty($_REQUEST['id'])) {
@@ -1167,7 +1168,7 @@ switch ($mode) {
 
         $updateIdList = implode(',', $toUpdate);
         $statusLabel  = $newStatus === 'A' ? 'Active' : 'Inactive';
-        $updateSql    = "UPDATE staff SET cStatus = '$newStatus' WHERE iStaffID IN ($updateIdList) AND cStatus != 'X'";
+        $updateSql    = "UPDATE staff SET cStatus = '$newStatus', iApproved_UserID=$statusChangedBy WHERE iStaffID IN ($updateIdList) AND cStatus != 'X'";
 
         if (sql_query($updateSql)) {
             echo json_encode([
