@@ -260,11 +260,11 @@ if ($mode == 'LOGIN') {
 
         {
             // This is a login OTP - existing user verification only
-            $staff_query = "SELECT iStaffID, vName, vMobile FROM staff WHERE vMobile='" . db_input($mobile) . "' AND cStatus='A'";
+            $staff_query = "SELECT iStaffID, vName, vMobile, vCode FROM staff WHERE vMobile='" . db_input($mobile) . "' AND cStatus='A'";
             $staff_result = sql_query($staff_query, "Get staff details");
 
             if (sql_num_rows($staff_result)) {
-                [$staffId, $firstName, $staffMobile] = sql_fetch_row($staff_result);
+                [$staffId, $firstName, $staffMobile, $staffCode] = sql_fetch_row($staff_result);
 
                 $staffName = $firstName;
 
@@ -272,6 +272,7 @@ if ($mode == 'LOGIN') {
                     'id' => $staffId,
                     'name' => db_output2($staffName),
                     'mobile' => db_output2($staffMobile),
+                    'staffCode' => db_output2($staffCode),
                     'token' => EncodeParam($staffId),
                        'message' => 'Login successful'
                 ];

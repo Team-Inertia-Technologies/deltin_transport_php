@@ -112,10 +112,15 @@ switch ($mode) {
             ];
         }
 
+        $leaveModule = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode='STAFF_LEAVE_MODULE'");
+        $shiftInfo = GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode='STAFF_SHIFT_INFO'");
+
         echo json_encode([
             "data" => [
                 "requestedPickups" => $requestedPickups,
-                "previousPickups" => $previousPickups
+                "previousPickups" => $previousPickups,
+                "leaveModule" => $leaveModule == '1',
+                "shiftInfo" => $shiftInfo == '1'
             ],
             "statusCode" => 200
         ]);
