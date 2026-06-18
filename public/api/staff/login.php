@@ -27,11 +27,58 @@ if ($mode == 'LOGIN') {
         exit;
     }
 
-    $sql = "SELECT vMobile, cStatus FROM staff WHERE vMobile = '" . db_input($mob) . "' AND cStatus = 'A'";
+    // First check if user exists with any status
+    $sql = "SELECT vMobile, cStatus FROM staff WHERE vMobile = '" . db_input($mob) . "'";
     $res = sql_query($sql);
 
     if (sql_num_rows($res) > 0) {
-        // User exists - Generate and send OTP
+        $staffRow = sql_fetch_assoc($res);
+        $staffStatus = $staffRow['cStatus'];
+
+        // Block login based on status before generating OTP
+        // Status 'X' means deleted/non-existent - return userAvai: false
+        if ($staffStatus === 'X') {
+            echo json_encode([
+                "data" => [
+                    "userAvai" => false
+                ],
+                "statusCode" => 200
+            ]);
+            exit;
+        }
+
+        if ($staffStatus === 'P') {
+            echo json_encode([
+                "error" => [
+                    "message" => "Your login is currently in pending state. Please wait for approval."
+                ],
+                "statusCode" => 403
+            ]);
+            exit;
+        }
+
+        if ($staffStatus === 'I') {
+            echo json_encode([
+                "error" => [
+                    "message" => "Your account is currently deactivated. Please contact your administrator."
+                ],
+                "statusCode" => 403
+            ]);
+            exit;
+        }
+
+        // Only proceed if status is 'A' (Active)
+        if ($staffStatus !== 'A') {
+            echo json_encode([
+                "data" => [
+                    "userAvai" => false
+                ],
+                "statusCode" => 200
+            ]);
+            exit;
+        }
+
+        // Status is 'A' - proceed with OTP
         $OtpID = NextID('iOTPID', 'otp');
         $dtTo = date('Y-m-d H:i:s', strtotime('+5 minutes'));
         $otp = GenerateRandomCode('4', 'vOTP', 'otp');
@@ -113,6 +160,8 @@ if ($mode == 'LOGIN') {
 
         // Deactivate the OTP
         sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='" . db_input($iOTPID) . "'");
+
+        /* --- OLD FLOW: newUser registration via OTP verify - commented out ---
         if ($newUser) {
             // Get registration data from request
             $vCode = db_input($_REQUEST['code'] ?? '');
@@ -207,13 +256,15 @@ if ($mode == 'LOGIN') {
                 exit;
             }
         } else {
-            // This is a login OTP or existing user verification
-            // Check if user exists in staff table
-            $staff_query = "SELECT iStaffID, vName, vMobile FROM staff WHERE vMobile='" . db_input($mobile) . "' AND cStatus='A'";
+        --- END OLD FLOW --- */
+
+        {
+            // This is a login OTP - existing user verification only
+            $staff_query = "SELECT iStaffID, vName, vMobile, vCode FROM staff WHERE vMobile='" . db_input($mobile) . "' AND cStatus='A'";
             $staff_result = sql_query($staff_query, "Get staff details");
 
             if (sql_num_rows($staff_result)) {
-                [$staffId, $firstName, $staffMobile] = sql_fetch_row($staff_result);
+                [$staffId, $firstName, $staffMobile, $staffCode] = sql_fetch_row($staff_result);
 
                 $staffName = $firstName;
 
@@ -221,6 +272,7 @@ if ($mode == 'LOGIN') {
                     'id' => $staffId,
                     'name' => db_output2($staffName),
                     'mobile' => db_output2($staffMobile),
+                    'staffCode' => db_output2($staffCode),
                     'token' => EncodeParam($staffId),
                        'message' => 'Login successful'
                 ];

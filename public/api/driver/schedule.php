@@ -27,6 +27,7 @@ $stars = isset($request->stars) ? intval($request->stars) : 0;
 $dateID = isset($request->dateID) ? trim($request->dateID) : '';
 $status = isset($request->status) ? trim($request->status) : '';
 
+$dateFilter = "";
 if ($dateID == 1) {
     $dateFilter = "AND fb.vPickUpTime >= CURDATE() AND fb.vPickUpTime < CURDATE() + INTERVAL 1 DAY";
 } elseif ($dateID == 2) {

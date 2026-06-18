@@ -141,15 +141,36 @@ function FillTreeData($selected, $ctr, $tp, $comp, $flds, $tbl, $cond, $fn = "",
 	return $str;
 }
 
-function sendFcmNotification2($deviceToken, $requestID, $requestType, $title, $body)
+function sendFcmNotification2($deviceToken, $tripID, $title, $body)
 {
-	// require_once realpath(dirname(__FILE__) . "/libs/google_client/vendor/autoload.php");
+	// Load Google Client library
+	require_once(DOCROOT . 'includes/libs/google_client/vendor/autoload.php');
 
-	$requestID = strval($requestID);
+	$tripID = strval($tripID);
+
+	// Build auth config from FIREBASE2 env constants (deltintransportapp account)
+	if (!defined('FIREBASE2_PROJECT_ID') || !defined('FIREBASE2_PRIVATE_KEY') || !defined('FIREBASE2_CLIENT_EMAIL')) {
+		error_log('sendFcmNotification2: FIREBASE2 credentials not configured');
+		return false;
+	}
+
+	$serviceAccountConfig = [
+		'type'                        => defined('FIREBASE2_TYPE') ? FIREBASE2_TYPE : 'service_account',
+		'project_id'                  => FIREBASE2_PROJECT_ID,
+		'private_key_id'              => defined('FIREBASE2_PRIVATE_KEY_ID') ? FIREBASE2_PRIVATE_KEY_ID : '',
+		'private_key'                 => FIREBASE2_PRIVATE_KEY,
+		'client_email'                => FIREBASE2_CLIENT_EMAIL,
+		'client_id'                   => defined('FIREBASE2_CLIENT_ID') ? FIREBASE2_CLIENT_ID : '',
+		'auth_uri'                    => defined('FIREBASE2_AUTH_URI') ? FIREBASE2_AUTH_URI : 'https://accounts.google.com/o/oauth2/auth',
+		'token_uri'                   => defined('FIREBASE2_TOKEN_URI') ? FIREBASE2_TOKEN_URI : 'https://oauth2.googleapis.com/token',
+		'auth_provider_x509_cert_url' => defined('FIREBASE2_AUTH_PROVIDER_CERT_URL') ? FIREBASE2_AUTH_PROVIDER_CERT_URL : 'https://www.googleapis.com/oauth2/v1/certs',
+		'client_x509_cert_url'        => defined('FIREBASE2_CLIENT_CERT_URL') ? FIREBASE2_CLIENT_CERT_URL : '',
+		'universe_domain'             => defined('FIREBASE2_UNIVERSE_DOMAIN') ? FIREBASE2_UNIVERSE_DOMAIN : 'googleapis.com',
+	];
+
 	// Initialize Google Client
 	$client = new Google_Client();
-	//$client->setAuthConfig('../deltin-one-firebase-adminsdk-fo0ep-80ce21da32.json');
-	$client->setAuthConfig(DOCROOT . 'api/deltin-one-firebase-adminsdk-fo0ep-80ce21da32.json');
+	$client->setAuthConfig($serviceAccountConfig);
 
 	$client->addScope('https://www.googleapis.com/auth/firebase.messaging');
 
@@ -157,200 +178,45 @@ function sendFcmNotification2($deviceToken, $requestID, $requestType, $title, $b
 	$token = $client->fetchAccessTokenWithAssertion()['access_token'];
 
 	$payload = [
-		'message' => [
-			'token' => $deviceToken,
-			// 'notification' => [
-			//     'title' => "New Message from $name",
-			//     'body' => $body, 
-			// ],
-			// 'notification' => [
-			// 	'title' => '',
-			// 	'body' => '',
-			// ],
-			'data' => [
-				'type' => "requestDetails",
-				'requestID' => $requestID,
-				'requestype' => $requestType,
-				'push' => 'true',
-				'InApp' => 'true',
-				'title' => $title,
-				'body' => $body,
-			],
+    'message' => [
+        'token' => $deviceToken,
 
-			'android' => [
-				'priority' => 'high',
-			],
-			   'apns' => [
-                'headers' => [
-                    'apns-priority' => '5',
-                    //'apns-push-type' => 'alert', // required for iOS 13+
-                    'apns-push-type' => 'background',
-                ],
-                'payload' => [
-                    'aps' => [
-                        // 'alert' => [
-                        //     'title' => '',
-                        //     'body' => '',
-                        // ],
-                        // 'sound' => 'default',
-                        // 'badge' => 1,
-                        'content-available' => 1, // important for background/killed
-                    ],
+        'notification' => [
+            'title' => $title,
+            'body'  => $body,
+        ],
+
+        'data' => [
+            'type'   => 'tripAllocation',
+            'tripID' => (string)$tripID,
+            'push'   => 'true',
+            'InApp'  => 'true',
+        ],
+
+        'android' => [
+            'priority' => 'high',
+            'notification' => [
+                'channel_id' => 'trip-channel',
+                'sound'      => 'horn',
+            ],
+        ],
+
+        'apns' => [
+            'headers' => [
+                'apns-priority' => '5',
+                'apns-push-type' => 'background',
+            ],
+            'payload' => [
+                'aps' => [
+                    'content-available' => 1,
                 ],
             ],
-
-		],
-	];
+        ],
+    ],
+];
 
 	// Define the FCM URL for HTTP v1 API
-	$fcmUrl = "https://fcm.googleapis.com/v1/projects/deltin-one/messages:send";
-
-	// Use cURL to send the request
-	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL, $fcmUrl);
-	curl_setopt($ch, CURLOPT_POST, 1);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_HTTPHEADER, [
-		'Authorization: Bearer ' . $token,
-		'Content-Type: application/json',
-	]);
-	curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-
-	// Execute the request
-	$response = curl_exec($ch);
-	$success = $response !== false;
-	//var_dump($response);
-
-	if (!$success) {
-		error_log('cURL Error: ' . curl_error($ch));
-	} else {
-		error_log("Notification sent: " . $response);
-	}
-
-	// Close cURL
-	curl_close($ch);
-
-	return $success;
-}
-function sendFcmNotification3($deviceToken, $requestID, $requestType, $title, $body, $bigImage, $link, $version)
-{
-	// require_once realpath(dirname(__FILE__) . "/libs/google_client/vendor/autoload.php");
-
-	$requestID = strval($requestID);
-	// Initialize Google Client
-	$client = new Google_Client();
-	//$client->setAuthConfig('../deltin-one-firebase-adminsdk-fo0ep-80ce21da32.json');
-	$client->setAuthConfig(DOCROOT . 'api/deltin-one-firebase-adminsdk-fo0ep-80ce21da32.json');
-
-	$client->addScope('https://www.googleapis.com/auth/firebase.messaging');
-
-	// Generate a fresh access token
-	$token = $client->fetchAccessTokenWithAssertion()['access_token'];
-	$version = intval($version);
-
-	if($version >= 78){
-		$payload = [
-			'message' => [
-				'token' => $deviceToken,
-				'data' => [
-					'type'       => "notification",
-					'requestID'  => $requestID,
-					'requestype' => $requestType,
-					'push'       => 'true',
-					'InApp'      => 'true',
-					'title'      => $title,
-					'body'       => $body,
-					'large_icon' => $bigImage,
-					'link'       => $link,
-					'NewType'    => "true"
-				],
-				'notification' => [
-					'title' => $title,
-					'body'  => $body,
-				],
-				'android' => [
-					'priority' => 'high',
-					'notification' => [
-						'image' => $bigImage,
-						'sound' => 'diwali', 
-					]
-				],
-				'apns' => [
-					'headers' => [
-						'apns-priority'   => '10',
-						'apns-push-type'  => 'alert',
-					],
-					'payload' => [
-						'aps' => [
-							'alert' => [
-								'title' => $title,
-								'body'  => $body,
-							],
-							'badge'              => 1,
-							'sound'              => 'diwali',
-							'content-available'  => 1,
-							'mutable-content'    => 1,
-						],
-					],
-					'fcm_options' => [
-						'image' => $bigImage, 
-					],
-				],
-			],
-		];
-	} else {
-		$payload = [
-			'message' => [
-				'token' => $deviceToken,
-				// 'notification' => [
-				//     'title' => "New Message from $name",
-				//     'body' => $body, 
-				// ],
-				// 'notification' => [
-				// 	'title' => '',
-				// 	'body' => '',
-				// ],
-				'data' => [
-					'type' => "notification",
-					'requestID' => $requestID,
-					'requestype' => $requestType,
-					'push' => 'true',
-					'InApp' => 'true',
-					'title' => $title,
-					'body' => $body,
-					'large_icon' => $bigImage,
-					'link' => $link,
-					'NewType'=> "false"
-
-				],
-
-				'android' => [
-					'priority' => 'high',
-				],
-				'apns' => [
-					'headers' => [
-						'apns-priority' => '5',
-						//'apns-push-type' => 'alert', // required for iOS 13+
-						'apns-push-type' => 'background',
-					],
-					'payload' => [
-						'aps' => [
-							// 'alert' => [
-							//     'title' => '',
-							//     'body' => '',
-							// ],
-							// 'sound' => 'default',
-							// 'badge' => 1,
-							'content-available' => 1, // important for background/killed
-						],
-					],
-				],
-
-			],
-		];
-	}
-	// Define the FCM URL for HTTP v1 API
-	$fcmUrl = "https://fcm.googleapis.com/v1/projects/deltin-one/messages:send";
+	$fcmUrl = "https://fcm.googleapis.com/v1/projects/" . FIREBASE2_PROJECT_ID . "/messages:send";
 
 	// Use cURL to send the request
 	$ch = curl_init();
@@ -380,51 +246,17 @@ function sendFcmNotification3($deviceToken, $requestID, $requestType, $title, $b
 	return $success;
 }
 
-function createNotification($userID, $memberID, $deviceToken, $phoneNo, $refID, $refType, $requestType, $notificationText, $batchText, $status = 'A')
-{
-	// Lock the notify_batch table
-	LockTable('notify_batch');
-	$nbID = NextID('iNBID', 'notify_batch');
-	$dtCreated = NOW;
 
-	// Insert into notify_batch table
-	$batchQuery = "INSERT INTO notify_batch(iNBID, iMemberID, iUserID, dtCreated, vText, vNotes) 
-                   VALUES ('$nbID', '$memberID', '$userID', '$dtCreated', '$batchText', '$notificationText')";
-	sql_query($batchQuery);
-	UnlockTable();
+
+function createNotification1($iDriverID, $deviceToken, $phoneNo, $refID, $vNotifiText, $status = 'A')
+{
 
 	// Lock the notification table
 	LockTable('notification');
-	$notificationID = NextID('iNotificationID', 'notification');
-	$dtSent = NOW;
-
-	// Insert into notification table
-	$notificationQuery = "INSERT INTO notification(iNotificationID, iMemberID, iNBID, vDeviceID, dtSent, vPhoneNo, iUserID, cUsertype, iRefID, cReftype, cRequestType, cStatus) 
-                          VALUES ('$notificationID', '$memberID', '$nbID', '$deviceToken','$dtSent', '$phoneNo', '$userID', 'C', '$refID', '$refType', '$requestType', '$status')";
-	sql_query($notificationQuery);
-	UnlockTable();
-}
-
-
-function createNotification1($userID, $memberID, $deviceToken, $phoneNo, $refID, $refType, $requestType, $notificationText, $batchText, $status = 'A')
-{
-	// Lock the notify_batch table
-	LockTable('notify_batch');
-	$nbID = NextID('iNBID', 'notify_batch');
-	$dtCreated = NOW;
-	// Insert into notify_batch table
-	$batchQuery = "INSERT INTO notify_batch(iNBID, iMemberID, iUserID, dtCreated, vText, vNotes) 
-                   VALUES ('$nbID', '$memberID', '$userID', '$dtCreated', '$batchText', '$notificationText')";
-	sql_query($batchQuery);
-	UnlockTable();
-
-	// Lock the notification table
-	LockTable('notification');
-	$notificationID = NextID('iNotificationID', 'notification');
 	$dtSent = NOW;
 	// Insert into notification table
-	$notificationQuery = "INSERT INTO notification(iNotificationID, iMemberID, iNBID, vDeviceID, dtSent, vPhoneNo, iUserID, cUsertype, iRefID, cReftype, cRequestType, cStatus) 
-                          VALUES ('$notificationID', '$memberID', '$nbID', '$deviceToken','$dtSent', '$phoneNo', '$userID', 'C', '$refID', '$refType', '$requestType', '$status')";
+	$notificationQuery = "INSERT INTO notification(iDriverID, vDeviceID, dtSent, vPhoneNo, iRefID, cReftype, vNotifiText, cStatus) 
+                          VALUES ('$iDriverID', '$deviceToken', '$dtSent', '$phoneNo', '$refID', 'A', '$vNotifiText', '$status')";
 	sql_query($notificationQuery);
 	UnlockTable();
 }

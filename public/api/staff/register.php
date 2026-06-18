@@ -140,6 +140,31 @@ else if ($mode == 'ADD_STAFF') {
         }
     }
 
+    // --- NEW FLOW: Insert directly with status P and return pending message ---
+    $iStaffID = NextID('iStaffID', 'staff');
+    $dtRegistered = NOW;
+
+    $sql = "INSERT INTO staff (iStaffID, vCode, vName, vMobile, iRouteID, iStopID, dtRegistered, cStatus)
+            VALUES ($iStaffID, '$vCode', '$vName', '$vMobile', $iRouteID, $iStopID, '$dtRegistered', 'P')";
+
+    if (sql_query($sql)) {
+        echo json_encode([
+            "statusCode" => 200,
+            "data" => [
+                "message" => "Your request is pending and will be approved by the concerned authority."
+            ]
+        ]);
+    } else {
+        echo json_encode([
+            "error" => [
+                "message" => "Failed to submit registration request"
+            ],
+            "statusCode" => 500
+        ]);
+    }
+    exit;
+
+    /* --- OLD FLOW (OTP-based registration) - commented out ---
     // Store registration data in session/temp table and send OTP instead of direct insert
     $OtpID = NextID('iOTPID', 'otp');
     $dtTo = date('Y-m-d H:i:s', strtotime('+5 minutes'));
@@ -178,14 +203,14 @@ else if ($mode == 'ADD_STAFF') {
 
     echo json_encode([
         "statusCode" => 200,
-       
         "data" => [
             "mobile" => db_output2($vMobile),
-             "message" => "OTP sent to your mobile number for registration verification",
+            "message" => "OTP sent to your mobile number for registration verification",
         ]
     ]);
 
     exit;
+    --- END OLD FLOW --- */
 } else {
     echo json_encode([
         "error" => [
