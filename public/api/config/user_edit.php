@@ -28,7 +28,12 @@ try {
         $txtemail = db_input($_POST['txtemail']);
         $txtphone = db_input($_POST['txtphone']);
         $cmblevel = db_input($_POST['cmblevel']);
-		$cmbstation = db_input($_POST['cmbstation']);
+		$cmbstation_raw = $_POST['cmbstation'] ?? [];
+		if (is_array($cmbstation_raw)) {
+			$cmbstation = db_input(implode(',', array_filter($cmbstation_raw)));
+		} else {
+			$cmbstation = db_input(trim($cmbstation_raw));
+		}
         $dtCreated = NOW;
         $sess_user_id = $_SESSION[PROJ_SESSION_ID]->user_id ?? 0;
 		$cmbproperty = $_POST['cmbproperty2'] ?? [];
@@ -104,7 +109,9 @@ try {
 				'DepartmentID' => $deptID,
 				'DepartmenName' => GetXFromYID("SELECT vName FROM department WHERE iDepartmentID = '$deptID'"),
 				'StationID' => $cmbstation,
-				'StationName' => GetXFromYID("SELECT vName FROM fleet_station WHERE iFlt_StationID = '$cmbstation'"),
+				'StationName' => !empty($cmbstation) ? implode(', ', array_map(function($id) {
+					return GetXFromYID("SELECT vName FROM fleet_station WHERE iFlt_StationID = '" . intval(trim($id)) . "'");
+				}, explode(',', $cmbstation))) : '',
 				'ReportingTo' => $reportingTo,
 				'ReportingToName' => GetXFromYID("SELECT vName FROM users WHERE iUserID = '$reportingTo'"),
 				'vName' => $txtname,
@@ -143,14 +150,13 @@ try {
 			'vPhone'         => 'txtphone',
 			'vUName'         => 'txtusername',
 			'iDepartmentID'  => 'cmbdepartment',
-			'iReportingID'   => 'cmbreportingto',
-			'iStationID'     => 'cmbstation'
+			'iReportingID'   => 'cmbreportingto'
 		];
 	
 		foreach ($fields_to_check as $db_field => $post_field) {
 			$newValue = trim($_POST[$post_field] ?? '');
 		
-			if (in_array($db_field, ['iDepartmentID', 'iReportingID', 'iStationID'])) {
+			if (in_array($db_field, ['iDepartmentID', 'iReportingID'])) {
 				// Integer fields
 				if ($newValue === '') {
 					$update_fields[] = "$db_field = NULL";
@@ -163,6 +169,17 @@ try {
 					$update_fields[] = "$db_field = '" . db_input($newValue) . "'";
 				}
 			}
+		}
+
+		// Handle iStationID as comma-separated multi-value
+		$newStation_raw = $_POST['cmbstation'] ?? [];
+		if (is_array($newStation_raw)) {
+			$newStation = implode(',', array_filter($newStation_raw));
+		} else {
+			$newStation = trim($newStation_raw);
+		}
+		if ($newStation !== db_output($original->iStationID)) {
+			$update_fields[] = "iStationID = '" . db_input($newStation) . "'";
 		}
 		
 	
@@ -361,7 +378,7 @@ try {
 		$cmblevel = db_output($dataArr[0]->iLevel);
 		$txtpassword = db_output($dataArr[0]->vPassword);
 		$rdstatus = db_output($dataArr[0]->cStatus);
-		$stationID = db_output($dataArr[0]->iStationID);
+		$cmbstation = db_output($dataArr[0]->iStationID);
 
 
 		$prevUserData = [];
@@ -387,8 +404,10 @@ try {
 					'vPhone' => $txtphone,
 					'vUName' => $txtusername,
 					'iLevel' => $cmblevel,
-					'StationID' => $stationID,
-					'stationName' => GetXFromYID("SELECT vName FROM fleet_station WHERE iFlt_StationID = '$stationID'"),
+					'StationID' => $cmbstation,
+					'StationName' => !empty($cmbstation) ? implode(', ', array_map(function($id) {
+						return GetXFromYID("SELECT vName FROM fleet_station WHERE iFlt_StationID = '" . intval(trim($id)) . "'");
+					}, explode(',', $cmbstation))) : '',
 					'vPassword' => $txtpassword,
 					'cStatus' => $rdstatus,
 					'prevUserData' => $prevUserData,
