@@ -108,10 +108,7 @@ try {
 				'iUserID' => $user_id,
 				'DepartmentID' => $deptID,
 				'DepartmenName' => GetXFromYID("SELECT vName FROM department WHERE iDepartmentID = '$deptID'"),
-				'StationID' => $cmbstation,
-				'StationName' => !empty($cmbstation) ? implode(', ', array_map(function($id) {
-					return GetXFromYID("SELECT vName FROM fleet_station WHERE iFlt_StationID = '" . intval(trim($id)) . "'");
-				}, explode(',', $cmbstation))) : '',
+				'cmbstation' => !empty($cmbstation) ? array_map('intval', explode(',', $cmbstation)) : [],
 				'ReportingTo' => $reportingTo,
 				'ReportingToName' => GetXFromYID("SELECT vName FROM users WHERE iUserID = '$reportingTo'"),
 				'vName' => $txtname,
