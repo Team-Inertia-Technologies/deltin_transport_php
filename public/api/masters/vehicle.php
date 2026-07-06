@@ -287,13 +287,34 @@ foreach ($VEHICLE_SERVICE_TYPE as $id => $label) {
             ];
         }
 
-        $vendorOpt = [['id' => 0, 'name' => 'Choose']];
+        $vendorStationsMap = [];
+        $stationAssocSql = "SELECT vsa.iVendorID, vsa.iFlt_StationID, fs.vName
+                            FROM vendor_station_assoc vsa
+                            LEFT JOIN fleet_station fs ON vsa.iFlt_StationID = fs.iFlt_StationID AND fs.cStatus = 'A'
+                            ORDER BY fs.iRank";
+        $stationAssocRes = sql_query($stationAssocSql);
+        while ($assocRow = sql_fetch_assoc($stationAssocRes)) {
+            $vendorId = intval($assocRow['iVendorID']);
+            if (!isset($vendorStationsMap[$vendorId])) {
+                $vendorStationsMap[$vendorId] = [];
+            }
+            if (!empty($assocRow['iFlt_StationID'])) {
+                $vendorStationsMap[$vendorId][] = [
+                    'id' => intval($assocRow['iFlt_StationID']),
+                    'label' => db_output2($assocRow['vName'] ?? '')
+                ];
+            }
+        }
+
+        $vendorOpt = [['id' => 0, 'name' => 'Choose', 'stations' => []]];
         $vendorSql = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
         $vendorRes = sql_query($vendorSql);
         while ($vendorRow = sql_fetch_assoc($vendorRes)) {
+            $vendorId = intval($vendorRow['iVendorID']);
             $vendorOpt[] = [
-                'id' => intval($vendorRow['iVendorID']),
-                'name' => $vendorRow['vName']
+                'id' => $vendorId,
+                'name' => db_output2($vendorRow['vName']),
+                'stations' => $vendorStationsMap[$vendorId] ?? []
             ];
         }
         $serviceOpt = [];
