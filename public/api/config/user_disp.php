@@ -117,6 +117,20 @@ try {
         ];
     }
 
+    $stations = [];
+    $stationQuery = "
+        SELECT iFlt_StationID, vName
+        FROM fleet_station
+        WHERE cStatus = 'A'
+        ORDER BY iFlt_StationID";
+    $stationRes = sql_query($stationQuery);
+    while ($row = sql_fetch_assoc($stationRes)) {
+        $stations[] = [
+            "id"   => (int)$row['iFlt_StationID'],
+            "name" => $row['vName']
+        ];
+    }
+
     // ---------------------------------------------------
     // Status List
     // ---------------------------------------------------
@@ -173,6 +187,7 @@ try {
             "properties"  => $PROPERTY_ARR,
             "levels"      => $levels,
             "status"      => $Status,
+            "stations"    => $stations,
             "departments" => $DEPT
         ],
         "statuscode" => 200

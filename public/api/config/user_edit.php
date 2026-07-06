@@ -28,14 +28,15 @@ try {
         $txtemail = db_input($_POST['txtemail']);
         $txtphone = db_input($_POST['txtphone']);
         $cmblevel = db_input($_POST['cmblevel']);
+		$cmbstation = db_input($_POST['cmbstation']);
         $dtCreated = NOW;
         $sess_user_id = $_SESSION[PROJ_SESSION_ID]->user_id ?? 0;
 		$cmbproperty = $_POST['cmbproperty2'] ?? [];
 
         $sql = "INSERT INTO users_temp 
-                (iUserID, iDepartmentID, iReportingID, vName, vUName, vPassword, vEmail, vPhone, iLevel, cStatus, dtCreated, iCreated_UserID, cRefType)
+                (iUserID, iDepartmentID, iStationID, iReportingID, vName, vUName, vPassword, vEmail, vPhone, iLevel, cStatus, dtCreated, iCreated_UserID, cRefType)
                 VALUES 
-                ($txtid, $deptID, $reportingTo, '$txtname', '$txtusername', '$txtpassword', '$txtemail', '$txtphone', $cmblevel, 'D', '$dtCreated', $sess_user_id, 'A')";
+                ($txtid, $deptID, $cmbstation, $reportingTo, '$txtname', '$txtusername', '$txtpassword', '$txtemail', '$txtphone', $cmblevel, 'D', '$dtCreated', $sess_user_id, 'A')";
         sql_query($sql, 'API.USER.INSERT');
 		LogMasterEdit($txtid, 'USR', $mode, $txtname);
 		
@@ -80,6 +81,7 @@ try {
 	$txtphone = db_output($dataArr[0]->vPhone);
 	$txtusername = db_output($dataArr[0]->vUName);
 	$cmblevel = db_output($dataArr[0]->iLevel);
+	$cmbstation = db_output($dataArr[0]->iStationID);
 	$txtpassword = db_output($dataArr[0]->vPassword);
 	$rdstatus = db_output($dataArr[0]->cStatus);
 	
@@ -101,6 +103,8 @@ try {
 				'iUserID' => $user_id,
 				'DepartmentID' => $deptID,
 				'DepartmenName' => GetXFromYID("SELECT vName FROM department WHERE iDepartmentID = '$deptID'"),
+				'StationID' => $cmbstation,
+				'StationName' => GetXFromYID("SELECT vName FROM fleet_station WHERE iFlt_StationID = '$cmbstation'"),
 				'ReportingTo' => $reportingTo,
 				'ReportingToName' => GetXFromYID("SELECT vName FROM users WHERE iUserID = '$reportingTo'"),
 				'vName' => $txtname,
@@ -134,18 +138,19 @@ try {
 	
 		$update_fields = [];
 		$fields_to_check = [
-			'vName' => 'txtname',
-			'vEmail' => 'txtemail',
-			'vPhone' => 'txtphone',
-			'vUName' => 'txtusername',
-			'iDepartmentID' => 'cmbdepartment',
-			'iReportingID' => 'cmbreportingto'
+			'vName'          => 'txtname',
+			'vEmail'         => 'txtemail',
+			'vPhone'         => 'txtphone',
+			'vUName'         => 'txtusername',
+			'iDepartmentID'  => 'cmbdepartment',
+			'iReportingID'   => 'cmbreportingto',
+			'iStationID'     => 'cmbstation'
 		];
 	
 		foreach ($fields_to_check as $db_field => $post_field) {
 			$newValue = trim($_POST[$post_field] ?? '');
 		
-			if (in_array($db_field, ['iDepartmentID', 'iReportingID'])) {
+			if (in_array($db_field, ['iDepartmentID', 'iReportingID', 'iStationID'])) {
 				// Integer fields
 				if ($newValue === '') {
 					$update_fields[] = "$db_field = NULL";
@@ -221,11 +226,11 @@ try {
 	
 				case 'activate':
 					sql_query("UPDATE users_temp SET cStatus = 'A', cAction='ACT', iActivated_UserID = $sess_user_id WHERE iUserID = '$txtid'");
-				$resultTemp = sql_query("SELECT vName, vUName, vPassword, vEmail, vPhone, iLevel FROM users_temp WHERE iUserID = '$txtid'");
+				$resultTemp = sql_query("SELECT vName, vUName, vPassword, vEmail, vPhone, iLevel, iStationID, iDepartmentID, iReportingID FROM users_temp WHERE iUserID = '$txtid'");
 				$userTemp = sql_fetch_assoc($resultTemp);
 	
 				if ($userTemp) {
-					$resultUser = sql_query("SELECT vName, vUName, vPassword, vEmail, vPhone, iLevel FROM users WHERE iUserID = '$txtid'");
+					$resultUser = sql_query("SELECT vName, vUName, vPassword, vEmail, vPhone, iLevel, iStationID, iDepartmentID, iReportingID FROM users WHERE iUserID = '$txtid'");
 					$existingUser = sql_fetch_assoc($resultUser);
 					$pwdDays = 0;
 						$res = sql_query("SELECT vValue FROM sys_settings WHERE vCode = 'PASSWORD_ACTIVE_DAYS' LIMIT 1");
@@ -356,6 +361,8 @@ try {
 		$cmblevel = db_output($dataArr[0]->iLevel);
 		$txtpassword = db_output($dataArr[0]->vPassword);
 		$rdstatus = db_output($dataArr[0]->cStatus);
+		$stationID = db_output($dataArr[0]->iStationID);
+
 
 		$prevUserData = [];
 		if (in_array($rdstatus, ['P', 'U'])) {
@@ -380,6 +387,8 @@ try {
 					'vPhone' => $txtphone,
 					'vUName' => $txtusername,
 					'iLevel' => $cmblevel,
+					'StationID' => $stationID,
+					'stationName' => GetXFromYID("SELECT vName FROM fleet_station WHERE iFlt_StationID = '$stationID'"),
 					'vPassword' => $txtpassword,
 					'cStatus' => $rdstatus,
 					'prevUserData' => $prevUserData,
