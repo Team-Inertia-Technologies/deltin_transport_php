@@ -70,6 +70,52 @@ function getRoadDistance($startLat, $startLng, $endLat, $endLng)
 
     return 0;
 }
+
+function getFleetVendorStationOpts()
+{
+    $AREA_ARR_RAW = GetXArrFromYID("SELECT iFlt_StationID, vName FROM fleet_station WHERE cStatus='A' ORDER BY iRank", "3");
+    $availableOpt = [];
+    foreach ($AREA_ARR_RAW as $id => $label) {
+        $availableOpt[] = ['id' => intval($id), 'label' => $label];
+    }
+
+    $vendorStationsMap = [];
+    $stationAssocSql = "SELECT vsa.iVendorID, vsa.iFlt_StationID, fs.vName
+                        FROM vendor_station_assoc vsa
+                        LEFT JOIN fleet_station fs ON vsa.iFlt_StationID = fs.iFlt_StationID AND fs.cStatus = 'A'
+                        ORDER BY fs.iRank";
+    $stationAssocRes = sql_query($stationAssocSql);
+    while ($assocRow = sql_fetch_assoc($stationAssocRes)) {
+        $vendorId = intval($assocRow['iVendorID']);
+        if (!isset($vendorStationsMap[$vendorId])) {
+            $vendorStationsMap[$vendorId] = [];
+        }
+        if (!empty($assocRow['iFlt_StationID'])) {
+            $vendorStationsMap[$vendorId][] = [
+                'id' => intval($assocRow['iFlt_StationID']),
+                'label' => db_output2($assocRow['vName'] ?? '')
+            ];
+        }
+    }
+
+    $vendorOpt = [['id' => 0, 'name' => 'Choose', 'stations' => []]];
+    $vendorSql = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
+    $vendorRes = sql_query($vendorSql);
+    while ($vendorRow = sql_fetch_assoc($vendorRes)) {
+        $vendorId = intval($vendorRow['iVendorID']);
+        $vendorOpt[] = [
+            'id' => $vendorId,
+            'name' => db_output2($vendorRow['vName']),
+            'stations' => $vendorStationsMap[$vendorId] ?? []
+        ];
+    }
+
+    return [
+        'availableOpt' => $availableOpt,
+        'vendorOpt' => $vendorOpt
+    ];
+}
+
 switch ($mode) {
 
     // ===================== CASE: LIST =====================
@@ -578,6 +624,8 @@ if (!$distance) {
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
         $iFStaffID = intval($_REQUEST['staffID'] ?? 0);
+        $iVendorID = intval($_REQUEST['vendorID'] ?? 0);
+        $iFleet_StationID = intval($_REQUEST['stationID'] ?? 0);
 
         // Fetch KMS from fleet_ratechart
         //  $ratekms = 0;
@@ -642,7 +690,8 @@ if (!$distance) {
         $cols = "iFleet_BookingID,vBookingCode,iBookedBy,vBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vRemarks, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,iOriginal_Kms,
-                 vDropLocation, vLatLong_From, vLatLong_To,vLandmark, iVehicleCatID, cDisposal, tReturnTime, dtAdded,iAdded_UserID,cStatus";
+                 vDropLocation, vLatLong_From, vLatLong_To,vLandmark, iVehicleCatID, cDisposal, tReturnTime,
+                 iVendorID, iFleet_StationID, dtAdded,iAdded_UserID,cStatus";
 
         $iFleet_BookingID1 = NextID('iFleet_BookingID', 'fleet_booking');
         $dtAdded = NOW;
@@ -655,7 +704,8 @@ if (!$distance) {
             $iFleet_BookingID1,'$vBookingCode',$iBookedBy, '" . db_input($bookedByName) . "','" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
             $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
             $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $distance,
-            '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal, '" . db_input($dtAdded) . "',$user_id,'A'
+            '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal,
+            $iVendorID, $iFleet_StationID, '" . db_input($dtAdded) . "',$user_id,'A'
         )";
         //    echo "SQL Query: " . $sql1; // Debug: Output the generated SQL query
         //         exit;
@@ -766,6 +816,8 @@ if (!$distance) {
                 ? $STAFF_DEPT_ARR[intval($booking['iFStaffID'])]
                 : 0,
             "disposal" => $booking['cDisposal'] ?? 'N',
+            "vendorID" => intval($booking['iVendorID'] ?? 0),
+            "stationID" => intval($booking['iFleet_StationID'] ?? 0),
             "dtAdded" => $booking['dtAdded'],
             "addedUserId" => intval($booking['iAdded_UserID'])
         ];
@@ -907,6 +959,8 @@ if (!$distance) {
             ? (int)$fleetThresholdArr[$level]
             : 2;
 
+        $vendorStationOpts = getFleetVendorStationOpts();
+
         $optArr = [
             "bookedForOpt" => $bookedForOpt,
             "bookingCatOpt" => $bookingCatOpt,
@@ -923,7 +977,9 @@ if (!$distance) {
             "bookedForFilterOpt" => $bookedForFilterOpt,
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
             "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
-            "locOpts" => $locOpts
+            "locOpts" => $locOpts,
+            "availableOpt" => $vendorStationOpts['availableOpt'],
+            "vendorOpt" => $vendorStationOpts['vendorOpt']
         ];
 
         echo json_encode([
@@ -1002,6 +1058,8 @@ if (!$distance) {
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
         $iFStaffID = intval($_REQUEST['staffID'] ?? 0);
+        $iVendorID = intval($_REQUEST['vendorID'] ?? 0);
+        $iFleet_StationID = intval($_REQUEST['stationID'] ?? 0);
 
         if (empty($vName) || empty($vMobileNo) || empty($vPickUpTime)) {
             echo json_encode([
@@ -1074,6 +1132,8 @@ if (!$distance) {
                 cDisposal = '" . db_input($cDisposal) . "',
                 tReturnTime = " . $vReturnTimeVal . ",   
                 iOriginal_Kms = " . intval($distance) . ",
+                iVendorID = " . intval($iVendorID) . ",
+                iFleet_StationID = " . intval($iFleet_StationID) . ",
                 dtUpdated = '" . db_input($dtNow) . "',
                 iUpdated_UserID = " . intval($user_id) . "
             WHERE iFleet_BookingID = " . intval($iFleet_BookingID) . "
@@ -2221,6 +2281,8 @@ if (!$distance) {
             $vehicleCategoryFilterOpt[] = ['id' => intval($id), 'name' => $name];
         }
 
+        $vendorStationOpts = getFleetVendorStationOpts();
+
         $optArr = [
             "bookedForOpt" => $bookedForOpt,
             // "bookedByOpt" => $bookedByOpt,
@@ -2238,7 +2300,9 @@ if (!$distance) {
             "bookedForFilterOpt" => $bookedForFilterOpt,
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
             "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
-            "locOpts" => $locOpts
+            "locOpts" => $locOpts,
+            "availableOpt" => $vendorStationOpts['availableOpt'],
+            "vendorOpt" => $vendorStationOpts['vendorOpt']
             //  "staffFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($staff) { return ['id' => $staff['id'], 'name' => $staff['name']]; }, $staffOpt)),
             // "guestFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($guest) { return ['id' => $guest['id'], 'name' => $guest['name']]; }, $guestOpts))
         ];
