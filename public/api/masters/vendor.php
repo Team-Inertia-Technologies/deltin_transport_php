@@ -100,6 +100,92 @@ function validateVendorData($vContactNum, $vEmail, $excludeVendorID = 0)
 
     return ['valid' => true];
 }
+
+function getVendorReportingUsers()
+{
+    $users = [['id' => 0, 'name' => 'Choose']];
+    $userResult = sql_query("SELECT iUserID, vName FROM users WHERE cStatus = 'A' ORDER BY vName");
+    while ($row = sql_fetch_assoc($userResult)) {
+        $users[] = [
+            'id' => (int) $row['iUserID'],
+            'name' => db_output2($row['vName'])
+        ];
+    }
+    return $users;
+}
+
+function getVendorUserRecord($vendorID)
+{
+    $vendorID = intval($vendorID);
+    $res = sql_query("
+        SELECT iUserID, vUName AS username, iReportingID AS reportingTo
+        FROM users_temp
+        WHERE iRefID = $vendorID AND cRefType = 'V' AND cStatus != 'X'
+        ORDER BY iUserID DESC
+        LIMIT 1
+    ");
+
+    if (sql_num_rows($res) > 0) {
+        return sql_fetch_assoc($res);
+    }
+
+    return null;
+}
+
+function syncVendorUser($vendorID, $isUser, $vName, $vPhone, $vEmail, $username, $password, $reportingTo, $createdByUserID)
+{
+    $vendorID = intval($vendorID);
+    $level = 16;
+    $cRefType = 'V';
+    $reportingTo = intval($reportingTo);
+    $isUserFlag = $isUser ? 'Y' : 'N';
+
+    sql_query("UPDATE vendor SET isUser = '$isUserFlag' WHERE iVendorID = $vendorID");
+
+    if (!$isUser) {
+        return;
+    }
+
+    $existingUser = getVendorUserRecord($vendorID);
+
+    if (!empty($existingUser['iUserID'])) {
+        $updateFields = [
+            "vName='" . db_input($vName) . "'",
+            "vUName='" . db_input($username) . "'",
+            "vPhone='" . db_input($vPhone) . "'",
+            "vEmail='" . db_input($vEmail) . "'",
+            "iReportingID=$reportingTo",
+            "iLevel=$level",
+            "iRefID=$vendorID",
+            "cRefType='$cRefType'",
+            "cStatus='D'",
+            "cAction='AWA'"
+        ];
+
+        if ($password !== '') {
+            $updateFields[] = "vPassword='" . db_input($password) . "'";
+        }
+
+        sql_query("
+            UPDATE users_temp
+            SET " . implode(',', $updateFields) . "
+            WHERE iUserID=" . intval($existingUser['iUserID'])
+        );
+        return;
+    }
+
+    $iUserID = NextID('iUserID', 'users_temp');
+    sql_query("
+        INSERT INTO users_temp
+        (iUserID, vName, vUName, vPassword, vEmail, vPhone, iDepartmentID, iReportingID, iLevel, iRefID, cRefType,
+         cStatus, cAction, dtCreated, iCreated_UserID)
+        VALUES
+        ($iUserID, '" . db_input($vName) . "', '" . db_input($username) . "', '" . db_input($password) . "',
+         '" . db_input($vEmail) . "', '" . db_input($vPhone) . "', 0, $reportingTo, $level, $vendorID, '$cRefType',
+         'D', 'AWA', '" . NOW . "', $createdByUserID)
+    ");
+}
+
 switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
@@ -161,6 +247,7 @@ switch ($mode) {
                 "stateOpt" => $stateOpt,
                 "serviceOpt" => $serviceOpt,
                 "availableOpt" => $availableOpt,
+                "users" => getVendorReportingUsers(),
                 "message" => "success",
             ],
             "statusCode" => 200
@@ -183,7 +270,7 @@ switch ($mode) {
         // Fetch vendor details
         $sql = "SELECT iVendorID, vName, cType, vPanNo, vContactPerson, vContactNum, vEmail, 
                        cTDSApplicable, fTDSperc, vGSTIN, iStateCode, vBankAcctNum, vBankIFSC, 
-                       vDetails, iRank, cStatus, vAddress
+                       vDetails, iRank, cStatus, vAddress, isUser
                 FROM vendor 
                 WHERE iVendorID = $id";
         $res = sql_query($sql);
@@ -239,9 +326,20 @@ switch ($mode) {
             'availability' => $availabilityAreas,
             'bankAccNo' => db_output2($vendor['vBankAcctNum'] ?? ''),
             'bankIfscCode' => db_output2($vendor['vBankIFSC'] ?? ''),
-            'cStatus' => $vendor['cStatus'] ?? 'A'
+            'cStatus' => $vendor['cStatus'] ?? 'A',
+            'isUser' => ($vendor['isUser'] ?? 'N') === 'Y' ? 'Y' : 'N',
+            'username' => '',
+            'reportingTo' => 0
             //'vehicles' => $vehicleArr
         ];
+
+        if ($vendorData['isUser'] === 'Y') {
+            $userRecord = getVendorUserRecord($id);
+            if ($userRecord) {
+                $vendorData['username'] = db_output2($userRecord['username'] ?? '');
+                $vendorData['reportingTo'] = intval($userRecord['reportingTo'] ?? 0);
+            }
+        }
 
         echo json_encode([
             "statusCode" => 200,
@@ -251,7 +349,8 @@ switch ($mode) {
                 "vendor" => $vendorData,
                 "stateOpt" => $stateOpt,
                 "serviceOpt" => $serviceOpt,
-                "availableOpt" => $availableOpt
+                "availableOpt" => $availableOpt,
+                "users" => getVendorReportingUsers()
             ]
         ]);
         break;
@@ -261,23 +360,30 @@ switch ($mode) {
     // ===================== CASE 4: UPDATE_VENDOR =====================
     case 'UPDATE_VENDOR':
 
-        $id = intval($request['iVendorID'] ?? 0);
-        $vName = db_input($request['comName'] ?? '');
-        $vContactPerson = db_input($request['perName'] ?? '');
-        $vContactNum = db_input($request['perConNum'] ?? '');
-        $vEmail = db_input($request['email'] ?? '');
-        $vAddress = db_input($request['comAdd'] ?? '');
-        $iStateCode = intval($request['state'] ?? 0);
-        $vDetails = db_input($request['remarks'] ?? '');
-        $vPanNo = db_input($request['panNo'] ?? '');
-        $vGSTIN = db_input($request['gstNo'] ?? '');
-        $cTDSApplicable = db_input($request['tdsApp'] ?? 'N');
-        $fTDSperc = floatval($request['tdsPercentage'] ?? 0);
-        $cType = db_input($request['serviceOff'] ?? '');
-        $availability = $request['availability'] ?? []; // Handle as array
-        $vBankAcctNum = db_input($request['bankAccNo'] ?? '');
-        $vBankIFSC = db_input($request['bankIfscCode'] ?? '');
-        $cStatus = db_input($request['cStatus'] ?? 'A');
+        $id = intval($_REQUEST['iVendorID'] ?? 0);
+        $vName = db_input($_REQUEST['comName'] ?? '');
+        $vContactPerson = db_input($_REQUEST['perName'] ?? '');
+        $vContactNum = db_input($_REQUEST['perConNum'] ?? '');
+        $vEmail = db_input($_REQUEST['email'] ?? '');
+        $isUser = (($_REQUEST['isUser'] ?? 'N') === 'Y');
+        $username = db_input($_REQUEST['username'] ?? '');
+        $reportingTo = intval($_REQUEST['reportingTo'] ?? 0);
+        $password = '';
+        if (!empty($_REQUEST['password'])) {
+            $password = htmlspecialchars_decode(db_input($_REQUEST['password']));
+        }
+        $vAddress = db_input($_REQUEST['comAdd'] ?? '');
+        $iStateCode = intval($_REQUEST['state'] ?? 0);
+        $vDetails = db_input($_REQUEST['remarks'] ?? '');
+        $vPanNo = db_input($_REQUEST['panNo'] ?? '');
+        $vGSTIN = db_input($_REQUEST['gstNo'] ?? '');
+        $cTDSApplicable = db_input($_REQUEST['tdsApp'] ?? 'N');
+        $fTDSperc = floatval($_REQUEST['tdsPercentage'] ?? 0);
+        $cType = db_input($_REQUEST['serviceOff'] ?? '');
+        $availability = $_REQUEST['availability'] ?? []; // Handle as array
+        $vBankAcctNum = db_input($_REQUEST['bankAccNo'] ?? '');
+        $vBankIFSC = db_input($_REQUEST['bankIfscCode'] ?? '');
+        $cStatus = db_input($_REQUEST['cStatus'] ?? 'A');
         if ($id <= 0) {
             echo json_encode([
                 "error" => [
@@ -358,6 +464,18 @@ switch ($mode) {
                 }
             }
 
+            syncVendorUser(
+                $id,
+                $isUser,
+                $vContactPerson,
+                $vContactNum,
+                $vEmail,
+                $username,
+                $password,
+                $reportingTo,
+                $user_id
+            );
+
             // Log the update operation
             LogMasterEdit($id, 'VND', 'U', $vName, '', $user_id);
 
@@ -382,6 +500,18 @@ switch ($mode) {
                     }
                 }
             }
+
+            syncVendorUser(
+                $id,
+                $isUser,
+                $vContactPerson,
+                $vContactNum,
+                $vEmail,
+                $username,
+                $password,
+                $reportingTo,
+                $user_id
+            );
 
             LogMasterEdit($id, 'VND', 'U', $vName, '', $user_id);
 
