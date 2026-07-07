@@ -121,8 +121,7 @@ function getVendorUserRecord($vendorID)
         SELECT iUserID, vUName AS username, iReportingID AS reportingTo
         FROM users_temp
         WHERE iRefID = $vendorID AND cRefType = 'V' AND cStatus != 'X'
-        ORDER BY iUserID DESC
-        LIMIT 1
+        ORDER BY iUserID DESC LIMIT 1
     ");
 
     if (sql_num_rows($res) > 0) {

@@ -119,7 +119,9 @@ function getFleetVendorStationOpts()
 function getVendorIDForUser($user_id)
 {
     $user_id = intval($user_id);
-  
+    if ($user_id <= 0 || !checkUserModuleAccess($user_id, 'FLEET_VENDOR_SPECIFIC_REQUEST')) {
+        return 0;
+    }
 
     $userRefRes = sql_query("SELECT cRefType, iRefID FROM users WHERE iUserID = $user_id AND cStatus = 'A' LIMIT 1");
     if (sql_num_rows($userRefRes) == 0) {

@@ -69,8 +69,7 @@ try {
     // Base Conditions
     // ---------------------------------------------------
     $cond = "
-        WHERE cRefType = 'A'
-          AND cStatus != 'X'
+        WHERE  cStatus != 'X'
           AND iLevel IN (
               SELECT iLevelD
               FROM levels
