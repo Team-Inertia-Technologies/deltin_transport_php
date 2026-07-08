@@ -217,6 +217,11 @@ switch ($mode) {
             }
         }
 
+        $is_vendor = getVendorIDForUser($user_id);
+        if (!empty($is_vendor)) {
+            $cond .= " and iVendorID = $is_vendor";
+        }
+
         // Fetch booking data
         $bookingSql = "select iFleet_BookingID, vBookingCode, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments, iFleet_StationID, iFleet_RateID from fleet_booking where 1 $cond and cType NOT IN ('C','S','G','P','R') and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         //echo $bookingSql."<br>";
@@ -343,7 +348,14 @@ switch ($mode) {
 
         $VEHI_TYPE_ARR = array();
 
-        $q = "select * from vehicle where 1";
+        $cond_vehicle = "";
+        $is_vendor = getVendorIDForUser($user_id);
+        if (!empty($is_vendor)) {
+            $cond_vehicle .= " and iVendorID = $is_vendor";
+            $cond .= " and iVendorID = $is_vendor";
+        }        
+
+        $q = "select * from vehicle where 1 $cond_vehicle";
         $r = sql_query($q, "supervisor_dashboard.238");
 
         if (sql_num_rows($r)) {
@@ -463,8 +475,13 @@ switch ($mode) {
         }
 
         $VEHI_TYPE_ARR = array();
+        $cond_vendor = "";
+        $is_vendor = getVendorIDForUser($user_id);
+        if (!empty($is_vendor)) {
+            $cond_vendor .= " and iVendorID = $is_vendor";
+        }        
 
-        $q = "select * from vehicle where 1";
+        $q = "select * from vehicle where 1 $cond_vendor";
         $r = sql_query($q, "supervisor_dashboard.238");
 
         if (sql_num_rows($r)) {
@@ -551,7 +568,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
     $tripAssignmentSql = "
         SELECT iVehicleID 
         FROM fleet_booking 
-        WHERE iVehicleID = " . (int)$vehicleID . " 
+        WHERE iVehicleID = " . (int)$vehicleID . " $cond_vendor
         AND cStatus = 'A'
     ";
 
@@ -629,7 +646,10 @@ foreach ($vehicleData as $vehicleID => $vehData) {
     ========================== */
 
     if (!empty($vehData['DRIVER_ID'])) {
-
+        $is_vendor = getVendorIDForUser($user_id);
+        if (!empty($is_vendor)) {
+            $cond_driver .= " and iVendorID = $is_vendor";
+        } 
         $driverLoggedIn = GetXFromYID(
             "SELECT dtLoggedIn 
              FROM driver
@@ -733,7 +753,17 @@ foreach ($vehicleData as $vehicleID => $vehData) {
 
         $vehiId = $_REQUEST['vehiId'] ?? '0';
 
-        $q0 = "SELECT v.iVehicleID, v.vRnum, v.cStatus, vc.vName AS vehicleType, v.iCatID, v.iType FROM vehicle v JOIN vehicle_category vc ON vc.iVCatID = v.iCatID WHERE v.iVehicleID = $vehiId";
+        $cond_driver = "";
+        $cond_driver2 = "";
+        $cond_vehicle = "";
+        $is_vendor = getVendorIDForUser($user_id);
+        if (!empty($is_vendor)) {
+            $cond_driver .= " and d.iVendorID = $is_vendor and fb.iVendorID = $is_vendor";
+            $cond_driver2 .= " and iVendorID = $is_vendor";
+            $cond_vehicle .= " and v.iVendorID = $is_vendor";
+        } 
+
+        $q0 = "SELECT v.iVehicleID, v.vRnum, v.cStatus, vc.vName AS vehicleType, v.iCatID, v.iType FROM vehicle v JOIN vehicle_category vc ON vc.iVCatID = v.iCatID WHERE v.iVehicleID = $vehiId $cond_vehicle";
         $r0 = sql_query($q0, "supervisor_dashboard.392");
 
         if (sql_num_rows($r0)) {
@@ -742,7 +772,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
 
             $driversArr = array();
 
-            $q1 = "SELECT d.iDriverID, d.vName, d.vMobileNum, COUNT(fb.iFleet_BookingID) AS totalTrips FROM driver d LEFT JOIN fleet_booking fb ON fb.iDriverID = d.iDriverID AND fb.iVehicleID = $vehiId GROUP BY d.iDriverID";
+            $q1 = "SELECT d.iDriverID, d.vName, d.vMobileNum, COUNT(fb.iFleet_BookingID) AS totalTrips FROM driver d LEFT JOIN fleet_booking fb ON fb.iDriverID = d.iDriverID AND fb.iVehicleID = $vehiId $cond_driver GROUP BY d.iDriverID";
             $r1 = sql_query($q1, "supervisor_dashboard.399");
 
             if (sql_num_rows($r1)) {
@@ -760,6 +790,12 @@ foreach ($vehicleData as $vehicleID => $vehData) {
             $tripsArr = array();
             //$q2 = "SELECT fb.iFleet_BookingID, fb.vPickupLocation, fb.vDropLocation, fb.vName, vc.vName AS vehicleType, vc.iCapacity, fb.vPickupTime, fb.vDropTime, cBookingFor FROM fleet_booking fb JOIN vehicle_category vc ON vc.iVCatID = fb.iVehicleCatID WHERE fb.iVehicleID = $vehiId ORDER BY fb.vPickupTime DESC";
             //$r2 = sql_query($q2, "supervisor_dashboard");
+            $conda = "";
+            $is_vendor = getVendorIDForUser($user_id);
+            if (!empty($is_vendor)) {
+                $conda .= " and fb.iVendorID = $is_vendor";
+            } 
+
             $currentPickupTime = date('Y-m-d H:i:s');
             $qPrev = "
 				SELECT fb.iFleet_BookingID, fb.vPickupLocation, fb.vDropLocation, fb.vName,
@@ -767,7 +803,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
 				FROM fleet_booking fb
 				JOIN vehicle_category vc ON vc.iVCatID = fb.iVehicleCatID
 				WHERE fb.iVehicleID = $vehiId
-				  AND fb.vPickupTime < '$currentPickupTime'
+				  AND fb.vPickupTime < '$currentPickupTime' $conda
 				ORDER BY fb.vPickupTime DESC
 				LIMIT 1
 				";
@@ -778,7 +814,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
 				FROM fleet_booking fb
 				JOIN vehicle_category vc ON vc.iVCatID = fb.iVehicleCatID
 				WHERE fb.iVehicleID = $vehiId
-				  AND fb.vPickupTime > '$currentPickupTime' and fb.cType <> 'C'
+				  AND fb.vPickupTime > '$currentPickupTime' and fb.cType <> 'C' $conda
 				ORDER BY fb.vPickupTime ASC
 				LIMIT 1
 				";
@@ -826,7 +862,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
             $LOG_DATA_ARR = array();
 
             $DRIVER_ARR = array();
-            $qd = "select iDriverID, vName from driver order by vName";
+            $qd = "select iDriverID, vName from driver where 1 $cond_driver2 order by vName";
             $rd = sql_query($qd, "supervisor_dashboard.38");
             if (sql_num_rows($rd)) {
                 while ($drow = sql_fetch_assoc($rd)) {
@@ -834,7 +870,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
                 }
             }
             $PAUSE_REASON_ARR = GetXArrFromYID("SELECT iReasonID,vName FROM pause_reasons", "3");
-            $q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID, bl.iPauseTypeID, bl.vNotes from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where fb.iVehicleID = $vehiId order by bl.dtAdded DESC";
+            $q = "select bl.iFleet_BookingID, bl.cRefType, bl.vRefName, bl.dtAdded, fb.vName, fb.iDriverID, bl.iPauseTypeID, bl.vNotes from fleet_booking_log bl join fleet_booking fb on bl.iFleet_BookingID = fb.iFleet_BookingID where fb.iVehicleID = $vehiId $conda order by bl.dtAdded DESC";
             $r = sql_query($q, "");
 
             if (sql_num_rows($r)) {
@@ -1016,12 +1052,17 @@ foreach ($vehicleData as $vehicleID => $vehData) {
             $cond .= " AND fb.cBookingFor IN (" . implode(',', $bookingFor) . ")";
         }
 
-
+        $cond_driver = "";
+        $is_vendor = getVendorIDForUser($user_id);
+        if (!empty($is_vendor)) {
+            $cond_driver .= " and iVendorID = $is_vendor";
+            $cond .= " and fb.iVendorID = $is_vendor";
+        } 
 
         $LOG_DATA_ARR = array();
 
         $DRIVER_ARR = array();
-        $qd = "select iDriverID, vName from driver order by vName";
+        $qd = "select iDriverID, vName from driver where 1 $cond_driver order by vName";
         $rd = sql_query($qd, "supervisor_dashboard.38");
         if (sql_num_rows($rd)) {
             while ($drow = sql_fetch_assoc($rd)) {
