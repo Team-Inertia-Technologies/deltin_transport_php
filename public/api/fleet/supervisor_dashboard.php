@@ -2,7 +2,7 @@
 //ini_set('display_errors', 1);
 
 include "../../includes/common_api.php";
-function getVendorIDForUser($user_id)
+/*function getVendorIDForUser($user_id)
 {
     $user_id = intval($user_id);
     if ($user_id <= 0 || !checkUserModuleAccess($user_id, 'FLEET_VENDOR_SPECIFIC_REQUEST')) {
@@ -20,7 +20,7 @@ function getVendorIDForUser($user_id)
     }
 
     return 0;
-}
+}*/
 
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
