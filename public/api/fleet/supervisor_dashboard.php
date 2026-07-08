@@ -2,6 +2,7 @@
 //ini_set('display_errors', 1);
 
 include "../../includes/common_api.php";
+include "../api_common.php";
 /*function getVendorIDForUser($user_id)
 {
     $user_id = intval($user_id);
