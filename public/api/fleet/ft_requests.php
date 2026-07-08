@@ -1452,11 +1452,19 @@ if (!$distance) {
 
         $vehicleData = GetVehicle_BasedOnSearch2($typeID, $categoryID, 'Y', '', '', $status);
 
+        // If the logged-in user is a vendor, restrict to that vendor's vehicles/drivers only
+        $vendorID = getVendorIDForUser($user_id);
+
         $vehicles = [];
         $currentlyAssigned = [];
         $availableVehicles = [];
 
         foreach ($vehicleData as $vehicleID => $vehData) {
+            // Restrict to the logged-in vendor's own vehicles/drivers
+            if ($vendorID > 0 && intval($vehData['VENDOR_ID'] ?? 0) !== $vendorID) {
+                continue;
+            }
+
             // Apply keyword filter if provided (matches vehicle reg no, name, or driver name)
             if (!empty($keyword)) {
                 $keywordMatch = false;
