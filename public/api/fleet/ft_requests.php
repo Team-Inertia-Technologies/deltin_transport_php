@@ -136,6 +136,40 @@ function getVendorIDForUser($user_id)
     return 0;
 }
 
+function getBookingStationID($bookingId)
+{
+    $bookingId = intval($bookingId);
+    if ($bookingId <= 0) {
+        return 0;
+    }
+
+    return intval(GetXFromYID(
+        "SELECT iFleet_StationID FROM fleet_booking WHERE iFleet_BookingID = $bookingId AND cStatus != 'X'"
+    ));
+}
+
+function getStationEntityMap($stationID, $assocTable, $entityColumn, $entityIds)
+{
+    $stationID = intval($stationID);
+    $map = [];
+    $entityIds = array_values(array_filter(array_map('intval', $entityIds)));
+
+    if ($stationID <= 0 || empty($entityIds)) {
+        return $map;
+    }
+
+    $res = sql_query(
+        "SELECT $entityColumn FROM $assocTable
+         WHERE iFlt_StationID = $stationID AND $entityColumn IN (" . implode(',', $entityIds) . ")"
+    );
+
+    while ($row = sql_fetch_assoc($res)) {
+        $map[intval($row[$entityColumn])] = true;
+    }
+
+    return $map;
+}
+
 switch ($mode) {
 
     // ===================== CASE: LIST =====================
@@ -1454,6 +1488,22 @@ if (!$distance) {
 
         // If the logged-in user is a vendor, restrict to that vendor's vehicles/drivers only
         $vendorID = getVendorIDForUser($user_id);
+        $bookingStationID = getBookingStationID($iFleet_BookingID);
+
+        $vehicleStationMap = getStationEntityMap(
+            $bookingStationID,
+            'vehicle_station_assoc',
+            'iVehicleID',
+            array_keys($vehicleData)
+        );
+        $driverStationMap = getStationEntityMap(
+            $bookingStationID,
+            'driver_station_assoc',
+            'iDriverID',
+            array_map(function ($vehData) {
+                return intval($vehData['DRIVER_ID'] ?? 0);
+            }, $vehicleData)
+        );
 
         $vehicles = [];
         $currentlyAssigned = [];
@@ -1463,6 +1513,18 @@ if (!$distance) {
             // Restrict to the logged-in vendor's own vehicles/drivers
             if ($vendorID > 0 && intval($vehData['VENDOR_ID'] ?? 0) !== $vendorID) {
                 continue;
+            }
+
+            // Restrict to vehicles and drivers mapped to the booking station
+            if ($bookingStationID > 0) {
+                if (!isset($vehicleStationMap[intval($vehicleID)])) {
+                    continue;
+                }
+
+                $driverId = intval($vehData['DRIVER_ID'] ?? 0);
+                if ($driverId > 0 && !isset($driverStationMap[$driverId])) {
+                    continue;
+                }
             }
 
             // Apply keyword filter if provided (matches vehicle reg no, name, or driver name)
@@ -1738,7 +1800,8 @@ if (!$distance) {
         }
 
         // Check if booking exists and is active
-        $bookingCheckSql = "SELECT iFleet_BookingID, vName,vMobileNo, vPickUpTime,vPickUpLocation, vBookingCode FROM fleet_booking 
+        $bookingCheckSql = "SELECT iFleet_BookingID, vName, vMobileNo, vPickUpTime, vPickUpLocation, vBookingCode, iFleet_StationID
+                           FROM fleet_booking 
                            WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
         $bookingCheckRes = sql_query($bookingCheckSql);
 
@@ -1783,6 +1846,33 @@ if (!$distance) {
         }
 
         $driverData = sql_fetch_assoc($driverCheckRes);
+
+        $bookingStationID = intval($bookingData['iFleet_StationID'] ?? 0);
+        if ($bookingStationID > 0) {
+            $vehicleAtStation = intval(GetXFromYID(
+                "SELECT COUNT(*) FROM vehicle_station_assoc
+                 WHERE iVehicleID = $iVehicleID AND iFlt_StationID = $bookingStationID"
+            ));
+            if ($vehicleAtStation <= 0) {
+                echo json_encode([
+                    "error" => ["message" => "Vehicle does not belong to this booking station"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+
+            $driverAtStation = intval(GetXFromYID(
+                "SELECT COUNT(*) FROM driver_station_assoc
+                 WHERE iDriverID = $iDriverID AND iFlt_StationID = $bookingStationID"
+            ));
+            if ($driverAtStation <= 0) {
+                echo json_encode([
+                    "error" => ["message" => "Driver does not belong to this booking station"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+        }
 
         // Check if vehicle is already assigned to another booking at the same time
         $conflictCheckSql = "SELECT iFleet_BookingID, vName FROM fleet_booking 
