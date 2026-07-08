@@ -2,6 +2,25 @@
 //ini_set('display_errors', 1);
 
 include "../../includes/common_api.php";
+function getVendorIDForUser($user_id)
+{
+    $user_id = intval($user_id);
+    if ($user_id <= 0 || !checkUserModuleAccess($user_id, 'FLEET_VENDOR_SPECIFIC_REQUEST')) {
+        return 0;
+    }
+
+    $userRefRes = sql_query("SELECT cRefType, iRefID FROM users WHERE iUserID = $user_id AND cStatus = 'A' LIMIT 1");
+    if (sql_num_rows($userRefRes) == 0) {
+        return 0;
+    }
+
+    $userRefRow = sql_fetch_assoc($userRefRes);
+    if (($userRefRow['cRefType'] ?? '') === 'V' && intval($userRefRow['iRefID'] ?? 0) > 0) {
+        return intval($userRefRow['iRefID']);
+    }
+
+    return 0;
+}
 
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
