@@ -208,6 +208,8 @@ try {
             "properties"  => $PROPERTY_ARR,
             "levels"      => $levels,
             "status"      => $Status,
+            "staff"       => $staff,
+            "vendor"      => $vendor,
             "stations"    => $stations,
             "departments" => $DEPT
         ],
