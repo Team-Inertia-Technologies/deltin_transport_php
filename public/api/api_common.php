@@ -569,13 +569,13 @@ function getVendorIDForUser($user_id)
         return 0;
     }
 
-    $userRefRes = sql_query("SELECT cRefType, iRefID FROM users WHERE iUserID = $user_id AND cStatus = 'A' LIMIT 1");
+    $userRefRes = sql_query("SELECT cRefSrcType, iRefID FROM users WHERE iUserID = $user_id AND cStatus = 'A' LIMIT 1");
     if (sql_num_rows($userRefRes) == 0) {
         return 0;
     }
 
     $userRefRow = sql_fetch_assoc($userRefRes);
-    if (($userRefRow['cRefType'] ?? '') === 'V' && intval($userRefRow['iRefID'] ?? 0) > 0) {
+    if (($userRefRow['cRefSrcType'] ?? '') === 'V' && intval($userRefRow['iRefID'] ?? 0) > 0) {
         return intval($userRefRow['iRefID']);
     }
 

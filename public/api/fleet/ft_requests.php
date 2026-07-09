@@ -80,20 +80,33 @@ function getFleetVendorStationOpts()
     }
 
     $vendorStationsMap = [];
-    $stationAssocSql = "SELECT vsa.iVendorID, vsa.iFlt_StationID, fs.vName
-                        FROM vendor_station_assoc vsa
-                        LEFT JOIN fleet_station fs ON vsa.iFlt_StationID = fs.iFlt_StationID AND fs.cStatus = 'A'
-                        ORDER BY fs.iRank";
+    $stationAssocSql = "SELECT u.iRefID AS iVendorID, usa.iStationID AS iFlt_StationID, fs.vName,
+                               u.iUserID, u.vName AS userName
+                        FROM users u
+                        INNER JOIN users_station_assoc usa ON u.iUserID = usa.iUserID
+                        LEFT JOIN fleet_station fs ON usa.iStationID = fs.iFlt_StationID AND fs.cStatus = 'A'
+                        WHERE u.cRefSrcType = 'V' AND u.cStatus = 'A' AND u.iRefID > 0
+                        ORDER BY fs.iRank, u.vName";
     $stationAssocRes = sql_query($stationAssocSql);
     while ($assocRow = sql_fetch_assoc($stationAssocRes)) {
         $vendorId = intval($assocRow['iVendorID']);
+        $stationId = intval($assocRow['iFlt_StationID']);
+        if (!$stationId) continue;
+
         if (!isset($vendorStationsMap[$vendorId])) {
             $vendorStationsMap[$vendorId] = [];
         }
-        if (!empty($assocRow['iFlt_StationID'])) {
-            $vendorStationsMap[$vendorId][] = [
-                'id' => intval($assocRow['iFlt_StationID']),
-                'label' => db_output2($assocRow['vName'] ?? '')
+        if (!isset($vendorStationsMap[$vendorId][$stationId])) {
+            $vendorStationsMap[$vendorId][$stationId] = [
+                'id' => $stationId,
+                'label' => db_output2($assocRow['vName'] ?? ''),
+                'childVendors' => []
+            ];
+        }
+        if (!empty($assocRow['iUserID'])) {
+            $vendorStationsMap[$vendorId][$stationId]['childVendors'][] = [
+                'id' => intval($assocRow['iUserID']),
+                'name' => db_output2($assocRow['userName'] ?? '')
             ];
         }
     }
@@ -106,7 +119,7 @@ function getFleetVendorStationOpts()
         $vendorOpt[] = [
             'id' => $vendorId,
             'name' => db_output2($vendorRow['vName']),
-            'stations' => $vendorStationsMap[$vendorId] ?? []
+            'stations' => array_values($vendorStationsMap[$vendorId] ?? [])
         ];
     }
 
