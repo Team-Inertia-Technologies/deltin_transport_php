@@ -38,22 +38,33 @@ try {
 			return trim((string)$v) !== '';
 		}))));
 
-		// Staff / Vendor reference (mutually exclusive)
+		// Staff / Vendor reference (mutually exclusive) — type now comes explicitly from POST
 		$cmbstaff = trim($_POST['cmbstaff'] ?? '');
 		$cmbvendor = trim($_POST['cmbvendor'] ?? '');
+		$cRefSrcTypePost = strtoupper(trim($_POST['cRefSrcType'] ?? ''));
 
-		if (!empty($cmbstaff) && !empty($cmbvendor)) {
+		if (!empty($cRefSrcTypePost) && !in_array($cRefSrcTypePost, ['S', 'V'])) {
 			http_response_code(400);
-			echo json_encode(['statusCode' => 400, 'message' => 'Please select either Staff or Vendor, not both']);
+			echo json_encode(['statusCode' => 400, 'message' => 'Invalid cRefSrcType, must be S or V']);
 			exit;
 		}
 
 		$iRefIDVal = 'NULL';
 		$cRefSrcTypeVal = 'NULL';
-		if (!empty($cmbstaff)) {
+		if ($cRefSrcTypePost === 'S') {
+			if (empty($cmbstaff)) {
+				http_response_code(400);
+				echo json_encode(['statusCode' => 400, 'message' => 'cmbstaff is required when cRefSrcType is S']);
+				exit;
+			}
 			$iRefIDVal = intval($cmbstaff);
 			$cRefSrcTypeVal = "'S'";
-		} elseif (!empty($cmbvendor)) {
+		} elseif ($cRefSrcTypePost === 'V') {
+			if (empty($cmbvendor)) {
+				http_response_code(400);
+				echo json_encode(['statusCode' => 400, 'message' => 'cmbvendor is required when cRefSrcType is V']);
+				exit;
+			}
 			$iRefIDVal = intval($cmbvendor);
 			$cRefSrcTypeVal = "'V'";
 		}
@@ -233,26 +244,36 @@ try {
 			}
 		}
 
-		// Handle Staff / Vendor reference (mutually exclusive)
-		if (isset($_POST['cmbstaff']) || isset($_POST['cmbvendor'])) {
+		// Handle Staff / Vendor reference — type now comes explicitly from POST
+		if (isset($_POST['cmbstaff']) || isset($_POST['cmbvendor']) || isset($_POST['cRefSrcType'])) {
 			$newStaff = trim($_POST['cmbstaff'] ?? '');
 			$newVendor = trim($_POST['cmbvendor'] ?? '');
+			$newRefSrcTypePost = strtoupper(trim($_POST['cRefSrcType'] ?? ''));
 
-			if (!empty($newStaff) && !empty($newVendor)) {
+			if (!empty($newRefSrcTypePost) && !in_array($newRefSrcTypePost, ['S', 'V'])) {
 				http_response_code(400);
-				echo json_encode(['statusCode' => 400, 'message' => 'Please select either Staff or Vendor, not both']);
+				echo json_encode(['statusCode' => 400, 'message' => 'Invalid cRefSrcType, must be S or V']);
 				exit;
 			}
 
-			if (!empty($newStaff)) {
+			$newRefID = null;
+			$newRefSrcType = null;
+			if ($newRefSrcTypePost === 'S') {
+				if (empty($newStaff)) {
+					http_response_code(400);
+					echo json_encode(['statusCode' => 400, 'message' => 'cmbstaff is required when cRefSrcType is S']);
+					exit;
+				}
 				$newRefID = intval($newStaff);
 				$newRefSrcType = 'S';
-			} elseif (!empty($newVendor)) {
+			} elseif ($newRefSrcTypePost === 'V') {
+				if (empty($newVendor)) {
+					http_response_code(400);
+					echo json_encode(['statusCode' => 400, 'message' => 'cmbvendor is required when cRefSrcType is V']);
+					exit;
+				}
 				$newRefID = intval($newVendor);
 				$newRefSrcType = 'V';
-			} else {
-				$newRefID = null;
-				$newRefSrcType = null;
 			}
 
 			$origRefID = isset($original->iRefID) && $original->iRefID !== null ? (int)$original->iRefID : null;

@@ -211,7 +211,17 @@ try {
             "staff"       => $staff,
             "vendor"      => $vendor,
             "stations"    => $stations,
-            "departments" => $DEPT
+            "departments" => $DEPT,
+            "typeArr" => [
+                [
+                    "id" => "S",
+                    "name" => "Staff"
+                ],
+                [
+                    "id" => "V",
+                    "name" => "Vendor"
+                ]
+            ]
         ],
         "statuscode" => 200
     ];
