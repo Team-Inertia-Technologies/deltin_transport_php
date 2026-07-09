@@ -101,7 +101,7 @@ function getFleetVendorStationOpts()
         $stationVendorOpt[] = [
             'id'      => $stationId,
             'label'   => $label,
-            'vendors' => $stationVendorsMap[$stationId]['vendors'] ?? []
+            'vendors' => $stationVendorsMap[$stationId] ?? []
         ];
     }
 
