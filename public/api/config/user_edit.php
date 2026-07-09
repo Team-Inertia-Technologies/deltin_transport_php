@@ -169,6 +169,7 @@ try {
 				'cStatus' => $rdstatus,
 				'cmbstaff' => $cmbstaff,
 				'cmbvendor' => $cmbvendor,
+				'cRefSrcType' => $cRefSrcType,
 				'prevUserData' => $prevUserData,
 				'cAction' => $txtaction,
 				'status_str' => $status_str,
