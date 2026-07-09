@@ -111,10 +111,10 @@ function getFleetVendorStationOpts()
 
     // All active stations (with vendors array, empty if none assigned)
     $AREA_ARR_RAW = GetXArrFromYID("SELECT iFlt_StationID, vName FROM fleet_station WHERE cStatus='A' ORDER BY iRank", "3");
-    $availableOpt = [];
+    $stationVendorOpt = [];
     foreach ($AREA_ARR_RAW as $id => $label) {
         $stationId = intval($id);
-        $availableOpt[] = [
+        $stationVendorOpt[] = [
             'id'      => $stationId,
             'label'   => $label,
             'vendors' => $stationVendorsMap[$stationId]['vendors'] ?? []
@@ -132,8 +132,8 @@ function getFleetVendorStationOpts()
     }
 
     return [
-        'availableOpt' => $availableOpt,
-        'vendorOpt'    => $vendorOpt
+        'stationVendorOpt' => $stationVendorOpt,
+        'vendorOpt'        => $vendorOpt
     ];
 }
 
@@ -1058,7 +1058,7 @@ if (!$distance) {
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
             "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
             "locOpts" => $locOpts,
-            "availableOpt" => $vendorStationOpts['availableOpt'],
+            "stationVendorOpt" => $vendorStationOpts['stationVendorOpt'],
             "vendorOpt" => $vendorStationOpts['vendorOpt']
         ];
 
@@ -2445,7 +2445,7 @@ if (!$distance) {
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
             "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
             "locOpts" => $locOpts,
-            "availableOpt" => $vendorStationOpts['availableOpt'],
+            "stationVendorOpt" => $vendorStationOpts['stationVendorOpt'],
             "vendorOpt" => $vendorStationOpts['vendorOpt']
             //  "staffFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($staff) { return ['id' => $staff['id'], 'name' => $staff['name']]; }, $staffOpt)),
             // "guestFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($guest) { return ['id' => $guest['id'], 'name' => $guest['name']]; }, $guestOpts))
