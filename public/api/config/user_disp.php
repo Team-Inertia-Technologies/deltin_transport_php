@@ -176,6 +176,28 @@ try {
         $users[] = $row;
     }
 
+    $staffsql = "SELECT iFStaffID, vName FROM fleet_staff WHERE cStatus='A' ORDER BY iFStaffID ASC";
+    $staffresult = sql_query($staffsql);
+    $staff = [];
+    while ($row = sql_fetch_assoc($staffresult)) {
+        $staff[] = [
+            "id"   => (int)$row['iFStaffID'],
+            "name" => $row['vName']
+        ];
+    }
+
+    $vendorsql = "SELECT iVendorID, vName FROM vendor WHERE cStatus='A' ORDER BY iVendorID ASC";
+    $vendorresult = sql_query($vendorsql);
+    $vendor = [];
+    while ($row = sql_fetch_assoc($vendorresult)) {
+        $vendor[] = [
+            "id"   => (int)$row['iVendorID'],
+            "name" => $row['vName']
+        ];
+    }
+
+
+
     // ---------------------------------------------------
     // Response
     // ---------------------------------------------------

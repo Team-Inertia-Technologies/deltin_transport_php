@@ -28,22 +28,51 @@ try {
         $txtemail = db_input($_POST['txtemail']);
         $txtphone = db_input($_POST['txtphone']);
         $cmblevel = db_input($_POST['cmblevel']);
+
+		// Stations are now stored via user_temp_station_assoc (iUserID, iStationID)
 		$cmbstation_raw = $_POST['cmbstation'] ?? [];
-		if (is_array($cmbstation_raw)) {
-			$cmbstation = db_input(implode(',', array_filter($cmbstation_raw)));
-		} else {
-			$cmbstation = db_input(trim($cmbstation_raw));
+		if (!is_array($cmbstation_raw)) {
+			$cmbstation_raw = (trim($cmbstation_raw) !== '') ? [trim($cmbstation_raw)] : [];
 		}
+		$cmbstations = array_values(array_unique(array_map('intval', array_filter($cmbstation_raw, function($v) {
+			return trim((string)$v) !== '';
+		}))));
+
+		// Staff / Vendor reference (mutually exclusive)
+		$cmbstaff = trim($_POST['cmbstaff'] ?? '');
+		$cmbvendor = trim($_POST['cmbvendor'] ?? '');
+
+		if (!empty($cmbstaff) && !empty($cmbvendor)) {
+			http_response_code(400);
+			echo json_encode(['statusCode' => 400, 'message' => 'Please select either Staff or Vendor, not both']);
+			exit;
+		}
+
+		$iRefIDVal = 'NULL';
+		$cRefSrcTypeVal = 'NULL';
+		if (!empty($cmbstaff)) {
+			$iRefIDVal = intval($cmbstaff);
+			$cRefSrcTypeVal = "'S'";
+		} elseif (!empty($cmbvendor)) {
+			$iRefIDVal = intval($cmbvendor);
+			$cRefSrcTypeVal = "'V'";
+		}
+
         $dtCreated = NOW;
         $sess_user_id = $_SESSION[PROJ_SESSION_ID]->user_id ?? 0;
 		$cmbproperty = $_POST['cmbproperty2'] ?? [];
 
         $sql = "INSERT INTO users_temp 
-                (iUserID, iDepartmentID, iStationID, iReportingID, vName, vUName, vPassword, vEmail, vPhone, iLevel, cStatus, dtCreated, iCreated_UserID, cRefType)
+                (iUserID, iDepartmentID, iReportingID, vName, vUName, vPassword, vEmail, vPhone, iLevel, cStatus, dtCreated, iCreated_UserID, cRefType, iRefID, cRefSrcType)
                 VALUES 
-                ($txtid, $deptID, $cmbstation, $reportingTo, '$txtname', '$txtusername', '$txtpassword', '$txtemail', '$txtphone', $cmblevel, 'D', '$dtCreated', $sess_user_id, 'A')";
+                ($txtid, $deptID, $reportingTo, '$txtname', '$txtusername', '$txtpassword', '$txtemail', '$txtphone', $cmblevel, 'D', '$dtCreated', $sess_user_id, 'A', $iRefIDVal, $cRefSrcTypeVal)";
         sql_query($sql, 'API.USER.INSERT');
 		LogMasterEdit($txtid, 'USR', $mode, $txtname);
+
+		// Insert station associations
+		foreach ($cmbstations as $stationID) {
+			sql_query("INSERT INTO user_temp_station_assoc (iUserID, iStationID) VALUES ($txtid, $stationID)");
+		}
 		
 		if (!is_array($cmbproperty)) {
 			$cmbproperty = [$cmbproperty];
@@ -86,9 +115,18 @@ try {
 	$txtphone = db_output($dataArr[0]->vPhone);
 	$txtusername = db_output($dataArr[0]->vUName);
 	$cmblevel = db_output($dataArr[0]->iLevel);
-	$cmbstation = db_output($dataArr[0]->iStationID);
 	$txtpassword = db_output($dataArr[0]->vPassword);
 	$rdstatus = db_output($dataArr[0]->cStatus);
+
+	// Stations now come from the assoc table
+	$cmbstationArr = GetXArrFromYID("SELECT iStationID FROM user_temp_station_assoc WHERE iUserID = '$txtid'");
+	$cmbstationArr = !empty($cmbstationArr) ? array_map('intval', $cmbstationArr) : [];
+
+	// Staff / Vendor reference
+	$iRefID = db_output($dataArr[0]->iRefID ?? '');
+	$cRefSrcType = db_output($dataArr[0]->cRefSrcType ?? '');
+	$cmbstaff = ($cRefSrcType === 'S') ? $iRefID : '';
+	$cmbvendor = ($cRefSrcType === 'V') ? $iRefID : '';
 	
 	$prevUserData = [];
 	if (in_array($rdstatus, ['P', 'U'])) {
@@ -108,7 +146,7 @@ try {
 				'iUserID' => $user_id,
 				'DepartmentID' => $deptID,
 				'DepartmenName' => GetXFromYID("SELECT vName FROM department WHERE iDepartmentID = '$deptID'"),
-				'cmbstation' => !empty($cmbstation) ? array_map('intval', explode(',', $cmbstation)) : [],
+				'cmbstation' => $cmbstationArr,
 				'ReportingTo' => $reportingTo,
 				'ReportingToName' => GetXFromYID("SELECT vName FROM users WHERE iUserID = '$reportingTo'"),
 				'vName' => $txtname,
@@ -118,6 +156,8 @@ try {
 				'iLevel' => $cmblevel,
 				'vPassword' => $txtpassword,
 				'cStatus' => $rdstatus,
+				'cmbstaff' => $cmbstaff,
+				'cmbvendor' => $cmbvendor,
 				'prevUserData' => $prevUserData,
 				'cAction' => $txtaction,
 				'status_str' => $status_str,
@@ -141,6 +181,7 @@ try {
 		$original = GetDataFromID("users_temp", "iUserID", $txtid)[0];
 	
 		$update_fields = [];
+		$stationChanged = false;
 		$fields_to_check = [
 			'vName'          => 'txtname',
 			'vEmail'         => 'txtemail',
@@ -168,15 +209,59 @@ try {
 			}
 		}
 
-		// Handle iStationID as comma-separated multi-value
-		$newStation_raw = $_POST['cmbstation'] ?? [];
-		if (is_array($newStation_raw)) {
-			$newStation = implode(',', array_filter($newStation_raw));
-		} else {
-			$newStation = trim($newStation_raw);
+		// Handle Station IDs via assoc table (multi-value, replaces old comma-separated column)
+		if (isset($_POST['cmbstation'])) {
+			$newStation_raw = $_POST['cmbstation'];
+			if (!is_array($newStation_raw)) {
+				$newStation_raw = (trim($newStation_raw) !== '') ? [trim($newStation_raw)] : [];
+			}
+			$newStations = array_values(array_unique(array_map('intval', array_filter($newStation_raw, function($v) {
+				return trim((string)$v) !== '';
+			}))));
+			sort($newStations);
+
+			$currentStations = GetXArrFromYID("SELECT iStationID FROM user_temp_station_assoc WHERE iUserID = '$txtid'");
+			$currentStations = !empty($currentStations) ? array_map('intval', $currentStations) : [];
+			sort($currentStations);
+
+			if ($newStations !== $currentStations) {
+				sql_query("DELETE FROM user_temp_station_assoc WHERE iUserID = '$txtid'");
+				foreach ($newStations as $stationID) {
+					sql_query("INSERT INTO user_temp_station_assoc (iUserID, iStationID) VALUES ('$txtid', $stationID)");
+				}
+				$stationChanged = true;
+			}
 		}
-		if ($newStation !== db_output($original->iStationID)) {
-			$update_fields[] = "iStationID = '" . db_input($newStation) . "'";
+
+		// Handle Staff / Vendor reference (mutually exclusive)
+		if (isset($_POST['cmbstaff']) || isset($_POST['cmbvendor'])) {
+			$newStaff = trim($_POST['cmbstaff'] ?? '');
+			$newVendor = trim($_POST['cmbvendor'] ?? '');
+
+			if (!empty($newStaff) && !empty($newVendor)) {
+				http_response_code(400);
+				echo json_encode(['statusCode' => 400, 'message' => 'Please select either Staff or Vendor, not both']);
+				exit;
+			}
+
+			if (!empty($newStaff)) {
+				$newRefID = intval($newStaff);
+				$newRefSrcType = 'S';
+			} elseif (!empty($newVendor)) {
+				$newRefID = intval($newVendor);
+				$newRefSrcType = 'V';
+			} else {
+				$newRefID = null;
+				$newRefSrcType = null;
+			}
+
+			$origRefID = isset($original->iRefID) && $original->iRefID !== null ? (int)$original->iRefID : null;
+			$origRefSrcType = $original->cRefSrcType ?? null;
+
+			if ($newRefID !== $origRefID || $newRefSrcType !== $origRefSrcType) {
+				$update_fields[] = "iRefID = " . ($newRefID !== null ? intval($newRefID) : "NULL");
+				$update_fields[] = "cRefSrcType = " . ($newRefSrcType !== null ? "'" . db_input($newRefSrcType) . "'" : "NULL");
+			}
 		}
 		
 	
@@ -202,13 +287,15 @@ try {
 		// 	$update_fields[] = "cStatus = 'D'";
 		// }
 	
-		if (!empty($update_fields)) {
+		if (!empty($update_fields) || $stationChanged) {
 			if (db_output($original->cStatus) == 'A') {
 				$update_fields[] = "cStatus = 'D'";
 			}
-			$update_query = "UPDATE users_temp SET " . implode(", ", $update_fields) . " WHERE iUserID = $txtid";
-			//echo $update_query;
-			sql_query($update_query);
+			if (!empty($update_fields)) {
+				$update_query = "UPDATE users_temp SET " . implode(", ", $update_fields) . " WHERE iUserID = $txtid";
+				//echo $update_query;
+				sql_query($update_query);
+			}
 		}
 	
 		if (isset($_POST['action'])) {
@@ -240,11 +327,11 @@ try {
 	
 				case 'activate':
 					sql_query("UPDATE users_temp SET cStatus = 'A', cAction='ACT', iActivated_UserID = $sess_user_id WHERE iUserID = '$txtid'");
-				$resultTemp = sql_query("SELECT vName, vUName, vPassword, vEmail, vPhone, iLevel, iStationID, iDepartmentID, iReportingID FROM users_temp WHERE iUserID = '$txtid'");
+				$resultTemp = sql_query("SELECT vName, vUName, vPassword, vEmail, vPhone, iLevel, iDepartmentID, iReportingID, iRefID, cRefSrcType FROM users_temp WHERE iUserID = '$txtid'");
 				$userTemp = sql_fetch_assoc($resultTemp);
 	
 				if ($userTemp) {
-					$resultUser = sql_query("SELECT vName, vUName, vPassword, vEmail, vPhone, iLevel, iStationID, iDepartmentID, iReportingID FROM users WHERE iUserID = '$txtid'");
+					$resultUser = sql_query("SELECT vName, vUName, vPassword, vEmail, vPhone, iLevel, iDepartmentID, iReportingID, iRefID, cRefSrcType FROM users WHERE iUserID = '$txtid'");
 					$existingUser = sql_fetch_assoc($resultUser);
 					$pwdDays = 0;
 						$res = sql_query("SELECT vValue FROM sys_settings WHERE vCode = 'PASSWORD_ACTIVE_DAYS' LIMIT 1");
@@ -343,6 +430,15 @@ try {
 						$sq = "INSERT INTO log_user_temppassword (iLYTPID, dtEntry, iUserID, vPassword, cIsTemp, cStatus) VALUES ('$iLYTPID',NOW(),'$txtid','$vPassword','Y','A')";
 						sql_query($sq);
 					}
+
+					// Sync stations: mirror draft assoc rows into the live assoc table
+					$tempStations = GetXArrFromYID("SELECT iStationID FROM user_temp_station_assoc WHERE iUserID = '$txtid'");
+					$tempStations = !empty($tempStations) ? array_map('intval', $tempStations) : [];
+					sql_query("DELETE FROM users_station_assoc WHERE iUserID = '$txtid'");
+					foreach ($tempStations as $stationID) {
+						sql_query("INSERT INTO users_station_assoc (iUserID, iStationID) VALUES ('$txtid', $stationID)");
+					}
+
 					LogMasterEdit($txtid, 'USR', 'AT', $txtname, "Activated by {$sess_user_name}");
 				}
 					break;
@@ -375,7 +471,16 @@ try {
 		$cmblevel = db_output($dataArr[0]->iLevel);
 		$txtpassword = db_output($dataArr[0]->vPassword);
 		$rdstatus = db_output($dataArr[0]->cStatus);
-		$cmbstation = db_output($dataArr[0]->iStationID);
+
+		// Stations now come from the assoc table
+		$cmbstationArr = GetXArrFromYID("SELECT iStationID FROM user_temp_station_assoc WHERE iUserID = '$txtid'");
+		$cmbstationArr = !empty($cmbstationArr) ? array_map('intval', $cmbstationArr) : [];
+
+		// Staff / Vendor reference
+		$iRefID = db_output($dataArr[0]->iRefID ?? '');
+		$cRefSrcType = db_output($dataArr[0]->cRefSrcType ?? '');
+		$cmbstaff = ($cRefSrcType === 'S') ? $iRefID : '';
+		$cmbvendor = ($cRefSrcType === 'V') ? $iRefID : '';
 
 
 		$prevUserData = [];
@@ -401,12 +506,14 @@ try {
 					'vPhone' => $txtphone,
 					'vUName' => $txtusername,
 					'iLevel' => $cmblevel,
-					'StationID' => $cmbstation,
-					'StationName' => !empty($cmbstation) ? implode(', ', array_map(function($id) {
-						return GetXFromYID("SELECT vName FROM fleet_station WHERE iFlt_StationID = '" . intval(trim($id)) . "'");
-					}, explode(',', $cmbstation))) : '',
+					'StationID' => $cmbstationArr,
+					'StationName' => !empty($cmbstationArr) ? implode(', ', array_map(function($id) {
+						return GetXFromYID("SELECT vName FROM fleet_station WHERE iFlt_StationID = '" . intval($id) . "'");
+					}, $cmbstationArr)) : '',
 					'vPassword' => $txtpassword,
 					'cStatus' => $rdstatus,
+					'cmbstaff' => $cmbstaff,
+					'cmbvendor' => $cmbvendor,
 					'prevUserData' => $prevUserData,
 					'cAction' => $txtaction,
 					'status_str' => $status_str,
@@ -425,6 +532,7 @@ try {
         }
 
         sql_query("DELETE FROM users_temp WHERE iUserID = $txtid");
+        sql_query("DELETE FROM user_temp_station_assoc WHERE iUserID = $txtid");
         http_response_code(200);
         echo json_encode([
             'statusCode' => 200,
