@@ -120,7 +120,7 @@ try {
 
 	// Stations now come from the assoc table
 	$cmbstationArr = GetXArrFromYID("SELECT iStationID FROM user_temp_station_assoc WHERE iUserID = '$txtid'");
-	$cmbstationArr = !empty($cmbstationArr) ? array_map('intval', $cmbstationArr) : [];
+	$cmbstationArr = !empty($cmbstationArr) ? array_values(array_map('intval', $cmbstationArr)) : [];
 
 	// Staff / Vendor reference
 	$iRefID = db_output($dataArr[0]->iRefID ?? '');
@@ -474,7 +474,7 @@ try {
 
 		// Stations now come from the assoc table
 		$cmbstationArr = GetXArrFromYID("SELECT iStationID FROM user_temp_station_assoc WHERE iUserID = '$txtid'");
-		$cmbstationArr = !empty($cmbstationArr) ? array_map('intval', $cmbstationArr) : [];
+		$cmbstationArr = !empty($cmbstationArr) ? array_values(array_map('intval', $cmbstationArr)) : [];
 
 		// Staff / Vendor reference
 		$iRefID = db_output($dataArr[0]->iRefID ?? '');
