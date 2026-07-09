@@ -73,15 +73,12 @@ function getRoadDistance($startLat, $startLng, $endLat, $endLng)
 
 function getFleetVendorStationOpts()
 {
-    // Build station list with vendors per station from users_station_assoc
+ 
     $stationVendorsMap = [];
-    $stationAssocSql = "SELECT usa.iStationID, fs.vName AS stationName, fs.iRank,
-                               v.iVendorID, v.vName AS vendorName
-                        FROM users_station_assoc usa
-                        INNER JOIN users u ON usa.iUserID = u.iUserID
-                            AND u.cRefSrcType = 'V' AND u.cStatus = 'A' AND u.iRefID > 0
-                        INNER JOIN vendor v ON u.iRefID = v.iVendorID AND v.cStatus = 'A'
-                        LEFT JOIN fleet_station fs ON usa.iStationID = fs.iFlt_StationID AND fs.cStatus = 'A'
+    $stationAssocSql = "SELECT vsa.iFlt_StationID AS iStationID, v.iVendorID, v.vName AS vendorName
+                        FROM vendor_station_assoc vsa
+                        INNER JOIN vendor v ON vsa.iVendorID = v.iVendorID AND v.cStatus = 'A'
+                        LEFT JOIN fleet_station fs ON vsa.iFlt_StationID = fs.iFlt_StationID AND fs.cStatus = 'A'
                         ORDER BY fs.iRank, v.vName";
     $stationAssocRes = sql_query($stationAssocSql);
     while ($assocRow = sql_fetch_assoc($stationAssocRes)) {
@@ -89,27 +86,14 @@ function getFleetVendorStationOpts()
         if (!$stationId) continue;
 
         if (!isset($stationVendorsMap[$stationId])) {
-            $stationVendorsMap[$stationId] = [
-                'id'      => $stationId,
-                'label'   => db_output2($assocRow['stationName'] ?? ''),
-                'vendors' => []
-            ];
+            $stationVendorsMap[$stationId] = [];
         }
-        $vendorId = intval($assocRow['iVendorID']);
-        // Avoid duplicate vendor entries per station
-        $alreadyAdded = false;
-        foreach ($stationVendorsMap[$stationId]['vendors'] as $v) {
-            if ($v['id'] === $vendorId) { $alreadyAdded = true; break; }
-        }
-        if (!$alreadyAdded) {
-            $stationVendorsMap[$stationId]['vendors'][] = [
-                'id'   => $vendorId,
-                'name' => db_output2($assocRow['vendorName'] ?? '')
-            ];
-        }
+        $stationVendorsMap[$stationId][] = [
+            'id'   => intval($assocRow['iVendorID']),
+            'name' => db_output2($assocRow['vendorName'] ?? '')
+        ];
     }
 
-    // All active stations (with vendors array, empty if none assigned)
     $AREA_ARR_RAW = GetXArrFromYID("SELECT iFlt_StationID, vName FROM fleet_station WHERE cStatus='A' ORDER BY iRank", "3");
     $stationVendorOpt = [];
     foreach ($AREA_ARR_RAW as $id => $label) {
@@ -121,7 +105,7 @@ function getFleetVendorStationOpts()
         ];
     }
 
-    // Simple vendor dropdown list
+
     $vendorOpt = [['id' => 0, 'name' => 'Choose']];
     $vendorRes = sql_query("SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName");
     while ($vendorRow = sql_fetch_assoc($vendorRes)) {
@@ -311,7 +295,7 @@ switch ($mode) {
 
         $whereClause = "fb.cStatus != 'X'";
 
-        // Check if user has FLEET_USER_SPECIFIC_REQ access
+     
         $userSpecificAccess = checkUserModuleAccess($user_id, 'FLEET_USER_SPECIFIC_REQ');
 
         if ($userSpecificAccess) {
@@ -438,7 +422,7 @@ switch ($mode) {
             $driverTypeID = intval($row['driverType'] ?? 0);
             $driverTypeName = isset($VEHICLE_DRIVER_TYPE[$driverTypeID]) ? $VEHICLE_DRIVER_TYPE[$driverTypeID] : '';
 
-            // Format vehicle details
+       
             $vehicleDetails = '';
             if (!empty($row['vehicleRegNo'])) {
                 $vehicleDetails = db_output2($row['vehicleRegNo']);
@@ -522,7 +506,7 @@ switch ($mode) {
                 'tripStatus' => $tripStatusCode,
                 'tripStatusText' => $tripStatusName,
                 'tripType' => $tripType,
-                'cType' => $tripStatusCode, // Adding cType from booking table
+                'cType' => $tripStatusCode,
                 'startTime' => $startTime,
                 'endTime' => $endTime,
                 'paxs' => strval($row['iPax'] ?? '0'),
