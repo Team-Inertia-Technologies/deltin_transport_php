@@ -73,59 +73,67 @@ function getRoadDistance($startLat, $startLng, $endLat, $endLng)
 
 function getFleetVendorStationOpts()
 {
+    // Build station list with vendors per station from users_station_assoc
+    $stationVendorsMap = [];
+    $stationAssocSql = "SELECT usa.iStationID, fs.vName AS stationName, fs.iRank,
+                               v.iVendorID, v.vName AS vendorName
+                        FROM users_station_assoc usa
+                        INNER JOIN users u ON usa.iUserID = u.iUserID
+                            AND u.cRefSrcType = 'V' AND u.cStatus = 'A' AND u.iRefID > 0
+                        INNER JOIN vendor v ON u.iRefID = v.iVendorID AND v.cStatus = 'A'
+                        LEFT JOIN fleet_station fs ON usa.iStationID = fs.iFlt_StationID AND fs.cStatus = 'A'
+                        ORDER BY fs.iRank, v.vName";
+    $stationAssocRes = sql_query($stationAssocSql);
+    while ($assocRow = sql_fetch_assoc($stationAssocRes)) {
+        $stationId = intval($assocRow['iStationID']);
+        if (!$stationId) continue;
+
+        if (!isset($stationVendorsMap[$stationId])) {
+            $stationVendorsMap[$stationId] = [
+                'id'      => $stationId,
+                'label'   => db_output2($assocRow['stationName'] ?? ''),
+                'vendors' => []
+            ];
+        }
+        $vendorId = intval($assocRow['iVendorID']);
+        // Avoid duplicate vendor entries per station
+        $alreadyAdded = false;
+        foreach ($stationVendorsMap[$stationId]['vendors'] as $v) {
+            if ($v['id'] === $vendorId) { $alreadyAdded = true; break; }
+        }
+        if (!$alreadyAdded) {
+            $stationVendorsMap[$stationId]['vendors'][] = [
+                'id'   => $vendorId,
+                'name' => db_output2($assocRow['vendorName'] ?? '')
+            ];
+        }
+    }
+
+    // All active stations (with vendors array, empty if none assigned)
     $AREA_ARR_RAW = GetXArrFromYID("SELECT iFlt_StationID, vName FROM fleet_station WHERE cStatus='A' ORDER BY iRank", "3");
     $availableOpt = [];
     foreach ($AREA_ARR_RAW as $id => $label) {
-        $availableOpt[] = ['id' => intval($id), 'label' => $label];
+        $stationId = intval($id);
+        $availableOpt[] = [
+            'id'      => $stationId,
+            'label'   => $label,
+            'vendors' => $stationVendorsMap[$stationId]['vendors'] ?? []
+        ];
     }
 
-    $vendorStationsMap = [];
-    $stationAssocSql = "SELECT u.iRefID AS iVendorID, usa.iStationID AS iFlt_StationID, fs.vName,
-                               u.iUserID, u.vName AS userName
-                        FROM users u
-                        INNER JOIN users_station_assoc usa ON u.iUserID = usa.iUserID
-                        LEFT JOIN fleet_station fs ON usa.iStationID = fs.iFlt_StationID AND fs.cStatus = 'A'
-                        WHERE u.cRefSrcType = 'V' AND u.cStatus = 'A' AND u.iRefID > 0
-                        ORDER BY fs.iRank, u.vName";
-    $stationAssocRes = sql_query($stationAssocSql);
-    while ($assocRow = sql_fetch_assoc($stationAssocRes)) {
-        $vendorId = intval($assocRow['iVendorID']);
-        $stationId = intval($assocRow['iFlt_StationID']);
-        if (!$stationId) continue;
-
-        if (!isset($vendorStationsMap[$vendorId])) {
-            $vendorStationsMap[$vendorId] = [];
-        }
-        if (!isset($vendorStationsMap[$vendorId][$stationId])) {
-            $vendorStationsMap[$vendorId][$stationId] = [
-                'id' => $stationId,
-                'label' => db_output2($assocRow['vName'] ?? ''),
-                'childVendors' => []
-            ];
-        }
-        if (!empty($assocRow['iUserID'])) {
-            $vendorStationsMap[$vendorId][$stationId]['childVendors'][] = [
-                'id' => intval($assocRow['iUserID']),
-                'name' => db_output2($assocRow['userName'] ?? '')
-            ];
-        }
-    }
-
-    $vendorOpt = [['id' => 0, 'name' => 'Choose', 'stations' => []]];
-    $vendorSql = "SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName";
-    $vendorRes = sql_query($vendorSql);
+    // Simple vendor dropdown list
+    $vendorOpt = [['id' => 0, 'name' => 'Choose']];
+    $vendorRes = sql_query("SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName");
     while ($vendorRow = sql_fetch_assoc($vendorRes)) {
-        $vendorId = intval($vendorRow['iVendorID']);
         $vendorOpt[] = [
-            'id' => $vendorId,
-            'name' => db_output2($vendorRow['vName']),
-            'stations' => array_values($vendorStationsMap[$vendorId] ?? [])
+            'id'   => intval($vendorRow['iVendorID']),
+            'name' => db_output2($vendorRow['vName'])
         ];
     }
 
     return [
         'availableOpt' => $availableOpt,
-        'vendorOpt' => $vendorOpt
+        'vendorOpt'    => $vendorOpt
     ];
 }
 
