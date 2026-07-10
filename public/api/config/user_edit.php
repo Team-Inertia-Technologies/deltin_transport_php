@@ -41,7 +41,7 @@ try {
 		// Staff / Vendor reference (mutually exclusive) — type now comes explicitly from POST
 		$cmbstaff = trim($_POST['cmbstaff'] ?? '');
 		$cmbvendor = trim($_POST['cmbvendor'] ?? '');
-		$cRefSrcTypePost = strtoupper(trim($_POST['type'] ?? ''));
+		$cRefSrcTypePost = strtoupper(trim($_POST['cRefSrcType'] ?? ''));
 
 		if (!empty($cRefSrcTypePost) && !in_array($cRefSrcTypePost, ['S', 'V'])) {
 			http_response_code(400);
@@ -169,7 +169,6 @@ try {
 				'cStatus' => $rdstatus,
 				'cmbstaff' => $cmbstaff,
 				'cmbvendor' => $cmbvendor,
-				'type' => $cRefSrcType,
 				'prevUserData' => $prevUserData,
 				'cAction' => $txtaction,
 				'status_str' => $status_str,
@@ -246,10 +245,10 @@ try {
 		}
 
 		// Handle Staff / Vendor reference — type now comes explicitly from POST
-		if (isset($_POST['cmbstaff']) || isset($_POST['cmbvendor']) || isset($_POST['cRefSrcType'])) {
+		if (isset($_POST['cmbstaff']) || isset($_POST['cmbvendor']) || isset($_POST['type'])) {
 			$newStaff = trim($_POST['cmbstaff'] ?? '');
 			$newVendor = trim($_POST['cmbvendor'] ?? '');
-			$newRefSrcTypePost = strtoupper(trim($_POST['cRefSrcType'] ?? ''));
+			$newRefSrcTypePost = strtoupper(trim($_POST['type'] ?? ''));
 
 			if (!empty($newRefSrcTypePost) && !in_array($newRefSrcTypePost, ['S', 'V'])) {
 				http_response_code(400);
