@@ -1461,10 +1461,12 @@ if (!$distance) {
         $vendorID = getVendorIDForUser($user_id);
         $bookingStationID = getBookingStationID($iFleet_BookingID);
 
-        // Vendor user: deny if booking's station is not in their assigned stations
+        // For vendor users: derive effective station(s) from users_station_assoc
+        // and deny access if the booking station is not among their assigned stations
+        $vendorUserStations = [];
         if ($vendorID > 0) {
-            $userStations = getVendorUserStations($user_id);
-            if (!empty($userStations) && !in_array($bookingStationID, $userStations)) {
+            $vendorUserStations = getVendorUserStations($user_id);
+            if ($iFleet_BookingID > 0 && !empty($vendorUserStations) && !in_array($bookingStationID, $vendorUserStations)) {
                 echo json_encode([
                     "error" => ["message" => "Access denied"],
                     "statusCode" => 403
@@ -1473,20 +1475,47 @@ if (!$distance) {
             }
         }
 
-        $vehicleStationMap = getStationEntityMap(
-            $bookingStationID,
-            'vehicle_station_assoc',
-            'iVehicleID',
-            array_keys($vehicleData)
-        );
-        $driverStationMap = getStationEntityMap(
-            $bookingStationID,
-            'driver_station_assoc',
-            'iDriverID',
-            array_map(function ($vehData) {
-                return intval($vehData['DRIVER_ID'] ?? 0);
-            }, $vehicleData)
-        );
+        // Build vehicle/driver station maps:
+        // - For vendor users: filter by their own assigned stations (from users_station_assoc)
+        // - For others: filter by the booking station as before
+        if ($vendorID > 0 && !empty($vendorUserStations)) {
+            $stationFilter = $vendorUserStations;
+        } elseif ($bookingStationID > 0) {
+            $stationFilter = [$bookingStationID];
+        } else {
+            $stationFilter = [];
+        }
+
+        $vehicleStationMap = [];
+        $driverStationMap = [];
+        if (!empty($stationFilter)) {
+            $stationIn = implode(',', $stationFilter);
+            $vehicleIDs = array_keys($vehicleData);
+            if (!empty($vehicleIDs)) {
+                $res = sql_query(
+                    "SELECT iVehicleID FROM vehicle_station_assoc
+                     WHERE iFlt_StationID IN ($stationIn)
+                     AND iVehicleID IN (" . implode(',', array_map('intval', $vehicleIDs)) . ")"
+                );
+                while ($r = sql_fetch_assoc($res)) {
+                    $vehicleStationMap[intval($r['iVehicleID'])] = true;
+                }
+            }
+
+            $driverIDs = array_filter(array_map(function ($vd) {
+                return intval($vd['DRIVER_ID'] ?? 0);
+            }, $vehicleData));
+            if (!empty($driverIDs)) {
+                $res = sql_query(
+                    "SELECT iDriverID FROM driver_station_assoc
+                     WHERE iFlt_StationID IN ($stationIn)
+                     AND iDriverID IN (" . implode(',', $driverIDs) . ")"
+                );
+                while ($r = sql_fetch_assoc($res)) {
+                    $driverStationMap[intval($r['iDriverID'])] = true;
+                }
+            }
+        }
 
         $vehicles = [];
         $currentlyAssigned = [];
@@ -1498,8 +1527,8 @@ if (!$distance) {
                 continue;
             }
 
-            // Restrict to vehicles and drivers mapped to the booking station
-            if ($bookingStationID > 0) {
+            // Restrict to vehicles and drivers mapped to the effective station(s)
+            if (!empty($stationFilter)) {
                 if (!isset($vehicleStationMap[intval($vehicleID)])) {
                     continue;
                 }
