@@ -52,19 +52,89 @@ switch ($mode) {
     case 'DASHBOARD_COMPONENTS':
 
         $NOW = NOW;
+        $cond = "";
+        $is_vendor = getVendorIDForUser($user_id);
+        $vehicleCond = "";
+        $driverCond  = "";
+        
+        if (!empty($is_vendor))
+        {
+            $vehicleCond .= " AND v.iVendorID = '$is_vendor'";
+            $driverCond  .= " AND d.iVendorID = '$is_vendor'";
+        
+            $STATIONS_ARR = getVendorUserStations($user_id);
+        
+            if (!empty($STATIONS_ARR))
+            {
+                $stations = implode(",", array_map("intval", $STATIONS_ARR));
+        
+                $vehicleCond .= "
+                    AND EXISTS (
+                        SELECT 1
+                        FROM vehicle_station_assoc vsa
+                        WHERE vsa.iVehicleID = v.iVehicleID
+                        AND vsa.iFleet_StationID IN ($stations)
+                    )";
+        
+                $driverCond .= "
+                    AND EXISTS (
+                        SELECT 1
+                        FROM driver_station_assoc dsa
+                        WHERE dsa.iDriverID = d.iDriverID
+                        AND dsa.iFleet_StationID IN ($stations)
+                    )";
+            }
+        }
+
         $VEH_CAT = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' AND cType IN ('F','B') ORDER BY iRank", "3");
         $TODAY = date('Y-m-d');
-        $TOTAL_VEHICLE_COUNT = GetXFromYID("select count(*) from vehicle where cStatus = 'A' and cServiceType IN ('F','B')");
-        $TOTAL_DRIVER_COUNT = GetXFromYID("select count(*) from driver where cStatus = 'A'");
-
-        $AVAILABLE_VEHICLE_COUNT = GetXFromYID("select count(iVehicleID) from vehicle where iVehicleID NOT IN (select iVehicleID from fleet_booking where cType NOT IN ('C','N') and iVehicleID IS NOT NULL) and cServiceType IN ('F','B')");
-        //$AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where iDriverID NOT IN (select iDriverID from fleet_booking where cType NOT IN ('C','N') and iDriverID IS NOT NULL)");
-        $AVAILABLE_DRIVER_COUNT = GetXFromYID("select count(*) from driver where dtLoggedIn IS NOT NULL and cStatus = 'A'");
+        $TOTAL_VEHICLE_COUNT = GetXFromYID("
+            SELECT COUNT(*)
+            FROM vehicle v
+            WHERE v.cStatus = 'A'
+            AND v.cServiceType IN ('F','B')
+            $vehicleCond
+        ");
+        
+        $TOTAL_DRIVER_COUNT = GetXFromYID("
+            SELECT COUNT(*)
+            FROM driver d
+            WHERE d.cStatus = 'A'
+            $driverCond
+        ");
+        
+        $AVAILABLE_VEHICLE_COUNT = GetXFromYID("
+            SELECT COUNT(*)
+            FROM vehicle v
+            WHERE v.iVehicleID NOT IN (
+                SELECT fb.iVehicleID
+                FROM fleet_booking fb
+                WHERE fb.cType NOT IN ('C','N')
+                AND fb.iVehicleID IS NOT NULL
+            )
+            AND v.cServiceType IN ('F','B')
+            AND v.cStatus = 'A'
+            $vehicleCond
+        ");
+        
+        $AVAILABLE_DRIVER_COUNT = GetXFromYID("
+            SELECT COUNT(*)
+            FROM driver d
+            WHERE d.dtLoggedIn IS NOT NULL
+            AND d.cStatus = 'A'
+            $driverCond
+        ");
 
         $refreshRequestStreamTime = GetXFromYID("select vValue from sys_settings where vCode = 'REQSTREAM_PING_DURATION'");
         $refreshVehicleComponentTime = GetXFromYID("select vValue from sys_settings where vCode = 'VEHICLECOMPONENT_PING_DURATION'");
         $refreshActivityTimelineTime = GetXFromYID("select vValue from sys_settings where vCode = 'ACTIVITYTIMELINE_PING_DURATION'");
-        $overtimelimit = GetXFromYID("SELECT COUNT(*) FROM driver WHERE dtLoggedIn IS NOT NULL AND TIMESTAMPDIFF(HOUR, dtLoggedIn, NOW()) > 8");
+        $overtimelimit = GetXFromYID("
+        SELECT COUNT(*)
+        FROM driver d
+        WHERE d.dtLoggedIn IS NOT NULL
+          AND TIMESTAMPDIFF(HOUR, d.dtLoggedIn, NOW()) > 8
+          $driverCond
+        ");
 
         $bookedForOpt = [['id' => 0, 'name' => 'Choose']];
         foreach ($FLEET_BOOKING_FOR as $id => $name) {
@@ -104,18 +174,36 @@ switch ($mode) {
             }
         }
 
+        $stationCond = "";
+
+        if (!empty($is_vendor)) {
+            $STATIONS_ARR = getVendorUserStations($user_id);
+        
+            if (!empty($STATIONS_ARR)) {
+                $stationCond = " AND iFlt_StationID IN (" . implode(',', array_map('intval', $STATIONS_ARR)) . ")";
+            }
+        }  
+        $fleetRateStationCond = "";
+
+        if (!empty($stationCond)) {
+            $fleetRateStationCond = " AND fr.iFleet_StationID IN (" . implode(',', array_map('intval', $STATIONS_ARR)) . ")";
+        }              
+
         $fleetRate = sql_query("
-    SELECT fr.iFleet_RateID,
-        fr.iFleet_StationID, CONCAT(lf.vName, ' to ', lt.vName) AS vRouteName
-    FROM fleet_ratechart fr
-    LEFT JOIN fleet_location lf 
-        ON lf.iFleet_LocationID = fr.iFleet_LocationID_From
-    LEFT JOIN fleet_location lt 
-        ON lt.iFleet_LocationID = fr.iFleet_LocationID_To
-    WHERE fr.cStatus = 'A'
-    AND '$NOW' BETWEEN fr.dtApplicable_From AND fr.dtApplicable_To
-    ORDER BY fr.iFleet_StationID, fr.iRank
-");
+        SELECT fr.iFleet_RateID,
+               fr.iFleet_StationID,
+               CONCAT(lf.vName, ' to ', lt.vName) AS vRouteName
+        FROM fleet_ratechart fr
+        LEFT JOIN fleet_location lf
+            ON lf.iFleet_LocationID = fr.iFleet_LocationID_From
+        LEFT JOIN fleet_location lt
+            ON lt.iFleet_LocationID = fr.iFleet_LocationID_To
+        WHERE fr.cStatus = 'A'
+          AND '$NOW' BETWEEN fr.dtApplicable_From AND fr.dtApplicable_To
+          $fleetRateStationCond
+        ORDER BY fr.iFleet_StationID, fr.iRank
+        ");
+
         $fleetRateArr = [];
 
         while ($row = sql_fetch_assoc($fleetRate)) {
@@ -127,7 +215,11 @@ switch ($mode) {
         $stationArr = [['id' => 0, 'name' => 'Choose', 'routes' => []]];
 
         $FLEET_STATION = GetXArrFromYID(
-            "SELECT iFlt_StationID, vName FROM fleet_station WHERE cStatus='A' ORDER BY iRank",
+            "SELECT iFlt_StationID, vName
+             FROM fleet_station
+             WHERE cStatus='A'
+             $stationCond
+             ORDER BY iRank",
             "3"
         );
 
@@ -181,7 +273,11 @@ switch ($mode) {
         $fromTime = $currentDate . " " . $_REQUEST['fromTime'] . ":00" ?? $currentDate . " " . date('Y-m-d H:00:s');
         $toTime = $currentDate . " " . $_REQUEST['toTime'] . ":59" ?? $currentDate . " " . date('Y-m-d H:00:s', strtotime('+4 hours'));
 
-
+        $is_vendor = getVendorIDForUser($user_id);
+        $STATIONS_ARR = [];
+        if(!empty($is_vendor)) {
+            $STATIONS_ARR = getVendorUserStations($user_id);
+        }
 
         if (!empty($searchtxt)) {
             $cond .= " and ((vName like '%$searchtxt%') or (vBookingCode like '%$searchtxt%') or (vMobileNo like '%$searchtxt%') or (vPickUpLocation like '%$searchtxt%') or (vDropLocation like '%$searchtxt%'))";
@@ -220,8 +316,30 @@ switch ($mode) {
         $VEHICLE_CAT_ARR = GetXArrFromYID("select iVCatID, vName from vehicle_category order by iRank", 3);
         $TRAVEL_PURPOSE_ARR = GetXArrFromYID("select iFleet_TrvPurID, vName from fleet_travelpurpose order by iRank", 3);
         $TRAVEL_TYPE_ARR = GetXArrFromYID("select iFleet_TrvTypeID, vName from fleet_traveltype order by iRank", 3);
+
+        $driverCond = "";
         $DRIVER_ARR = array();
-        $qd = "select iDriverID, vName from driver order by vName";
+        if (!empty($is_vendor)) {
+            $driverCond .= " AND d.iVendorID = '$is_vendor'";
+            if (!empty($STATIONS_ARR)) {
+                $stations = implode(',', array_map('intval', $STATIONS_ARR));
+        
+                $driverCond .= "
+                    AND EXISTS (
+                        SELECT 1
+                        FROM driver_station_assoc dsa
+                        WHERE dsa.iDriverID = d.iDriverID
+                        AND dsa.iFleet_StationID IN ($stations)
+                    )";
+            }
+        }
+        
+        $qd = "
+        SELECT d.iDriverID, d.vName
+        FROM driver d
+        WHERE 1
+        $driverCond
+        ORDER BY d.vName";
         $rd = sql_query($qd, "supervisor_dashboard.38");
         if (sql_num_rows($rd)) {
             while ($drow = sql_fetch_assoc($rd)) {
@@ -229,7 +347,30 @@ switch ($mode) {
             }
         }
         $VEHICLE_ARR = array();
-        $qv = "select iVehicleID, vRnum, iCatID, iType from vehicle order by vName";
+
+        $vehicleCond = "";
+
+        if (!empty($is_vendor)) {
+            $vehicleCond .= " AND v.iVendorID = '$is_vendor'";
+            if (!empty($STATIONS_ARR)) {
+                $stations = implode(',', array_map('intval', $STATIONS_ARR));
+        
+                $vehicleCond .= "
+                    AND EXISTS (
+                        SELECT 1
+                        FROM vehicle_station_assoc vsa
+                        WHERE vsa.iVehicleID = v.iVehicleID
+                        AND vsa.iFleet_StationID IN ($stations)
+                    )";
+            }
+        }
+        
+        $qv = "
+        SELECT v.iVehicleID, v.vRnum, v.iCatID, v.iType
+        FROM vehicle v
+        WHERE 1
+        $vehicleCond
+        ORDER BY v.vName";
         $rv = sql_query($qv, "supervisor_dashboard.38");
         if (sql_num_rows($rv)) {
             while ($vrow = sql_fetch_assoc($rv)) {
@@ -237,9 +378,11 @@ switch ($mode) {
             }
         }
 
-        $is_vendor = getVendorIDForUser($user_id);
         if (!empty($is_vendor)) {
             $cond .= " and iVendorID = $is_vendor";
+            if (!empty($STATIONS_ARR)) {
+                $cond .= " and iFleet_StationID IN (" . implode(',', $STATIONS_ARR) . ")";
+            }            
         }
 
         // Fetch booking data
@@ -369,13 +512,35 @@ switch ($mode) {
         $VEHI_TYPE_ARR = array();
 
         $cond_vehicle = "";
-        $is_vendor = getVendorIDForUser($user_id);
-        if (!empty($is_vendor)) {
-            $cond_vehicle .= " and iVendorID = $is_vendor";
-            $cond .= " and iVendorID = $is_vendor";
-        }        
 
-        $q = "select * from vehicle where 1 $cond_vehicle";
+        if (!empty($is_vendor)) {
+            $cond_vehicle .= " AND v.iVendorID = $is_vendor";
+            $STATIONS_ARR = getVendorUserStations($user_id);
+            if (!empty($STATIONS_ARR)) {
+                $stations = implode(',', array_map('intval', $STATIONS_ARR));
+        
+                $cond_vehicle .= "
+                    AND EXISTS (
+                        SELECT 1
+                        FROM vehicle_station_assoc vsa
+                        WHERE vsa.iVehicleID = v.iVehicleID
+                        AND vsa.iFleet_StationID IN ($stations)
+                    )";
+            }
+            $cond .= " AND iVendorID = " . intval($is_vendor);
+
+            if (!empty($STATIONS_ARR)) {
+                $stations = implode(',', array_map('intval', $STATIONS_ARR));
+        
+                $cond .= " AND iFleet_StationID IN ($stations)";
+            }            
+        }
+        
+        $q = "
+        SELECT v.*
+        FROM vehicle v
+        WHERE 1
+        $cond_vehicle";
         $r = sql_query($q, "supervisor_dashboard.238");
 
         if (sql_num_rows($r)) {
@@ -449,7 +614,7 @@ switch ($mode) {
                 'vehiCatId' => $row['iVehicleCatID'] ?? 0,
                 'vehiTypeId' => $VEHI_TYPE_ARR[$row['iVehicleID']]['TYPE'] ?? 0,
                 'pickUpLoc' => array('lat' => $from_latlong_arr[0], 'log' => $from_latlong_arr[1], 'loc' => $row['vPickUpLocation']),
-                'pickUpLoc' => array('lat' => $to_latlong_arr[0], 'log' => $to_latlong_arr[1], 'loc' => $row['vDropLocation']),
+                'dropLoc' => array('lat' => $to_latlong_arr[0], 'log' => $to_latlong_arr[1], 'loc' => $row['vDropLocation']),
                 'returnTime' => $dateTime,
                 'remark1' => db_output2($row['vInstructions'] ?? ''),
                 'remark2' => db_output2($row['vRemarks'] ?? ''),
@@ -496,12 +661,31 @@ switch ($mode) {
 
         $VEHI_TYPE_ARR = array();
         $cond_vendor = "";
+        $cond_vendor2 = "";
         $is_vendor = getVendorIDForUser($user_id);
-        if (!empty($is_vendor)) {
-            $cond_vendor .= " and iVendorID = $is_vendor";
-        }        
+        $STATIONS_ARR = [];
+        $stations = "";
 
-        $q = "select * from vehicle where 1 $cond_vendor";
+        if (!empty($is_vendor)) {
+            $cond_vendor .= " AND v.iVendorID = " . intval($is_vendor);
+            $cond_vendor2 .= " AND iVendorID = " . intval($is_vendor);
+            $STATIONS_ARR = getVendorUserStations($user_id);
+            if (!empty($STATIONS_ARR)) {
+                $stations = implode(',', array_map('intval', $STATIONS_ARR));
+        
+                $cond_vendor .= "
+                    AND EXISTS (
+                        SELECT 1
+                        FROM vehicle_station_assoc vsa
+                        WHERE vsa.iVehicleID = v.iVehicleID
+                          AND vsa.iFleet_StationID IN ($stations)
+                    )";
+
+                $cond_vendor2 .= " AND iFleet_StationID IN ($stations)";
+            }
+        }       
+
+        $q = "select * from vehicle v where 1 $cond_vendor";
         $r = sql_query($q, "supervisor_dashboard.238");
 
         if (sql_num_rows($r)) {
@@ -514,7 +698,7 @@ switch ($mode) {
 
         if (!empty($searchtxt)) {
             $cond .= " and ((vc.vName like '%$searchtxt%') or (d.vMobileNo like '%$searchtxt%') or (d.vName like '%$searchtxt%') or (v.vRnum like '%$searchtxt%'))";
-            $cond_driver .= " and (vMobileNum like '%$searchtxt%') or (vName like '%$searchtxt%')";
+            $cond_driver .= " and (d.vMobileNum like '%$searchtxt%' or d.vName like '%$searchtxt%')";
         }
 
         if (!empty($category)) {
@@ -588,7 +772,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
     $tripAssignmentSql = "
         SELECT iVehicleID 
         FROM fleet_booking 
-        WHERE iVehicleID = " . (int)$vehicleID . " $cond_vendor
+        WHERE iVehicleID = " . (int)$vehicleID . " $cond_vendor2
         AND cStatus = 'A'
     ";
 
@@ -666,14 +850,26 @@ foreach ($vehicleData as $vehicleID => $vehData) {
     ========================== */
 
     if (!empty($vehData['DRIVER_ID'])) {
-        $is_vendor = getVendorIDForUser($user_id);
+
         if (!empty($is_vendor)) {
-            $cond_driver .= " and iVendorID = $is_vendor";
-        } 
+        
+            $cond_driver .= " AND d.iVendorID = " . intval($is_vendor);
+        
+            if (!empty($STATIONS_ARR)) {
+                $cond_driver .= "
+                    AND EXISTS (
+                        SELECT 1
+                        FROM driver_station_assoc dsa
+                        WHERE dsa.iDriverID = d.iDriverID
+                          AND dsa.iFleet_StationID IN ($stations)
+                    )";
+            }
+        }        
+
         $driverLoggedIn = GetXFromYID(
             "SELECT dtLoggedIn 
-             FROM driver
-             WHERE iDriverID = " . (int)$vehData['DRIVER_ID'] . " ".$cond_driver." 
+             FROM driver d
+             WHERE d.iDriverID = " . (int)$vehData['DRIVER_ID'] . " ".$cond_driver." 
              AND dtLoggedIn IS NOT NULL"
         );
 
@@ -776,12 +972,50 @@ foreach ($vehicleData as $vehicleID => $vehData) {
         $cond_driver = "";
         $cond_driver2 = "";
         $cond_vehicle = "";
-        $is_vendor = getVendorIDForUser($user_id);
+        $conda = "";
+        /*$is_vendor = getVendorIDForUser($user_id);
         if (!empty($is_vendor)) {
             $cond_driver .= " and d.iVendorID = $is_vendor and fb.iVendorID = $is_vendor";
             $cond_driver2 .= " and iVendorID = $is_vendor";
-            $cond_vehicle .= " and v.iVendorID = $is_vendor";
-        } 
+            //$cond_vehicle .= " and v.iVendorID = $is_vendor";
+        }*/ 
+
+            if (!empty($is_vendor)) {
+                $cond_vehicle .= " AND v.iVendorID = $is_vendor";
+                $cond_driver .= " AND d.iVendorID = $is_vendor AND fb.iVendorID = $is_vendor";
+                $cond_driver2 .= " AND d.iVendorID = $is_vendor";
+                $conda .= " AND fb.iVendorID = $is_vendor";
+                $STATIONS_ARR = getVendorUserStations($user_id);
+                if (!empty($STATIONS_ARR)) {
+                    $stations = implode(',', array_map('intval', $STATIONS_ARR));
+            
+                    $cond_vehicle .= "
+                        AND EXISTS (
+                            SELECT 1
+                            FROM vehicle_station_assoc vsa
+                            WHERE vsa.iVehicleID = v.iVehicleID
+                            AND vsa.iFleet_StationID IN ($stations)
+                        )";
+
+                        $cond_driver .= "
+                        AND EXISTS (
+                            SELECT 1
+                            FROM driver_station_assoc dsa
+                            WHERE dsa.iDriverID = d.iDriverID
+                            AND dsa.iFleet_StationID IN ($stations)
+                        )"; 
+                        
+                        $cond_driver2 .= "
+                        AND EXISTS (
+                            SELECT 1
+                            FROM driver_station_assoc dsa
+                            WHERE dsa.iDriverID = d.iDriverID
+                            AND dsa.iFleet_StationID IN ($stations)
+                        )";   
+                        
+                        $conda .= " AND fb.iFleet_StationID IN ($stations)";
+                }
+            }            
 
         $q0 = "SELECT v.iVehicleID, v.vRnum, v.cStatus, vc.vName AS vehicleType, v.iCatID, v.iType FROM vehicle v JOIN vehicle_category vc ON vc.iVCatID = v.iCatID WHERE v.iVehicleID = $vehiId $cond_vehicle";
         $r0 = sql_query($q0, "supervisor_dashboard.392");
@@ -810,11 +1044,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
             $tripsArr = array();
             //$q2 = "SELECT fb.iFleet_BookingID, fb.vPickupLocation, fb.vDropLocation, fb.vName, vc.vName AS vehicleType, vc.iCapacity, fb.vPickupTime, fb.vDropTime, cBookingFor FROM fleet_booking fb JOIN vehicle_category vc ON vc.iVCatID = fb.iVehicleCatID WHERE fb.iVehicleID = $vehiId ORDER BY fb.vPickupTime DESC";
             //$r2 = sql_query($q2, "supervisor_dashboard");
-            $conda = "";
-            $is_vendor = getVendorIDForUser($user_id);
-            if (!empty($is_vendor)) {
-                $conda .= " and fb.iVendorID = $is_vendor";
-            } 
+
 
             $currentPickupTime = date('Y-m-d H:i:s');
             $qPrev = "
@@ -882,7 +1112,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
             $LOG_DATA_ARR = array();
 
             $DRIVER_ARR = array();
-            $qd = "select iDriverID, vName from driver where 1 $cond_driver2 order by vName";
+            $qd = "select iDriverID, vName from driver d where 1 $cond_driver2 order by d.vName";
             $rd = sql_query($qd, "supervisor_dashboard.38");
             if (sql_num_rows($rd)) {
                 while ($drow = sql_fetch_assoc($rd)) {
@@ -975,7 +1205,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
             }*/
 
             usort($LOG_DATA_ARR, function ($a, $b) {
-                return strtotime($b['DATETIME']) <=> strtotime($a['DATETIME']);
+                return strtotime($b['dateTime']) <=> strtotime($a['dateTime']);
             });
             //HISTORY
 
@@ -1073,16 +1303,36 @@ foreach ($vehicleData as $vehicleID => $vehData) {
         }
 
         $cond_driver = "";
+
         $is_vendor = getVendorIDForUser($user_id);
+        $STATIONS_ARR = [];
+        $stations = "";
+        
         if (!empty($is_vendor)) {
-            $cond_driver .= " and iVendorID = $is_vendor";
-            $cond .= " and fb.iVendorID = $is_vendor";
-        } 
+            $cond_driver .= " AND d.iVendorID = " . intval($is_vendor);
+            $cond .= " AND fb.iVendorID = " . intval($is_vendor);
+        
+            $STATIONS_ARR = getVendorUserStations($user_id);
+        
+            if (!empty($STATIONS_ARR)) {
+                $stations = implode(',', array_map('intval', $STATIONS_ARR));
+        
+                $cond_driver .= "
+                    AND EXISTS (
+                        SELECT 1
+                        FROM driver_station_assoc dsa
+                        WHERE dsa.iDriverID = d.iDriverID
+                          AND dsa.iFleet_StationID IN ($stations)
+                    )";
+        
+                $cond .= " AND fb.iFleet_StationID IN ($stations)";
+            }
+        }        
 
         $LOG_DATA_ARR = array();
 
         $DRIVER_ARR = array();
-        $qd = "select iDriverID, vName from driver where 1 $cond_driver order by vName";
+        $qd = "select iDriverID, vName from driver d where 1 $cond_driver order by d.vName";
         $rd = sql_query($qd, "supervisor_dashboard.38");
         if (sql_num_rows($rd)) {
             while ($drow = sql_fetch_assoc($rd)) {
