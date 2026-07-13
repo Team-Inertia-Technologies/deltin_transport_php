@@ -1297,6 +1297,10 @@ if (!$distance) {
             if ($bookingVendorID !== $vendorID || !in_array($bookingStationID, $userStations)) {
                 echo json_encode([
                     "error" => ["message" => "Access denied"],
+                    "bookingVendorID" => $bookingVendorID,
+                    "userVendorID" => $vendorID,
+                    "bookingStationID" => $bookingStationID,
+                    "userStations" => $userStations,
                     "statusCode" => 403
                 ]);
                 exit;
