@@ -1248,6 +1248,7 @@ if (!$distance) {
                 fb.vBookedBy as bookedBy,
                 fb.iFleet_RateID,
                 fb.iFleet_StationID,
+                fb.iVendorID,
                 fbc.vName as bookingCategoryName,
                 p.vName as propertyName,
                 d.vName as departmentName,
@@ -1297,10 +1298,10 @@ if (!$distance) {
             if ($bookingVendorID !== $vendorID || !in_array($bookingStationID, $userStations)) {
                 echo json_encode([
                     "error" => ["message" => "Access denied"],
-                    "bookingVendorID" => $bookingVendorID,
-                    "userVendorID" => $vendorID,
-                    "bookingStationID" => $bookingStationID,
-                    "userStations" => $userStations,
+                    // "bookingVendorID" => $bookingVendorID,
+                    // "userVendorID" => $vendorID,
+                    // "bookingStationID" => $bookingStationID,
+                    // "userStations" => $userStations,
                     "statusCode" => 403
                 ]);
                 exit;
