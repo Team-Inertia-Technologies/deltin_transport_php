@@ -1322,7 +1322,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
                         SELECT 1
                         FROM driver_station_assoc dsa
                         WHERE dsa.iDriverID = d.iDriverID
-                          AND dsa.iFleet_StationID IN ($stations)
+                          AND dsa.iFlt_StationID IN ($stations)
                     )";
         
                 $cond .= " AND fb.iFleet_StationID IN ($stations)";
