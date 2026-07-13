@@ -73,7 +73,7 @@ switch ($mode) {
                         SELECT 1
                         FROM vehicle_station_assoc vsa
                         WHERE vsa.iVehicleID = v.iVehicleID
-                        AND vsa.iFleet_StationID IN ($stations)
+                        AND vsa.iFlt_StationID IN ($stations)
                     )";
         
                 $driverCond .= "
@@ -81,7 +81,7 @@ switch ($mode) {
                         SELECT 1
                         FROM driver_station_assoc dsa
                         WHERE dsa.iDriverID = d.iDriverID
-                        AND dsa.iFleet_StationID IN ($stations)
+                        AND dsa.iFlt_StationID IN ($stations)
                     )";
             }
         }
@@ -329,7 +329,7 @@ switch ($mode) {
                         SELECT 1
                         FROM driver_station_assoc dsa
                         WHERE dsa.iDriverID = d.iDriverID
-                        AND dsa.iFleet_StationID IN ($stations)
+                        AND dsa.iFlt_StationID IN ($stations)
                     )";
             }
         }
@@ -678,7 +678,7 @@ switch ($mode) {
                         SELECT 1
                         FROM vehicle_station_assoc vsa
                         WHERE vsa.iVehicleID = v.iVehicleID
-                          AND vsa.iFleet_StationID IN ($stations)
+                          AND vsa.iFlt_StationID IN ($stations)
                     )";
 
                 $cond_vendor2 .= " AND iFleet_StationID IN ($stations)";
