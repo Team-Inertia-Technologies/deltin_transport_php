@@ -48,7 +48,7 @@ switch ($mode) {
 
         // -------------------- VERIFY VENDOR USER --------------------
         $vendorRes = sql_query(
-            "SELECT iRefID FROM users WHERE iUserID = $user_id AND cRefType = 'V' AND cStatus = 'A' LIMIT 1",
+            "SELECT iRefID FROM users WHERE iUserID = $user_id AND cRefSrcType = 'V' AND cStatus = 'A' LIMIT 1",
             'AUTH.VENDOR'
         );
 
