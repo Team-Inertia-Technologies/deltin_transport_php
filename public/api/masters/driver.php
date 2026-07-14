@@ -843,6 +843,12 @@ sql_query($deallocateDriverSql);
         $type = intval($_REQUEST['type'] ?? 0);
 
         $whereConditions = ["cStatus = 'A'"];
+
+        // If the logged-in user is a vendor, restrict to that vendor's drivers only
+        $vendorID = getVendorIDForUser($user_id);
+        if ($vendorID > 0) {
+            $whereConditions[] = "iVendorID = $vendorID";
+        }
         
         // Add keyword search (search in driver name or mobile number)
         if (!empty($keyword)) {
