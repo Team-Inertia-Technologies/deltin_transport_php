@@ -454,6 +454,12 @@ switch ($mode) {
                 $dateTime = date('d M g:i A', $dt);
             }
 
+            if($row['iDriverID'] == '0' || $row['iVehicleID'] == '0') {
+                $allocationStatus = false;
+            } else {
+                $allocationStatus = true;
+            }
+
             $rowData[] = [
                 'id' => intval($row['iFleet_BookingID']),
                 'bookingCode' => (isset($row['vBookingCode']) && !empty($row['vBookingCode']))?db_output2($row['vBookingCode']):"N/A",
@@ -485,7 +491,8 @@ switch ($mode) {
                 'vehicleType' => (isset($row['iVehicleID']) && !empty($row['iVehicleID'])) ? $VEHICLE_ARR[$row['iVehicleID']]['TYPE'] : 0,
                 'borderColor' => $border,
                 'fleetRateId' => (int) $row['iFleet_RateID'],
-                'fleetStationId' => (int) $row['iFleet_StationID']
+                'fleetStationId' => (int) $row['iFleet_StationID'],
+                'allocationStatus' => $allocationStatus
             ];
         }
         echo json_encode([
