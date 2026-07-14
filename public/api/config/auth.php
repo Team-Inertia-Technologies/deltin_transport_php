@@ -57,10 +57,10 @@ if (true) {
 			exit;}
 			else {
 				$u_id = $u_level = 0;
-				$q = "select iUserID, vName, vPassword, iLevel from users where vUName='" . $username . "' and cStatus='A'";
+				$q = "select iUserID, vName, vPassword, iLevel,iRefID from users where vUName='" . $username . "' and cStatus='A'";
 				$r = sql_query($q, 'AUTH.61');
 				if (sql_num_rows($r)) {
-					list($u_id, $u_name, $u_pass, $u_level) = sql_fetch_row($r);
+					list($u_id, $u_name, $u_pass, $u_level, $u_ref_id) = sql_fetch_row($r);
 					$u_pass = htmlspecialchars_decode($u_pass);
 					//$USER_MODULE_ACCESS = GetIDString2('select distinct(iModuleID) from role_access where iRoleID=' . $u_level);
 					
@@ -246,6 +246,7 @@ if (true) {
 							"userName" => $u_name,
 							"userLevel" => $userlevel,
 							"userLevel_id" => $u_level,
+							"userRefID" => $u_ref_id,
 							"date" => date('d/m/Y H:i:s', strtotime($NOW)),
 							),
 							"token" => $token,
