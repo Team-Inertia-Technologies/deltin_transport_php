@@ -75,6 +75,13 @@ switch ($mode) {
 
     // ===================== CASE 1: LIST =====================
     case 'LIST':
+        // If the logged-in user is a vendor, restrict to that vendor's drivers only
+        $vendorWhere = '';
+        $vendorID = getVendorIDForUser($user_id);
+        if ($vendorID > 0) {
+            $vendorWhere = " AND d.iVendorID = $vendorID";
+        }
+
         // Optimized query with JOINs to get vendor and vehicle data in single query
         $sql = "SELECT d.iDriverID, d.vName, d.vMobileNum, d.vEmpCode, d.iVendorID,  d.iType,
                         d.iRank, d.cStatus, v.vName as vendor_name, d.iVehicleID,
@@ -82,7 +89,7 @@ switch ($mode) {
                 FROM driver d
                 LEFT JOIN vendor v ON d.iVendorID = v.iVendorID AND v.cStatus = 'A'
                 LEFT JOIN vehicle vh ON d.iVehicleID  = vh.iVehicleID AND vh.cStatus = 'A'
-                WHERE d.cStatus = 'A' 
+                WHERE d.cStatus = 'A'$vendorWhere
                 ORDER BY d.iRank DESC";
         $res = sql_query($sql);
 

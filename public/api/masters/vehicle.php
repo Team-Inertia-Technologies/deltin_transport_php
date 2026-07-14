@@ -2,6 +2,7 @@
 ini_set('display_errors', 1);
 
 include "../../includes/common_api.php";
+include "../api_common.php";
 
 header('Content-Type: application/json');
 $postdata = file_get_contents("php://input");
@@ -161,12 +162,19 @@ foreach ($VEHICLE_SERVICE_TYPE as $id => $label) {
     // ===================== CASE 2: LIST =====================
     case 'LIST':
 
+        // If the logged-in user is a vendor, restrict to that vendor's vehicles only
+        $vendorWhere = '';
+        $vendorID = getVendorIDForUser($user_id);
+        if ($vendorID > 0) {
+            $vendorWhere = " AND v.iVendorID = $vendorID";
+        }
+
         $sql = "SELECT v.iVehicleID, v.iVendorID, v.iSeats, v.vRnum, v.iType,v.	cServiceType,
-                       v.fRate, vn.vName as vendor_name, c.iCapacity as capacity,c.vName as catName 
+                       v.fRate, vn.vName as vendor_name, c.iCapacity as capacity,c.vName as catName
                 FROM vehicle v
                 LEFT JOIN vendor vn ON v.iVendorID = vn.iVendorID AND vn.cStatus = 'A'
                 LEFT JOIN vehicle_category c ON v.iCatID = c.iVCatID AND c.cStatus = 'A'
-                WHERE v.cStatus = 'A' 
+                WHERE v.cStatus = 'A'$vendorWhere
                 ORDER BY v.iVehicleID DESC";
         $res = sql_query($sql);
 

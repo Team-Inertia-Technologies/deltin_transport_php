@@ -1492,7 +1492,6 @@ if (!$distance) {
         }
 
         $vehicleStationMap = [];
-        $driverStationMap = [];
         if (!empty($stationFilter)) {
             $stationIn = implode(',', $stationFilter);
             $vehicleIDs = array_keys($vehicleData);
@@ -1504,20 +1503,6 @@ if (!$distance) {
                 );
                 while ($r = sql_fetch_assoc($res)) {
                     $vehicleStationMap[intval($r['iVehicleID'])] = true;
-                }
-            }
-
-            $driverIDs = array_filter(array_map(function ($vd) {
-                return intval($vd['DRIVER_ID'] ?? 0);
-            }, $vehicleData));
-            if (!empty($driverIDs)) {
-                $res = sql_query(
-                    "SELECT iDriverID FROM driver_station_assoc
-                     WHERE iFlt_StationID IN ($stationIn)
-                     AND iDriverID IN (" . implode(',', $driverIDs) . ")"
-                );
-                while ($r = sql_fetch_assoc($res)) {
-                    $driverStationMap[intval($r['iDriverID'])] = true;
                 }
             }
         }
@@ -1532,16 +1517,13 @@ if (!$distance) {
                 continue;
             }
 
-            // Restrict to vehicles and drivers mapped to the effective station(s)
+            // Restrict to vehicles mapped to the effective station(s)
             if (!empty($stationFilter)) {
                 if (!isset($vehicleStationMap[intval($vehicleID)])) {
                     continue;
                 }
-
-                $driverId = intval($vehData['DRIVER_ID'] ?? 0);
-                if ($driverId > 0 && !isset($driverStationMap[$driverId])) {
-                    continue;
-                }
+                // Note: driver station check intentionally removed — a vehicle assigned to
+                // the station is sufficient; the driver follows the vehicle assignment.
             }
 
             // Apply keyword filter if provided (matches vehicle reg no, name, or driver name)
