@@ -601,6 +601,12 @@ switch ($mode) {
 
         // Build WHERE conditions for filtering
         $whereConditions = ["v.cStatus = 'A'AND v.cServiceType IN ('B','F')"];
+
+        // If the logged-in user is a vendor, restrict to that vendor's vehicles only
+        $vendorID = getVendorIDForUser($user_id);
+        if ($vendorID > 0) {
+            $whereConditions[] = "v.iVendorID = $vendorID";
+        }
         
         // Add keyword search (search in vehicle registration number and category name)
         if (!empty($keyword)) {
