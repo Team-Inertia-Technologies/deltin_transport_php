@@ -33,7 +33,7 @@ $ADITI_PASSWORD = 'welesley@123';
 /**
  * Call Aditi webservice via cURL
  */
-function aditiHttpPost($url, $payload, $headers = [])
+function aditiHttpPost($url, $payload = null, $headers = [])
 {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
@@ -44,9 +44,17 @@ function aditiHttpPost($url, $payload, $headers = [])
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 
-    $httpHeaders = array_merge(['Content-Type: application/json'], $headers);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $httpHeaders);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    $httpHeaders = $headers;
+    if ($payload !== null) {
+        $httpHeaders[] = 'Content-Type: application/json';
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    } else {
+        // POST with empty body (token generation via query params)
+        curl_setopt($ch, CURLOPT_POSTFIELDS, '');
+    }
+    if (!empty($httpHeaders)) {
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $httpHeaders);
+    }
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -58,7 +66,8 @@ function aditiHttpPost($url, $payload, $headers = [])
             'ok' => false,
             'httpCode' => $httpCode,
             'error' => $curlErr,
-            'data' => null
+            'data' => null,
+            'raw' => $response
         ];
     }
 
@@ -68,8 +77,55 @@ function aditiHttpPost($url, $payload, $headers = [])
         'httpCode' => $httpCode,
         'error' => null,
         'raw' => $response,
-        'data' => $decoded
+        'data' => is_array($decoded) ? $decoded : null
     ];
+}
+
+/**
+ * Pull token string from Aditi generateAccessToken response shapes:
+ * - {"token":"..."}
+ * - {"result":1,"data":{"token":"..."}}
+ */
+function extractAditiAccessToken($responseData)
+{
+    if (!is_array($responseData)) {
+        return '';
+    }
+
+    if (!empty($responseData['token']) && is_string($responseData['token'])) {
+        return trim($responseData['token']);
+    }
+
+    if (!empty($responseData['data']['token']) && is_string($responseData['data']['token'])) {
+        return trim($responseData['data']['token']);
+    }
+
+    return '';
+}
+
+/**
+ * Persist token into sys_settings.STAFF_TRACKING_TOKEN
+ */
+function saveAditiTrackingToken($token)
+{
+    $token = trim((string) $token);
+    if ($token === '') {
+        return false;
+    }
+
+    // Avoid CheckForXSS/db_input altering the long hex token; escape quotes only
+    $safeToken = addslashes($token);
+    $exists = GetXFromYID("SELECT iSettingID FROM sys_settings WHERE vCode='STAFF_TRACKING_TOKEN'");
+
+    if ($exists) {
+        $ok = sql_query("UPDATE sys_settings SET vValue = '$safeToken' WHERE vCode = 'STAFF_TRACKING_TOKEN'");
+    } else {
+        $nextId = NextID('iSettingID', 'sys_settings');
+        $ok = sql_query("INSERT INTO sys_settings (iSettingID, cType, vCode, cData, vValue, cStatus, iGroupID, vDesc, cDisplay)
+                         VALUES ($nextId, 'D', 'STAFF_TRACKING_TOKEN', 'V', '$safeToken', 'A', 0, 'Tracking system token', 'Y')");
+    }
+
+    return (bool) $ok;
 }
 
 /**
@@ -77,25 +133,20 @@ function aditiHttpPost($url, $payload, $headers = [])
  */
 function generateAditiTrackingToken($baseUrl, $username, $password)
 {
-    $url = $baseUrl . '?token=generateAccessToken';
-    $result = aditiHttpPost($url, [
+    // Working format (verified): JSON body
+    $result = aditiHttpPost($baseUrl . '?token=generateAccessToken', [
         'username' => $username,
         'password' => $password
     ]);
 
-    if (!$result['ok'] || empty($result['data'])) {
-        return [
-            'success' => false,
-            'token' => '',
-            'message' => $result['error'] ?: 'Failed to generate tracking token'
-        ];
+    $newToken = '';
+    if ($result['ok']) {
+        $newToken = extractAditiAccessToken($result['data']);
     }
 
-    $data = $result['data'];
-    $newToken = $data['token'] ?? '';
-
-    if (empty($newToken)) {
-        $msg = $data['message'] ?? ($data['Message'] ?? 'Token generation failed');
+    if ($newToken === '') {
+        $data = is_array($result['data']) ? $result['data'] : [];
+        $msg = $data['message'] ?? ($data['Message'] ?? ($result['error'] ?: 'Token generation failed'));
         return [
             'success' => false,
             'token' => '',
@@ -103,7 +154,13 @@ function generateAditiTrackingToken($baseUrl, $username, $password)
         ];
     }
 
-    sql_query("UPDATE sys_settings SET vValue = '" . db_input($newToken) . "' WHERE vCode = 'STAFF_TRACKING_TOKEN'");
+    if (!saveAditiTrackingToken($newToken)) {
+        return [
+            'success' => false,
+            'token' => '',
+            'message' => 'Token generated but failed to save in STAFF_TRACKING_TOKEN'
+        ];
+    }
 
     return [
         'success' => true,
@@ -156,7 +213,29 @@ function isAditiTokenExpired($data)
  */
 function normalizeVehicleNo($number)
 {
-    return strtoupper(preg_replace('/\s+/', '', (string) $number));
+    return strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $number));
+}
+
+/**
+ * Extract VehicleData list from Aditi response
+ */
+function extractAditiVehicleData($data)
+{
+    if (!is_array($data)) {
+        return [];
+    }
+
+    $vehicleData = $data['root']['VehicleData'] ?? null;
+    if ($vehicleData === null) {
+        return [];
+    }
+
+    // Single object vs list
+    if (isset($vehicleData['Vehicle_No']) || isset($vehicleData['Location'])) {
+        return [$vehicleData];
+    }
+
+    return is_array($vehicleData) ? $vehicleData : [];
 }
 
 /**
@@ -220,6 +299,14 @@ function fetchAditiLiveData($baseUrl, $projectId, $username, $password, $vehicle
         }
     }
 
+    if (!is_array($data)) {
+        return [
+            'success' => false,
+            'message' => 'Invalid live data response',
+            'vehicles' => []
+        ];
+    }
+
     // Rate limit / other Aditi errors
     if (isset($data['root']['error'])) {
         return [
@@ -237,16 +324,49 @@ function fetchAditiLiveData($baseUrl, $projectId, $username, $password, $vehicle
         ];
     }
 
-    $vehicleData = $data['root']['VehicleData'] ?? [];
-    if (!is_array($vehicleData)) {
-        $vehicleData = [];
-    }
-
     return [
         'success' => true,
         'message' => 'OK',
-        'vehicles' => $vehicleData
+        'vehicles' => extractAditiVehicleData($data)
     ];
+}
+
+/**
+ * Build UI vehicle rows from request + optional Aditi live map
+ */
+function buildTrackingVehicles($vehicleMap, $liveByNumber)
+{
+    $outputVehicles = [];
+
+    foreach ($vehicleMap as $norm => $meta) {
+        $liveVeh = $liveByNumber[$norm] ?? null;
+        $type = $meta['type'];
+        $number = $meta['number'];
+        $label = $type !== '' ? ($number . ' | ' . $type) : $number;
+
+        $location = '';
+        $altitude = '';
+        $isLive = false;
+
+        if (is_array($liveVeh)) {
+            $location = trim((string) ($liveVeh['Location'] ?? ''));
+            $altitude = trim((string) ($liveVeh['Altitude'] ?? ''));
+            $isLive = ($location !== '');
+        }
+
+        $outputVehicles[] = [
+            "id" => $meta['id'],
+            "number" => $number,
+            "type" => $type,
+            "label" => $label,
+            "live" => $isLive,
+            "status" => $isLive ? 'LIVE' : '',
+            "location" => $location,
+            "altitude" => $altitude
+        ];
+    }
+
+    return $outputVehicles;
 }
 
 switch ($mode) {
@@ -309,34 +429,18 @@ switch ($mode) {
         $windowEnd = $tripTs + ($postMinutes * 60);
         $inWindow = ($nowTs >= $windowStart && $nowTs <= $windowEnd);
 
-        if (!$inWindow) {
-            echo json_encode([
-                "data" => [
-                    "trackingAvailable" => false,
-                    "tripId" => $tripId,
-                    "message" => "Tracking available from " . $preMinutes . " min before to " . $postMinutes . " min after trip time",
-                    "window" => [
-                        "preMinutes" => $preMinutes,
-                        "postMinutes" => $postMinutes,
-                        "tripTime" => date('Y-m-d H:i:s', $tripTs),
-                        "startsAt" => date('Y-m-d H:i:s', $windowStart),
-                        "endsAt" => date('Y-m-d H:i:s', $windowEnd)
-                    ],
-                    "vehicles" => []
-                ],
-                "statusCode" => 200
-            ]);
-            exit;
-        }
-
-        // Build vehicle map from request + local category names
-        $vehicleMap = []; // normalized number => {id, number, type}
+        // Build vehicle map from request
+        $vehicleMap = [];
         $vehicleNos = [];
         $vehicleIds = [];
 
         foreach ($vehiclesInput as $v) {
+            if (!is_array($v)) {
+                continue;
+            }
             $id = intval($v['id'] ?? 0);
             $number = trim((string) ($v['number'] ?? ''));
+            $type = trim((string) ($v['type'] ?? ''));
             if ($number === '') {
                 continue;
             }
@@ -344,7 +448,7 @@ switch ($mode) {
             $vehicleMap[$norm] = [
                 'id' => $id,
                 'number' => $number,
-                'type' => ''
+                'type' => $type
             ];
             $vehicleNos[] = $number;
             if ($id > 0) {
@@ -360,7 +464,7 @@ switch ($mode) {
             exit;
         }
 
-        // Enrich with category from our vehicle master
+        // Fill type from vehicle master when missing
         if (!empty($vehicleIds)) {
             $idsStr = implode(',', array_map('intval', $vehicleIds));
             $catSql = "SELECT v.iVehicleID, v.vRnum, vc.vName as categoryName
@@ -370,29 +474,26 @@ switch ($mode) {
             $catRes = sql_query($catSql);
             while ($catRow = sql_fetch_assoc($catRes)) {
                 $norm = normalizeVehicleNo($catRow['vRnum']);
-                if (isset($vehicleMap[$norm])) {
+                if (isset($vehicleMap[$norm]) && $vehicleMap[$norm]['type'] === '') {
                     $vehicleMap[$norm]['type'] = db_output2($catRow['categoryName'] ?? '');
+                }
+                if (isset($vehicleMap[$norm]) && $vehicleMap[$norm]['id'] <= 0) {
                     $vehicleMap[$norm]['id'] = (int) $catRow['iVehicleID'];
                 }
             }
-        } else {
-            // Fallback lookup by registration number
-            $quoted = [];
-            foreach ($vehicleNos as $num) {
-                $quoted[] = "'" . db_input($num) . "'";
-            }
-            $catSql = "SELECT v.iVehicleID, v.vRnum, vc.vName as categoryName
-                       FROM vehicle v
-                       LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
-                       WHERE v.vRnum IN (" . implode(',', $quoted) . ")";
-            $catRes = sql_query($catSql);
-            while ($catRow = sql_fetch_assoc($catRes)) {
-                $norm = normalizeVehicleNo($catRow['vRnum']);
-                if (isset($vehicleMap[$norm])) {
-                    $vehicleMap[$norm]['type'] = db_output2($catRow['categoryName'] ?? '');
-                    $vehicleMap[$norm]['id'] = (int) $catRow['iVehicleID'];
-                }
-            }
+        }
+
+        if (!$inWindow) {
+            echo json_encode([
+                "data" => [
+                    "trackingAvailable" => false,
+                    "tripId" => $tripId,
+                    "message" => "Tracking available from " . $preMinutes . " min before to " . $postMinutes . " min after trip time",
+                    "vehicles" => buildTrackingVehicles($vehicleMap, [])
+                ],
+                "statusCode" => 200
+            ]);
+            exit;
         }
 
         $liveResult = fetchAditiLiveData(
@@ -403,104 +504,23 @@ switch ($mode) {
             implode(',', $vehicleNos)
         );
 
-        if (!$liveResult['success']) {
-            echo json_encode([
-                "data" => [
-                    "trackingAvailable" => true,
-                    "tripId" => $tripId,
-                    "message" => $liveResult['message'],
-                    "vehicles" => []
-                ],
-                "statusCode" => 200
-            ]);
-            exit;
-        }
-
-        // Index Aditi vehicles by normalized number
         $liveByNumber = [];
-        foreach ($liveResult['vehicles'] as $liveVeh) {
-            $liveNo = normalizeVehicleNo($liveVeh['Vehicle_No'] ?? '');
-            if ($liveNo !== '') {
-                $liveByNumber[$liveNo] = $liveVeh;
+        if ($liveResult['success']) {
+            foreach ($liveResult['vehicles'] as $liveVeh) {
+                $liveNo = normalizeVehicleNo($liveVeh['Vehicle_No'] ?? '');
+                if ($liveNo !== '') {
+                    $liveByNumber[$liveNo] = $liveVeh;
+                }
             }
-        }
-
-        $outputVehicles = [];
-        foreach ($vehicleMap as $norm => $meta) {
-            $liveVeh = $liveByNumber[$norm] ?? null;
-            $type = $meta['type'];
-            if ($type === '' && !empty($liveVeh['Vehicletype'])) {
-                $type = $liveVeh['Vehicletype'];
-            }
-
-            $number = $meta['number'];
-            $label = $type !== '' ? ($number . ' | ' . $type) : $number;
-
-            if ($liveVeh === null) {
-                $outputVehicles[] = [
-                    "id" => $meta['id'],
-                    "number" => $number,
-                    "type" => $type,
-                    "label" => $label,
-                    "live" => false,
-                    "status" => "",
-                    "location" => "",
-                    "trackingText" => "Location unavailable",
-                    "lat" => null,
-                    "lng" => null,
-                    "speed" => null,
-                    "poi" => ""
-                ];
-                continue;
-            }
-
-            $location = trim((string) ($liveVeh['Location'] ?? ''));
-            $poi = trim((string) ($liveVeh['POI'] ?? ''));
-            if ($poi === '--') {
-                $poi = '';
-            }
-
-            // Prefer POI when it looks like a landmark; else full Location
-            $displayLocation = $location;
-            if ($poi !== '' && $poi !== $location) {
-                // Keep location as primary (matches UI address-style text)
-                $displayLocation = $location !== '' ? $location : $poi;
-            }
-
-            $gpsOn = strtoupper(trim((string) ($liveVeh['GPS'] ?? ''))) === 'ON';
-            $hasCoords = !empty($liveVeh['Latitude']) && !empty($liveVeh['Longitude']);
-            $isLive = $gpsOn || $hasCoords || $displayLocation !== '';
-
-            $outputVehicles[] = [
-                "id" => $meta['id'],
-                "number" => $number,
-                "type" => $type,
-                "label" => $label,
-                "live" => $isLive,
-                "status" => $isLive ? 'LIVE' : (string) ($liveVeh['Status'] ?? ''),
-                "location" => $displayLocation,
-                "trackingText" => $displayLocation !== '' ? $displayLocation : 'Location unavailable',
-                "lat" => isset($liveVeh['Latitude']) ? (float) $liveVeh['Latitude'] : null,
-                "lng" => isset($liveVeh['Longitude']) ? (float) $liveVeh['Longitude'] : null,
-                "speed" => isset($liveVeh['Speed']) ? $liveVeh['Speed'] : null,
-                "poi" => $poi,
-                "vehicleStatus" => $liveVeh['Status'] ?? ''
-            ];
         }
 
         echo json_encode([
             "data" => [
                 "trackingAvailable" => true,
                 "tripId" => $tripId,
+                "message" => $liveResult['success'] ? '' : ($liveResult['message'] ?? 'Live data unavailable'),
                 "refreshIntervalSec" => 60,
-                "window" => [
-                    "preMinutes" => $preMinutes,
-                    "postMinutes" => $postMinutes,
-                    "tripTime" => date('Y-m-d H:i:s', $tripTs),
-                    "startsAt" => date('Y-m-d H:i:s', $windowStart),
-                    "endsAt" => date('Y-m-d H:i:s', $windowEnd)
-                ],
-                "vehicles" => $outputVehicles
+                "vehicles" => buildTrackingVehicles($vehicleMap, $liveByNumber)
             ],
             "statusCode" => 200
         ]);
