@@ -146,7 +146,10 @@ switch ($mode) {
             http_response_code(200);
             echo json_encode([
                 "statusCode" => 200,
-                "message" => "Trip completed successfully."
+                "data" => [
+                     "message" => "Trip completed successfully."
+                ],
+               
             ]);
         } else {
             http_response_code(400);
