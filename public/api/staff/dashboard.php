@@ -30,9 +30,44 @@ switch ($mode) {
         $today = date('Y-m-d');
         $currentDateTime = date('Y-m-d H:i:s');
 
+        // Helper: fetch vehicles assigned to trips
+        $getTripVehicles = function (array $tripIds) {
+            $vehiclesByTrip = [];
+            if (empty($tripIds)) {
+                return $vehiclesByTrip;
+            }
+
+            $tripIdsStr = implode(',', array_map('intval', $tripIds));
+            $vehSql = "SELECT 
+                            tva.iTripID,
+                            v.iVehicleID,
+                            v.vRnum
+                       FROM st_trip_vehicle_assoc tva
+                       INNER JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
+                       WHERE tva.iTripID IN ($tripIdsStr)
+                       AND tva.cStatus IN ('A', 'C')
+                       AND tva.iVehicleID > 0
+                       ORDER BY v.vRnum";
+            $vehRes = sql_query($vehSql);
+
+            while ($vehRow = sql_fetch_assoc($vehRes)) {
+                $tid = (int) $vehRow['iTripID'];
+                if (!isset($vehiclesByTrip[$tid])) {
+                    $vehiclesByTrip[$tid] = [];
+                }
+                $vehiclesByTrip[$tid][] = [
+                    "id" => (int) $vehRow['iVehicleID'],
+                    "number" => db_output2($vehRow['vRnum'])
+                ];
+            }
+
+            return $vehiclesByTrip;
+        };
+
         // Get requested pickups (future requests - date is future OR date is today but time hasn't passed)
         $requestedSql = "SELECT 
                             r.iTrReqID as requestId,
+                            r.iTripID as tripId,
                             rt.vName as route_name,
                             rs.vName as stop_name,
                             t.dtTrip as trip_date,
@@ -52,24 +87,36 @@ switch ($mode) {
                         ORDER BY t.dtTrip ASC";
 
         $requestedRes = sql_query($requestedSql);
-        $requestedPickups = [];
+        $requestedRows = [];
+        $requestedTripIds = [];
 
         while ($row = sql_fetch_assoc($requestedRes)) {
+            $requestedRows[] = $row;
+            $requestedTripIds[] = (int) $row['tripId'];
+        }
 
+        $requestedVehiclesByTrip = $getTripVehicles($requestedTripIds);
+        $requestedPickups = [];
+
+        foreach ($requestedRows as $row) {
             $tripDate = date('j M Y', strtotime($row['trip_date']));
             $pickupTime = date('H:i', strtotime($row['pickup_time']));
+            $tripId = (int) $row['tripId'];
 
             $requestedPickups[] = [
-                 "requestId" => db_output2($row['requestId']),
+                "requestId" => db_output2($row['requestId']),
+                "tripId" => $tripId,
                 "route" => db_output2($row['route_name']),
                 "place" => db_output2($row['stop_name']),
-                "date" => $tripDate . " | " . $pickupTime
+                "date" => $tripDate . " | " . $pickupTime,
+                "vehicles" => $requestedVehiclesByTrip[$tripId] ?? []
             ];
         }
 
         // Get previous pickups (past requests - date is past OR date is today but time has passed)
         $previousSql = "SELECT 
                             r.iTrReqID,
+                            r.iTripID as tripId,
                             rt.vName as route_name,
                             rs.vName as stop_name,
                             t.dtTrip as trip_date,
@@ -92,11 +139,21 @@ switch ($mode) {
                         LIMIT 3";
 
         $previousRes = sql_query($previousSql);
-        $previousPickups = [];
+        $previousRows = [];
+        $previousTripIds = [];
 
         while ($row = sql_fetch_assoc($previousRes)) {
+            $previousRows[] = $row;
+            $previousTripIds[] = (int) $row['tripId'];
+        }
+
+        $previousVehiclesByTrip = $getTripVehicles($previousTripIds);
+        $previousPickups = [];
+
+        foreach ($previousRows as $row) {
             $tripDate = date('j M Y', strtotime($row['trip_date']));
             $pickupTime = date('H:i', strtotime($row['pickup_time']));
+            $tripId = (int) $row['tripId'];
 
             // Determine status based on dtIn and dtOut
             $status = 'failed'; // default
@@ -105,10 +162,12 @@ switch ($mode) {
             }
 
             $previousPickups[] = [
+                "tripId" => $tripId,
                 "route" => db_output2($row['route_name']),
                 "place" => db_output2($row['stop_name']),
                 "date" => $tripDate . " | " . $pickupTime,
-                "status" => $status
+                "status" => $status,
+                "vehicles" => $previousVehiclesByTrip[$tripId] ?? []
             ];
         }
 
