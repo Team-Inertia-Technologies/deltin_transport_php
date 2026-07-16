@@ -41,9 +41,11 @@ switch ($mode) {
             $vehSql = "SELECT 
                             tva.iTripID,
                             v.iVehicleID,
-                            v.vRnum
+                            v.vRnum,
+                            vc.vName as categoryName
                        FROM st_trip_vehicle_assoc tva
                        INNER JOIN vehicle v ON tva.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
+                       LEFT JOIN vehicle_category vc ON v.iCatID = vc.iVCatID AND vc.cStatus = 'A'
                        WHERE tva.iTripID IN ($tripIdsStr)
                        AND tva.cStatus IN ('A', 'C')
                        AND tva.iVehicleID > 0
@@ -57,7 +59,8 @@ switch ($mode) {
                 }
                 $vehiclesByTrip[$tid][] = [
                     "id" => (int) $vehRow['iVehicleID'],
-                    "number" => db_output2($vehRow['vRnum'])
+                    "number" => db_output2($vehRow['vRnum']),
+                    "type" => db_output2($vehRow['categoryName'] ?? '')
                 ];
             }
 
