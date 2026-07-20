@@ -29,6 +29,27 @@ switch ($mode) {
     case 'VIEW':
         $today = date('Y-m-d');
         $currentDateTime = date('Y-m-d H:i:s');
+        $nowTs = time();
+
+        // Same window used by staff/vehicle_tracking.php
+        $preMinutes = intval(GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode='STAFF_TRACKING_TIME_WINDOW_PRE'"));
+        $postMinutes = intval(GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode='STAFF_TRACKING_TIME_WINDOW_POST'"));
+        if ($preMinutes <= 0) {
+            $preMinutes = 30;
+        }
+        if ($postMinutes <= 0) {
+            $postMinutes = 60;
+        }
+
+        $isTrackingAvailable = function ($tripDateTime) use ($preMinutes, $postMinutes, $nowTs) {
+            $tripTs = strtotime($tripDateTime);
+            if (!$tripTs) {
+                return false;
+            }
+            $windowStart = $tripTs - ($preMinutes * 60);
+            $windowEnd = $tripTs + ($postMinutes * 60);
+            return ($nowTs >= $windowStart && $nowTs <= $windowEnd);
+        };
 
         // Helper: fetch vehicles assigned to trips
         $getTripVehicles = function (array $tripIds) {
@@ -65,6 +86,17 @@ switch ($mode) {
             }
 
             return $vehiclesByTrip;
+        };
+
+        // Attach trackingAvailable (time window) to each vehicle for a trip
+        $withTrackingStatus = function (array $vehicles, $tripDateTime) use ($isTrackingAvailable) {
+            $available = $isTrackingAvailable($tripDateTime);
+            $result = [];
+            foreach ($vehicles as $veh) {
+                $veh['trackingAvailable'] = $available;
+                $result[] = $veh;
+            }
+            return $result;
         };
 
         // Get requested pickups (future requests - date is future OR date is today but time hasn't passed)
@@ -112,7 +144,7 @@ switch ($mode) {
                 "route" => db_output2($row['route_name']),
                 "place" => db_output2($row['stop_name']),
                 "date" => $tripDate . " | " . $pickupTime,
-                "vehicles" => $requestedVehiclesByTrip[$tripId] ?? []
+                "vehicles" => $withTrackingStatus($requestedVehiclesByTrip[$tripId] ?? [], $row['trip_date'])
             ];
         }
 
@@ -170,7 +202,7 @@ switch ($mode) {
                 "place" => db_output2($row['stop_name']),
                 "date" => $tripDate . " | " . $pickupTime,
                 "status" => $status,
-                "vehicles" => $previousVehiclesByTrip[$tripId] ?? []
+                "vehicles" => $withTrackingStatus($previousVehiclesByTrip[$tripId] ?? [], $row['trip_date'])
             ];
         }
 
