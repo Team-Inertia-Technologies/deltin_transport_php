@@ -369,6 +369,35 @@ function buildTrackingVehicles($vehicleMap, $liveByNumber)
     return $outputVehicles;
 }
 
+/**
+ * Persist live location JSON onto st_trip_vehicle_assoc for a trip+vehicle
+ */
+function saveTripVehicleLocationCache($tripId, $vehicleId, $liveVeh)
+{
+    $tripId = intval($tripId);
+    $vehicleId = intval($vehicleId);
+    if ($tripId <= 0 || $vehicleId <= 0 || !is_array($liveVeh)) {
+        return false;
+    }
+
+    $json = json_encode($liveVeh);
+    if ($json === false) {
+        return false;
+    }
+
+    $safeLoc = sql_real_escape($json);
+    $nowDt = date('Y-m-d H:i:s');
+
+    return (bool) sql_query(
+        "UPDATE st_trip_vehicle_assoc
+         SET vCurrentLoc = '$safeLoc',
+             dtLocLastUpdated = '$nowDt'
+         WHERE iTripID = $tripId
+           AND iVehicleID = $vehicleId
+           AND cStatus IN ('A', 'C')"
+    );
+}
+
 switch ($mode) {
 
     // ===================== CASE: LIVE =====================
@@ -496,21 +525,81 @@ switch ($mode) {
             exit;
         }
 
-        $liveResult = fetchAditiLiveData(
-            $ADITI_BASE_URL,
-            $ADITI_PROJECT_ID,
-            $ADITI_USERNAME,
-            $ADITI_PASSWORD,
-            implode(',', $vehicleNos)
-        );
+        // Load cached locations from st_trip_vehicle_assoc
+        $LOC_CACHE_TTL_SEC = 10;
+        $assocByNorm = [];
+        $assocSql = "SELECT tva.iTVAID, tva.iVehicleID, tva.vCurrentLoc, tva.dtLocLastUpdated, v.vRnum
+                     FROM st_trip_vehicle_assoc tva
+                     INNER JOIN vehicle v ON tva.iVehicleID = v.iVehicleID
+                     WHERE tva.iTripID = $tripId
+                       AND tva.cStatus IN ('A', 'C')
+                       AND tva.iVehicleID > 0";
+        $assocRes = sql_query($assocSql);
+        while ($assocRow = sql_fetch_assoc($assocRes)) {
+            $norm = normalizeVehicleNo($assocRow['vRnum']);
+            if ($norm === '') {
+                continue;
+            }
+            $assocByNorm[$norm] = $assocRow;
+            // Fill missing vehicle id from assoc
+            if (isset($vehicleMap[$norm]) && $vehicleMap[$norm]['id'] <= 0) {
+                $vehicleMap[$norm]['id'] = (int) $assocRow['iVehicleID'];
+            }
+        }
 
         $liveByNumber = [];
-        if ($liveResult['success']) {
-            foreach ($liveResult['vehicles'] as $liveVeh) {
-                $liveNo = normalizeVehicleNo($liveVeh['Vehicle_No'] ?? '');
-                if ($liveNo !== '') {
-                    $liveByNumber[$liveNo] = $liveVeh;
+        $staleVehicleNos = [];
+
+        foreach ($vehicleMap as $norm => $meta) {
+            $assoc = $assocByNorm[$norm] ?? null;
+            $usedCache = false;
+
+            if ($assoc && !empty($assoc['vCurrentLoc']) && !empty($assoc['dtLocLastUpdated'])) {
+                $updatedTs = strtotime($assoc['dtLocLastUpdated']);
+                if ($updatedTs !== false) {
+                    $ageSec = $nowTs - $updatedTs;
+                    if ($ageSec >= 0 && $ageSec < $LOC_CACHE_TTL_SEC) {
+                        $cached = json_decode($assoc['vCurrentLoc'], true);
+                        if (is_array($cached)) {
+                            $liveByNumber[$norm] = $cached;
+                            $usedCache = true;
+                        }
+                    }
                 }
+            }
+
+            if (!$usedCache) {
+                $staleVehicleNos[] = $meta['number'];
+            }
+        }
+
+        $liveMessage = '';
+        if (!empty($staleVehicleNos)) {
+            $liveResult = fetchAditiLiveData(
+                $ADITI_BASE_URL,
+                $ADITI_PROJECT_ID,
+                $ADITI_USERNAME,
+                $ADITI_PASSWORD,
+                implode(',', $staleVehicleNos)
+            );
+
+            if ($liveResult['success']) {
+                foreach ($liveResult['vehicles'] as $liveVeh) {
+                    $liveNo = normalizeVehicleNo($liveVeh['Vehicle_No'] ?? '');
+                    if ($liveNo === '' || !isset($vehicleMap[$liveNo])) {
+                        continue;
+                    }
+                    $liveByNumber[$liveNo] = $liveVeh;
+                    $vehId = (int) ($vehicleMap[$liveNo]['id'] ?? 0);
+                    if ($vehId <= 0 && isset($assocByNorm[$liveNo])) {
+                        $vehId = (int) $assocByNorm[$liveNo]['iVehicleID'];
+                    }
+                    if ($vehId > 0) {
+                        saveTripVehicleLocationCache($tripId, $vehId, $liveVeh);
+                    }
+                }
+            } else {
+                $liveMessage = $liveResult['message'] ?? 'Live data unavailable';
             }
         }
 
@@ -518,7 +607,7 @@ switch ($mode) {
             "data" => [
                 "trackingAvailable" => true,
                 "tripId" => $tripId,
-                "message" => $liveResult['success'] ? '' : ($liveResult['message'] ?? 'Live data unavailable'),
+                "message" => $liveMessage,
                 "refreshIntervalSec" => 60,
                 "vehicles" => buildTrackingVehicles($vehicleMap, $liveByNumber)
             ],
