@@ -1055,7 +1055,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
                             SELECT 1
                             FROM vehicle_station_assoc vsa
                             WHERE vsa.iVehicleID = v.iVehicleID
-                            AND vsa.iFleet_StationID IN ($stations)
+                            AND vsa.iFlt_StationID IN ($stations)
                         )";
 
                         $cond_driver .= "
@@ -1063,7 +1063,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
                             SELECT 1
                             FROM driver_station_assoc dsa
                             WHERE dsa.iDriverID = d.iDriverID
-                            AND dsa.iFleet_StationID IN ($stations)
+                            AND dsa.iFlt_StationID IN ($stations)
                         )"; 
                         
                         $cond_driver2 .= "
@@ -1071,7 +1071,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
                             SELECT 1
                             FROM driver_station_assoc dsa
                             WHERE dsa.iDriverID = d.iDriverID
-                            AND dsa.iFleet_StationID IN ($stations)
+                            AND dsa.iFlt_StationID IN ($stations)
                         )";   
                         
                         $conda .= " AND fb.iFleet_StationID IN ($stations)";
