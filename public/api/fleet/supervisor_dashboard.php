@@ -770,6 +770,7 @@ switch ($mode) {
         $vehicleIds = array_map('intval', array_keys($vehicleData));
         $vehicleIdsSql = dashboardIntList($vehicleIds);
         $assignedVehicleMap = [];
+        $vehicleStationMap = [];
         $driverIds = [];
         $driverLoggedInMap = [];
 
@@ -783,6 +784,19 @@ switch ($mode) {
             $tripAssignmentRes = sql_query($tripAssignmentSql);
             while ($assignmentRow = sql_fetch_assoc($tripAssignmentRes)) {
                 $assignedVehicleMap[(int)$assignmentRow['iVehicleID']] = true;
+            }
+
+            if (!empty($stations)) {
+                $stationAssocSql = "
+                    SELECT iVehicleID
+                    FROM vehicle_station_assoc
+                    WHERE iFlt_StationID IN ($stations)
+                      AND iVehicleID IN ($vehicleIdsSql)
+                ";
+                $stationAssocRes = sql_query($stationAssocSql);
+                while ($stationRow = sql_fetch_assoc($stationAssocRes)) {
+                    $vehicleStationMap[(int)$stationRow['iVehicleID']] = true;
+                }
             }
         }
 
@@ -826,6 +840,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
     $prevBookingStatus  = null;
 
     $driverStatus       = false;
+    $_status            = '';
 
     /* =========================
        KEYWORD FILTER
@@ -848,6 +863,38 @@ foreach ($vehicleData as $vehicleID => $vehData) {
     }
 
     /* =========================
+       SKIP RULES
+       GetVehicle_BasedOnSearch2 returns all vehicles;
+       apply scope/status filters here with continue.
+    ========================== */
+
+    // Vendor scope
+    if (!empty($is_vendor) && (int)($vehData['VENDOR_ID'] ?? 0) !== (int)$is_vendor) {
+        continue;
+    }
+
+    // Station scope
+    if (!empty($STATIONS_ARR) && empty($vehicleStationMap[(int)$vehicleID])) {
+        continue;
+    }
+
+    // Driver type
+    if (!empty($drivertype) && (string)($vehData['DRIVER_TYPE'] ?? '') !== (string)$drivertype) {
+        continue;
+    }
+
+    // Status filter: keep only vehicles with a matching booking for the requested status
+    if (!empty($status)) {
+        if (empty($vehData['BOOKINGS'])) {
+            continue;
+        }
+        $_status = $vehData['BOOKINGS'][0]['STATUS'] ?? '';
+        if ((string)$_status !== (string)$status) {
+            continue;
+        }
+    }
+
+    /* =========================
        CHECK IF VEHICLE ASSIGNED
     ========================== */
 
@@ -861,11 +908,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
 
         $now = time();
         $bookings = $vehData['BOOKINGS'];
-        $_status =  $bookings[0]['STATUS'];
-
-        if(in_array($_status, array(''))){
-
-        }
+        $_status = $bookings[0]['STATUS'] ?? '';
 
         /* ===== NEXT / FUTURE TRIP ===== */
 
