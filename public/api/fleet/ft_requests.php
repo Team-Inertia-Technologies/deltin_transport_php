@@ -2019,6 +2019,117 @@ if (!$distance) {
 
 
 
+    // ===================== CASE: RESENT_OTP =====================
+    case 'RESENT_OTP':
+        $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
+
+        if ($iFleet_BookingID <= 0) {
+            echo json_encode([
+                "error" => ["message" => "Booking ID is required"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $bookingCheckSql = "SELECT fb.iFleet_BookingID, fb.vName, fb.vMobileNo, fb.vPickUpTime, fb.vPickUpLocation,
+                                   fb.vBookingCode, fb.iVehicleID, fb.iDriverID,
+                                   v.vRnum, d.vName AS driverName, d.vMobileNum, d.vDeviceToken
+                            FROM fleet_booking fb
+                            LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID
+                            LEFT JOIN driver d ON fb.iDriverID = d.iDriverID
+                            WHERE fb.iFleet_BookingID = $iFleet_BookingID AND fb.cStatus = 'A'
+                            LIMIT 1";
+        $bookingCheckRes = sql_query($bookingCheckSql);
+
+        if (sql_num_rows($bookingCheckRes) == 0) {
+            echo json_encode([
+                "error" => ["message" => "Booking not found or cancelled"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $bookingData = sql_fetch_assoc($bookingCheckRes);
+        $iVehicleID = intval($bookingData['iVehicleID'] ?? 0);
+        $iDriverID = intval($bookingData['iDriverID'] ?? 0);
+
+        if ($iVehicleID <= 0 || $iDriverID <= 0) {
+            echo json_encode([
+                "error" => ["message" => "Vehicle and driver must be assigned before resenting OTP"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if (empty($bookingData['vRnum']) || empty($bookingData['driverName'])) {
+            echo json_encode([
+                "error" => ["message" => "Assigned vehicle or driver not found"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $vMobileNo = $bookingData['vMobileNo'] ?? '';
+        $vName = db_output2($bookingData['vName']) ?? '';
+        $vPickUpLocation = db_output2($bookingData['vPickUpLocation']) ?? '';
+        $pickup_time = !empty($bookingData['vPickUpTime']) ? date('h:i A', strtotime($bookingData['vPickUpTime'])) : '';
+        $booking_code = $bookingData['vBookingCode'] ?? '';
+        $dtAdded = NOW;
+
+        if (empty($vMobileNo)) {
+            echo json_encode([
+                "error" => ["message" => "Passenger mobile number not found"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if (empty($booking_code)) {
+            echo json_encode([
+                "error" => ["message" => "Booking OTP/code not found"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Resend WhatsApp allocation message (includes booking OTP/code)
+        SendVehAllocationMessage(
+            $vMobileNo,
+            db_input($vName),
+            db_input($bookingData['driverName']),
+            $bookingData['vRnum'],
+            $vPickUpLocation,
+            $pickup_time,
+            $booking_code
+        );
+
+        sql_query("
+            INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)
+            VALUES ('C', '+91', '$vMobileNo', 'WA', '$dtAdded', $user_id)
+        ");
+
+        // Resend FCM notification to driver
+        $deviceToken = $bookingData['vDeviceToken'] ?? '';
+        $phoneNo = $bookingData['vMobileNum'] ?? '';
+        $vNotifiText = "New trip assigned: Pick up " . db_input($vName) . " from " . $vPickUpLocation . " at " . $pickup_time;
+
+        if (!empty($deviceToken)) {
+            createNotification1($iDriverID, $deviceToken, $phoneNo, $iFleet_BookingID, $vNotifiText);
+
+            $title = "Trip Assigned";
+            $body = "Pick up " . db_input($vName) . " from " . $vPickUpLocation . " at " . $pickup_time;
+            sendFcmNotification2($deviceToken, $iFleet_BookingID, $title, $body);
+        }
+
+        echo json_encode([
+            "data" => [
+                "message" => "OTP resent successfully",
+                "bookingId" => $iFleet_BookingID
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
     // ===================== CASE: SEND_TRIP_DATA =====================
     case 'SEND_TRIP_DATA':
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
