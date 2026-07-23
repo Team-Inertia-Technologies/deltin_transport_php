@@ -569,7 +569,8 @@ switch ($mode) {
             }
 
             if (!$usedCache) {
-                $staleVehicleNos[] = $meta['number'];
+                // Strip spaces before sending to external tracking API
+                $staleVehicleNos[] = preg_replace('/\s+/', '', $meta['number']);
             }
         }
 

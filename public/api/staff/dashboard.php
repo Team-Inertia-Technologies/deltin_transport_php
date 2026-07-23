@@ -27,7 +27,6 @@ switch ($mode) {
 
     // ===================== CASE: VIEW =====================
     case 'VIEW':
-        $today = date('Y-m-d');
         $currentDateTime = date('Y-m-d H:i:s');
         $nowTs = time();
 
@@ -99,7 +98,7 @@ switch ($mode) {
             return $result;
         };
 
-        // Get requested pickups (future requests - date is future OR date is today but time hasn't passed)
+        // Requested = until tracking POST window ends (dtTrip + STAFF_TRACKING_TIME_WINDOW_POST)
         $requestedSql = "SELECT 
                             r.iTrReqID as requestId,
                             r.iTripID as tripId,
@@ -115,10 +114,7 @@ switch ($mode) {
                         WHERE r.iStaffID = $user_id 
                         AND r.cStatus = 'A'
                         AND t.cStatus IN ('A', 'C')
-                        AND (
-                            DATE(t.dtTrip) > '$today' 
-                            OR (DATE(t.dtTrip) = '$today' AND CONCAT(DATE(t.dtTrip), ' ', r.tPickup) > '$currentDateTime')
-                        )
+                        AND DATE_ADD(t.dtTrip, INTERVAL $postMinutes MINUTE) >= '$currentDateTime'
                         ORDER BY t.dtTrip ASC";
 
         $requestedRes = sql_query($requestedSql);
@@ -148,7 +144,7 @@ switch ($mode) {
             ];
         }
 
-        // Get previous pickups (past requests - date is past OR date is today but time has passed)
+        // Previous = after tracking POST window has ended
         $previousSql = "SELECT 
                             r.iTrReqID,
                             r.iTripID as tripId,
@@ -166,10 +162,7 @@ switch ($mode) {
                         WHERE r.iStaffID = $user_id 
                         AND r.cStatus = 'A'
                         AND t.cStatus IN ('A', 'C')
-                        AND (
-                            DATE(t.dtTrip) < '$today'
-                            OR (DATE(t.dtTrip) = '$today' AND CONCAT(DATE(t.dtTrip), ' ', r.tPickup) <= '$currentDateTime')
-                        )
+                        AND DATE_ADD(t.dtTrip, INTERVAL $postMinutes MINUTE) < '$currentDateTime'
                         ORDER BY t.dtTrip DESC
                         LIMIT 3";
 
