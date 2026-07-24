@@ -1041,12 +1041,23 @@ foreach ($vehicleData as $vehicleID => $vehData) {
             //$cond_vehicle .= " and v.iVendorID = $is_vendor";
         }*/ 
 
+            $cond_driver_join = '';
+            $cond_driver_where = '';
+            
             if (!empty($is_vendor)) {
-                $cond_vehicle .= " AND v.iVendorID = $is_vendor";
-                $cond_driver .= " AND d.iVendorID = $is_vendor AND fb.iVendorID = $is_vendor";
-                $cond_driver2 .= " AND d.iVendorID = $is_vendor";
-                $conda .= " AND fb.iVendorID = $is_vendor";
+                $cond_vehicle .= " AND v.iVendorID = " . (int) $is_vendor;
+            
+                // Conditions for fleet_booking: keep inside LEFT JOIN ... ON
+                $cond_driver_join .= " AND fb.iVendorID = " . (int) $is_vendor;
+            
+                // Conditions for driver: put inside WHERE
+                $cond_driver_where .= " AND d.iVendorID = " . (int) $is_vendor;
+            
+                $cond_driver2 .= " AND d.iVendorID = " . (int) $is_vendor;
+                $conda .= " AND fb.iVendorID = " . (int) $is_vendor;
+            
                 $STATIONS_ARR = getVendorUserStations($user_id);
+            
                 if (!empty($STATIONS_ARR)) {
                     $stations = implode(',', array_map('intval', $STATIONS_ARR));
             
@@ -1055,28 +1066,29 @@ foreach ($vehicleData as $vehicleID => $vehData) {
                             SELECT 1
                             FROM vehicle_station_assoc vsa
                             WHERE vsa.iVehicleID = v.iVehicleID
-                            AND vsa.iFlt_StationID IN ($stations)
+                              AND vsa.iFlt_StationID IN ($stations)
                         )";
-
-                        $cond_driver .= "
+            
+                    // This filters drivers, so it belongs in WHERE
+                    $cond_driver_where .= "
                         AND EXISTS (
                             SELECT 1
                             FROM driver_station_assoc dsa
                             WHERE dsa.iDriverID = d.iDriverID
-                            AND dsa.iFlt_StationID IN ($stations)
-                        )"; 
-                        
-                        $cond_driver2 .= "
+                              AND dsa.iFlt_StationID IN ($stations)
+                        )";
+            
+                    $cond_driver2 .= "
                         AND EXISTS (
                             SELECT 1
                             FROM driver_station_assoc dsa
                             WHERE dsa.iDriverID = d.iDriverID
-                            AND dsa.iFlt_StationID IN ($stations)
-                        )";   
-                        
-                        $conda .= " AND fb.iFleet_StationID IN ($stations)";
+                              AND dsa.iFlt_StationID IN ($stations)
+                        )";
+            
+                    $conda .= " AND fb.iFleet_StationID IN ($stations)";
                 }
-            }            
+            }          
 
         $q0 = "SELECT v.iVehicleID, v.vRnum, v.cStatus, vc.vName AS vehicleType, v.iCatID, v.iType FROM vehicle v JOIN vehicle_category vc ON vc.iVCatID = v.iCatID WHERE v.iVehicleID = $vehiId $cond_vehicle";
         $r0 = sql_query($q0, "supervisor_dashboard.392");
@@ -1087,8 +1099,25 @@ foreach ($vehicleData as $vehicleID => $vehData) {
 
             $driversArr = array();
 
-            $q1 = "SELECT d.iDriverID, d.vName, d.vMobileNum, COUNT(fb.iFleet_BookingID) AS totalTrips FROM driver d LEFT JOIN fleet_booking fb ON fb.iDriverID = d.iDriverID AND fb.iVehicleID = $vehiId $cond_driver GROUP BY d.iDriverID";
-            $r1 = sql_query($q1, "supervisor_dashboard.399");
+            $sql = "
+                SELECT
+                    d.iDriverID,
+                    d.vName,
+                    d.vMobileNum,
+                    COUNT(fb.iFleet_BookingID) AS totalTrips
+                FROM driver d
+                LEFT JOIN fleet_booking fb
+                    ON fb.iDriverID = d.iDriverID
+                    AND fb.iVehicleID = " . (int) $vehiId . "
+                    $cond_driver_join
+                WHERE 1 = 1
+                    $cond_driver_where
+                GROUP BY
+                    d.iDriverID,
+                    d.vName,
+                    d.vMobileNum
+            ";
+            $r1 = sql_query($sql, "supervisor_dashboard.399");
 
             if (sql_num_rows($r1)) {
 
