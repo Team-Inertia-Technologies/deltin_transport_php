@@ -32,7 +32,8 @@ try {
 		// Stations are now stored via user_temp_station_assoc (iUserID, iStationID)
 		$cmbstation_raw = $_POST['cmbstation'] ?? [];
 		if (!is_array($cmbstation_raw)) {
-			$cmbstation_raw = (trim($cmbstation_raw) !== '') ? [trim($cmbstation_raw)] : [];
+			// Accept comma-separated string like "1,2"
+			$cmbstation_raw = (trim($cmbstation_raw) !== '') ? explode(',', $cmbstation_raw) : [];
 		}
 		$cmbstations = array_values(array_unique(array_map('intval', array_filter($cmbstation_raw, function($v) {
 			return trim((string)$v) !== '';
@@ -225,7 +226,8 @@ try {
 		if (isset($_POST['cmbstation'])) {
 			$newStation_raw = $_POST['cmbstation'];
 			if (!is_array($newStation_raw)) {
-				$newStation_raw = (trim($newStation_raw) !== '') ? [trim($newStation_raw)] : [];
+				// Accept comma-separated string like "1,2"
+				$newStation_raw = (trim($newStation_raw) !== '') ? explode(',', $newStation_raw) : [];
 			}
 			$newStations = array_values(array_unique(array_map('intval', array_filter($newStation_raw, function($v) {
 				return trim((string)$v) !== '';
