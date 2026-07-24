@@ -69,8 +69,7 @@ try {
     // Base Conditions
     // ---------------------------------------------------
     $cond = "
-        WHERE cRefType = 'A'
-          AND cStatus != 'X'
+        WHERE  cStatus != 'X'
           AND iLevel IN (
               SELECT iLevelD
               FROM levels
@@ -113,6 +112,20 @@ try {
     while ($row = sql_fetch_assoc($lvlRes)) {
         $levels[] = [
             "id"   => (int)$row['iLevelD'],
+            "name" => $row['vName']
+        ];
+    }
+
+    $stations = [];
+    $stationQuery = "
+        SELECT iFlt_StationID, vName
+        FROM fleet_station
+        WHERE cStatus = 'A'
+        ORDER BY iFlt_StationID";
+    $stationRes = sql_query($stationQuery);
+    while ($row = sql_fetch_assoc($stationRes)) {
+        $stations[] = [
+            "id"   => (int)$row['iFlt_StationID'],
             "name" => $row['vName']
         ];
     }
@@ -163,6 +176,28 @@ try {
         $users[] = $row;
     }
 
+    $staffsql = "SELECT iFStaffID, vName FROM fleet_staff WHERE cStatus='A' ORDER BY iFStaffID ASC";
+    $staffresult = sql_query($staffsql);
+    $staff = [];
+    while ($row = sql_fetch_assoc($staffresult)) {
+        $staff[] = [
+            "id"   => (int)$row['iFStaffID'],
+            "name" => $row['vName']
+        ];
+    }
+
+    $vendorsql = "SELECT iVendorID, vName FROM vendor WHERE cStatus='A' ORDER BY iVendorID ASC";
+    $vendorresult = sql_query($vendorsql);
+    $vendor = [];
+    while ($row = sql_fetch_assoc($vendorresult)) {
+        $vendor[] = [
+            "id"   => (int)$row['iVendorID'],
+            "name" => $row['vName']
+        ];
+    }
+
+
+
     // ---------------------------------------------------
     // Response
     // ---------------------------------------------------
@@ -173,7 +208,20 @@ try {
             "properties"  => $PROPERTY_ARR,
             "levels"      => $levels,
             "status"      => $Status,
-            "departments" => $DEPT
+            "staff"       => $staff,
+            "vendor"      => $vendor,
+            "stations"    => $stations,
+            "departments" => $DEPT,
+            "typeArr" => [
+                [
+                    "id" => "S",
+                    "name" => "Staff"
+                ],
+                [
+                    "id" => "V",
+                    "name" => "Vendor"
+                ]
+            ]
         ],
         "statuscode" => 200
     ];

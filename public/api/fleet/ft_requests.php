@@ -70,6 +70,57 @@ function getRoadDistance($startLat, $startLng, $endLat, $endLng)
 
     return 0;
 }
+
+function getFleetVendorStationOpts()
+{
+ 
+    $stationVendorsMap = [];
+    $stationAssocSql = "SELECT vsa.iFlt_StationID AS iStationID, v.iVendorID, v.vName AS vendorName
+                        FROM vendor_station_assoc vsa
+                        INNER JOIN vendor v ON vsa.iVendorID = v.iVendorID AND v.cStatus = 'A'
+                        LEFT JOIN fleet_station fs ON vsa.iFlt_StationID = fs.iFlt_StationID AND fs.cStatus = 'A'
+                        ORDER BY fs.iRank, v.vName";
+    $stationAssocRes = sql_query($stationAssocSql);
+    while ($assocRow = sql_fetch_assoc($stationAssocRes)) {
+        $stationId = intval($assocRow['iStationID']);
+        if (!$stationId) continue;
+
+        if (!isset($stationVendorsMap[$stationId])) {
+            $stationVendorsMap[$stationId] = [];
+        }
+        $stationVendorsMap[$stationId][] = [
+            'id'   => intval($assocRow['iVendorID']),
+            'name' => db_output2($assocRow['vendorName'] ?? '')
+        ];
+    }
+
+    $AREA_ARR_RAW = GetXArrFromYID("SELECT iFlt_StationID, vName FROM fleet_station WHERE cStatus='A' ORDER BY iRank", "3");
+    $stationVendorOpt = [];
+    foreach ($AREA_ARR_RAW as $id => $label) {
+        $stationId = intval($id);
+        $stationVendorOpt[] = [
+            'id'      => $stationId,
+            'label'   => $label,
+            'vendors' => $stationVendorsMap[$stationId] ?? []
+        ];
+    }
+
+
+    $vendorOpt = [['id' => 0, 'name' => 'Choose']];
+    $vendorRes = sql_query("SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName");
+    while ($vendorRow = sql_fetch_assoc($vendorRes)) {
+        $vendorOpt[] = [
+            'id'   => intval($vendorRow['iVendorID']),
+            'name' => db_output2($vendorRow['vName'])
+        ];
+    }
+
+    return [
+        'stationVendorOpt' => $stationVendorOpt,
+        'vendorOpt'        => $vendorOpt
+    ];
+}
+
 switch ($mode) {
 
     // ===================== CASE: LIST =====================
@@ -244,11 +295,20 @@ switch ($mode) {
 
         $whereClause = "fb.cStatus != 'X'";
 
-        // Check if user has FLEET_USER_SPECIFIC_REQ access
+     
         $userSpecificAccess = checkUserModuleAccess($user_id, 'FLEET_USER_SPECIFIC_REQ');
 
         if ($userSpecificAccess) {
             $whereClause .= " AND fb.iAdded_UserID = $user_id";
+        }
+
+        $vendorID = getVendorIDForUser($user_id);
+        if ($vendorID > 0) {
+            $whereClause .= " AND fb.iVendorID = $vendorID";
+            $userStations = getVendorUserStations($user_id);
+            if (!empty($userStations)) {
+                $whereClause .= " AND fb.iFleet_StationID IN (" . implode(',', $userStations) . ")";
+            }
         }
 
         $staffReqAccess = checkUserModuleAccess($user_id, 'FLEET_STAFF_REQ');
@@ -362,7 +422,7 @@ switch ($mode) {
             $driverTypeID = intval($row['driverType'] ?? 0);
             $driverTypeName = isset($VEHICLE_DRIVER_TYPE[$driverTypeID]) ? $VEHICLE_DRIVER_TYPE[$driverTypeID] : '';
 
-            // Format vehicle details
+       
             $vehicleDetails = '';
             if (!empty($row['vehicleRegNo'])) {
                 $vehicleDetails = db_output2($row['vehicleRegNo']);
@@ -446,7 +506,7 @@ switch ($mode) {
                 'tripStatus' => $tripStatusCode,
                 'tripStatusText' => $tripStatusName,
                 'tripType' => $tripType,
-                'cType' => $tripStatusCode, // Adding cType from booking table
+                'cType' => $tripStatusCode,
                 'startTime' => $startTime,
                 'endTime' => $endTime,
                 'paxs' => strval($row['iPax'] ?? '0'),
@@ -578,6 +638,8 @@ if (!$distance) {
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
         $iFStaffID = intval($_REQUEST['staffID'] ?? 0);
+        $iVendorID = intval($_REQUEST['vendorID'] ?? 0);
+        $iFleet_StationID = intval($_REQUEST['stationID'] ?? 0);
 
         // Fetch KMS from fleet_ratechart
         //  $ratekms = 0;
@@ -642,7 +704,8 @@ if (!$distance) {
         $cols = "iFleet_BookingID,vBookingCode,iBookedBy,vBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vRemarks, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,iOriginal_Kms,
-                 vDropLocation, vLatLong_From, vLatLong_To,vLandmark, iVehicleCatID, cDisposal, tReturnTime, dtAdded,iAdded_UserID,cStatus";
+                 vDropLocation, vLatLong_From, vLatLong_To,vLandmark, iVehicleCatID, cDisposal, tReturnTime,
+                 iVendorID, iFleet_StationID, dtAdded,iAdded_UserID,cStatus";
 
         $iFleet_BookingID1 = NextID('iFleet_BookingID', 'fleet_booking');
         $dtAdded = NOW;
@@ -655,7 +718,8 @@ if (!$distance) {
             $iFleet_BookingID1,'$vBookingCode',$iBookedBy, '" . db_input($bookedByName) . "','" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
             $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
             $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $distance,
-            '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal, '" . db_input($dtAdded) . "',$user_id,'A'
+            '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal,
+            $iVendorID, $iFleet_StationID, '" . db_input($dtAdded) . "',$user_id,'A'
         )";
         //    echo "SQL Query: " . $sql1; // Debug: Output the generated SQL query
         //         exit;
@@ -766,6 +830,8 @@ if (!$distance) {
                 ? $STAFF_DEPT_ARR[intval($booking['iFStaffID'])]
                 : 0,
             "disposal" => $booking['cDisposal'] ?? 'N',
+            "vendorID" => intval($booking['iVendorID'] ?? 0),
+            "stationID" => intval($booking['iFleet_StationID'] ?? 0),
             "dtAdded" => $booking['dtAdded'],
             "addedUserId" => intval($booking['iAdded_UserID'])
         ];
@@ -907,6 +973,8 @@ if (!$distance) {
             ? (int)$fleetThresholdArr[$level]
             : 2;
 
+        $vendorStationOpts = getFleetVendorStationOpts();
+
         $optArr = [
             "bookedForOpt" => $bookedForOpt,
             "bookingCatOpt" => $bookingCatOpt,
@@ -923,7 +991,9 @@ if (!$distance) {
             "bookedForFilterOpt" => $bookedForFilterOpt,
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
             "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
-            "locOpts" => $locOpts
+            "locOpts" => $locOpts,
+            "stationVendorOpt" => $vendorStationOpts['stationVendorOpt'],
+            "vendorOpt" => $vendorStationOpts['vendorOpt']
         ];
 
         echo json_encode([
@@ -1002,6 +1072,8 @@ if (!$distance) {
 
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
         $iFStaffID = intval($_REQUEST['staffID'] ?? 0);
+        $iVendorID = intval($_REQUEST['vendorID'] ?? 0);
+        $iFleet_StationID = intval($_REQUEST['stationID'] ?? 0);
 
         if (empty($vName) || empty($vMobileNo) || empty($vPickUpTime)) {
             echo json_encode([
@@ -1074,6 +1146,8 @@ if (!$distance) {
                 cDisposal = '" . db_input($cDisposal) . "',
                 tReturnTime = " . $vReturnTimeVal . ",   
                 iOriginal_Kms = " . intval($distance) . ",
+                iVendorID = " . intval($iVendorID) . ",
+                iFleet_StationID = " . intval($iFleet_StationID) . ",
                 dtUpdated = '" . db_input($dtNow) . "',
                 iUpdated_UserID = " . intval($user_id) . "
             WHERE iFleet_BookingID = " . intval($iFleet_BookingID) . "
@@ -1174,6 +1248,7 @@ if (!$distance) {
                 fb.vBookedBy as bookedBy,
                 fb.iFleet_RateID,
                 fb.iFleet_StationID,
+                fb.iVendorID,
                 fbc.vName as bookingCategoryName,
                 p.vName as propertyName,
                 d.vName as departmentName,
@@ -1212,6 +1287,26 @@ if (!$distance) {
         }
 
         $booking = sql_fetch_assoc($viewRes);
+
+        // Vendor user access check: booking must match their vendor and assigned stations
+        $vendorID = getVendorIDForUser($user_id);
+        if ($vendorID > 0) {
+            $bookingVendorID = intval($booking['iVendorID'] ?? 0);
+            $bookingStationID = intval($booking['iFleet_StationID'] ?? 0);
+            $userStations = getVendorUserStations($user_id);
+
+            if ($bookingVendorID !== $vendorID || !in_array($bookingStationID, $userStations)) {
+                echo json_encode([
+                    "error" => ["message" => "Access denied"],
+                    // "bookingVendorID" => $bookingVendorID,
+                    // "userVendorID" => $vendorID,
+                    // "bookingStationID" => $bookingStationID,
+                    // "userStations" => $userStations,
+                    "statusCode" => 403
+                ]);
+                exit;
+            }
+        }
 
         // Use passenger details directly from fleet_booking table
         $passengerName = $booking['vName'];
@@ -1367,11 +1462,70 @@ if (!$distance) {
 
         $vehicleData = GetVehicle_BasedOnSearch2($typeID, $categoryID, 'Y', '', '', $status);
 
+        // If the logged-in user is a vendor, restrict to that vendor's vehicles/drivers only
+        $vendorID = getVendorIDForUser($user_id);
+        $bookingStationID = getBookingStationID($iFleet_BookingID);
+
+        // For vendor users: derive effective station(s) from users_station_assoc
+        // and deny access if the booking station is not among their assigned stations
+        $vendorUserStations = [];
+        if ($vendorID > 0) {
+            $vendorUserStations = getVendorUserStations($user_id);
+            if ($iFleet_BookingID > 0 && !empty($vendorUserStations) && !in_array($bookingStationID, $vendorUserStations)) {
+                echo json_encode([
+                    "error" => ["message" => "Access denied"],
+                    "statusCode" => 403
+                ]);
+                exit;
+            }
+        }
+
+        // Build vehicle/driver station maps:
+        // - For vendor users: filter by their own assigned stations (from users_station_assoc)
+        // - For others: filter by the booking station as before
+        if ($vendorID > 0 && !empty($vendorUserStations)) {
+            $stationFilter = $vendorUserStations;
+        } elseif ($bookingStationID > 0) {
+            $stationFilter = [$bookingStationID];
+        } else {
+            $stationFilter = [];
+        }
+
+        $vehicleStationMap = [];
+        if (!empty($stationFilter)) {
+            $stationIn = implode(',', $stationFilter);
+            $vehicleIDs = array_keys($vehicleData);
+            if (!empty($vehicleIDs)) {
+                $res = sql_query(
+                    "SELECT iVehicleID FROM vehicle_station_assoc
+                     WHERE iFlt_StationID IN ($stationIn)
+                     AND iVehicleID IN (" . implode(',', array_map('intval', $vehicleIDs)) . ")"
+                );
+                while ($r = sql_fetch_assoc($res)) {
+                    $vehicleStationMap[intval($r['iVehicleID'])] = true;
+                }
+            }
+        }
+
         $vehicles = [];
         $currentlyAssigned = [];
         $availableVehicles = [];
 
         foreach ($vehicleData as $vehicleID => $vehData) {
+            // Restrict to the logged-in vendor's own vehicles/drivers
+            if ($vendorID > 0 && intval($vehData['VENDOR_ID'] ?? 0) !== $vendorID) {
+                continue;
+            }
+
+            // Restrict to vehicles mapped to the effective station(s)
+            if (!empty($stationFilter)) {
+                if (!isset($vehicleStationMap[intval($vehicleID)])) {
+                    continue;
+                }
+                // Note: driver station check intentionally removed — a vehicle assigned to
+                // the station is sufficient; the driver follows the vehicle assignment.
+            }
+
             // Apply keyword filter if provided (matches vehicle reg no, name, or driver name)
             if (!empty($keyword)) {
                 $keywordMatch = false;
@@ -1645,7 +1799,8 @@ if (!$distance) {
         }
 
         // Check if booking exists and is active
-        $bookingCheckSql = "SELECT iFleet_BookingID, vName,vMobileNo, vPickUpTime,vPickUpLocation, vBookingCode FROM fleet_booking 
+        $bookingCheckSql = "SELECT iFleet_BookingID, vName, vMobileNo, vPickUpTime, vPickUpLocation, vBookingCode, iFleet_StationID
+                           FROM fleet_booking 
                            WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
         $bookingCheckRes = sql_query($bookingCheckSql);
 
@@ -1690,6 +1845,33 @@ if (!$distance) {
         }
 
         $driverData = sql_fetch_assoc($driverCheckRes);
+
+        $bookingStationID = intval($bookingData['iFleet_StationID'] ?? 0);
+        if ($bookingStationID > 0) {
+            $vehicleAtStation = intval(GetXFromYID(
+                "SELECT COUNT(*) FROM vehicle_station_assoc
+                 WHERE iVehicleID = $iVehicleID AND iFlt_StationID = $bookingStationID"
+            ));
+            if ($vehicleAtStation <= 0) {
+                echo json_encode([
+                    "error" => ["message" => "Vehicle does not belong to this booking station"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+
+            $driverAtStation = intval(GetXFromYID(
+                "SELECT COUNT(*) FROM driver_station_assoc
+                 WHERE iDriverID = $iDriverID AND iFlt_StationID = $bookingStationID"
+            ));
+            if ($driverAtStation <= 0) {
+                echo json_encode([
+                    "error" => ["message" => "Driver does not belong to this booking station"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+        }
 
         // Check if vehicle is already assigned to another booking at the same time
         $conflictCheckSql = "SELECT iFleet_BookingID, vName FROM fleet_booking 
@@ -1836,6 +2018,117 @@ if (!$distance) {
 
 
 
+
+    // ===================== CASE: RESENT_OTP =====================
+    case 'RESENT_OTP':
+        $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
+
+        if ($iFleet_BookingID <= 0) {
+            echo json_encode([
+                "error" => ["message" => "Booking ID is required"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $bookingCheckSql = "SELECT fb.iFleet_BookingID, fb.vName, fb.vMobileNo, fb.vPickUpTime, fb.vPickUpLocation,
+                                   fb.vBookingCode, fb.iVehicleID, fb.iDriverID,
+                                   v.vRnum, d.vName AS driverName, d.vMobileNum, d.vDeviceToken
+                            FROM fleet_booking fb
+                            LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID
+                            LEFT JOIN driver d ON fb.iDriverID = d.iDriverID
+                            WHERE fb.iFleet_BookingID = $iFleet_BookingID AND fb.cStatus = 'A'
+                            LIMIT 1";
+        $bookingCheckRes = sql_query($bookingCheckSql);
+
+        if (sql_num_rows($bookingCheckRes) == 0) {
+            echo json_encode([
+                "error" => ["message" => "Booking not found or cancelled"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $bookingData = sql_fetch_assoc($bookingCheckRes);
+        $iVehicleID = intval($bookingData['iVehicleID'] ?? 0);
+        $iDriverID = intval($bookingData['iDriverID'] ?? 0);
+
+        if ($iVehicleID <= 0 || $iDriverID <= 0) {
+            echo json_encode([
+                "error" => ["message" => "Vehicle and driver must be assigned before resenting OTP"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if (empty($bookingData['vRnum']) || empty($bookingData['driverName'])) {
+            echo json_encode([
+                "error" => ["message" => "Assigned vehicle or driver not found"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $vMobileNo = $bookingData['vMobileNo'] ?? '';
+        $vName = db_output2($bookingData['vName']) ?? '';
+        $vPickUpLocation = db_output2($bookingData['vPickUpLocation']) ?? '';
+        $pickup_time = !empty($bookingData['vPickUpTime']) ? date('h:i A', strtotime($bookingData['vPickUpTime'])) : '';
+        $booking_code = $bookingData['vBookingCode'] ?? '';
+        $dtAdded = NOW;
+
+        if (empty($vMobileNo)) {
+            echo json_encode([
+                "error" => ["message" => "Passenger mobile number not found"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if (empty($booking_code)) {
+            echo json_encode([
+                "error" => ["message" => "Booking OTP/code not found"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        // Resend WhatsApp allocation message (includes booking OTP/code)
+        SendVehAllocationMessage(
+            $vMobileNo,
+            db_input($vName),
+            db_input($bookingData['driverName']),
+            $bookingData['vRnum'],
+            $vPickUpLocation,
+            $pickup_time,
+            $booking_code
+        );
+
+        sql_query("
+            INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)
+            VALUES ('C', '+91', '$vMobileNo', 'WA', '$dtAdded', $user_id)
+        ");
+
+        // Resend FCM notification to driver
+        $deviceToken = $bookingData['vDeviceToken'] ?? '';
+        $phoneNo = $bookingData['vMobileNum'] ?? '';
+        $vNotifiText = "New trip assigned: Pick up " . db_input($vName) . " from " . $vPickUpLocation . " at " . $pickup_time;
+
+        if (!empty($deviceToken)) {
+            createNotification1($iDriverID, $deviceToken, $phoneNo, $iFleet_BookingID, $vNotifiText);
+
+            $title = "Trip Assigned";
+            $body = "Pick up " . db_input($vName) . " from " . $vPickUpLocation . " at " . $pickup_time;
+            sendFcmNotification2($deviceToken, $iFleet_BookingID, $title, $body);
+        }
+
+        echo json_encode([
+            "data" => [
+                "message" => "OTP resent successfully",
+                "bookingId" => $iFleet_BookingID
+            ],
+            "statusCode" => 200
+        ]);
+        break;
 
     // ===================== CASE: SEND_TRIP_DATA =====================
     case 'SEND_TRIP_DATA':
@@ -2221,6 +2514,8 @@ if (!$distance) {
             $vehicleCategoryFilterOpt[] = ['id' => intval($id), 'name' => $name];
         }
 
+        $vendorStationOpts = getFleetVendorStationOpts();
+
         $optArr = [
             "bookedForOpt" => $bookedForOpt,
             // "bookedByOpt" => $bookedByOpt,
@@ -2238,7 +2533,9 @@ if (!$distance) {
             "bookedForFilterOpt" => $bookedForFilterOpt,
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
             "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
-            "locOpts" => $locOpts
+            "locOpts" => $locOpts,
+            "stationVendorOpt" => $vendorStationOpts['stationVendorOpt'],
+            "vendorOpt" => $vendorStationOpts['vendorOpt']
             //  "staffFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($staff) { return ['id' => $staff['id'], 'name' => $staff['name']]; }, $staffOpt)),
             // "guestFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($guest) { return ['id' => $guest['id'], 'name' => $guest['name']]; }, $guestOpts))
         ];

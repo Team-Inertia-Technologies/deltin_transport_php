@@ -562,6 +562,78 @@ function checkDuplicateTrip($routeID, $tripDateTime)
         'message' => 'Trip already exists for this route, date and time'
     ];
 }
+function getVendorIDForUser($user_id)
+{
+    $user_id = intval($user_id);
+    if ($user_id <= 0 || !checkUserModuleAccess($user_id, 'FLEET_VENDOR_SPECIFIC_REQUEST')) {
+        return 0;
+    }
+
+    $userRefRes = sql_query("SELECT cRefSrcType, iRefID FROM users WHERE iUserID = $user_id AND cStatus = 'A' LIMIT 1");
+    if (sql_num_rows($userRefRes) == 0) {
+        return 0;
+    }
+
+    $userRefRow = sql_fetch_assoc($userRefRes);
+    if (($userRefRow['cRefSrcType'] ?? '') === 'V' && intval($userRefRow['iRefID'] ?? 0) > 0) {
+        return intval($userRefRow['iRefID']);
+    }
+
+    return 0;
+}
+
+function getVendorUserStations($user_id)
+{
+    $user_id = intval($user_id);
+    if ($user_id <= 0) {
+        return [];
+    }
+    $res = sql_query(
+        "SELECT iStationID FROM users_station_assoc WHERE iUserID = $user_id"
+    );
+    $stations = [];
+    while ($row = sql_fetch_assoc($res)) {
+        $stationID = intval($row['iStationID']);
+        if ($stationID > 0) {
+            $stations[] = $stationID;
+        }
+    }
+    return $stations;
+}
+
+function getBookingStationID($bookingId)
+{
+    $bookingId = intval($bookingId);
+    if ($bookingId <= 0) {
+        return 0;
+    }
+
+    return intval(GetXFromYID(
+        "SELECT iFleet_StationID FROM fleet_booking WHERE iFleet_BookingID = $bookingId AND cStatus != 'X'"
+    ));
+}
+
+function getStationEntityMap($stationID, $assocTable, $entityColumn, $entityIds)
+{
+    $stationID = intval($stationID);
+    $map = [];
+    $entityIds = array_values(array_filter(array_map('intval', $entityIds)));
+
+    if ($stationID <= 0 || empty($entityIds)) {
+        return $map;
+    }
+
+    $res = sql_query(
+        "SELECT $entityColumn FROM $assocTable
+         WHERE iFlt_StationID = $stationID AND $entityColumn IN (" . implode(',', $entityIds) . ")"
+    );
+
+    while ($row = sql_fetch_assoc($res)) {
+        $map[intval($row[$entityColumn])] = true;
+    }
+
+    return $map;
+}
 
 // function sendFcmNotification($deviceToken, $name, $pic, $body, $RM_ID, $senderID)
 // {

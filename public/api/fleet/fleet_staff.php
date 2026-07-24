@@ -81,8 +81,7 @@ switch ($mode) {
 
         $iFStaffID = intval($_REQUEST['iFStaffID']);
 
-        $res = sql_query("SELECT iFStaffID,vCode,vName,vMobile,iDepartmentID,
-        iUserID,cStatus FROM fleet_staff WHERE iFStaffID = $iFStaffID AND cStatus != 'X'");
+        $res = sql_query("SELECT iFStaffID,vCode,vName,vMobile,iDepartmentID,iUserID,cStatus FROM fleet_staff WHERE iFStaffID = $iFStaffID AND cStatus != 'X'");
 
         if (sql_num_rows($res) == 0) {
             echo json_encode([
@@ -112,8 +111,7 @@ switch ($mode) {
             ["id" => 0, "name" => "Choose"]
         ];
 
-        $departmentResult = sql_query("
-    SELECT iDepartmentID, vName FROM department WHERE cStatus = 'A' ORDER BY vName");
+        $departmentResult = sql_query("SELECT iDepartmentID, vName FROM department WHERE cStatus = 'A' ORDER BY vName");
 
         while ($row = sql_fetch_assoc($departmentResult)) {
             $departments[] = [

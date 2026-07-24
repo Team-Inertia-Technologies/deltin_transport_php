@@ -874,4 +874,7 @@ function GetCMBookings($cond='', $user_id = ''){
 	
 }
 //CM Functions
+
+
+
 ?>
