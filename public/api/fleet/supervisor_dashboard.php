@@ -255,7 +255,35 @@ switch ($mode) {
                 'routeName'     => $row['vRouteName']
             ];
         }
-        $stationArr = [['id' => 0, 'name' => 'Choose', 'routes' => []]];
+
+        $fleetVendorArr = [];
+
+        $fleetVendorResult = sql_query("
+            SELECT DISTINCT
+                vsa.iFlt_StationID,
+                vd.iVendorID,
+                vd.vName
+            FROM vehicle_station_assoc vsa
+            INNER JOIN vehicle vh
+                ON vh.iVehicleID = vsa.iVehicleID
+            INNER JOIN vendor vd
+                ON vd.iVendorID = vh.iVendorID
+            WHERE vh.cStatus = 'A'
+              AND vd.cStatus = 'A'
+              $stationCond
+            ORDER BY vsa.iFlt_StationID, vd.vName
+        ");
+        
+        while ($row = sql_fetch_assoc($fleetVendorResult)) {
+            $stationId = (int) $row['iFlt_StationID'];
+        
+            $fleetVendorArr[$stationId][] = [
+                'id'   => (int) $row['iVendorID'],
+                'name' => $row['vName']
+            ];
+        }
+
+        $stationArr = [['id' => 0, 'name' => 'Choose', 'vendors' => [], 'routes' => []]];
 
         $FLEET_STATION = GetXArrFromYID(
             "SELECT iFlt_StationID, vName
@@ -267,12 +295,22 @@ switch ($mode) {
         );
 
         foreach ($FLEET_STATION as $id => $name) {
+
+        $stationVendors = [];
+
             $stationArr[] = [
                 'id' => $id,
                 'name' => $name,
+                'vendors' => $fleetVendorArr[$id] ?? [],
                 'routes' => isset($fleetRateArr[$id]) ? $fleetRateArr[$id] : []
             ];
-        }        
+        }    
+        
+        $vendorArr = [['id' => 0, 'name' => 'Choose']];
+        $VENDOR_ARR = GetXArrFromYID("select iVendorID, vName from vendor where cStatus = 'A' order by vName", 3);
+        foreach ($VENDOR_ARR as $id => $name) {
+            $vendorArr[] = ['id' => $id, 'name' => $name];
+        }
 
         $optArr = [
             "requestTypeArr" => $requestTypeArr,
@@ -283,6 +321,7 @@ switch ($mode) {
             "vehiStatusArr" => $vehiStatusArr,
             "vehiStatusLocArr" => $vehiStatusLocArr,
             "stationArr" => $stationArr,
+            "vendorArr" => $vendorArr,
             "locationArr" => $LOCATION_ARR,
             "refreshRequestStreamTime" => (int) $refreshRequestStreamTime,
             "refreshVehicleComponentTime" => (int) $refreshVehicleComponentTime,
@@ -356,6 +395,7 @@ switch ($mode) {
         $FLEET_STAFF_ARR = GetXArrFromYID("select iFStaffID, vName from fleet_staff order by vName", 3);
         $FLEET_CATEGORY_ARR = GetXArrFromYID("select iFleet_BkCatID, vName from fleet_bookingcategory order by vName", 3);
         $PROPERTY_ARR = GetXArrFromYID("select iPropertyID, vName from property order by iRank", 3);
+        $VENDOR_ARR = GetXArrFromYID("select iVendorID, vName from vendor order by iRank", 3);
         $VEHICLE_CAT_ARR = GetXArrFromYID("select iVCatID, vName from vehicle_category order by iRank", 3);
         $TRAVEL_PURPOSE_ARR = GetXArrFromYID("select iFleet_TrvPurID, vName from fleet_travelpurpose order by iRank", 3);
         $TRAVEL_TYPE_ARR = GetXArrFromYID("select iFleet_TrvTypeID, vName from fleet_traveltype order by iRank", 3);
@@ -429,7 +469,7 @@ switch ($mode) {
         }
 
         // Fetch booking data
-        $bookingSql = "select iFleet_BookingID, vBookingCode, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments, iFleet_StationID, iFleet_RateID from fleet_booking where 1 $cond and cType NOT IN ('C','S','G','P','R') and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+        $bookingSql = "select iFleet_BookingID, vBookingCode, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments, iFleet_StationID, iFleet_RateID, iVendorID from fleet_booking where 1 $cond and cType NOT IN ('C','S','G','P','R') and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         //echo $bookingSql."<br>";
         $bookingRes = sql_query($bookingSql);
 
@@ -528,6 +568,8 @@ switch ($mode) {
                 'borderColor' => $border,
                 'fleetRateId' => (int) $row['iFleet_RateID'],
                 'fleetStationId' => (int) $row['iFleet_StationID'],
+                'vendorId' => (int) $row['iVendorID'],
+                'vendorName' => db_output2($VENDOR_ARR[$row['iVendorID']] ?? ''),
                 'allocationStatus' => $allocationStatus
             ];
         }
