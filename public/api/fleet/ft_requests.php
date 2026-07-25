@@ -1435,6 +1435,7 @@ if (!$distance) {
         $categoryID = intval($_REQUEST['categoryID'] ?? 0);
         $typeID = intval($_REQUEST['typeID'] ?? 0);
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
+        $stationID = intval($_REQUEST['stationID'] ?? 0);
         $status = (isset($_REQUEST['status']) && $_REQUEST['status'] != 0) ? $_REQUEST['status'] : '';
         // error_log("status:  $status");
 
@@ -1487,10 +1488,38 @@ if (!$distance) {
             }
         }
 
-        // Build vehicle/driver station maps:
-        // - For vendor users: filter by their own assigned stations (from users_station_assoc)
-        // - For others: filter by the booking station as before
+        // Station dropdown (vendor users only see their assigned stations)
+        $stationOpt = [['id' => 0, 'name' => 'All']];
+        $stationOptSql = "SELECT iFlt_StationID, vName FROM fleet_station WHERE cStatus='A'";
         if ($vendorID > 0 && !empty($vendorUserStations)) {
+            $stationOptSql .= " AND iFlt_StationID IN (" . implode(',', array_map('intval', $vendorUserStations)) . ")";
+        }
+        $stationOptSql .= " ORDER BY iRank";
+        $stationOptRes = sql_query($stationOptSql);
+        while ($stationRow = sql_fetch_assoc($stationOptRes)) {
+            $stationOpt[] = [
+                'id' => intval($stationRow['iFlt_StationID']),
+                'name' => db_output2($stationRow['vName'])
+            ];
+        }
+
+        // Build vehicle station filter:
+        // - Explicit stationID from request takes priority
+        // - Vendor users: their assigned stations
+        // - Otherwise: booking station (when stationID not explicitly sent as All)
+        if ($stationID > 0) {
+            if ($vendorID > 0 && !empty($vendorUserStations) && !in_array($stationID, $vendorUserStations)) {
+                echo json_encode([
+                    "error" => ["message" => "Access denied"],
+                    "statusCode" => 403
+                ]);
+                exit;
+            }
+            $stationFilter = [$stationID];
+        } elseif (isset($_REQUEST['stationID']) && $stationID === 0) {
+            // Explicit All
+            $stationFilter = ($vendorID > 0 && !empty($vendorUserStations)) ? $vendorUserStations : [];
+        } elseif ($vendorID > 0 && !empty($vendorUserStations)) {
             $stationFilter = $vendorUserStations;
         } elseif ($bookingStationID > 0) {
             $stationFilter = [$bookingStationID];
@@ -1765,7 +1794,8 @@ if (!$distance) {
                 "vehicleCategories" => $vehicleCategories,
                 "vehicles" => $vehicles,
                 "vehicleTypeOpt" => $vehicleTypeOpt,
-                "tripStatusOpts" => $tripStatusOpts
+                "tripStatusOpts" => $tripStatusOpts,
+                "stationOpt" => $stationOpt
                 //  "requestTypeArr" => $requestTypeArr
             ],
             "statusCode" => 200
