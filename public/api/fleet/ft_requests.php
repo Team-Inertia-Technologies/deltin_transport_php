@@ -1259,7 +1259,9 @@ if (!$distance) {
                 v.vRnum as assignedVehicleRegNo,
                 vcat.vName as assignedVehicleCategoryName,
                 dr.vName as assignedDriverName,
-                dr.vMobileNum as assignedDriverMobile
+                dr.vMobileNum as assignedDriverMobile,
+                fst.vName as stationName,
+                vend.vName as vendorName
             FROM fleet_booking fb
             LEFT JOIN fleet_bookingcategory fbc ON fb.iFleet_BKCatID = fbc.iFleet_BkCatID
             LEFT JOIN property p ON fb.iPropertyID = p.iPropertyID
@@ -1272,6 +1274,8 @@ if (!$distance) {
             LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
             LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID AND vcat.cStatus = 'A'
             LEFT JOIN driver dr ON fb.iDriverID = dr.iDriverID AND dr.cStatus = 'A'
+            LEFT JOIN fleet_station fst ON fb.iFleet_StationID = fst.iFlt_StationID
+            LEFT JOIN vendor vend ON fb.iVendorID = vend.iVendorID
             WHERE fb.iFleet_BookingID = $iFleet_BookingID AND fb.cStatus != 'X'
             LIMIT 1
         ";
@@ -1406,7 +1410,10 @@ if (!$distance) {
             'bookingStatus' => isset($booking['bookingStatus']) ? $booking['bookingStatus'] : 'C',
             'canCancel' => $canCancel,
             'rateID' => intval($booking['iFleet_RateID']),
-            'stationID' => intval($booking['iFleet_StationID'])
+            'stationID' => intval($booking['iFleet_StationID'] ?? 0),
+            'stationName' => db_output2($booking['stationName'] ?? ''),
+            'vendorID' => intval($booking['iVendorID'] ?? 0),
+            'vendorName' => db_output2($booking['vendorName'] ?? '')
             // 'tripStatus' => isset($FLEET_TRIP_STATUS[$booking['currentStatus']]) ? $FLEET_TRIP_STATUS[$booking['currentStatus']] : 'Not Started'
             // "status" => $booking['currentStatus']
         ];
