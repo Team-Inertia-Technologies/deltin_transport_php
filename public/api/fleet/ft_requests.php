@@ -1837,21 +1837,21 @@ if (!$distance) {
             exit;
         }
 
-        if ($iFleet_StationID <= 0) {
-            echo json_encode([
-                "error" => ["message" => "Station is required"],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
+        // if ($iFleet_StationID <= 0) {
+        //     echo json_encode([
+        //         "error" => ["message" => "Station is required"],
+        //         "statusCode" => 400
+        //     ]);
+        //     exit;
+        // }
 
-        if ($iVendorID <= 0) {
-            echo json_encode([
-                "error" => ["message" => "Vendor is required"],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
+        // if ($iVendorID <= 0) {
+        //     echo json_encode([
+        //         "error" => ["message" => "Vendor is required"],
+        //         "statusCode" => 400
+        //     ]);
+        //     exit;
+        // }
 
         // Validate station exists and is active
         $stationExists = intval(GetXFromYID(
