@@ -855,31 +855,40 @@ sql_query($deallocateDriverSql);
     case 'DRIVER_POPUP':
         $keyword = db_input($_REQUEST['keyword'] ?? '');
         $type = intval($_REQUEST['type'] ?? 0);
+        $stationID = intval($_REQUEST['stationID'] ?? 0);
 
-        $whereConditions = ["cStatus = 'A'"];
+        $whereConditions = ["d.cStatus = 'A'"];
 
         // If the logged-in user is a vendor, restrict to that vendor's drivers only
         $vendorID = getVendorIDForUser($user_id);
         if ($vendorID > 0) {
-            $whereConditions[] = "iVendorID = $vendorID";
+            $whereConditions[] = "d.iVendorID = $vendorID";
         }
         
         // Add keyword search (search in driver name or mobile number)
         if (!empty($keyword)) {
-            $whereConditions[] = "(UPPER(vName) LIKE UPPER('%$keyword%') OR vMobileNum LIKE '%$keyword%')";
+            $whereConditions[] = "(UPPER(d.vName) LIKE UPPER('%$keyword%') OR d.vMobileNum LIKE '%$keyword%')";
         }
 
         if ($type > 0) {
-            $whereConditions[] = "iType = $type";
+            $whereConditions[] = "d.iType = $type";
+        }
+
+        // If stationID is sent, only return drivers mapped to that station
+        if ($stationID > 0) {
+            $whereConditions[] = "dsa.iFlt_StationID = $stationID";
         }
         
         $whereClause = implode(' AND ', $whereConditions);
 
         // Get list of active drivers with id, name, and phone number
-        $driverSql = "SELECT iDriverID, vName, vMobileNum, iType 
-                      FROM driver 
-                      WHERE $whereClause 
-                      ORDER BY vName";
+        $driverSql = "SELECT DISTINCT d.iDriverID, d.vName, d.vMobileNum, d.iType 
+                      FROM driver d";
+        if ($stationID > 0) {
+            $driverSql .= " INNER JOIN driver_station_assoc dsa ON d.iDriverID = dsa.iDriverID";
+        }
+        $driverSql .= " WHERE $whereClause 
+                      ORDER BY d.vName";
         $driverRes = sql_query($driverSql);
 
         $drivers = [];

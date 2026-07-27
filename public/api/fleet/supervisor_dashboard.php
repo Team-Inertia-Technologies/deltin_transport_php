@@ -255,7 +255,35 @@ switch ($mode) {
                 'routeName'     => $row['vRouteName']
             ];
         }
-        $stationArr = [['id' => 0, 'name' => 'Choose', 'routes' => []]];
+
+        $fleetVendorArr = [];
+
+        $fleetVendorResult = sql_query("
+            SELECT DISTINCT
+                vsa.iFlt_StationID,
+                vd.iVendorID,
+                vd.vName
+            FROM vehicle_station_assoc vsa
+            INNER JOIN vehicle vh
+                ON vh.iVehicleID = vsa.iVehicleID
+            INNER JOIN vendor vd
+                ON vd.iVendorID = vh.iVendorID
+            WHERE vh.cStatus = 'A'
+              AND vd.cStatus = 'A'
+              $stationCond
+            ORDER BY vsa.iFlt_StationID, vd.vName
+        ");
+        
+        while ($row = sql_fetch_assoc($fleetVendorResult)) {
+            $stationId = (int) $row['iFlt_StationID'];
+        
+            $fleetVendorArr[$stationId][] = [
+                'id'   => (int) $row['iVendorID'],
+                'name' => $row['vName']
+            ];
+        }
+
+        $stationArr = [['id' => 0, 'name' => 'Choose', 'vendors' => [], 'routes' => []]];
 
         $FLEET_STATION = GetXArrFromYID(
             "SELECT iFlt_StationID, vName
@@ -267,12 +295,22 @@ switch ($mode) {
         );
 
         foreach ($FLEET_STATION as $id => $name) {
+
+        $stationVendors = [];
+
             $stationArr[] = [
                 'id' => $id,
                 'name' => $name,
+                'vendors' => $fleetVendorArr[$id] ?? [],
                 'routes' => isset($fleetRateArr[$id]) ? $fleetRateArr[$id] : []
             ];
-        }        
+        }    
+        
+        $vendorArr = [['id' => 0, 'name' => 'Choose']];
+        $VENDOR_ARR = GetXArrFromYID("select iVendorID, vName from vendor where cStatus = 'A' order by vName", 3);
+        foreach ($VENDOR_ARR as $id => $name) {
+            $vendorArr[] = ['id' => $id, 'name' => $name];
+        }
 
         $optArr = [
             "requestTypeArr" => $requestTypeArr,
@@ -283,6 +321,7 @@ switch ($mode) {
             "vehiStatusArr" => $vehiStatusArr,
             "vehiStatusLocArr" => $vehiStatusLocArr,
             "stationArr" => $stationArr,
+            "vendorArr" => $vendorArr,
             "locationArr" => $LOCATION_ARR,
             "refreshRequestStreamTime" => (int) $refreshRequestStreamTime,
             "refreshVehicleComponentTime" => (int) $refreshVehicleComponentTime,
@@ -356,6 +395,7 @@ switch ($mode) {
         $FLEET_STAFF_ARR = GetXArrFromYID("select iFStaffID, vName from fleet_staff order by vName", 3);
         $FLEET_CATEGORY_ARR = GetXArrFromYID("select iFleet_BkCatID, vName from fleet_bookingcategory order by vName", 3);
         $PROPERTY_ARR = GetXArrFromYID("select iPropertyID, vName from property order by iRank", 3);
+        $VENDOR_ARR = GetXArrFromYID("select iVendorID, vName from vendor order by iRank", 3);
         $VEHICLE_CAT_ARR = GetXArrFromYID("select iVCatID, vName from vehicle_category order by iRank", 3);
         $TRAVEL_PURPOSE_ARR = GetXArrFromYID("select iFleet_TrvPurID, vName from fleet_travelpurpose order by iRank", 3);
         $TRAVEL_TYPE_ARR = GetXArrFromYID("select iFleet_TrvTypeID, vName from fleet_traveltype order by iRank", 3);
@@ -429,7 +469,7 @@ switch ($mode) {
         }
 
         // Fetch booking data
-        $bookingSql = "select iFleet_BookingID, vBookingCode, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments, iFleet_StationID, iFleet_RateID from fleet_booking where 1 $cond and cType NOT IN ('C','S','G','P','R') and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+        $bookingSql = "select iFleet_BookingID, vBookingCode, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments, iFleet_StationID, iFleet_RateID, iVendorID from fleet_booking where 1 $cond and cType NOT IN ('C','S','G','P','R') and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         //echo $bookingSql."<br>";
         $bookingRes = sql_query($bookingSql);
 
@@ -528,6 +568,8 @@ switch ($mode) {
                 'borderColor' => $border,
                 'fleetRateId' => (int) $row['iFleet_RateID'],
                 'fleetStationId' => (int) $row['iFleet_StationID'],
+                'vendorId' => (int) $row['iVendorID'],
+                'vendorName' => db_output2($VENDOR_ARR[$row['iVendorID']] ?? ''),
                 'allocationStatus' => $allocationStatus
             ];
         }
@@ -685,10 +727,20 @@ switch ($mode) {
         $drivertype = dashboardSqlString($_REQUEST['driverType'] ?? '');
         $category = dashboardSqlString($_REQUEST['category'] ?? '');
         $status = dashboardSqlString($_REQUEST['status'] ?? '');
+        //$vendorId = dashboardSqlString($_REQUEST['vendorId'] ?? '');
+        //$stationId = dashboardSqlString($_REQUEST['stationId'] ?? '');
         $from = dashboardRequestTime('fromTime', strtotime(date('Y-m-d H:00:00')), ':00');
         $to = dashboardRequestTime('toTime', strtotime('+4 hours'), ':59');
         //$from = date("H:i:s", strtotime($_REQUEST['from'])) ?? '';
         //$to = date("H:i:s", strtotime($_REQUEST['to'])) ?? '';
+
+        $vendorId  = isset($_REQUEST['vendorId']) && $_REQUEST['vendorId'] !== ''
+        ? (int) $_REQUEST['vendorId']
+        : 0;
+    
+        $stationId = isset($_REQUEST['stationId']) && $_REQUEST['stationId'] !== ''
+        ? (int) $_REQUEST['stationId']
+        : 0;        
 
         $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cType IN ('F') AND cStatus = 'A' ORDER BY vName";
         $vehicleCategoryRes = sql_query($vehicleCategorySql);
@@ -737,7 +789,35 @@ switch ($mode) {
                           AND dsa.iFlt_StationID IN ($stations)
                     )";
             }
-        }       
+        } else {
+            // Admin login: optional vendorId / stationId filters from request
+            if (!empty($vendorId)) {
+                $cond_vendor .= " AND v.iVendorID = " . intval($vendorId);
+                $cond_vendor2 .= " AND iVendorID = " . intval($vendorId);
+                $driverVendorCond .= " AND d.iVendorID = " . intval($vendorId);
+            }
+            if (!empty($stationId)) {
+                $STATIONS_ARR = [intval($stationId)];
+                $stations = (string) intval($stationId);
+
+                $cond_vendor .= "
+                    AND EXISTS (
+                        SELECT 1
+                        FROM vehicle_station_assoc vsa
+                        WHERE vsa.iVehicleID = v.iVehicleID
+                          AND vsa.iFlt_StationID IN ($stations)
+                    )";
+
+                $cond_vendor2 .= " AND iFleet_StationID IN ($stations)";
+                $driverVendorCond .= "
+                    AND EXISTS (
+                        SELECT 1
+                        FROM driver_station_assoc dsa
+                        WHERE dsa.iDriverID = d.iDriverID
+                          AND dsa.iFlt_StationID IN ($stations)
+                    )";
+            }
+        }
 
         if (!empty($searchtxt)) {
             $cond .= " and ((vc.vName like '%$searchtxt%') or (d.vMobileNo like '%$searchtxt%') or (d.vName like '%$searchtxt%') or (v.vRnum like '%$searchtxt%'))";
@@ -868,12 +948,13 @@ foreach ($vehicleData as $vehicleID => $vehData) {
        apply scope/status filters here with continue.
     ========================== */
 
-    // Vendor scope
-    if (!empty($is_vendor) && (int)($vehData['VENDOR_ID'] ?? 0) !== (int)$is_vendor) {
+    // Vendor scope (vendor login, or admin-selected vendorId)
+    $scopeVendorId = !empty($is_vendor) ? (int)$is_vendor : (int)$vendorId;
+    if (!empty($scopeVendorId) && (int)($vehData['VENDOR_ID'] ?? 0) !== $scopeVendorId) {
         continue;
     }
 
-    // Station scope
+    // Station scope (vendor stations, or admin-selected stationId)
     if (!empty($STATIONS_ARR) && empty($vehicleStationMap[(int)$vehicleID])) {
         continue;
     }
