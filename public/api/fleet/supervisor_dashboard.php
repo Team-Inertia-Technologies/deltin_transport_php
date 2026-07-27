@@ -727,10 +727,20 @@ switch ($mode) {
         $drivertype = dashboardSqlString($_REQUEST['driverType'] ?? '');
         $category = dashboardSqlString($_REQUEST['category'] ?? '');
         $status = dashboardSqlString($_REQUEST['status'] ?? '');
+        //$vendorId = dashboardSqlString($_REQUEST['vendorId'] ?? '');
+        //$stationId = dashboardSqlString($_REQUEST['stationId'] ?? '');
         $from = dashboardRequestTime('fromTime', strtotime(date('Y-m-d H:00:00')), ':00');
         $to = dashboardRequestTime('toTime', strtotime('+4 hours'), ':59');
         //$from = date("H:i:s", strtotime($_REQUEST['from'])) ?? '';
         //$to = date("H:i:s", strtotime($_REQUEST['to'])) ?? '';
+
+        $vendorId  = isset($_REQUEST['vendorId']) && $_REQUEST['vendorId'] !== ''
+        ? (int) $_REQUEST['vendorId']
+        : 0;
+    
+        $stationId = isset($_REQUEST['stationId']) && $_REQUEST['stationId'] !== ''
+        ? (int) $_REQUEST['stationId']
+        : 0;        
 
         $vehicleCategorySql = "SELECT iVCatID, vName, iCapacity FROM vehicle_category WHERE cType IN ('F') AND cStatus = 'A' ORDER BY vName";
         $vehicleCategoryRes = sql_query($vehicleCategorySql);
@@ -779,7 +789,35 @@ switch ($mode) {
                           AND dsa.iFlt_StationID IN ($stations)
                     )";
             }
-        }       
+        } else {
+            // Admin login: optional vendorId / stationId filters from request
+            if (!empty($vendorId)) {
+                $cond_vendor .= " AND v.iVendorID = " . intval($vendorId);
+                $cond_vendor2 .= " AND iVendorID = " . intval($vendorId);
+                $driverVendorCond .= " AND d.iVendorID = " . intval($vendorId);
+            }
+            if (!empty($stationId)) {
+                $STATIONS_ARR = [intval($stationId)];
+                $stations = (string) intval($stationId);
+
+                $cond_vendor .= "
+                    AND EXISTS (
+                        SELECT 1
+                        FROM vehicle_station_assoc vsa
+                        WHERE vsa.iVehicleID = v.iVehicleID
+                          AND vsa.iFlt_StationID IN ($stations)
+                    )";
+
+                $cond_vendor2 .= " AND iFleet_StationID IN ($stations)";
+                $driverVendorCond .= "
+                    AND EXISTS (
+                        SELECT 1
+                        FROM driver_station_assoc dsa
+                        WHERE dsa.iDriverID = d.iDriverID
+                          AND dsa.iFlt_StationID IN ($stations)
+                    )";
+            }
+        }
 
         if (!empty($searchtxt)) {
             $cond .= " and ((vc.vName like '%$searchtxt%') or (d.vMobileNo like '%$searchtxt%') or (d.vName like '%$searchtxt%') or (v.vRnum like '%$searchtxt%'))";
@@ -910,12 +948,13 @@ foreach ($vehicleData as $vehicleID => $vehData) {
        apply scope/status filters here with continue.
     ========================== */
 
-    // Vendor scope
-    if (!empty($is_vendor) && (int)($vehData['VENDOR_ID'] ?? 0) !== (int)$is_vendor) {
+    // Vendor scope (vendor login, or admin-selected vendorId)
+    $scopeVendorId = !empty($is_vendor) ? (int)$is_vendor : (int)$vendorId;
+    if (!empty($scopeVendorId) && (int)($vehData['VENDOR_ID'] ?? 0) !== $scopeVendorId) {
         continue;
     }
 
-    // Station scope
+    // Station scope (vendor stations, or admin-selected stationId)
     if (!empty($STATIONS_ARR) && empty($vehicleStationMap[(int)$vehicleID])) {
         continue;
     }
