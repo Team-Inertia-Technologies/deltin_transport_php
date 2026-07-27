@@ -50,7 +50,7 @@ try {
 			exit;
 		}
 
-		$iRefIDVal = 'NULL';
+		$iRefIDVal = 0;
 		$cRefSrcTypeVal = 'NULL';
 		if ($cRefSrcTypePost === 'S') {
 			if (empty($cmbstaff)) {
@@ -135,8 +135,8 @@ try {
 	$cmbstationArr = !empty($cmbstationArr) ? array_values(array_map('intval', $cmbstationArr)) : [];
 
 	// Staff / Vendor reference
-	$iRefID = db_output($dataArr[0]->iRefID ?? '');
-	$cRefSrcType = db_output($dataArr[0]->cRefSrcType ?? '0');
+	$iRefID = db_output($dataArr[0]->iRefID ?? 0);
+	$cRefSrcType = db_output($dataArr[0]->cRefSrcType ?? '');
 	$cmbstaff = ($cRefSrcType === 'S') ? $iRefID : '';
 	$cmbvendor = ($cRefSrcType === 'V') ? $iRefID : '';
 	
@@ -279,11 +279,11 @@ try {
 				$newRefSrcType = 'V';
 			}
 
-			$origRefID = isset($original->iRefID) && $original->iRefID !== null ? (int)$original->iRefID : null;
+			$origRefID = isset($original->iRefID) && $original->iRefID !== 0 ? (int)$original->iRefID : 0;
 			$origRefSrcType = $original->cRefSrcType ?? null;
 
 			if ($newRefID !== $origRefID || $newRefSrcType !== $origRefSrcType) {
-				$update_fields[] = "iRefID = " . ($newRefID !== null ? intval($newRefID) : "NULL");
+				$update_fields[] = "iRefID = " . ($newRefID !== null ? intval($newRefID) : 0);
 				$update_fields[] = "cRefSrcType = " . ($newRefSrcType !== null ? "'" . db_input($newRefSrcType) . "'" : "NULL");
 			}
 		}
@@ -501,7 +501,7 @@ try {
 		$cmbstationArr = !empty($cmbstationArr) ? array_values(array_map('intval', $cmbstationArr)) : [];
 
 		// Staff / Vendor reference
-		$iRefID = db_output($dataArr[0]->iRefID ?? '');
+		$iRefID = db_output($dataArr[0]->iRefID ?? 0);
 		$cRefSrcType = db_output($dataArr[0]->cRefSrcType ?? '');
 		$cmbstaff = ($cRefSrcType === 'S') ? $iRefID : '';
 		$cmbvendor = ($cRefSrcType === 'V') ? $iRefID : '';
