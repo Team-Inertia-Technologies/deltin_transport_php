@@ -1837,69 +1837,58 @@ if (!$distance) {
             exit;
         }
 
-        // if ($iFleet_StationID <= 0) {
-        //     echo json_encode([
-        //         "error" => ["message" => "Station is required"],
-        //         "statusCode" => 400
-        //     ]);
-        //     exit;
-        // }
-
-        // if ($iVendorID <= 0) {
-        //     echo json_encode([
-        //         "error" => ["message" => "Vendor is required"],
-        //         "statusCode" => 400
-        //     ]);
-        //     exit;
-        // }
-
-        // Validate station exists and is active
-        $stationExists = intval(GetXFromYID(
-            "SELECT iFlt_StationID FROM fleet_station WHERE iFlt_StationID = $iFleet_StationID AND cStatus = 'A'"
-        ));
-        if ($stationExists <= 0) {
-            echo json_encode([
-                "error" => ["message" => "Station not found or inactive"],
-                "statusCode" => 404
-            ]);
-            exit;
+        // Station and vendor are optional; validate only when provided
+        if ($iFleet_StationID > 0) {
+            $stationExists = intval(GetXFromYID(
+                "SELECT iFlt_StationID FROM fleet_station WHERE iFlt_StationID = $iFleet_StationID AND cStatus = 'A'"
+            ));
+            if ($stationExists <= 0) {
+                echo json_encode([
+                    "error" => ["message" => "Station not found or inactive"],
+                    "statusCode" => 404
+                ]);
+                exit;
+            }
         }
 
-        // Validate vendor exists and is active
-        $vendorExists = intval(GetXFromYID(
-            "SELECT iVendorID FROM vendor WHERE iVendorID = $iVendorID AND cStatus = 'A'"
-        ));
-        if ($vendorExists <= 0) {
-            echo json_encode([
-                "error" => ["message" => "Vendor not found or inactive"],
-                "statusCode" => 404
-            ]);
-            exit;
+        if ($iVendorID > 0) {
+            $vendorExists = intval(GetXFromYID(
+                "SELECT iVendorID FROM vendor WHERE iVendorID = $iVendorID AND cStatus = 'A'"
+            ));
+            if ($vendorExists <= 0) {
+                echo json_encode([
+                    "error" => ["message" => "Vendor not found or inactive"],
+                    "statusCode" => 404
+                ]);
+                exit;
+            }
         }
 
-        // Vendor must belong to the selected station
-        $vendorAtStation = intval(GetXFromYID(
-            "SELECT COUNT(*) FROM vendor_station_assoc
-             WHERE iVendorID = $iVendorID AND iFlt_StationID = $iFleet_StationID"
-        ));
-        if ($vendorAtStation <= 0) {
-            echo json_encode([
-                "error" => ["message" => "Vendor does not belong to the selected station"],
-                "statusCode" => 400
-            ]);
-            exit;
+        // Vendor must belong to the selected station when both are provided
+        if ($iVendorID > 0 && $iFleet_StationID > 0) {
+            $vendorAtStation = intval(GetXFromYID(
+                "SELECT COUNT(*) FROM vendor_station_assoc
+                 WHERE iVendorID = $iVendorID AND iFlt_StationID = $iFleet_StationID"
+            ));
+            if ($vendorAtStation <= 0) {
+                echo json_encode([
+                    "error" => ["message" => "Vendor does not belong to the selected station"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
         }
 
         // Vendor users can only assign their own vendor
         $userVendorID = getVendorIDForUser($user_id);
-        if ($userVendorID > 0 && $userVendorID !== $iVendorID) {
+        if ($userVendorID > 0 && $iVendorID > 0 && $userVendorID !== $iVendorID) {
             echo json_encode([
                 "error" => ["message" => "Access denied"],
                 "statusCode" => 403
             ]);
             exit;
         }
-        if ($userVendorID > 0) {
+        if ($userVendorID > 0 && $iFleet_StationID > 0) {
             $userStations = getVendorUserStations($user_id);
             if (!empty($userStations) && !in_array($iFleet_StationID, $userStations)) {
                 echo json_encode([
@@ -1958,45 +1947,49 @@ if (!$distance) {
 
         $driverData = sql_fetch_assoc($driverCheckRes);
 
-        // Vehicle and driver must belong to the selected station
-        $vehicleAtStation = intval(GetXFromYID(
-            "SELECT COUNT(*) FROM vehicle_station_assoc
-             WHERE iVehicleID = $iVehicleID AND iFlt_StationID = $iFleet_StationID"
-        ));
-        if ($vehicleAtStation <= 0) {
-            echo json_encode([
-                "error" => ["message" => "Vehicle does not belong to the selected station"],
-                "statusCode" => 400
-            ]);
-            exit;
+        // Vehicle and driver must belong to the selected station when station is provided
+        if ($iFleet_StationID > 0) {
+            $vehicleAtStation = intval(GetXFromYID(
+                "SELECT COUNT(*) FROM vehicle_station_assoc
+                 WHERE iVehicleID = $iVehicleID AND iFlt_StationID = $iFleet_StationID"
+            ));
+            if ($vehicleAtStation <= 0) {
+                echo json_encode([
+                    "error" => ["message" => "Vehicle does not belong to the selected station"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+
+            $driverAtStation = intval(GetXFromYID(
+                "SELECT COUNT(*) FROM driver_station_assoc
+                 WHERE iDriverID = $iDriverID AND iFlt_StationID = $iFleet_StationID"
+            ));
+            if ($driverAtStation <= 0) {
+                echo json_encode([
+                    "error" => ["message" => "Driver does not belong to the selected station"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
         }
 
-        $driverAtStation = intval(GetXFromYID(
-            "SELECT COUNT(*) FROM driver_station_assoc
-             WHERE iDriverID = $iDriverID AND iFlt_StationID = $iFleet_StationID"
-        ));
-        if ($driverAtStation <= 0) {
-            echo json_encode([
-                "error" => ["message" => "Driver does not belong to the selected station"],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
-
-        // Vehicle and driver should match the selected vendor when they have a vendor set
-        if (intval($vehicleData['iVendorID'] ?? 0) > 0 && intval($vehicleData['iVendorID']) !== $iVendorID) {
-            echo json_encode([
-                "error" => ["message" => "Vehicle does not belong to the selected vendor"],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
-        if (intval($driverData['iVendorID'] ?? 0) > 0 && intval($driverData['iVendorID']) !== $iVendorID) {
-            echo json_encode([
-                "error" => ["message" => "Driver does not belong to the selected vendor"],
-                "statusCode" => 400
-            ]);
-            exit;
+        // Vehicle and driver should match the selected vendor when vendor is provided
+        if ($iVendorID > 0) {
+            if (intval($vehicleData['iVendorID'] ?? 0) > 0 && intval($vehicleData['iVendorID']) !== $iVendorID) {
+                echo json_encode([
+                    "error" => ["message" => "Vehicle does not belong to the selected vendor"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+            if (intval($driverData['iVendorID'] ?? 0) > 0 && intval($driverData['iVendorID']) !== $iVendorID) {
+                echo json_encode([
+                    "error" => ["message" => "Driver does not belong to the selected vendor"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
         }
 
         // Check if vehicle is already assigned to another booking at the same time
@@ -2046,13 +2039,20 @@ if (!$distance) {
         }
 
         $dtNow = NOW;
-        $updateSql = "UPDATE fleet_booking SET 
-                     iVehicleID = $iVehicleID,
-                     iDriverID = $iDriverID,
-                     iFleet_StationID = $iFleet_StationID,
-                     iVendorID = $iVendorID,
-                     iVehAssignedBy = $user_id,
-                      	dtVehAssigned = '$dtNow', vComments = '$vComments'
+        $updateParts = [
+            "iVehicleID = $iVehicleID",
+            "iDriverID = $iDriverID",
+            "iVehAssignedBy = $user_id",
+            "dtVehAssigned = '$dtNow'",
+            "vComments = '$vComments'"
+        ];
+        if ($iFleet_StationID > 0) {
+            $updateParts[] = "iFleet_StationID = $iFleet_StationID";
+        }
+        if ($iVendorID > 0) {
+            $updateParts[] = "iVendorID = $iVendorID";
+        }
+        $updateSql = "UPDATE fleet_booking SET " . implode(", ", $updateParts) . "
                      WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A'";
 
         $updateResult = sql_query($updateSql);
