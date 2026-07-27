@@ -1,6 +1,6 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// error_reporting(E_ALL);
+// ini_set('display_errors', 1);
 include "../../includes/common_api.php";
 
 header('Content-Type: application/json');
@@ -156,10 +156,10 @@ try {
             'message' => 'User Fetched successfully',
             'data' => [
 				'iUserID' => $user_id,
-				'DepartmentID' => $deptID,
+				'DepartmentID' => $deptID ? intval($deptID) : -1,
 				'DepartmenName' => GetXFromYID("SELECT vName FROM department WHERE iDepartmentID = '$deptID'"),
 				'cmbstation' => $cmbstationArr,
-				'ReportingTo' => $reportingTo,
+				'ReportingTo' => $reportingTo ? intval($reportingTo) : -1,
 				'ReportingToName' => GetXFromYID("SELECT vName FROM users WHERE iUserID = '$reportingTo'"),
 				'vName' => $txtname,
 				'vEmail' => $txtemail,
