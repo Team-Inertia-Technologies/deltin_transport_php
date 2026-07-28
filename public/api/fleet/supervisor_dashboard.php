@@ -87,6 +87,56 @@ function dashboardIntList($values)
     return implode(',', $values);
 }
 
+function getFleetVendorStationOpts()
+{
+ 
+    $stationVendorsMap = [];
+    $stationAssocSql = "SELECT vsa.iFlt_StationID AS iStationID, v.iVendorID, v.vName AS vendorName
+                        FROM vendor_station_assoc vsa
+                        INNER JOIN vendor v ON vsa.iVendorID = v.iVendorID AND v.cStatus = 'A'
+                        LEFT JOIN fleet_station fs ON vsa.iFlt_StationID = fs.iFlt_StationID AND fs.cStatus = 'A'
+                        ORDER BY fs.iRank, v.vName";
+    $stationAssocRes = sql_query($stationAssocSql);
+    while ($assocRow = sql_fetch_assoc($stationAssocRes)) {
+        $stationId = intval($assocRow['iStationID']);
+        if (!$stationId) continue;
+
+        if (!isset($stationVendorsMap[$stationId])) {
+            $stationVendorsMap[$stationId] = [];
+        }
+        $stationVendorsMap[$stationId][] = [
+            'id'   => intval($assocRow['iVendorID']),
+            'name' => db_output2($assocRow['vendorName'] ?? '')
+        ];
+    }
+
+    $AREA_ARR_RAW = GetXArrFromYID("SELECT iFlt_StationID, vName FROM fleet_station WHERE cStatus='A' ORDER BY iRank", "3");
+    $stationVendorOpt = [];
+    foreach ($AREA_ARR_RAW as $id => $label) {
+        $stationId = intval($id);
+        $stationVendorOpt[] = [
+            'id'      => $stationId,
+            'label'   => $label,
+            'vendors' => $stationVendorsMap[$stationId] ?? []
+        ];
+    }
+
+
+    $vendorOpt = [['id' => 0, 'name' => 'Choose']];
+    $vendorRes = sql_query("SELECT iVendorID, vName FROM vendor WHERE cStatus = 'A' ORDER BY vName");
+    while ($vendorRow = sql_fetch_assoc($vendorRes)) {
+        $vendorOpt[] = [
+            'id'   => intval($vendorRow['iVendorID']),
+            'name' => db_output2($vendorRow['vName'])
+        ];
+    }
+
+    return [
+        'stationVendorOpt' => $stationVendorOpt,
+        'vendorOpt'        => $vendorOpt
+    ];
+}
+
 switch ($mode) {
 
 
@@ -312,6 +362,8 @@ switch ($mode) {
             $vendorArr[] = ['id' => $id, 'name' => $name];
         }
 
+        $vendorStationOpts = getFleetVendorStationOpts();
+
         $optArr = [
             "requestTypeArr" => $requestTypeArr,
             "bookedForArr" => $bookedForOpt,
@@ -325,7 +377,9 @@ switch ($mode) {
             "locationArr" => $LOCATION_ARR,
             "refreshRequestStreamTime" => (int) $refreshRequestStreamTime,
             "refreshVehicleComponentTime" => (int) $refreshVehicleComponentTime,
-            "refreshActivityTimelineTime" => (int) $refreshActivityTimelineTime
+            "refreshActivityTimelineTime" => (int) $refreshActivityTimelineTime,
+            "stationVendorOpt" => $vendorStationOpts['stationVendorOpt'],
+            "vendorOpt" => $vendorStationOpts['vendorOpt']
         ];
 
 
