@@ -165,7 +165,13 @@ switch ($mode) {
     // ===================== CASE: MARK_TRIP_COMPLETE =====================
     case 'MARK_TRIP_COMPLETE':
 
-        if (!$token || !$booking_id) {
+        $booking_ids = $_REQUEST['id'] ?? [];
+        if (!is_array($booking_ids)) {
+            $booking_ids = [$booking_ids];
+        }
+        $booking_ids = array_values(array_filter(array_map('intval', $booking_ids)));
+
+        if (!$token || empty($booking_ids)) {
             http_response_code(400);
             echo json_encode([
                 "statusCode" => 400,
@@ -198,61 +204,71 @@ switch ($mode) {
         $vendorRow = sql_fetch_assoc($vendorRes);
         $vendorID  = intval($vendorRow['iRefID']);
 
-        // -------------------- VERIFY BOOKING BELONGS TO VENDOR --------------------
-        $bookingRes = sql_query(
-            "SELECT iDriverID, iVendorID FROM fleet_booking
-             WHERE iFleet_BookingID = $booking_id AND cStatus = 'A' LIMIT 1",
-            'BOOKING.DETAILS'
-        );
+        $NOW      = NOW;
+        $success  = [];
+        $failed   = [];
 
-        if (!sql_num_rows($bookingRes)) {
-            http_response_code(404);
-            echo json_encode([
-                "statusCode" => 404,
-                "error" => [
+        foreach ($booking_ids as $booking_id) {
+
+            // -------------------- VERIFY BOOKING BELONGS TO VENDOR --------------------
+            $bookingRes = sql_query(
+                "SELECT iDriverID, iVendorID FROM fleet_booking
+                 WHERE iFleet_BookingID = $booking_id AND cStatus = 'A' LIMIT 1",
+                'BOOKING.DETAILS'
+            );
+
+            if (!sql_num_rows($bookingRes)) {
+                $failed[] = [
+                    "id" => $booking_id,
                     "message" => "Booking not found."
-                ]
-            ]);
-            exit;
-        }
+                ];
+                continue;
+            }
 
-        $booking  = sql_fetch_assoc($bookingRes);
-        $driverID = intval($booking['iDriverID']);
+            $booking  = sql_fetch_assoc($bookingRes);
+            $driverID = intval($booking['iDriverID']);
 
-        if ($vendorID > 0 && intval($booking['iVendorID']) !== $vendorID) {
-            http_response_code(403);
-            echo json_encode([
-                "statusCode" => 403,
-                "error" => [
+            if ($vendorID > 0 && intval($booking['iVendorID']) !== $vendorID) {
+                $failed[] = [
+                    "id" => $booking_id,
                     "message" => "This booking does not belong to your fleet."
-                ]
-            ]);
-            exit;
+                ];
+                continue;
+            }
+
+            // -------------------- COMPLETE THE TRIP --------------------
+            $log_id = NextID('iLogID', 'fleet_booking_log');
+            $query  = "UPDATE fleet_booking SET cType='C', vDropTime = '$NOW' WHERE iFleet_BookingID='$booking_id' AND iDriverID='$driverID'";
+            sql_query("INSERT INTO fleet_booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, '$booking_id', 'C', 'Trip Compeleted', '$NOW', '$driverID', 'A')", 'TRIP.LOG');
+            sql_query($query, 'TRIP.COMPLETE');
+
+            if (sql_affected_rows() > 0) {
+                $success[] = $booking_id;
+            } else {
+                $failed[] = [
+                    "id" => $booking_id,
+                    "message" => "Failed to complete trip."
+                ];
+            }
         }
 
-        $NOW = NOW;
-
-        // -------------------- COMPLETE THE TRIP --------------------
-        $log_id = NextID('iLogID', 'fleet_booking_log');
-        $query  = "UPDATE fleet_booking SET cType='C', vDropTime = '$NOW' WHERE iFleet_BookingID='$booking_id' AND iDriverID='$driverID'";
-        sql_query("INSERT INTO fleet_booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, '$booking_id', 'C', 'Trip Compeleted', '$NOW', '$driverID', 'A')", 'TRIP.LOG');
-        $result = sql_query($query, 'TRIP.COMPLETE');
-
-        if (sql_affected_rows() > 0) {
+        if (count($success) > 0) {
             http_response_code(200);
             echo json_encode([
                 "statusCode" => 200,
                 "data" => [
-                     "message" => "Trip completed successfully."
-                ],
-               
+                    "message" => "Trip(s) completed successfully.",
+                    "completed" => $success,
+                    "failed" => $failed
+                ]
             ]);
         } else {
             http_response_code(400);
             echo json_encode([
                 "statusCode" => 400,
                 "error" => [
-                    "message" => "Failed to complete trip. Please check booking ID and driver ID."
+                    "message" => "Failed to complete trip(s).",
+                    "failed" => $failed
                 ]
             ]);
         }
