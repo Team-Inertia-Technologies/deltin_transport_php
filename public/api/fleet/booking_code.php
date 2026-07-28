@@ -162,6 +162,102 @@ switch ($mode) {
         }
         break;
 
+    // ===================== CASE: MARK_TRIP_COMPLETE =====================
+    case 'MARK_TRIP_COMPLETE':
+
+        if (!$token || !$booking_id) {
+            http_response_code(400);
+            echo json_encode([
+                "statusCode" => 400,
+                "error" => [
+                    "message" => "Missing token or booking id."
+                ]
+            ]);
+            exit;
+        }
+
+        $user_id = intval(DecodeParam($token));
+
+        // -------------------- VERIFY VENDOR USER --------------------
+        $vendorRes = sql_query(
+            "SELECT iRefID FROM users WHERE iUserID = $user_id AND cRefSrcType = 'V' AND cStatus = 'A' LIMIT 1",
+            'AUTH.VENDOR'
+        );
+
+        if (!sql_num_rows($vendorRes)) {
+            http_response_code(401);
+            echo json_encode([
+                "statusCode" => 401,
+                "error" => [
+                    "message" => "Invalid token or not a vendor user."
+                ]
+            ]);
+            exit;
+        }
+
+        $vendorRow = sql_fetch_assoc($vendorRes);
+        $vendorID  = intval($vendorRow['iRefID']);
+
+        // -------------------- VERIFY BOOKING BELONGS TO VENDOR --------------------
+        $bookingRes = sql_query(
+            "SELECT iDriverID, iVendorID FROM fleet_booking
+             WHERE iFleet_BookingID = $booking_id AND cStatus = 'A' LIMIT 1",
+            'BOOKING.DETAILS'
+        );
+
+        if (!sql_num_rows($bookingRes)) {
+            http_response_code(404);
+            echo json_encode([
+                "statusCode" => 404,
+                "error" => [
+                    "message" => "Booking not found."
+                ]
+            ]);
+            exit;
+        }
+
+        $booking  = sql_fetch_assoc($bookingRes);
+        $driverID = intval($booking['iDriverID']);
+
+        if ($vendorID > 0 && intval($booking['iVendorID']) !== $vendorID) {
+            http_response_code(403);
+            echo json_encode([
+                "statusCode" => 403,
+                "error" => [
+                    "message" => "This booking does not belong to your fleet."
+                ]
+            ]);
+            exit;
+        }
+
+        $NOW = NOW;
+
+        // -------------------- COMPLETE THE TRIP --------------------
+        $log_id = NextID('iLogID', 'fleet_booking_log');
+        $query  = "UPDATE fleet_booking SET cType='C', vDropTime = '$NOW' WHERE iFleet_BookingID='$booking_id' AND iDriverID='$driverID'";
+        sql_query("INSERT INTO fleet_booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, '$booking_id', 'C', 'Trip Compeleted', '$NOW', '$driverID', 'A')", 'TRIP.LOG');
+        $result = sql_query($query, 'TRIP.COMPLETE');
+
+        if (sql_affected_rows() > 0) {
+            http_response_code(200);
+            echo json_encode([
+                "statusCode" => 200,
+                "data" => [
+                     "message" => "Trip completed successfully."
+                ],
+               
+            ]);
+        } else {
+            http_response_code(400);
+            echo json_encode([
+                "statusCode" => 400,
+                "error" => [
+                    "message" => "Failed to complete trip. Please check booking ID and driver ID."
+                ]
+            ]);
+        }
+        break;
+
     // ===================== DEFAULT =====================
     default:
         http_response_code(400);
