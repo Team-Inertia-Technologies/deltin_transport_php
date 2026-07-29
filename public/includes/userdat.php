@@ -28,10 +28,26 @@ class userdat
 	var $sess_active;
 }
 
-$sess_id = session_id();
-if(empty($sess_id))
+if (session_status() === PHP_SESSION_NONE)
 {
-	ini_set('session.gc_maxlifetime', 3600);
-	session_start();
+	ini_set('session.gc_maxlifetime', '3600');
+
+	// Some deployments leave session.save_path empty. For file-based
+	// sessions, use PHP's writable temporary directory as a safe fallback.
+	if (ini_get('session.save_handler') === 'files' && trim(session_save_path()) === '')
+	{
+		$tempSessionPath = sys_get_temp_dir();
+		if (is_dir($tempSessionPath) && is_writable($tempSessionPath))
+		{
+			session_save_path($tempSessionPath);
+		}
+	}
+
+	// Do not corrupt JSON/API responses with a PHP warning.
+	if (!@session_start())
+	{
+		$sessionError = error_get_last();
+		error_log('Unable to start PHP session: ' . ($sessionError['message'] ?? 'unknown error'));
+	}
 }
 ?>
