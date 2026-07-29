@@ -629,6 +629,7 @@ if (!$distance) {
         $iVehicleCatID = intval($_REQUEST['vehiCat'] ?? 0);
         $vInstructions = db_input($_REQUEST['intruc'] ?? '');
         $vRemarks = db_input($_REQUEST['remarks'] ?? '');
+        $vTravelNotes = db_input($_REQUEST['travelNotes'] ?? '');
         $vLandmark = db_input($_REQUEST['landMark'] ?? '');
         // $tripType = intval($_REQUEST['tripType'] ?? 0);
         // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
@@ -702,7 +703,7 @@ if (!$distance) {
          $vBookingCode = $last_char;
 
         $cols = "iFleet_BookingID,vBookingCode,iBookedBy,vBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
-                 iFleet_BKCatID, vInstructions, vRemarks, vName, vMobileNo, iGuestID, iFStaffID,
+                 iFleet_BKCatID, vInstructions, vRemarks, vTravelNotes, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,iOriginal_Kms,
                  vDropLocation, vLatLong_From, vLatLong_To,vLandmark, iVehicleCatID, cDisposal, tReturnTime,
                  iVendorID, iFleet_StationID, dtAdded,iAdded_UserID,cStatus";
@@ -716,7 +717,7 @@ if (!$distance) {
         INSERT INTO fleet_booking ($cols)
         VALUES (
             $iFleet_BookingID1,'$vBookingCode',$iBookedBy, '" . db_input($bookedByName) . "','" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
-            $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
+            $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "', '" . db_input($vTravelNotes) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
             $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $distance,
             '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal,
             $iVendorID, $iFleet_StationID, '" . db_input($dtAdded) . "',$user_id,'A'
@@ -824,6 +825,7 @@ if (!$distance) {
             "vehiCat" => intval($booking['iVehicleCatID']),
             "intruc" => db_output2($booking['vInstructions']),
             "remarks" => db_output2($booking['vRemarks']),
+            "travelNotes" => db_output2($booking['vTravelNotes'] ?? ''),
             "guestID" => intval($booking['iGuestID']),
             "staffID" => intval($booking['iFStaffID']),
             "staff_dept" => isset($STAFF_DEPT_ARR[intval($booking['iFStaffID'])])
@@ -1063,6 +1065,7 @@ if (!$distance) {
         $iVehicleCatID = intval($_REQUEST['vehiCat'] ?? 0);
         $vInstructions = db_input($_REQUEST['intruc']) ?? '';
         $vRemarks = db_input($_REQUEST['remarks']) ?? '';
+        $vTravelNotes = db_input($_REQUEST['travelNotes'] ?? '');
 
         // $tripType = intval($_REQUEST['tripType'] ?? 0);
         // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
@@ -1130,6 +1133,7 @@ if (!$distance) {
                 iFleet_BKCatID = " . intval($iFleet_BKCatID) . ",
                 vInstructions = '" . $vInstructions . "',
                 vRemarks = '" . $vRemarks . "',
+                vTravelNotes = '" . $vTravelNotes . "',
                 vName = '" . $vName . "',
                 vMobileNo = '" . db_input($vMobileNo) . "',
                 iGuestID = " . intval($iGuestID) . ",
@@ -2075,8 +2079,19 @@ if (!$distance) {
             // Send WhatsApp
             SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $vPickUpLocation, $pickup_time, $booking_code);
 
+            // Send SMS
+            $message = urlencode('Hello ' . $vName . ', A driver has been assigned for your scheduled pickup. Driver Name: ' . db_output2($driverData['vName']) . ' Vehicle Number: ' . $vehicleData['vRnum'] . ' Driver Contact07314852425 Pickup Location: ' . $vPickUpLocation . ' Pickup Time: ' . $pickup_time . ' Verification code: ' . $booking_code . ' Please share the verification code with the driver. Thank you. Team Deltin');
+            $templateid = '1777178523553471982';
+            $to = $vMobileNo;
+            if (strlen($to) == 10)
+                $to = '91' . $to;
+            $sms_response = SendSmsCurl2($templateid, $to, $message);
+
             sql_query("
         INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)VALUES ('C', '+91', '$vMobileNo', 'WA', '$dtAdded', $user_id)
+");
+            sql_query("
+        INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)VALUES ('C', '+91', '$vMobileNo', 'S', '$dtAdded', $user_id)
 ");
             LogVehicleAllocated($iFleet_BookingID, $iVehicleID, $iDriverID, $vName, $user_id);
             
@@ -2231,9 +2246,21 @@ if (!$distance) {
             $booking_code
         );
 
+        // Send SMS
+        $message = urlencode('Hello ' . $vName . ', A driver has been assigned for your scheduled pickup. Driver Name: ' . db_output2($bookingData['driverName']) . ' Vehicle Number: ' . $bookingData['vRnum'] . ' Driver Contact07314852425 Pickup Location: ' . $vPickUpLocation . ' Pickup Time: ' . $pickup_time . ' Verification code: ' . $booking_code . ' Please share the verification code with the driver. Thank you. Team Deltin');
+        $templateid = '1777178523553471982';
+        $to = $vMobileNo;
+        if (strlen($to) == 10)
+            $to = '91' . $to;
+        $sms_response = SendSmsCurl2($templateid, $to, $message);
+
         sql_query("
             INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)
             VALUES ('C', '+91', '$vMobileNo', 'WA', '$dtAdded', $user_id)
+        ");
+        sql_query("
+            INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)
+            VALUES ('C', '+91', '$vMobileNo', 'S', '$dtAdded', $user_id)
         ");
 
         // Resend FCM notification to driver
