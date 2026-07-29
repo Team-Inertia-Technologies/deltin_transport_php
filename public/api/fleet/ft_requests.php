@@ -629,6 +629,7 @@ if (!$distance) {
         $iVehicleCatID = intval($_REQUEST['vehiCat'] ?? 0);
         $vInstructions = db_input($_REQUEST['intruc'] ?? '');
         $vRemarks = db_input($_REQUEST['remarks'] ?? '');
+        $vTravelNotes = db_input($_REQUEST['travelNotes'] ?? '');
         $vLandmark = db_input($_REQUEST['landMark'] ?? '');
         // $tripType = intval($_REQUEST['tripType'] ?? 0);
         // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
@@ -702,7 +703,7 @@ if (!$distance) {
          $vBookingCode = $last_char;
 
         $cols = "iFleet_BookingID,vBookingCode,iBookedBy,vBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
-                 iFleet_BKCatID, vInstructions, vRemarks, vName, vMobileNo, iGuestID, iFStaffID,
+                 iFleet_BKCatID, vInstructions, vRemarks, vTravelNotes, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,iOriginal_Kms,
                  vDropLocation, vLatLong_From, vLatLong_To,vLandmark, iVehicleCatID, cDisposal, tReturnTime,
                  iVendorID, iFleet_StationID, dtAdded,iAdded_UserID,cStatus";
@@ -716,7 +717,7 @@ if (!$distance) {
         INSERT INTO fleet_booking ($cols)
         VALUES (
             $iFleet_BookingID1,'$vBookingCode',$iBookedBy, '" . db_input($bookedByName) . "','" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
-            $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
+            $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "', '" . db_input($vTravelNotes) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
             $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $distance,
             '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal,
             $iVendorID, $iFleet_StationID, '" . db_input($dtAdded) . "',$user_id,'A'
@@ -824,6 +825,7 @@ if (!$distance) {
             "vehiCat" => intval($booking['iVehicleCatID']),
             "intruc" => db_output2($booking['vInstructions']),
             "remarks" => db_output2($booking['vRemarks']),
+            "travelNotes" => db_output2($booking['vTravelNotes'] ?? ''),
             "guestID" => intval($booking['iGuestID']),
             "staffID" => intval($booking['iFStaffID']),
             "staff_dept" => isset($STAFF_DEPT_ARR[intval($booking['iFStaffID'])])
@@ -1063,6 +1065,7 @@ if (!$distance) {
         $iVehicleCatID = intval($_REQUEST['vehiCat'] ?? 0);
         $vInstructions = db_input($_REQUEST['intruc']) ?? '';
         $vRemarks = db_input($_REQUEST['remarks']) ?? '';
+        $vTravelNotes = db_input($_REQUEST['travelNotes'] ?? '');
 
         // $tripType = intval($_REQUEST['tripType'] ?? 0);
         // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
@@ -1130,6 +1133,7 @@ if (!$distance) {
                 iFleet_BKCatID = " . intval($iFleet_BKCatID) . ",
                 vInstructions = '" . $vInstructions . "',
                 vRemarks = '" . $vRemarks . "',
+                vTravelNotes = '" . $vTravelNotes . "',
                 vName = '" . $vName . "',
                 vMobileNo = '" . db_input($vMobileNo) . "',
                 iGuestID = " . intval($iGuestID) . ",
@@ -1802,6 +1806,135 @@ if (!$distance) {
         ]);
         break;
 
+    // ===================== CASE: ASSIGN_REQUEST_VENDOR =====================
+    
+    case 'ASSIGN_REQUEST_VENDOR':
+        $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
+        $iFleet_StationID = intval($_REQUEST['stationID'] ?? $_REQUEST['stationId'] ?? 0);
+        $iVendorID = intval($_REQUEST['vendorID'] ?? $_REQUEST['vendorId'] ?? 0);
+
+        if ($iFleet_BookingID <= 0 || $iFleet_StationID <= 0 || $iVendorID <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Booking ID, station and vendor are required"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $bookingRes = sql_query("
+            SELECT iFleet_BookingID, vName
+            FROM fleet_booking
+            WHERE iFleet_BookingID = $iFleet_BookingID
+              AND cStatus = 'A'
+            LIMIT 1
+        ");
+        if (sql_num_rows($bookingRes) == 0) {
+            echo json_encode([
+                "error" => ["message" => "Booking not found or cancelled"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+        $bookingData = sql_fetch_assoc($bookingRes);
+
+        $stationExists = intval(GetXFromYID(
+            "SELECT iFlt_StationID
+             FROM fleet_station
+             WHERE iFlt_StationID = $iFleet_StationID
+               AND cStatus = 'A'"
+        ));
+        if ($stationExists <= 0) {
+            echo json_encode([
+                "error" => ["message" => "Station not found or inactive"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $vendorExists = intval(GetXFromYID(
+            "SELECT iVendorID
+             FROM vendor
+             WHERE iVendorID = $iVendorID
+               AND cStatus = 'A'"
+        ));
+        if ($vendorExists <= 0) {
+            echo json_encode([
+                "error" => ["message" => "Vendor not found or inactive"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $vendorAtStation = intval(GetXFromYID(
+            "SELECT COUNT(*)
+             FROM vendor_station_assoc
+             WHERE iVendorID = $iVendorID
+               AND iFlt_StationID = $iFleet_StationID"
+        ));
+        if ($vendorAtStation <= 0) {
+            echo json_encode([
+                "error" => ["message" => "Vendor does not belong to the selected station"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $userVendorID = getVendorIDForUser($user_id);
+        if ($userVendorID > 0 && $userVendorID !== $iVendorID) {
+            echo json_encode([
+                "error" => ["message" => "Access denied"],
+                "statusCode" => 403
+            ]);
+            exit;
+        }
+
+        if ($userVendorID > 0) {
+            $userStations = getVendorUserStations($user_id);
+            if (!in_array($iFleet_StationID, $userStations)) {
+                echo json_encode([
+                    "error" => ["message" => "Access denied"],
+                    "statusCode" => 403
+                ]);
+                exit;
+            }
+        }
+
+        $updateResult = sql_query("
+            UPDATE fleet_booking
+            SET iFleet_StationID = $iFleet_StationID,
+                iVendorID = $iVendorID
+            WHERE iFleet_BookingID = $iFleet_BookingID
+              AND cStatus = 'A'
+        ");
+
+        if (!$updateResult) {
+            echo json_encode([
+                "error" => ["message" => "Failed to assign station and vendor"],
+                "statusCode" => 500
+            ]);
+            exit;
+        }
+
+        LogBookingUpdated(
+            $iFleet_BookingID,
+            $bookingData['vName'] ?? '',
+            'Station and vendor assigned',
+            $user_id
+        );
+
+        echo json_encode([
+            "data" => [
+                "message" => "Station and vendor assigned successfully",
+                "bookingId" => $iFleet_BookingID,
+                "stationID" => $iFleet_StationID,
+                "vendorID" => $iVendorID
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
     // ===================== CASE: ASSIGN_REQUEST_VEHICLE =====================
     case 'ASSIGN_REQUEST_VEHICLE':
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
@@ -2075,8 +2208,19 @@ if (!$distance) {
             // Send WhatsApp
             SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $vPickUpLocation, $pickup_time, $booking_code);
 
+            // Send SMS
+            $message = urlencode('Hello ' . $vName . ', A driver has been assigned for your scheduled pickup. Driver Name: ' . db_output2($driverData['vName']) . ' Vehicle Number: ' . $vehicleData['vRnum'] . ' Driver Contact07314852425 Pickup Location: ' . $vPickUpLocation . ' Pickup Time: ' . $pickup_time . ' Verification code: ' . $booking_code . ' Please share the verification code with the driver. Thank you. Team Deltin');
+            $templateid = '1777178523553471982';
+            $to = $vMobileNo;
+            if (strlen($to) == 10)
+                $to = '91' . $to;
+            $sms_response = SendSmsCurl2($templateid, $to, $message);
+
             sql_query("
         INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)VALUES ('C', '+91', '$vMobileNo', 'WA', '$dtAdded', $user_id)
+");
+            sql_query("
+        INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)VALUES ('C', '+91', '$vMobileNo', 'S', '$dtAdded', $user_id)
 ");
             LogVehicleAllocated($iFleet_BookingID, $iVehicleID, $iDriverID, $vName, $user_id);
             
@@ -2231,9 +2375,21 @@ if (!$distance) {
             $booking_code
         );
 
+        // Send SMS
+        $message = urlencode('Hello ' . $vName . ', A driver has been assigned for your scheduled pickup. Driver Name: ' . db_output2($bookingData['driverName']) . ' Vehicle Number: ' . $bookingData['vRnum'] . ' Driver Contact07314852425 Pickup Location: ' . $vPickUpLocation . ' Pickup Time: ' . $pickup_time . ' Verification code: ' . $booking_code . ' Please share the verification code with the driver. Thank you. Team Deltin');
+        $templateid = '1777178523553471982';
+        $to = $vMobileNo;
+        if (strlen($to) == 10)
+            $to = '91' . $to;
+        $sms_response = SendSmsCurl2($templateid, $to, $message);
+
         sql_query("
             INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)
             VALUES ('C', '+91', '$vMobileNo', 'WA', '$dtAdded', $user_id)
+        ");
+        sql_query("
+            INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)
+            VALUES ('C', '+91', '$vMobileNo', 'S', '$dtAdded', $user_id)
         ");
 
         // Resend FCM notification to driver

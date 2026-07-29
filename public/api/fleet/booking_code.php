@@ -162,6 +162,118 @@ switch ($mode) {
         }
         break;
 
+    // ===================== CASE: MARK_TRIP_COMPLETE =====================
+    case 'MARK_TRIP_COMPLETE':
+
+        $booking_ids = $_REQUEST['id'] ?? [];
+        if (!is_array($booking_ids)) {
+            $booking_ids = [$booking_ids];
+        }
+        $booking_ids = array_values(array_filter(array_map('intval', $booking_ids)));
+
+        if (!$token || empty($booking_ids)) {
+            http_response_code(400);
+            echo json_encode([
+                "statusCode" => 400,
+                "error" => [
+                    "message" => "Missing token or booking id."
+                ]
+            ]);
+            exit;
+        }
+
+        $user_id = intval(DecodeParam($token));
+
+        // -------------------- VERIFY VENDOR USER --------------------
+        $vendorRes = sql_query(
+            "SELECT iRefID FROM users WHERE iUserID = $user_id AND cRefSrcType = 'V' AND cStatus = 'A' LIMIT 1",
+            'AUTH.VENDOR'
+        );
+
+        // if (!sql_num_rows($vendorRes)) {
+        //     http_response_code(401);
+        //     echo json_encode([
+        //         "statusCode" => 401,
+        //         "error" => [
+        //             "message" => "Invalid token or not a vendor user."
+        //         ]
+        //     ]);
+        //     exit;
+        // }
+
+        $vendorRow = sql_fetch_assoc($vendorRes);
+        $vendorID  = intval($vendorRow['iRefID']);
+
+        $NOW      = NOW;
+        $success  = [];
+        $failed   = [];
+
+        foreach ($booking_ids as $booking_id) {
+
+            // -------------------- VERIFY BOOKING BELONGS TO VENDOR --------------------
+            $bookingRes = sql_query(
+                "SELECT iDriverID, iVendorID FROM fleet_booking
+                 WHERE iFleet_BookingID = $booking_id AND cStatus = 'A' LIMIT 1",
+                'BOOKING.DETAILS'
+            );
+
+            if (!sql_num_rows($bookingRes)) {
+                $failed[] = [
+                    "id" => $booking_id,
+                    "message" => "Booking not found."
+                ];
+                continue;
+            }
+
+            $booking  = sql_fetch_assoc($bookingRes);
+            $driverID = intval($booking['iDriverID']);
+
+            if ($vendorID > 0 && intval($booking['iVendorID']) !== $vendorID) {
+                $failed[] = [
+                    "id" => $booking_id,
+                    "message" => "This booking does not belong to your fleet."
+                ];
+                continue;
+            }
+
+            // -------------------- COMPLETE THE TRIP --------------------
+            $log_id = NextID('iLogID', 'fleet_booking_log');
+            $query  = "UPDATE fleet_booking SET cType='C', vDropTime = '$NOW' WHERE iFleet_BookingID='$booking_id' AND iDriverID='$driverID'";
+            sql_query("INSERT INTO fleet_booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, '$booking_id', 'C', 'Trip Compeleted', '$NOW', '$driverID', 'A')", 'TRIP.LOG');
+            sql_query($query, 'TRIP.COMPLETE');
+
+            if (sql_affected_rows() > 0) {
+                $success[] = $booking_id;
+            } else {
+                $failed[] = [
+                    "id" => $booking_id,
+                    "message" => "Failed to complete trip."
+                ];
+            }
+        }
+
+        if (count($success) > 0) {
+            http_response_code(200);
+            echo json_encode([
+                "statusCode" => 200,
+                "data" => [
+                    "message" => "Trip(s) completed successfully.",
+                    "completed" => $success,
+                    "failed" => $failed
+                ]
+            ]);
+        } else {
+            http_response_code(400);
+            echo json_encode([
+                "statusCode" => 400,
+                "error" => [
+                    "message" => "Failed to complete trip(s).",
+                    "failed" => $failed
+                ]
+            ]);
+        }
+        break;
+
     // ===================== DEFAULT =====================
     default:
         http_response_code(400);
