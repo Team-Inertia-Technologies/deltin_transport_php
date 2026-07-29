@@ -1806,6 +1806,135 @@ if (!$distance) {
         ]);
         break;
 
+    // ===================== CASE: ASSIGN_REQUEST_VENDOR =====================
+    
+    case 'ASSIGN_STATION_VENDOR':
+        $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
+        $iFleet_StationID = intval($_REQUEST['stationID'] ?? $_REQUEST['stationId'] ?? 0);
+        $iVendorID = intval($_REQUEST['vendorID'] ?? $_REQUEST['vendorId'] ?? 0);
+
+        if ($iFleet_BookingID <= 0 || $iFleet_StationID <= 0 || $iVendorID <= 0) {
+            echo json_encode([
+                "error" => [
+                    "message" => "Booking ID, station and vendor are required"
+                ],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $bookingRes = sql_query("
+            SELECT iFleet_BookingID, vName
+            FROM fleet_booking
+            WHERE iFleet_BookingID = $iFleet_BookingID
+              AND cStatus = 'A'
+            LIMIT 1
+        ");
+        if (sql_num_rows($bookingRes) == 0) {
+            echo json_encode([
+                "error" => ["message" => "Booking not found or cancelled"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+        $bookingData = sql_fetch_assoc($bookingRes);
+
+        $stationExists = intval(GetXFromYID(
+            "SELECT iFlt_StationID
+             FROM fleet_station
+             WHERE iFlt_StationID = $iFleet_StationID
+               AND cStatus = 'A'"
+        ));
+        if ($stationExists <= 0) {
+            echo json_encode([
+                "error" => ["message" => "Station not found or inactive"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $vendorExists = intval(GetXFromYID(
+            "SELECT iVendorID
+             FROM vendor
+             WHERE iVendorID = $iVendorID
+               AND cStatus = 'A'"
+        ));
+        if ($vendorExists <= 0) {
+            echo json_encode([
+                "error" => ["message" => "Vendor not found or inactive"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $vendorAtStation = intval(GetXFromYID(
+            "SELECT COUNT(*)
+             FROM vendor_station_assoc
+             WHERE iVendorID = $iVendorID
+               AND iFlt_StationID = $iFleet_StationID"
+        ));
+        if ($vendorAtStation <= 0) {
+            echo json_encode([
+                "error" => ["message" => "Vendor does not belong to the selected station"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $userVendorID = getVendorIDForUser($user_id);
+        if ($userVendorID > 0 && $userVendorID !== $iVendorID) {
+            echo json_encode([
+                "error" => ["message" => "Access denied"],
+                "statusCode" => 403
+            ]);
+            exit;
+        }
+
+        if ($userVendorID > 0) {
+            $userStations = getVendorUserStations($user_id);
+            if (!in_array($iFleet_StationID, $userStations)) {
+                echo json_encode([
+                    "error" => ["message" => "Access denied"],
+                    "statusCode" => 403
+                ]);
+                exit;
+            }
+        }
+
+        $updateResult = sql_query("
+            UPDATE fleet_booking
+            SET iFleet_StationID = $iFleet_StationID,
+                iVendorID = $iVendorID
+            WHERE iFleet_BookingID = $iFleet_BookingID
+              AND cStatus = 'A'
+        ");
+
+        if (!$updateResult) {
+            echo json_encode([
+                "error" => ["message" => "Failed to assign station and vendor"],
+                "statusCode" => 500
+            ]);
+            exit;
+        }
+
+        LogBookingUpdated(
+            $iFleet_BookingID,
+            $bookingData['vName'] ?? '',
+            'Station and vendor assigned',
+            $user_id
+        );
+
+        echo json_encode([
+            "data" => [
+                "message" => "Station and vendor assigned successfully",
+                "bookingId" => $iFleet_BookingID,
+                "stationID" => $iFleet_StationID,
+                "vendorID" => $iVendorID
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
     // ===================== CASE: ASSIGN_REQUEST_VEHICLE =====================
     case 'ASSIGN_REQUEST_VEHICLE':
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);

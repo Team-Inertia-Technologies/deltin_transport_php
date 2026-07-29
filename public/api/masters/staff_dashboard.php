@@ -158,17 +158,19 @@ switch ($mode) {
                 "count" => $vehicleCapacity
             ];
         }
-
-
-        $totalCapacity = array_sum(array_column(
-            $groupedTrips[$routeKey]['vehicleInfo'][$timeKey]['vehiNum'],
-            'count'
-        ));
-
-        if ($groupedTrips[$routeKey]['vehicleInfo'][$timeKey]['pax'] > $totalCapacity) {
-            $groupedTrips[$routeKey]['vehicleInfo'][$timeKey]['status'] = "overbooked";
-        }
     }
+
+    // Mark overbooked only after all vehicles for each slot are collected
+    foreach ($groupedTrips as &$routeData) {
+        foreach ($routeData['vehicleInfo'] as &$slot) {
+            $totalCapacity = array_sum(array_column($slot['vehiNum'], 'count'));
+            if ($slot['pax'] > $totalCapacity) {
+                $slot['status'] = "overbooked";
+            }
+        }
+        unset($slot);
+    }
+    unset($routeData);
 
     // Reset indexes (important for JSON)
     $finalTrips = [];
