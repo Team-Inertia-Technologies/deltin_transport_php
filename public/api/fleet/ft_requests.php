@@ -1808,7 +1808,7 @@ if (!$distance) {
 
     // ===================== CASE: ASSIGN_REQUEST_VENDOR =====================
     
-    case 'ASSIGN_STATION_VENDOR':
+    case 'ASSIGN_REQUEST_VENDOR':
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
         $iFleet_StationID = intval($_REQUEST['stationID'] ?? $_REQUEST['stationId'] ?? 0);
         $iVendorID = intval($_REQUEST['vendorID'] ?? $_REQUEST['vendorId'] ?? 0);
