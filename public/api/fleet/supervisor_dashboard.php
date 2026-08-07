@@ -624,8 +624,8 @@ switch ($mode) {
                 'fleetStationId' => (int) $row['iFleet_StationID'],
                 'vendorId' => (int) $row['iVendorID'],
                 'vendorName' => db_output2($VENDOR_ARR[$row['iVendorID']] ?? ''),
-                'remarkForDriver' => (isset($row['vRemarks']) && !empty($row['vRemarks']))?db_output2($row['vRemarks']):"N/A",
-                'travelNote' => (isset($row['vTravelNotes']) && !empty($row['vTravelNotes']))?db_output2($row['vTravelNotes']):"N/A",                
+                'remarkForDriver' => (isset($row['vRemarks']) && !empty($row['vRemarks']))?db_output2($row['vRemarks']):"",
+                'travelNote' => (isset($row['vTravelNotes']) && !empty($row['vTravelNotes']))?db_output2($row['vTravelNotes']):"",                
                 'allocationStatus' => $allocationStatus
             ];
         }
