@@ -258,6 +258,7 @@ switch ($mode) {
             ['id' => '', 'name' => 'All'],
             ['id' => 'Assigned', 'name' => 'Assigned'],
             ['id' => 'Unassigned', 'name' => 'Unassigned'],
+             ['id' => 'VendorAssigned', 'name' => 'Vendor Assigned'],
             ['id' => 'Delayed', 'name' => 'Delayed'],
             ['id' => 'Cancelled', 'name' => 'Cancelled']
         ];
@@ -384,6 +385,7 @@ switch ($mode) {
                 fb.iBookedBy,
                 fb.iDriverID,
                 fb.iVehicleID,
+                fb.iVendorID,
                 fb.iAdded_UserID,
                 fb.cType as tripStatus,
                 fb.cStatus as bookingStatus,
@@ -465,6 +467,7 @@ switch ($mode) {
             $tripType = 'Unassigned'; // Default
             $hasVehicle = !empty($row['iVehicleID']) && intval($row['iVehicleID']) > 0;
             $hasDriver = !empty($row['iDriverID']) && intval($row['iDriverID']) > 0;
+            $hasVendor = !empty($row['iVendorID']) && intval($row['iVendorID']) > 0;
             $pickupTime = $row['vPickUpTime'] ?? '';
             $currentTime = date('Y-m-d H:i:s');
             $bookingStatus = $row['bookingStatus'] ?? '';
@@ -472,16 +475,20 @@ switch ($mode) {
             if ($bookingStatus == 'C') {
                 $tripType = 'Cancelled';
             } else if ($hasVehicle && $hasDriver) {
+                // Only mark as Assigned if no vendor is involved, or vendor + driver + vehicle all set
                 $tripType = 'Assigned';
+            } else if ($hasVendor && !$hasVehicle && !$hasDriver) {
+                // Vendor assigned but driver/vehicle not yet assigned
+                $tripType = 'VendorAssigned';
             } else if (!$hasVehicle && !$hasDriver) {
-                // Check if it's delayed (pickup time passed and cType is still 'N')
+                // No vendor, no vehicle, no driver — check if delayed
                 if (!empty($pickupTime) && strtotime($pickupTime) < strtotime($currentTime) && $tripStatusCode == 'N') {
                     $tripType = 'Delayed';
                 } else {
                     $tripType = 'Unassigned';
                 }
             } else {
-                // Partially assigned (either vehicle or driver but not both)
+                // Partially assigned (either vehicle or driver but not both), no vendor
                 $tripType = 'Unassigned';
             }
             $cancelModule = checkUserModuleAccess($user_id, 'FLEET_REQUEST_CANCEL');
@@ -2789,6 +2796,7 @@ if (!$distance) {
             ['id' => '', 'name' => 'All'],
             ['id' => 'Assigned', 'name' => 'Assigned'],
             ['id' => 'Unassigned', 'name' => 'Unassigned'],
+            ['id' => 'VendorAssigned', 'name' => 'Vendor Assigned'],
             ['id' => 'Delayed', 'name' => 'Delayed'],
             ['id' => 'Cancelled', 'name' => 'Cancelled']
         ];
