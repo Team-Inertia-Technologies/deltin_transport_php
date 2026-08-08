@@ -1338,7 +1338,7 @@ if (!$distance) {
 
         $dtCreated = '';
         if (!empty($booking['dtAdded'])) {
-            $dtCreated = date('d/m/y g A', strtotime($booking['dtAdded']));
+            $dtCreated = date('d-m-Y H:i', strtotime($booking['dtAdded']));
         }
 
         $vehicleHistorySql = "
@@ -1401,7 +1401,7 @@ if (!$distance) {
             'pickupFrom' => db_output2($booking['vPickUpLocation']) ?? '',
             'dropTo' => db_output2($booking['vDropLocation']) ?? '',
             'dateTime' => $pickupDateTime,
-            'dtCreated' => $dtCreated,
+            'dtcreated' => $dtCreated,
             'instructions' => db_output2($booking['vInstructions']) ?? '',
             'remarks' => db_output2($booking['vRemarks']) ?? '',
             'vehiCat' => intval($booking['iVehicleCatID'] ?? 0),
