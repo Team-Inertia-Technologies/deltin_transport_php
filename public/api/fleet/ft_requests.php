@@ -1260,6 +1260,7 @@ if (!$distance) {
                 fb.iFleet_RateID,
                 fb.iFleet_StationID,
                 fb.iVendorID,
+                fb.dtAdded,
                 fbc.vName as bookingCategoryName,
                 p.vName as propertyName,
                 d.vName as departmentName,
@@ -1335,6 +1336,11 @@ if (!$distance) {
             $pickupDateTime = date('d-m-Y H:i', strtotime($booking['vPickUpTime']));
         }
 
+        $dtCreated = '';
+        if (!empty($booking['dtAdded'])) {
+            $dtCreated = date('d/m/y g A', strtotime($booking['dtAdded']));
+        }
+
         $vehicleHistorySql = "
            SELECT vc.vName as vehicleCategory, v.vRnum as regNo, fb.vPickUpTime as travelDateTime 
            FROM fleet_booking fb 
@@ -1395,6 +1401,7 @@ if (!$distance) {
             'pickupFrom' => db_output2($booking['vPickUpLocation']) ?? '',
             'dropTo' => db_output2($booking['vDropLocation']) ?? '',
             'dateTime' => $pickupDateTime,
+            'dtCreated' => $dtCreated,
             'instructions' => db_output2($booking['vInstructions']) ?? '',
             'remarks' => db_output2($booking['vRemarks']) ?? '',
             'vehiCat' => intval($booking['iVehicleCatID'] ?? 0),
