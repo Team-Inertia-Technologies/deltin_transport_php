@@ -49,7 +49,7 @@ function dashboardSqlString($value)
     return addslashes(trim((string)$value));
 }
 
-function dashboardRequestTime($key, $defaultTimestamp, $suffix)
+/* function dashboardRequestTime($key, $defaultTimestamp, $suffix)
 {
     $currentDate = date('Y-m-d');
     $time = trim((string)($_REQUEST[$key] ?? ''));
@@ -59,7 +59,19 @@ function dashboardRequestTime($key, $defaultTimestamp, $suffix)
     }
 
     return $currentDate . " " . dashboardSqlString($time) . $suffix;
-}
+} */
+
+function dashboardRequestTime($key, $defaultTimestamp, $suffix)
+{
+    $date = date('Y-m-d', $defaultTimestamp);
+    $time = trim((string)($_REQUEST[$key] ?? ''));
+    
+    if ($time === '') {
+        return date('Y-m-d H:i:s', $defaultTimestamp);
+    }
+    
+    return $date . " " . dashboardSqlString($time) . $suffix;
+}    
 
 function dashboardFormatDateTime($dateTime)
 {
@@ -406,8 +418,18 @@ switch ($mode) {
         $searchtxt = dashboardSqlString($_REQUEST['searchtxt'] ?? '');
         $type = dashboardSqlString($_REQUEST['type'] ?? '');
         $bookedFor = dashboardSqlString($_REQUEST['bookedFor'] ?? '');
-        $fromTime = dashboardRequestTime('fromTime', strtotime(date('Y-m-d H:00:00')), ':00');
-        $toTime = dashboardRequestTime('toTime', strtotime('+4 hours'), ':59');
+        //$fromTime = dashboardRequestTime('fromTime', strtotime(date('Y-m-d H:00:00')), ':00');
+        //$toTime = dashboardRequestTime('toTime', strtotime('+4 hours'), ':59');
+
+        $fromTimestamp = strtotime(date('Y-m-d H:00:00'));
+        $toTimestamp   = strtotime('+4 hours', $fromTimestamp);
+
+        $fromTime = dashboardRequestTime('fromTime', $fromTimestamp, ':00');
+        $toTime   = dashboardRequestTime('toTime', $toTimestamp, ':59');
+
+        if (strtotime($toTime) < strtotime($fromTime)) {
+            $toTime = date('Y-m-d H:i:s', strtotime($toTime . ' +1 day'));
+        }
 
         $is_vendor = getVendorIDForUser($user_id);
         $STATIONS_ARR = [];
@@ -785,8 +807,19 @@ switch ($mode) {
         $status = dashboardSqlString($_REQUEST['status'] ?? '');
         //$vendorId = dashboardSqlString($_REQUEST['vendorId'] ?? '');
         //$stationId = dashboardSqlString($_REQUEST['stationId'] ?? '');
-        $from = dashboardRequestTime('fromTime', strtotime(date('Y-m-d H:00:00')), ':00');
-        $to = dashboardRequestTime('toTime', strtotime('+4 hours'), ':59');
+        //$from = dashboardRequestTime('fromTime', strtotime(date('Y-m-d H:00:00')), ':00');
+        //$to = dashboardRequestTime('toTime', strtotime('+4 hours'), ':59');
+
+        $fromTimestamp = strtotime(date('Y-m-d H:00:00'));
+        $toTimestamp   = strtotime('+4 hours', $fromTimestamp);
+        
+        $from = dashboardRequestTime('fromTime', $fromTimestamp, ':00');
+        $to   = dashboardRequestTime('toTime', $toTimestamp, ':59');
+        
+        if (strtotime($to) < strtotime($from)) {
+            $to = date('Y-m-d H:i:s', strtotime($toTime . ' +1 day'));
+        }
+
         //$from = date("H:i:s", strtotime($_REQUEST['from'])) ?? '';
         //$to = date("H:i:s", strtotime($_REQUEST['to'])) ?? '';
 
