@@ -204,7 +204,7 @@ switch ($mode) {
 
         // Optimized query with JOIN to get vendor data and all new fields
         $sql = "SELECT d.iDriverID, d.vName, d.vMobileNum, d.vEmpCode, d.iVendorID, 
-                       d.iType, d.vBatchNo, d.dExpiry, d.iRank, d.cStatus, 
+                       d.iType, d.vBatchNo, d.dExpiry, d.iRank, d.cStatus, d.cComViaVendor,
                        v.vName as vendor_name
                 FROM driver d
                 LEFT JOIN vendor v ON d.iVendorID = v.iVendorID AND v.cStatus = 'A'
@@ -288,6 +288,7 @@ switch ($mode) {
             'batchNo' => db_output2($row['vBatchNo'] ?? ''),
             'dateOfExp' => $row['dExpiry'] ?? '',
             'cStatus' => $row['cStatus'],
+            'cComViaVendor' => (($row['cComViaVendor'] ?? 'N') === 'Y') ? 'Y' : 'N',
             'availability' => $selectedAvailOpt
         ];
 
@@ -316,6 +317,7 @@ switch ($mode) {
         $batchNo = db_input($_REQUEST['batchNo'] ?? ''); // Batch number (vBatchNo)
           
         $dateOfExp = db_input($_REQUEST['dateOfExp'] ?? ''); // Expiry date (dExpiry)
+        $cComViaVendor = (($_REQUEST['cComViaVendor'] ?? 'N') === 'Y') ? 'Y' : 'N';
 
         if ($id <= 0) {
             echo json_encode([
@@ -364,7 +366,8 @@ switch ($mode) {
                     iVendorID = $vendorID,
                     iType = $type,
                     vBatchNo = '$batchNo',
-                    dExpiry = " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . "
+                    dExpiry = " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ",
+                    cComViaVendor = '$cComViaVendor'
                 WHERE iDriverID = $id AND cStatus = 'A'";
 
         $result = sql_query($sql);
@@ -439,6 +442,7 @@ switch ($mode) {
         $availability = $_REQUEST['availability'] ?? []; // Area availability array
         $batchNo = db_input($_REQUEST['batchNo'] ?? ''); // Batch number (vBatchNo)
         $dateOfExp = db_input($_REQUEST['dateOfExp'] ?? ''); // Expiry date (dExpiry)
+        $cComViaVendor = (($_REQUEST['cComViaVendor'] ?? 'N') === 'Y') ? 'Y' : 'N';
         $cStatus = 'A'; // Default active status
 
         // Basic validation
@@ -487,9 +491,9 @@ switch ($mode) {
         $iDriverID = NextID('iDriverID', 'driver');
 
         // Insert driver with new fields including vBatchNo and dExpiry
-        $sql = "INSERT INTO driver (iDriverID, vName, vMobileNum, vEmpCode, iVendorID, iType, vBatchNo, dExpiry, iRank, cStatus) 
+        $sql = "INSERT INTO driver (iDriverID, vName, vMobileNum, vEmpCode, iVendorID, iType, vBatchNo, dExpiry, iRank, cStatus, cComViaVendor) 
                 VALUES ($iDriverID, '$name', '$mobNum', '$empCode', $vendorID, $type, '$batchNo', 
-                    " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ", $iDriverID, '$cStatus')";
+                    " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ", $iDriverID, '$cStatus', '$cComViaVendor')";
 
         if (sql_query($sql)) {
             // Handle availability areas array - insert multiple area associations

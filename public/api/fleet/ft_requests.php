@@ -713,12 +713,15 @@ if (!$distance) {
                  iFleet_BKCatID, vInstructions, vRemarks, vTravelNotes, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,iOriginal_Kms,
                  vDropLocation, vLatLong_From, vLatLong_To,vLandmark, iVehicleCatID, cDisposal, tReturnTime,
-                 iVendorID, iFleet_StationID, dtAdded,iAdded_UserID,cStatus";
+                 iVendorID, iFleet_StationID, dtAdded,iAdded_UserID,cStatus,vVendorAssignedBy,dtVendorAssigned";
 
         $iFleet_BookingID1 = NextID('iFleet_BookingID', 'fleet_booking');
         $dtAdded = NOW;
 
         $vReturnTimeVal = (!empty($vReturnTime)) ? "'$vReturnTime'" : "NULL";
+        // Vendor assigned by = same person who added the request (when vendor is set)
+        $vVendorAssignedBy = ($iVendorID > 0) ? $user_id : 0;
+        $dtVendorAssignedVal = ($iVendorID > 0) ? "'" . db_input($dtAdded) . "'" : "NULL";
 
         $sql1 = "
         INSERT INTO fleet_booking ($cols)
@@ -727,7 +730,7 @@ if (!$distance) {
             $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "', '" . db_input($vTravelNotes) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
             $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $distance,
             '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal,
-            $iVendorID, $iFleet_StationID, '" . db_input($dtAdded) . "',$user_id,'A'
+            $iVendorID, $iFleet_StationID, '" . db_input($dtAdded) . "',$user_id,'A',$vVendorAssignedBy,$dtVendorAssignedVal
         )";
         //    echo "SQL Query: " . $sql1; // Debug: Output the generated SQL query
         //         exit;
@@ -1103,6 +1106,10 @@ if (!$distance) {
             ]);
             exit;
         }
+        $existingBooking = sql_fetch_assoc($checkRes);
+        $prevVendorID = intval($existingBooking['iVendorID'] ?? 0);
+        // Vendor assigned by = same person who added the request
+        $addedByUserID = intval($existingBooking['iAdded_UserID'] ?? $user_id);
         //         $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : '';
         //         $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : '';
         //         $ratekms = 0;
@@ -1128,6 +1135,19 @@ if (!$distance) {
 
         // $kms = isset($_REQUEST['kms']) ? $_REQUEST['kms'] : 0;
 
+        $vendorAssignSql = '';
+        if ($iVendorID > 0) {
+            $vendorAssignSql = ",
+                vVendorAssignedBy = " . intval($addedByUserID);
+            if ($iVendorID !== $prevVendorID || empty($existingBooking['dtVendorAssigned'])) {
+                $vendorAssignSql .= ",
+                dtVendorAssigned = '" . db_input($dtNow) . "'";
+            }
+        } else {
+            $vendorAssignSql = ",
+                vVendorAssignedBy = 0,
+                dtVendorAssigned = NULL";
+        }
 
         $updateSql = "
             UPDATE fleet_booking SET
@@ -1161,6 +1181,7 @@ if (!$distance) {
                 iFleet_StationID = " . intval($iFleet_StationID) . ",
                 dtUpdated = '" . db_input($dtNow) . "',
                 iUpdated_UserID = " . intval($user_id) . "
+                $vendorAssignSql
             WHERE iFleet_BookingID = " . intval($iFleet_BookingID) . "
         ";
 
@@ -1915,10 +1936,13 @@ if (!$distance) {
             }
         }
 
+        $dtVendorAssigned = NOW;
         $updateResult = sql_query("
             UPDATE fleet_booking
             SET iFleet_StationID = $iFleet_StationID,
-                iVendorID = $iVendorID
+                iVendorID = $iVendorID,
+                vVendorAssignedBy = $user_id,
+                dtVendorAssigned = '$dtVendorAssigned'
             WHERE iFleet_BookingID = $iFleet_BookingID
               AND cStatus = 'A'
         ");
