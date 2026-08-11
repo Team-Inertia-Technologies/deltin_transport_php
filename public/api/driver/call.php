@@ -38,8 +38,14 @@ if ($token === '' || $mobile === '') {
     exit;
 }
 $driverID = DecodeParam($token);
-$tonumber = GetXFromYID("Select vMobileNum from driver where iDriverID='$driverID' AND cStatus='A' ");
-
+$communication = GetXFromYID("SELECT cComViaVendor FROM driver WHERE iDriverID='$driverID' AND cStatus='A'");
+if ($communication == 'Y') {
+    $vendorID = GetXFromYID("SELECT iVendorID FROM driver WHERE iDriverID='$driverID' AND cStatus='A'");
+    $tonumber = GetXFromYID("SELECT vContactNum FROM vendor WHERE iVendorID='$vendorID' AND cStatus='A'");
+} else {
+    $tonumber = GetXFromYID("Select vMobileNum from driver where iDriverID='$driverID' AND cStatus='A' ");
+}
+    
 /* -------------------- EXOTEL FUNCTION -------------------- */
 function triggerExotelExoMLCall($fromNumber, $tonumber)
 {
