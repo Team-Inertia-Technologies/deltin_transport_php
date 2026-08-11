@@ -1294,7 +1294,8 @@ if (!$distance) {
                 dr.vName as assignedDriverName,
                 dr.vMobileNum as assignedDriverMobile,
                 fst.vName as stationName,
-                vend.vName as vendorName
+                vend.vName as vendorName,
+                vend.vContactNum as vendorMobile
             FROM fleet_booking fb
             LEFT JOIN fleet_bookingcategory fbc ON fb.iFleet_BKCatID = fbc.iFleet_BkCatID
             LEFT JOIN property p ON fb.iPropertyID = p.iPropertyID
@@ -1452,7 +1453,8 @@ if (!$distance) {
             'stationID' => intval($booking['iFleet_StationID'] ?? 0),
             'stationName' => db_output2($booking['stationName'] ?? ''),
             'vendorID' => intval($booking['iVendorID'] ?? 0),
-            'vendorName' => db_output2($booking['vendorName'] ?? '')
+            'vendorName' => db_output2($booking['vendorName'] ?? ''),
+            'vendorMobile' => db_output2($booking['vendorMobile'] ?? '')
             // 'tripStatus' => isset($FLEET_TRIP_STATUS[$booking['currentStatus']]) ? $FLEET_TRIP_STATUS[$booking['currentStatus']] : 'Not Started'
             // "status" => $booking['currentStatus']
         ];
