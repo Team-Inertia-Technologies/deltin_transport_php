@@ -45,16 +45,21 @@ $customer_10 = substr($customer_e164, 3);
 require_once "../../includes/common_api.php";
 $NOW = NOW;
 
-$sql = "SELECT d.vMobileNum AS driver_phone
+$sql = "SELECT
+            CASE WHEN d.cComViaVendor = 'Y' THEN v.vContactNum ELSE d.vMobileNum END AS driver_phone
         FROM fleet_booking fb
         LEFT JOIN driver d ON fb.iDriverID = d.iDriverID AND d.cStatus = 'A'
+        LEFT JOIN vendor v ON d.iVendorID = v.iVendorID AND v.cStatus = 'A'
         WHERE (
             fb.vMobileNo = '{$customer_10}'
             OR fb.vMobileNo = '0{$customer_10}'
         )
         AND fb.cStatus NOT IN ('X', 'C')
         AND fb.cType != 'C'
-        AND d.vMobileNum IS NOT NULL
+        AND (
+            (d.cComViaVendor = 'N' AND d.vMobileNum IS NOT NULL)
+            OR (d.cComViaVendor = 'Y' AND v.vContactNum IS NOT NULL)
+        )
    ORDER BY
     CASE
         WHEN fb.cType IN ('N','S','G','P','R') 
