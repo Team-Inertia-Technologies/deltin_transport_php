@@ -4,10 +4,13 @@
 $NO_REDIRECT = $NO_PRELOAD = 1;
 include "../../includes/common_api.php";
 //$sess_user_id = 1;
-$txtpassword = isset($_POST['currentPassword']) ? trim($_POST['currentPassword']) : '';
-$txtnewpassword = isset($_POST['newPassword']) ? trim($_POST['newPassword']) : '';
-$txtnewpassword2 = isset($_POST['confirmPassword']) ? trim($_POST['confirmPassword']) : '';
-$token = isset($_POST['token']) ? db_input($_POST['token']) : '';
+
+$input = json_decode(file_get_contents('php://input'), true);
+
+$txtpassword = isset($input['currentPassword']) ? trim($input['currentPassword']) : '';
+$txtnewpassword = isset($input['newPassword']) ? trim($input['newPassword']) : '';
+$txtnewpassword2 = isset($input['confirmPassword']) ? trim($input['confirmPassword']) : '';
+$token = isset($input['token']) ? db_input($input['token']) : '';
 $user_id = DecodeParam($token);
 
 // if ($txtnewpassword !=$txtnewpassword2) 
