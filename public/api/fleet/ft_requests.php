@@ -509,7 +509,7 @@ switch ($mode) {
                 'location' => db_output2($row['vPickUpLocation'] ?? ''),
                 'destination' => db_output2($row['vDropLocation'] ?? ''),
                 'pickupDate' => !empty($row['vPickUpTime']) ? date('d-m-Y', strtotime($row['vPickUpTime'])) : '',
-                'pickupTime' => !empty($row['vPickUpTime']) ? date('h:i a', strtotime($row['vPickUpTime'])) : '',
+                'pickupTime' => !empty($row['vPickUpTime']) ? date('H:i', strtotime($row['vPickUpTime'])) : '',
                 'tripStatus' => $tripStatusCode,
                 'tripStatusText' => $tripStatusName,
                 'tripType' => $tripType,
@@ -747,7 +747,7 @@ if (!$distance) {
             exit;
         } else {
             $date = date('d/m/Y', strtotime($vPickUpTime));
-            $pickup_time = !empty($vPickUpTime) ? date('h:i A', strtotime($vPickUpTime)) : '';
+            $pickup_time = !empty($vPickUpTime) ? date('H:i', strtotime($vPickUpTime)) : '';
             SendConfirmationMessage($vMobileNo, db_input($vName), $vPickUpLocation, $date, $vDropLocation, $pickup_time);
             sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
         }
@@ -2241,7 +2241,7 @@ if (!$distance) {
             $vMobileNo = $bookingData['vMobileNo'] ?? '';
             $vName = db_output2($bookingData['vName']) ?? '';
             $vPickUpLocation = db_output2($bookingData['vPickUpLocation']) ?? '';
-            $pickup_time = !empty($bookingData['vPickUpTime']) ? date('h:i A', strtotime($bookingData['vPickUpTime'])) : '';
+            $pickup_time = !empty($bookingData['vPickUpTime']) ? date('H:i', strtotime($bookingData['vPickUpTime'])) : '';
             $dtAdded = NOW;
             $booking_code = $bookingData['vBookingCode'] ?? '';
 
@@ -2384,7 +2384,7 @@ if (!$distance) {
         $vMobileNo = $bookingData['vMobileNo'] ?? '';
         $vName = db_output2($bookingData['vName']) ?? '';
         $vPickUpLocation = db_output2($bookingData['vPickUpLocation']) ?? '';
-        $pickup_time = !empty($bookingData['vPickUpTime']) ? date('h:i A', strtotime($bookingData['vPickUpTime'])) : '';
+        $pickup_time = !empty($bookingData['vPickUpTime']) ? date('H:i', strtotime($bookingData['vPickUpTime'])) : '';
         $booking_code = $bookingData['vBookingCode'] ?? '';
         $dtAdded = NOW;
 
