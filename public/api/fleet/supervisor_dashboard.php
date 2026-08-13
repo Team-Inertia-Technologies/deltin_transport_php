@@ -85,8 +85,8 @@ function dashboardFormatDateTime($dateTime)
     }
 
     return date('Y-m-d', $timestamp) === date('Y-m-d')
-        ? date('g:i A', $timestamp)
-        : date('d M g:i A', $timestamp);
+        ? date('H:i', $timestamp)
+        : date('d M H:i', $timestamp);
 }
 
 function dashboardIntList($values)
@@ -767,9 +767,10 @@ switch ($mode) {
             $dt = strtotime($row['tReturnTime']);
 
             if (date('Y-m-d', $dt) === date('Y-m-d')) {
-                $dateTime = date('g:i A', $dt);
+                //$dateTime = date('g:i A', $dt);
+                $dateTime = date('H:i', $dt);
             } else {
-                $dateTime = date('d M g:i A', $dt);
+                $dateTime = date('d M H:i', $dt);
             }
 
             $rowData[] = [
@@ -1335,9 +1336,9 @@ foreach ($vehicleData as $vehicleID => $vehData) {
                     $dtpick = strtotime($row['vPickupTime']);
 
                     if (date('Y-m-d', $dtpick) === date('Y-m-d')) {
-                        $dateTimePick = date('g:i A', $dtpick);
+                        $dateTimePick = date('H:i', $dtpick);
                     } else {
-                        $dateTimePick = date('d M g:i A', $dtpick);
+                        $dateTimePick = date('d M H:i', $dtpick);
                     }
 
                     $dateTimeDrop = "N/A";
@@ -1347,9 +1348,9 @@ foreach ($vehicleData as $vehicleID => $vehData) {
                     $dtdrop = strtotime($row['vDropTime']);
 
                     if (date('Y-m-d', $dtdrop) === date('Y-m-d')) {
-                        $dateTimeDrop = date('g:i A', $dtdrop);
+                        $dateTimeDrop = date('H:i', $dtdrop);
                     } else {
-                        $dateTimeDrop = date('d M g:i A', $dtdrop);
+                        $dateTimeDrop = date('d M H:i', $dtdrop);
                     }
 
                     }
