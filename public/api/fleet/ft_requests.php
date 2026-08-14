@@ -121,6 +121,16 @@ function getFleetVendorStationOpts()
     ];
 }
 
+function getFleetBookedByNames()
+{
+    $bookedByOpt = [];
+    $bookedByRes = sql_query("SELECT DISTINCT vBookedBy FROM fleet_booking WHERE vBookedBy IS NOT NULL AND TRIM(vBookedBy) != '' ORDER BY vBookedBy");
+    while ($bbRow = sql_fetch_assoc($bookedByRes)) {
+        $bookedByOpt[] = db_output2($bbRow['vBookedBy']);
+    }
+    return $bookedByOpt;
+}
+
 switch ($mode) {
 
     // ===================== CASE: LIST =====================
@@ -382,7 +392,9 @@ switch ($mode) {
                 fb.vPickUpTime,
                 fb.iPax,
                 fb.iBaggage,
+                fb.vBookingCode,
                 fb.iBookedBy,
+                fb.vBookedBy,
                 fb.iDriverID,
                 fb.iVehicleID,
                 fb.iVendorID,
@@ -500,9 +512,15 @@ switch ($mode) {
             // Allow cancel only if module access or owner
             $canCancel = ($cancelModule || $isOwner || $notCancelled);
 
+            if (intval($row['iBookedBy']) > 0) {
+                $bookedByName = db_output2($row['bookedByName'] ?? '');
+            } else {
+                $bookedByName = db_output2($row['vBookedBy'] ?? '');
+            }
 
             $rowDataItem = [
                 'id' => $bookingID,
+                'bookingCode' => (!empty($row['vBookingCode'])) ? db_output2($row['vBookingCode']) : 'N/A',
                 'fullName' => db_output2($row['vName'] ?? ''),
                 'phone' => maskMobileNumber($row['vMobileNo']),
                 'from' => strtolower($row['cBookingFor'] ?? ''),
@@ -518,7 +536,7 @@ switch ($mode) {
                 'endTime' => $endTime,
                 'paxs' => strval($row['iPax'] ?? '0'),
                 'bags' => strval($row['iBaggage'] ?? '0'),
-                'bookedBy' => db_output2($row['bookedByName'] ?? ''),
+                'bookedBy' => $bookedByName,
                 'pickupByName' => db_output2($row['driverName'] ?? ''),
                 'pickupByPhone' => db_output2($row['driverPhone'] ?? ''),
                 'pickupByType' => $driverTypeName,
@@ -989,6 +1007,7 @@ if (!$distance) {
 
         $optArr = [
             "bookedForOpt" => $bookedForOpt,
+            "bookedByOpt" => getFleetBookedByNames(),
             "bookingCatOpt" => $bookingCatOpt,
             "travelPurposeOpt" => $travelPurposeTypeOpt,
             "propertyOpt" => $propertyOpt,
@@ -1276,6 +1295,7 @@ if (!$distance) {
                 fb.iAdded_UserID,
                 fb.cStatus as bookingStatus,
                 fb.cType as currentStatus,
+                fb.vBookingCode,
                 fb.iBookedBy as bookedById,
                 fb.vBookedBy as bookedBy,
                 fb.iFleet_RateID,
@@ -1415,6 +1435,7 @@ if (!$distance) {
 
         $requestDetails = [
             'bookingId' => intval($booking['iFleet_BookingID']),
+            'bookingCode' => (!empty($booking['vBookingCode'])) ? db_output2($booking['vBookingCode']) : 'N/A',
             'passengerName' => db_output2($passengerName),
             'mobile' => $passengerMobile,
             'guestStaffType' => $guestStaffType,
@@ -2482,6 +2503,9 @@ if (!$distance) {
                 fb.iPax,
                 fb.iBaggage,
                 fb.cType as tripStatus,
+                fb.vBookingCode,
+                fb.iBookedBy as bookedById,
+                fb.vBookedBy as bookedBy,
                 fbc.vName as bookingCategoryName,
                 p.vName as propertyName,
                 s.vName as bookedByName,
@@ -2637,7 +2661,10 @@ if (!$distance) {
             'passengerMobile' => db_output2($tripData['passengerMobile'] ?? ''),
             'bags' => sprintf('%02d', intval($tripData['iBaggage'] ?? 0)),
             'pax' => sprintf('%02d', intval($tripData['iPax'] ?? 0)),
-            'bookedBy' => db_output2($tripData['bookedByName'] ?? ''),
+            'bookingCode' => (!empty($tripData['vBookingCode'])) ? db_output2($tripData['vBookingCode']) : 'N/A',
+            'bookedBy' => (intval($tripData['bookedById'] ?? 0) > 0)
+                ? db_output2($tripData['bookedByName'] ?? '')
+                : db_output2($tripData['bookedBy'] ?? ''),
             'category' => db_output2($tripData['bookingCategoryName'] ?? ''),
             'pickupDateTime' => $actualPickupDateTime,
             'dropDateTime' => $actualDropDateTime,
@@ -2843,7 +2870,7 @@ if (!$distance) {
 
         $optArr = [
             "bookedForOpt" => $bookedForOpt,
-            // "bookedByOpt" => $bookedByOpt,
+            "bookedByOpt" => getFleetBookedByNames(),
             "bookingCatOpt" => $bookingCatOpt,
             "travelPurposeOpt" => $travelPurposeTypeOpt,
             "propertyOpt" => $propertyOpt,
