@@ -544,6 +544,10 @@ switch ($mode) {
             }            
         }
 
+        if (checkUserModuleAccess($user_id, 'AIRPORT_TRANSFER_REQ')) {
+            $cond .= " and iFleet_TrvPurID = 2";
+        }       
+
         // Fetch booking data
         $bookingSql = "select iFleet_BookingID, vBookingCode, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments, iFleet_StationID, iFleet_RateID, iVendorID, vRemarks, vTravelNotes from fleet_booking where 1 $cond and cType NOT IN ('C','S','G','P','R') and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         //echo $bookingSql."<br>";
@@ -717,6 +721,10 @@ switch ($mode) {
         if (!empty($id)) {
             $cond .= " and iFleet_BookingID = $id";
         }
+
+        if (checkUserModuleAccess($user_id, 'AIRPORT_TRANSFER_REQ')) {
+            $cond .= " and iFleet_TrvPurID = 2";
+        }        
 
         /*if(!empty($searchtxt)){
             $cond .= " and ((vName like '%$searchtxt%') or (vMobileNo like '%$searchtxt%'))";
@@ -1214,6 +1222,11 @@ foreach ($vehicleData as $vehicleID => $vehData) {
 
             $cond_driver_join = '';
             $cond_driver_where = '';
+
+            if (checkUserModuleAccess($user_id, 'AIRPORT_TRANSFER_REQ')) {
+                $cond_driver_where .= " and fb.iFleet_TrvPurID = 2";
+                $conda .= " and fb.iFleet_TrvPurID = 2";
+            }             
             
             if (!empty($is_vendor)) {
                 $cond_vehicle .= " AND v.iVendorID = " . (int) $is_vendor;
@@ -1581,7 +1594,11 @@ foreach ($vehicleData as $vehicleID => $vehData) {
         
                 $cond .= " AND fb.iFleet_StationID IN ($stations)";
             }
-        }        
+        }    
+        
+        if (checkUserModuleAccess($user_id, 'AIRPORT_TRANSFER_REQ')) {
+            $cond .= " and fb.iFleet_TrvPurID = 2";
+        }         
 
         $LOG_DATA_ARR = array();
 
