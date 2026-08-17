@@ -331,6 +331,10 @@ switch ($mode) {
         } else if (!$staffReqAccess && !$guestReqAccess) {
             $whereClause .= " AND fb.cBookingFor = ''";
         }
+
+        if (checkUserModuleAccess($user_id, 'AIRPORT_TRANSFER_REQ')) {
+            $whereClause .= " AND fb.iFleet_TrvPurID = 2";
+        }
         if (!is_array($filterTripStatus)) {
             $filterTripStatus = explode(',', $filterTripStatus);
         }

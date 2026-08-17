@@ -72,6 +72,10 @@ switch ($mode) {
 
         $where = "fb.cStatus NOT IN ('X', 'C') AND fb.cType='C'";
 
+        if (checkUserModuleAccess($user_id, 'AIRPORT_TRANSFER_REQ')) {
+            $where .= " AND fb.iFleet_TrvPurID = 2";
+        }
+
         if (!empty($fromDate)) {
             $where .= " AND DATE(fb.vPickUpTime) >= '" . db_input($fromDate) . "'";
         }
@@ -198,6 +202,7 @@ switch ($mode) {
                     'type' => $driverType
                 ],
                 'tripStatus' => $row['tripStatus'],
+                'tripType' => isset($FLEET_TRIP_STATUS[$row['tripStatus']]) ? $FLEET_TRIP_STATUS[$row['tripStatus']] : '',
                 'bookedFor' => $row['bookedFor'],
                 'bookedBy' => $bookedByName,
                 'travelTypeName' => $row['travelTypeName'],
