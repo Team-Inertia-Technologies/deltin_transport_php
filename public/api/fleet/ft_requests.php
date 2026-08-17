@@ -2504,8 +2504,8 @@ if (!$distance) {
                 fb.iBaggage,
                 fb.cType as tripStatus,
                 fb.vBookingCode,
-                fb.iBookedBy as bookedById,
-                fb.vBookedBy as bookedBy,
+                fb.iBookedBy,
+                fb.vBookedBy,
                 fbc.vName as bookingCategoryName,
                 p.vName as propertyName,
                 s.vName as bookedByName,
@@ -2662,9 +2662,9 @@ if (!$distance) {
             'bags' => sprintf('%02d', intval($tripData['iBaggage'] ?? 0)),
             'pax' => sprintf('%02d', intval($tripData['iPax'] ?? 0)),
             'bookingCode' => (!empty($tripData['vBookingCode'])) ? db_output2($tripData['vBookingCode']) : 'N/A',
-            'bookedBy' => (intval($tripData['bookedById'] ?? 0) > 0)
-                ? db_output2($tripData['bookedByName'] ?? '')
-                : db_output2($tripData['bookedBy'] ?? ''),
+            'bookedBy' => (intval($tripData['iBookedBy'] ?? 0) > 0 && !empty(trim($tripData['bookedByName'] ?? '')))
+                ? db_output2($tripData['bookedByName'])
+                : db_output2($tripData['vBookedBy'] ?? ''),
             'category' => db_output2($tripData['bookingCategoryName'] ?? ''),
             'pickupDateTime' => $actualPickupDateTime,
             'dropDateTime' => $actualDropDateTime,
