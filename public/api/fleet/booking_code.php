@@ -52,16 +52,16 @@ switch ($mode) {
             'AUTH.VENDOR'
         );
 
-        if (!sql_num_rows($vendorRes)) {
-            http_response_code(401);
-            echo json_encode([
-                "statusCode" => 401,
-                "error" => [
-                    "message" => "Invalid token or not a vendor user."
-                ]
-            ]);
-            exit;
-        }
+        // if (!sql_num_rows($vendorRes)) {
+        //     http_response_code(401);
+        //     echo json_encode([
+        //         "statusCode" => 401,
+        //         "error" => [
+        //             "message" => "Invalid token or not a vendor user."
+        //         ]
+        //     ]);
+        //     exit;
+        // }
 
         $vendorRow = sql_fetch_assoc($vendorRes);
         $vendorID  = intval($vendorRow['iRefID']);
