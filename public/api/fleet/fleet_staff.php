@@ -40,16 +40,26 @@ switch ($mode) {
         /* ---- DUPLICATE MOBILE CHECK ---- */
         $dup = sql_query("SELECT 1 FROM fleet_staff WHERE vMobile='$vMobile' AND cStatus!='X'");
         if (sql_num_rows($dup) > 0) {
-            echo json_encode(["statusCode" => 409, "message" => "Mobile number already exists"]);
+            echo json_encode(["statusCode" => 409, 
+               "data" => [  
+                "vMobile" => $vMobile,
+                "message" => "Mobile number already exists"
+               ]
+            ]);
             exit;
         }
 
         $iFStaffID = NextID('iFStaffID', 'fleet_staff');
+        if($isUser){
+            $status = 'D';
+        }else{
+            $status = 'A';
+        }
 
         sql_query("
             INSERT INTO fleet_staff
             (iFStaffID,vCode,vName,vMobile,iDepartmentID,iUserID,dtRegistered,cStatus)
-            VALUES ($iFStaffID,'$vCode','$vName','$vMobile',$iDepartmentID,0,'$NOW','D')
+            VALUES ($iFStaffID,'$vCode','$vName','$vMobile',$iDepartmentID,0,'$NOW','$status')
         ");
 
         if ($isUser) {

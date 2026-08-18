@@ -72,6 +72,10 @@ switch ($mode) {
 
         $where = "fb.cStatus NOT IN ('X', 'C') AND fb.cType='C'";
 
+        if (checkUserModuleAccess($user_id, 'AIRPORT_TRANSFER_REQ')) {
+            $where .= " AND fb.iFleet_TrvPurID = 2";
+        }
+
         if (!empty($fromDate)) {
             $where .= " AND DATE(fb.vPickUpTime) >= '" . db_input($fromDate) . "'";
         }
@@ -103,6 +107,9 @@ switch ($mode) {
             fb.vPickUpTime,
             fb.cType AS tripStatus,
             fb.cBookingFor as bookedFor,
+            fb.vBookingCode,
+            fb.iBookedBy,
+            fb.vBookedBy,
              fb.iOriginal_Kms as calculatedKms,
             fb.iActual_Kms as ratechartKms,
             ven.vName AS vendorName,
@@ -111,13 +118,15 @@ switch ($mode) {
             dr.iType AS driverType,
             v.vRnum AS vehicleRegNo,
             vcat.vName AS vehicleCategory,
-             ftt.vName as travelTypeName
+             ftt.vName as travelTypeName,
+            s.vName as bookedByName
         FROM fleet_booking fb
         LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID 
         LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID
         LEFT JOIN driver dr ON fb.iDriverID = dr.iDriverID
         LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID
         LEFT JOIN fleet_traveltype ftt ON fb.iFleet_TrvTypeID = ftt.iFleet_TrvTypeID
+        LEFT JOIN fleet_staff s ON fb.iBookedBy = s.iFStaffID
         WHERE $where
         ORDER BY fb.vPickUpTime ASC
     ";
@@ -169,8 +178,15 @@ switch ($mode) {
 
             $driverType = $VEHICLE_DRIVER_TYPE[intval($row['driverType'] ?? 0)] ?? '';
 
+            if (intval($row['iBookedBy']) > 0) {
+                $bookedByName = db_output2($row['bookedByName'] ?? '');
+            } else {
+                $bookedByName = db_output2($row['vBookedBy'] ?? '');
+            }
+
             $rowData[] = [
                 'id' => $bookingID,
+                'bookingCode' => (!empty($row['vBookingCode'])) ? db_output2($row['vBookingCode']) : 'N/A',
                 'fullName' => db_output2($row['vName']),
                 'phone' => db_output2($row['vMobileNo']),
                 'pickupDate' => date('d-m-Y', strtotime($row['vPickUpTime'])),
@@ -186,7 +202,9 @@ switch ($mode) {
                     'type' => $driverType
                 ],
                 'tripStatus' => $row['tripStatus'],
+                'tripType' => isset($FLEET_TRIP_STATUS[$row['tripStatus']]) ? $FLEET_TRIP_STATUS[$row['tripStatus']] : '',
                 'bookedFor' => $row['bookedFor'],
+                'bookedBy' => $bookedByName,
                 'travelTypeName' => $row['travelTypeName'],
                 "calculatedKms" =>$row['calculatedKms'],
                 "ratechartKms" => $row['ratechartKms']

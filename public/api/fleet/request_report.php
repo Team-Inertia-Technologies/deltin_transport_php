@@ -60,6 +60,10 @@ switch ($mode) {
 
         $where = "fb.cStatus NOT IN ('X', 'C') AND fb.cType != 'C'";
 
+        if (checkUserModuleAccess($user_id, 'AIRPORT_TRANSFER_REQ')) {
+            $where .= " AND fb.iFleet_TrvPurID = 2";
+        }
+
         if (!empty($fromDate)) {
             $where .= " AND DATE(fb.vPickUpTime) >= '" . db_input($fromDate) . "'";
         }

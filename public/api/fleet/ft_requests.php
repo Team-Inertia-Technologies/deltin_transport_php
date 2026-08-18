@@ -121,6 +121,16 @@ function getFleetVendorStationOpts()
     ];
 }
 
+function getFleetBookedByNames()
+{
+    $bookedByOpt = [];
+    $bookedByRes = sql_query("SELECT DISTINCT vBookedBy FROM fleet_booking WHERE vBookedBy IS NOT NULL AND TRIM(vBookedBy) != '' ORDER BY vBookedBy");
+    while ($bbRow = sql_fetch_assoc($bookedByRes)) {
+        $bookedByOpt[] = db_output2($bbRow['vBookedBy']);
+    }
+    return $bookedByOpt;
+}
+
 switch ($mode) {
 
     // ===================== CASE: LIST =====================
@@ -321,6 +331,10 @@ switch ($mode) {
         } else if (!$staffReqAccess && !$guestReqAccess) {
             $whereClause .= " AND fb.cBookingFor = ''";
         }
+
+        if (checkUserModuleAccess($user_id, 'AIRPORT_TRANSFER_REQ')) {
+            $whereClause .= " AND fb.iFleet_TrvPurID = 2";
+        }
         if (!is_array($filterTripStatus)) {
             $filterTripStatus = explode(',', $filterTripStatus);
         }
@@ -382,7 +396,9 @@ switch ($mode) {
                 fb.vPickUpTime,
                 fb.iPax,
                 fb.iBaggage,
+                fb.vBookingCode,
                 fb.iBookedBy,
+                fb.vBookedBy,
                 fb.iDriverID,
                 fb.iVehicleID,
                 fb.iVendorID,
@@ -500,16 +516,22 @@ switch ($mode) {
             // Allow cancel only if module access or owner
             $canCancel = ($cancelModule || $isOwner || $notCancelled);
 
+            if (intval($row['iBookedBy']) > 0) {
+                $bookedByName = db_output2($row['bookedByName'] ?? '');
+            } else {
+                $bookedByName = db_output2($row['vBookedBy'] ?? '');
+            }
 
             $rowDataItem = [
                 'id' => $bookingID,
+                'bookingCode' => (!empty($row['vBookingCode'])) ? db_output2($row['vBookingCode']) : 'N/A',
                 'fullName' => db_output2($row['vName'] ?? ''),
                 'phone' => maskMobileNumber($row['vMobileNo']),
                 'from' => strtolower($row['cBookingFor'] ?? ''),
                 'location' => db_output2($row['vPickUpLocation'] ?? ''),
                 'destination' => db_output2($row['vDropLocation'] ?? ''),
                 'pickupDate' => !empty($row['vPickUpTime']) ? date('d-m-Y', strtotime($row['vPickUpTime'])) : '',
-                'pickupTime' => !empty($row['vPickUpTime']) ? date('h:i a', strtotime($row['vPickUpTime'])) : '',
+                'pickupTime' => !empty($row['vPickUpTime']) ? date('H:i', strtotime($row['vPickUpTime'])) : '',
                 'tripStatus' => $tripStatusCode,
                 'tripStatusText' => $tripStatusName,
                 'tripType' => $tripType,
@@ -518,7 +540,7 @@ switch ($mode) {
                 'endTime' => $endTime,
                 'paxs' => strval($row['iPax'] ?? '0'),
                 'bags' => strval($row['iBaggage'] ?? '0'),
-                'bookedBy' => db_output2($row['bookedByName'] ?? ''),
+                'bookedBy' => $bookedByName,
                 'pickupByName' => db_output2($row['driverName'] ?? ''),
                 'pickupByPhone' => db_output2($row['driverPhone'] ?? ''),
                 'pickupByType' => $driverTypeName,
@@ -747,7 +769,7 @@ if (!$distance) {
             exit;
         } else {
             $date = date('d/m/Y', strtotime($vPickUpTime));
-            $pickup_time = !empty($vPickUpTime) ? date('h:i A', strtotime($vPickUpTime)) : '';
+            $pickup_time = !empty($vPickUpTime) ? date('H:i', strtotime($vPickUpTime)) : '';
             SendConfirmationMessage($vMobileNo, db_input($vName), $vPickUpLocation, $date, $vDropLocation, $pickup_time);
             sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
         }
@@ -989,6 +1011,7 @@ if (!$distance) {
 
         $optArr = [
             "bookedForOpt" => $bookedForOpt,
+            "bookedByOpt" => getFleetBookedByNames(),
             "bookingCatOpt" => $bookingCatOpt,
             "travelPurposeOpt" => $travelPurposeTypeOpt,
             "propertyOpt" => $propertyOpt,
@@ -1268,6 +1291,7 @@ if (!$distance) {
                 fb.vPickUpTime,
                 fb.vInstructions,
                 fb.vRemarks,
+                fb.vTravelNotes,
                 fb.iVehicleCatID,
                 fb.iPax,
                 fb.iBaggage,
@@ -1276,6 +1300,7 @@ if (!$distance) {
                 fb.iAdded_UserID,
                 fb.cStatus as bookingStatus,
                 fb.cType as currentStatus,
+                fb.vBookingCode,
                 fb.iBookedBy as bookedById,
                 fb.vBookedBy as bookedBy,
                 fb.iFleet_RateID,
@@ -1415,6 +1440,7 @@ if (!$distance) {
 
         $requestDetails = [
             'bookingId' => intval($booking['iFleet_BookingID']),
+            'bookingCode' => (!empty($booking['vBookingCode'])) ? db_output2($booking['vBookingCode']) : 'N/A',
             'passengerName' => db_output2($passengerName),
             'mobile' => $passengerMobile,
             'guestStaffType' => $guestStaffType,
@@ -1426,6 +1452,7 @@ if (!$distance) {
             'dtcreated' => $dtCreated,
             'instructions' => db_output2($booking['vInstructions']) ?? '',
             'remarks' => db_output2($booking['vRemarks']) ?? '',
+            'travelNotes' => db_output2($booking['vTravelNotes'] ?? ''),
             'vehiCat' => intval($booking['iVehicleCatID'] ?? 0),
             'passengers' => intval($booking['iPax'] ?? 0),
             'baggage' => intval($booking['iBaggage'] ?? 0),
@@ -2241,7 +2268,7 @@ if (!$distance) {
             $vMobileNo = $bookingData['vMobileNo'] ?? '';
             $vName = db_output2($bookingData['vName']) ?? '';
             $vPickUpLocation = db_output2($bookingData['vPickUpLocation']) ?? '';
-            $pickup_time = !empty($bookingData['vPickUpTime']) ? date('h:i A', strtotime($bookingData['vPickUpTime'])) : '';
+            $pickup_time = !empty($bookingData['vPickUpTime']) ? date('H:i', strtotime($bookingData['vPickUpTime'])) : '';
             $dtAdded = NOW;
             $booking_code = $bookingData['vBookingCode'] ?? '';
 
@@ -2384,7 +2411,7 @@ if (!$distance) {
         $vMobileNo = $bookingData['vMobileNo'] ?? '';
         $vName = db_output2($bookingData['vName']) ?? '';
         $vPickUpLocation = db_output2($bookingData['vPickUpLocation']) ?? '';
-        $pickup_time = !empty($bookingData['vPickUpTime']) ? date('h:i A', strtotime($bookingData['vPickUpTime'])) : '';
+        $pickup_time = !empty($bookingData['vPickUpTime']) ? date('H:i', strtotime($bookingData['vPickUpTime'])) : '';
         $booking_code = $bookingData['vBookingCode'] ?? '';
         $dtAdded = NOW;
 
@@ -2482,6 +2509,9 @@ if (!$distance) {
                 fb.iPax,
                 fb.iBaggage,
                 fb.cType as tripStatus,
+                fb.vBookingCode,
+                fb.iBookedBy,
+                fb.vBookedBy,
                 fbc.vName as bookingCategoryName,
                 p.vName as propertyName,
                 s.vName as bookedByName,
@@ -2637,7 +2667,10 @@ if (!$distance) {
             'passengerMobile' => db_output2($tripData['passengerMobile'] ?? ''),
             'bags' => sprintf('%02d', intval($tripData['iBaggage'] ?? 0)),
             'pax' => sprintf('%02d', intval($tripData['iPax'] ?? 0)),
-            'bookedBy' => db_output2($tripData['bookedByName'] ?? ''),
+            'bookingCode' => (!empty($tripData['vBookingCode'])) ? db_output2($tripData['vBookingCode']) : 'N/A',
+            'bookedBy' => (intval($tripData['iBookedBy'] ?? 0) > 0 && !empty(trim($tripData['bookedByName'] ?? '')))
+                ? db_output2($tripData['bookedByName'])
+                : db_output2($tripData['vBookedBy'] ?? ''),
             'category' => db_output2($tripData['bookingCategoryName'] ?? ''),
             'pickupDateTime' => $actualPickupDateTime,
             'dropDateTime' => $actualDropDateTime,
@@ -2843,7 +2876,7 @@ if (!$distance) {
 
         $optArr = [
             "bookedForOpt" => $bookedForOpt,
-            // "bookedByOpt" => $bookedByOpt,
+            "bookedByOpt" => getFleetBookedByNames(),
             "bookingCatOpt" => $bookingCatOpt,
             "travelPurposeOpt" => $travelPurposeTypeOpt,
             "propertyOpt" => $propertyOpt,
