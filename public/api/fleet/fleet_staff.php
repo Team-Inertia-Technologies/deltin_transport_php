@@ -50,11 +50,16 @@ switch ($mode) {
         }
 
         $iFStaffID = NextID('iFStaffID', 'fleet_staff');
+        if($isUser){
+            $status = 'D';
+        }else{
+            $status = 'A';
+        }
 
         sql_query("
             INSERT INTO fleet_staff
             (iFStaffID,vCode,vName,vMobile,iDepartmentID,iUserID,dtRegistered,cStatus)
-            VALUES ($iFStaffID,'$vCode','$vName','$vMobile',$iDepartmentID,0,'$NOW','D')
+            VALUES ($iFStaffID,'$vCode','$vName','$vMobile',$iDepartmentID,0,'$NOW','$status')
         ");
 
         if ($isUser) {
