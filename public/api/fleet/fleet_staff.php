@@ -40,7 +40,12 @@ switch ($mode) {
         /* ---- DUPLICATE MOBILE CHECK ---- */
         $dup = sql_query("SELECT 1 FROM fleet_staff WHERE vMobile='$vMobile' AND cStatus!='X'");
         if (sql_num_rows($dup) > 0) {
-            echo json_encode(["statusCode" => 409, "message" => "Mobile number already exists"]);
+            echo json_encode(["statusCode" => 409, 
+               "data" => [  
+                "vMobile" => $vMobile,
+                "message" => "Mobile number already exists"
+               ]
+            ]);
             exit;
         }
 
