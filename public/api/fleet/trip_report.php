@@ -196,12 +196,14 @@ switch ($mode) {
 
             $driverType = $VEHICLE_DRIVER_TYPE[intval($row['driverType'] ?? 0)] ?? '';
 
+            $bookedByName = db_output2($row['vBookedBy'] ?? '');
             if (intval($row['iBookedBy']) > 0) {
-                $bookedByName = db_output2($row['bookedByName'] ?? '');
-            } else {
-                $bookedByName = '';
+                $staffName = db_output2($row['bookedByName'] ?? '');
+                if ($staffName !== '') {
+                    $byStaff = 'by ' . $staffName;
+                    $bookedByName = ($bookedByName !== '') ? ($bookedByName . ' ' . $byStaff) : $byStaff;
+                }
             }
-            $instructionsBy = db_output2($row['vBookedBy'] ?? '');
 
             $rowData[] = [
                 'id' => $bookingID,
@@ -224,7 +226,6 @@ switch ($mode) {
                 'tripType' => isset($FLEET_TRIP_STATUS[$row['tripStatus']]) ? $FLEET_TRIP_STATUS[$row['tripStatus']] : '',
                 'bookedFor' => $row['bookedFor'],
                 'bookedBy' => $bookedByName,
-                'instructionsBy' => $instructionsBy,
                 'property' => db_output2($row['propertyName'] ?? ''),
                 'bookingCategory' => db_output2($row['bookingCategoryName'] ?? ''),
                 'travelTypeName' => $row['travelTypeName'],
