@@ -608,6 +608,10 @@ switch ($mode) {
                 $bookedByName = db_output2($row['vBookedBy'] ?? '');
             }
 
+            if((!empty($row['iBookedBy']) && $row['iBookedBy'] != '0') && (!empty($row['vBookedBy']) && $row['vBookedBy'] != '')) {
+                $bookedByName = db_output2($row['vBookedBy']." by ".$FLEET_STAFF_ARR[$row['iBookedBy']] ?? '');
+            }
+
             $dateTime = dashboardFormatDateTime($row['vPickUpTime']);
 
             if($row['iDriverID'] == '0' || $row['iVehicleID'] == '0') {
