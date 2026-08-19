@@ -200,8 +200,7 @@ switch ($mode) {
             if (intval($row['iBookedBy']) > 0) {
                 $staffName = db_output2($row['bookedByName'] ?? '');
                 if ($staffName !== '') {
-                    $byStaff = 'by ' . $staffName;
-                    $bookedByName = ($bookedByName !== '') ? ($bookedByName . ' ' . $byStaff) : $byStaff;
+                    $bookedByName = ($bookedByName !== '') ? ($bookedByName . ' by ' . $staffName) : $staffName;
                 }
             }
 
@@ -209,7 +208,7 @@ switch ($mode) {
                 'id' => $bookingID,
                 'bookingCode' => (!empty($row['vBookingCode'])) ? db_output2($row['vBookingCode']) : 'N/A',
                 'fullName' => db_output2($row['vName']),
-                'phone' => db_output2($row['vMobileNo']),
+                'phone' => maskMobileNumber($row['vMobileNo']),
                 'pickupDate' => date('d-m-Y', strtotime($row['vPickUpTime'])),
                 'pickupTime' => date('h:i a', strtotime($row['vPickUpTime'])),
                 'location' => db_output2($row['vPickUpLocation']),

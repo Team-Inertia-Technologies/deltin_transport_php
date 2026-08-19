@@ -127,7 +127,7 @@ switch ($mode) {
             $rowData[] = [
                 'id' => $bookingID,
                 'fullName' => db_output2($row['vName']),
-                'phone' => db_output2($row['vMobileNo']),
+                'phone' => maskMobileNumber($row['vMobileNo']),
                 'pickupDate' => date('d-m-Y', strtotime($row['vPickUpTime'])),
                 'pickupTime' => date('h:i a', strtotime($row['vPickUpTime'])),
                 'location' => db_output2($row['vPickUpLocation']),

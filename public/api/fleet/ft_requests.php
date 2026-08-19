@@ -529,8 +529,7 @@ switch ($mode) {
             if (intval($row['iBookedBy']) > 0) {
                 $staffName = db_output2($row['bookedByName'] ?? '');
                 if ($staffName !== '') {
-                    $byStaff = 'by ' . $staffName;
-                    $bookedByName = ($bookedByName !== '') ? ($bookedByName . ' ' . $byStaff) : $byStaff;
+                    $bookedByName = ($bookedByName !== '') ? ($bookedByName . ' by ' . $staffName) : $staffName;
                 }
             }
             $rowDataItem = [
@@ -1441,8 +1440,7 @@ switch ($mode) {
         if (intval($booking['bookedById']) > 0) {
             $staffName = db_output2($booking['bookedByName'] ?? '');
             if ($staffName !== '') {
-                $byStaff = 'by ' . $staffName;
-                $bookedByName = ($bookedByName !== '') ? ($bookedByName . ' ' . $byStaff) : $byStaff;
+                $bookedByName = ($bookedByName !== '') ? ($bookedByName . ' by ' . $staffName) : $staffName;
             }
         }
 
