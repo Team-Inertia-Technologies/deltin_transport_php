@@ -1069,9 +1069,9 @@ switch ($mode) {
         $cBookingFor = db_input($_REQUEST['bookedFor'] ?? '');
         $iBookedBy = db_input($_REQUEST['bookedBy'] ?? '');
         $bookedByName = db_input($_REQUEST['bookedByName'] ?? '');
-        if ($iBookedBy > 0) {
-            $bookedByName = '';
-        }
+        // if ($iBookedBy > 0) {
+        //     $bookedByName = '';
+        // }
         $iFleet_TrvPurID = intval($_REQUEST['travelPurpose'] ?? 0);
         $iFleet_TrvTypeID = intval($_REQUEST['travelType'] ?? 0);
         $iFleet_BKCatID = intval($_REQUEST['bookingCat'] ?? 0);
