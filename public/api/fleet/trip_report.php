@@ -62,11 +62,25 @@ switch ($mode) {
         }
 
 
+        $bookedByOpt = [];
+        $seenBookedBy = [];
+        $bookedByRes = sql_query("SELECT DISTINCT TRIM(vBookedBy) AS vBookedBy FROM fleet_booking WHERE vBookedBy IS NOT NULL AND TRIM(vBookedBy) != '' ORDER BY TRIM(vBookedBy)");
+        while ($bbRow = sql_fetch_assoc($bookedByRes)) {
+            $name = db_output2($bbRow['vBookedBy']);
+            $key = strtolower($name);
+            if ($name === '' || isset($seenBookedBy[$key])) {
+                continue;
+            }
+            $seenBookedBy[$key] = true;
+            $bookedByOpt[] = $name;
+        }
+
         $optArr = [
             'vendorOpt' => $vendorOpt,
             'vehicleOpt' => $vehicleOpt,
             'driverOpt' => $driverOpt,
-            'locationOpt' => $LOCATION_ARR
+            'locationOpt' => $LOCATION_ARR,
+            'bookedByOpt' => $bookedByOpt
         ];
 
 
@@ -119,7 +133,9 @@ switch ($mode) {
             v.vRnum AS vehicleRegNo,
             vcat.vName AS vehicleCategory,
              ftt.vName as travelTypeName,
-            s.vName as bookedByName
+            s.vName as bookedByName,
+            p.vName as propertyName,
+            fbc.vName as bookingCategoryName
         FROM fleet_booking fb
         LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID 
         LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID
@@ -127,6 +143,8 @@ switch ($mode) {
         LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID
         LEFT JOIN fleet_traveltype ftt ON fb.iFleet_TrvTypeID = ftt.iFleet_TrvTypeID
         LEFT JOIN fleet_staff s ON fb.iBookedBy = s.iFStaffID
+        LEFT JOIN property p ON fb.iPropertyID = p.iPropertyID
+        LEFT JOIN fleet_bookingcategory fbc ON fb.iFleet_BKCatID = fbc.iFleet_BkCatID
         WHERE $where
         ORDER BY fb.vPickUpTime ASC
     ";
@@ -181,8 +199,9 @@ switch ($mode) {
             if (intval($row['iBookedBy']) > 0) {
                 $bookedByName = db_output2($row['bookedByName'] ?? '');
             } else {
-                $bookedByName = db_output2($row['vBookedBy'] ?? '');
+                $bookedByName = '';
             }
+            $instructionsBy = db_output2($row['vBookedBy'] ?? '');
 
             $rowData[] = [
                 'id' => $bookingID,
@@ -205,6 +224,9 @@ switch ($mode) {
                 'tripType' => isset($FLEET_TRIP_STATUS[$row['tripStatus']]) ? $FLEET_TRIP_STATUS[$row['tripStatus']] : '',
                 'bookedFor' => $row['bookedFor'],
                 'bookedBy' => $bookedByName,
+                'instructionsBy' => $instructionsBy,
+                'property' => db_output2($row['propertyName'] ?? ''),
+                'bookingCategory' => db_output2($row['bookingCategoryName'] ?? ''),
                 'travelTypeName' => $row['travelTypeName'],
                 "calculatedKms" =>$row['calculatedKms'],
                 "ratechartKms" => $row['ratechartKms']
