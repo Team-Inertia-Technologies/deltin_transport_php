@@ -604,13 +604,13 @@ switch ($mode) {
                 $type_status = 'D';
             }
             $bookedByName = db_output2($FLEET_STAFF_ARR[$row['iBookedBy']] ?? '');
-            if ($row['iBookedBy'] == '0') {
+            /*if ($row['iBookedBy'] == '0') {
                 $bookedByName = db_output2($row['vBookedBy'] ?? '');
-            }
+            }*/
 
-            if((!empty($row['iBookedBy']) && $row['iBookedBy'] != '0') && (!empty($row['vBookedBy']) && $row['vBookedBy'] != '')) {
+            /*if((!empty($row['iBookedBy']) && $row['iBookedBy'] != '0') && (!empty($row['vBookedBy']) && $row['vBookedBy'] != '')) {
                 $bookedByName = db_output2($row['vBookedBy']." by ".$FLEET_STAFF_ARR[$row['iBookedBy']] ?? '');
-            }
+            }*/
 
             $dateTime = dashboardFormatDateTime($row['vPickUpTime']);
 
@@ -635,6 +635,7 @@ switch ($mode) {
                 'pax' => strval($row['iPax'] ?? '0'),
                 'bags' => strval($row['iBaggage'] ?? '0'),
                 'bookedByName' => $bookedByName,
+                'instructedBy' => db_output2($row['vBookedBy'] ?? ''),
                 'bookingCat' => db_output2($FLEET_CATEGORY_ARR[$row['iFleet_BKCatID']] ?? ''),
                 'bookedFor' => db_output2($row['cBookingFor'] ?? ''),
                 'property' => db_output2($PROPERTY_ARR[$row['iPropertyID']] ?? ''),
