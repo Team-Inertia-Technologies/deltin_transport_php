@@ -38,16 +38,16 @@ switch ($mode) {
         $reportingTo  = intval($_REQUEST['reportingTo'] ?? 0);
 
         /* ---- DUPLICATE MOBILE CHECK ---- */
-        $dup = sql_query("SELECT 1 FROM fleet_staff WHERE vMobile='$vMobile' AND cStatus!='X'");
-        if (sql_num_rows($dup) > 0) {
-            echo json_encode(["statusCode" => 409, 
-               "data" => [  
-                "vMobile" => $vMobile,
-                "message" => "Mobile number already exists"
-               ]
-            ]);
-            exit;
-        }
+        // $dup = sql_query("SELECT 1 FROM fleet_staff WHERE vMobile='$vMobile' AND cStatus!='X'");
+        // if (sql_num_rows($dup) > 0) {
+        //     echo json_encode(["statusCode" => 409, 
+        //        "data" => [  
+        //         "vMobile" => $vMobile,
+        //         "message" => "Mobile number already exists"
+        //        ]
+        //     ]);
+        //     exit;
+        // }
 
         $iFStaffID = NextID('iFStaffID', 'fleet_staff');
         if($isUser){
@@ -183,19 +183,19 @@ switch ($mode) {
         $reportingTo  = intval($_REQUEST['reportingTo'] ?? 0);
 
 
-        $dup = sql_query("
-        SELECT 1 FROM fleet_staff 
-        WHERE vMobile='$vMobile' 
-          AND iFStaffID!=$iFStaffID 
-          AND cStatus!='X'
-    ");
-        if (sql_num_rows($dup) > 0) {
-            echo json_encode([
-                "statusCode" => 409,
-                "message" => "Mobile number already exists"
-            ]);
-            exit;
-        }
+    //     $dup = sql_query("
+    //     SELECT 1 FROM fleet_staff 
+    //     WHERE vMobile='$vMobile' 
+    //       AND iFStaffID!=$iFStaffID 
+    //       AND cStatus!='X'
+    // ");
+    //     if (sql_num_rows($dup) > 0) {
+    //         echo json_encode([
+    //             "statusCode" => 409,
+    //             "message" => "Mobile number already exists"
+    //         ]);
+    //         exit;
+    //     }
 
         sql_query("
         UPDATE fleet_staff

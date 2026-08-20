@@ -124,9 +124,16 @@ function getFleetVendorStationOpts()
 function getFleetBookedByNames()
 {
     $bookedByOpt = [];
-    $bookedByRes = sql_query("SELECT DISTINCT vBookedBy FROM fleet_booking WHERE vBookedBy IS NOT NULL AND TRIM(vBookedBy) != '' ORDER BY vBookedBy");
+    $seen = [];
+    $bookedByRes = sql_query("SELECT DISTINCT TRIM(vBookedBy) AS vBookedBy FROM fleet_booking WHERE vBookedBy IS NOT NULL AND TRIM(vBookedBy) != '' ORDER BY TRIM(vBookedBy)");
     while ($bbRow = sql_fetch_assoc($bookedByRes)) {
-        $bookedByOpt[] = db_output2($bbRow['vBookedBy']);
+        $name = db_output2($bbRow['vBookedBy']);
+        $key = strtolower($name);
+        if ($name === '' || isset($seen[$key])) {
+            continue;
+        }
+        $seen[$key] = true;
+        $bookedByOpt[] = $name;
     }
     return $bookedByOpt;
 }
@@ -412,7 +419,8 @@ switch ($mode) {
                 d.vMobileNum as driverPhone,
                 d.iType as driverType,
                 v.vRnum as vehicleRegNo,
-                vcat.vName as assignedVehicleCategoryName
+                vcat.vName as assignedVehicleCategoryName,
+                vend.vName as vendorName
             FROM fleet_booking fb
             LEFT JOIN fleet_staff s ON fb.iBookedBy = s.iFStaffID
             LEFT JOIN property p ON fb.iPropertyID = p.iPropertyID
@@ -420,6 +428,7 @@ switch ($mode) {
             LEFT JOIN driver d ON fb.iDriverID = d.iDriverID AND d.cStatus = 'A'
             LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
             LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID AND vcat.cStatus = 'A'
+            LEFT JOIN vendor vend ON fb.iVendorID = vend.iVendorID
             WHERE $whereClause
             ORDER BY 
                 CASE 
@@ -516,12 +525,11 @@ switch ($mode) {
             // Allow cancel only if module access or owner
             $canCancel = ($cancelModule || $isOwner || $notCancelled);
 
+            $bookedByName = '';
             if (intval($row['iBookedBy']) > 0) {
                 $bookedByName = db_output2($row['bookedByName'] ?? '');
-            } else {
-                $bookedByName = db_output2($row['vBookedBy'] ?? '');
             }
-
+            $instructionsBy = db_output2($row['vBookedBy'] ?? '');
             $rowDataItem = [
                 'id' => $bookingID,
                 'bookingCode' => (!empty($row['vBookingCode'])) ? db_output2($row['vBookingCode']) : 'N/A',
@@ -541,11 +549,13 @@ switch ($mode) {
                 'paxs' => strval($row['iPax'] ?? '0'),
                 'bags' => strval($row['iBaggage'] ?? '0'),
                 'bookedBy' => $bookedByName,
+                'instructionsBy' => $instructionsBy,
                 'pickupByName' => db_output2($row['driverName'] ?? ''),
                 'pickupByPhone' => db_output2($row['driverPhone'] ?? ''),
                 'pickupByType' => $driverTypeName,
                 'vehicleDetails' => $vehicleDetails,
                 'vehicleType' => db_output2($row['vehicleCatName'] ?? ''),
+                'vendorName' => db_output2($row['vendorName'] ?? ''),
                 'isTrip' => $isTrip,
                 'canCancel' => $canCancel
             ];
@@ -644,11 +654,11 @@ switch ($mode) {
     $pickUpLocData['lng'] ?? '',
     $dropLocData['lat'] ?? '',
     $dropLocData['lng'] ?? ''
-);
+    );
 
-if (!$distance) {
-    $distance = 0;
-}
+    if (!$distance) {
+        $distance = 0;
+    }
 
         // $fromLoc = isset($_REQUEST['fromLoc']) ? intval($_REQUEST['fromLoc']) : 0;
         // $toLoc = isset($_REQUEST['toLoc']) ? intval($_REQUEST['toLoc']) : 0;
@@ -830,6 +840,7 @@ if (!$distance) {
             "bookingId" => intval($booking['iFleet_BookingID']),
             "bookedBy" => intval($booking['iBookedBy']),
             "bookedByName" => db_output2($booking['vBookedBy']),
+            "instructionsBy" => db_output2($booking['vBookedBy']),
             "bookedFor" => $booking['cBookingFor'],
             "travelPurpose" => intval($booking['iFleet_TrvPurID']),
             "travelType" => intval($booking['iFleet_TrvTypeID']),
@@ -1057,9 +1068,9 @@ if (!$distance) {
         $cBookingFor = db_input($_REQUEST['bookedFor'] ?? '');
         $iBookedBy = db_input($_REQUEST['bookedBy'] ?? '');
         $bookedByName = db_input($_REQUEST['bookedByName'] ?? '');
-        if ($iBookedBy > 0) {
-            $bookedByName = '';
-        }
+        // if ($iBookedBy > 0) {
+        //     $bookedByName = '';
+        // }
         $iFleet_TrvPurID = intval($_REQUEST['travelPurpose'] ?? 0);
         $iFleet_TrvTypeID = intval($_REQUEST['travelType'] ?? 0);
         $iFleet_BKCatID = intval($_REQUEST['bookingCat'] ?? 0);
@@ -1424,11 +1435,11 @@ if (!$distance) {
         $isVehicleAssigned = !empty($booking['iVehicleID']) && intval($booking['iVehicleID']) > 0;
         $isDriverAssigned = !empty($booking['iDriverID']) && intval($booking['iDriverID']) > 0;
 
-        if (intval($booking['bookedById']) == 0) {
-            $bookedByName = db_output2($booking['bookedBy']);
-        } else {
-            $bookedByName = db_output2($booking['bookedByName']);
+        $bookedByName = '';
+        if (intval($booking['bookedById']) > 0) {
+            $bookedByName = db_output2($booking['bookedByName'] ?? '');
         }
+        $instructionsBy = db_output2($booking['bookedBy'] ?? '');
 
         $cancelModule = checkUserModuleAccess($user_id, 'FLEET_REQUEST_CANCEL');
 
@@ -1457,6 +1468,7 @@ if (!$distance) {
             'passengers' => intval($booking['iPax'] ?? 0),
             'baggage' => intval($booking['iBaggage'] ?? 0),
             'bookedBy' => $bookedByName,
+            'instructionsBy' => $instructionsBy,
             'vehicleCategory' => db_output2($booking['vehicleCategoryName']) ?? 'N/A',
             'travelPurpose' => $booking['travelPurposeName'] ?? 'N/A',
             'travelType' => $booking['travelTypeName'] ?? 'N/A',
@@ -2668,9 +2680,10 @@ if (!$distance) {
             'bags' => sprintf('%02d', intval($tripData['iBaggage'] ?? 0)),
             'pax' => sprintf('%02d', intval($tripData['iPax'] ?? 0)),
             'bookingCode' => (!empty($tripData['vBookingCode'])) ? db_output2($tripData['vBookingCode']) : 'N/A',
-            'bookedBy' => (intval($tripData['iBookedBy'] ?? 0) > 0 && !empty(trim($tripData['bookedByName'] ?? '')))
-                ? db_output2($tripData['bookedByName'])
-                : db_output2($tripData['vBookedBy'] ?? ''),
+            'bookedBy' => (intval($tripData['iBookedBy'] ?? 0) > 0)
+                ? db_output2($tripData['bookedByName'] ?? '')
+                : '',
+            'instructionsBy' => db_output2($tripData['vBookedBy'] ?? ''),
             'category' => db_output2($tripData['bookingCategoryName'] ?? ''),
             'pickupDateTime' => $actualPickupDateTime,
             'dropDateTime' => $actualDropDateTime,
