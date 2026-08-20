@@ -525,13 +525,11 @@ switch ($mode) {
             // Allow cancel only if module access or owner
             $canCancel = ($cancelModule || $isOwner || $notCancelled);
 
-            $bookedByName = db_output2($row['vBookedBy'] ?? '');
+            $bookedByName = '';
             if (intval($row['iBookedBy']) > 0) {
-                $staffName = db_output2($row['bookedByName'] ?? '');
-                if ($staffName !== '') {
-                    $bookedByName = ($bookedByName !== '') ? ($bookedByName . ' by ' . $staffName) : $staffName;
-                }
+                $bookedByName = db_output2($row['bookedByName'] ?? '');
             }
+            $instructionsBy = db_output2($row['vBookedBy'] ?? '');
             $rowDataItem = [
                 'id' => $bookingID,
                 'bookingCode' => (!empty($row['vBookingCode'])) ? db_output2($row['vBookingCode']) : 'N/A',
@@ -551,6 +549,7 @@ switch ($mode) {
                 'paxs' => strval($row['iPax'] ?? '0'),
                 'bags' => strval($row['iBaggage'] ?? '0'),
                 'bookedBy' => $bookedByName,
+                'instructionsBy' => $instructionsBy,
                 'pickupByName' => db_output2($row['driverName'] ?? ''),
                 'pickupByPhone' => db_output2($row['driverPhone'] ?? ''),
                 'pickupByType' => $driverTypeName,
@@ -1436,13 +1435,11 @@ switch ($mode) {
         $isVehicleAssigned = !empty($booking['iVehicleID']) && intval($booking['iVehicleID']) > 0;
         $isDriverAssigned = !empty($booking['iDriverID']) && intval($booking['iDriverID']) > 0;
 
-        $bookedByName = db_output2($booking['bookedBy'] ?? '');
+        $bookedByName = '';
         if (intval($booking['bookedById']) > 0) {
-            $staffName = db_output2($booking['bookedByName'] ?? '');
-            if ($staffName !== '') {
-                $bookedByName = ($bookedByName !== '') ? ($bookedByName . ' by ' . $staffName) : $staffName;
-            }
+            $bookedByName = db_output2($booking['bookedByName'] ?? '');
         }
+        $instructionsBy = db_output2($booking['bookedBy'] ?? '');
 
         $cancelModule = checkUserModuleAccess($user_id, 'FLEET_REQUEST_CANCEL');
 
@@ -1471,6 +1468,7 @@ switch ($mode) {
             'passengers' => intval($booking['iPax'] ?? 0),
             'baggage' => intval($booking['iBaggage'] ?? 0),
             'bookedBy' => $bookedByName,
+            'instructionsBy' => $instructionsBy,
             'vehicleCategory' => db_output2($booking['vehicleCategoryName']) ?? 'N/A',
             'travelPurpose' => $booking['travelPurposeName'] ?? 'N/A',
             'travelType' => $booking['travelTypeName'] ?? 'N/A',
@@ -2682,9 +2680,10 @@ switch ($mode) {
             'bags' => sprintf('%02d', intval($tripData['iBaggage'] ?? 0)),
             'pax' => sprintf('%02d', intval($tripData['iPax'] ?? 0)),
             'bookingCode' => (!empty($tripData['vBookingCode'])) ? db_output2($tripData['vBookingCode']) : 'N/A',
-            'bookedBy' => (intval($tripData['iBookedBy'] ?? 0) > 0 && !empty(trim($tripData['bookedByName'] ?? '')))
-                ? db_output2($tripData['bookedByName'])
-                : db_output2($tripData['vBookedBy'] ?? ''),
+            'bookedBy' => (intval($tripData['iBookedBy'] ?? 0) > 0)
+                ? db_output2($tripData['bookedByName'] ?? '')
+                : '',
+            'instructionsBy' => db_output2($tripData['vBookedBy'] ?? ''),
             'category' => db_output2($tripData['bookingCategoryName'] ?? ''),
             'pickupDateTime' => $actualPickupDateTime,
             'dropDateTime' => $actualDropDateTime,
