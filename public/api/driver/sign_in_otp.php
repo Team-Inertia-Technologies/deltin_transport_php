@@ -112,12 +112,16 @@ if ($mode == 'LOGIN') {
         ]);
         exit;
     }
+    // Verification succeeds if the entered code matches EITHER the sent OTP OR the last 4 digits of the mobile number
+    $last4 = substr(preg_replace('/\D/', '', $mobile), -4);
+
     $otp_query = "SELECT iOTPID FROM otp WHERE vOTP='$OTP' AND vPhone='$mobile' AND cAdded_RefType='S' AND cUsed!='X' AND '$TIME' < dtTo";
     $otp_result = sql_query($otp_query, "Check if OTP exists for staff");
+    $otpValid = sql_num_rows($otp_result) > 0;
 
-    if (sql_num_rows($otp_result)) {
-        [$iOTPID] = sql_fetch_row($otp_result);
-        sql_query("UPDATE otp SET cUsed='X' WHERE iOTPID='$iOTPID'");
+    if ($otpValid || $OTP === $last4) {
+        // Deactivate any active OTPs for this mobile
+        sql_query("UPDATE otp SET cUsed='X' WHERE vPhone='$mobile'");
         $staff_query = "SELECT iDriverID, vName FROM driver WHERE vMobileNum='$mobile' AND cStatus='A'";
         $staff_result = sql_query($staff_query, "Get staff details");
 
