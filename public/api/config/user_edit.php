@@ -297,8 +297,17 @@ try {
 			$update_fields[] = "iLevel = " . db_input($_POST['cmblevel']);
 		}
 	
-		$new_properties = $_POST['cmbproperty2'] ?? [];
+		$new_properties_raw = $_POST['cmbproperty2'] ?? [];
+		if (!is_array($new_properties_raw)) {
+			// Accept comma-separated string like "1,2"
+			$new_properties_raw = (trim($new_properties_raw) !== '') ? explode(',', $new_properties_raw) : [];
+		}
+		$new_properties = array_values(array_unique(array_map('intval', array_filter($new_properties_raw, function ($v) {
+			return trim((string)$v) !== '';
+		}))));
+
 		$current_properties = GetXArrFromYID("SELECT iPropertyID FROM user_temp_property_assoc WHERE iUserID = '$txtid'");
+		$current_properties = !empty($current_properties) ? array_values(array_map('intval', $current_properties)) : [];
 	
 		sort($new_properties);
 		sort($current_properties);
