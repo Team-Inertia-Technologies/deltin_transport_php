@@ -18,6 +18,7 @@ if (!$token) {
     exit;
 }
 $levelID  = $_REQUEST['level'] ?? null;
+$propertyID = $_REQUEST['property'] ?? null;
 $statusID = $_REQUEST['status'] ?? null;
 $keywords = $_REQUEST['keywords'] ?? null;
 $sess_user_id = intval(DecodeParam($token));
@@ -67,14 +68,17 @@ try {
 
     $PROPERTY_LIST = [];
     $propertyQuery = "
-        SELECT iPropertyID, vShortCode
+        SELECT iPropertyID, vName
         FROM property
         WHERE cStatus = 'A'
-        ORDER BY vShortCode
+        ORDER BY iPropertyID
     ";
     $propertyRes = sql_query($propertyQuery);
     while ($row = sql_fetch_assoc($propertyRes)) {
-        $PROPERTY_LIST[$row['iPropertyID']] = $row['vShortCode'];
+       $PROPERTY_LIST[] = [
+        "id" => (int)$row['iPropertyID'],
+        "name" => $row['vName']
+       ];
     }
 
     // ---------------------------------------------------
@@ -94,6 +98,10 @@ try {
     // ---------------------------------------------------
     if (!is_null($levelID) && $levelID >= 0) {
         $cond .= " AND iLevel = " . intval($levelID);
+    }
+
+    if (!is_null($propertyID) && $propertyID >= 0) {
+        $cond .= " AND iPropertyID = " . intval($propertyID);
     }
 
     if (!is_null($statusID) && $statusID !== "") {
@@ -185,6 +193,9 @@ try {
         $row['levelname'] = GetXFromYID(
             "SELECT vName FROM levels WHERE iLevelD = " . intval($row['iLevel'])
         );
+        $row['propertyName'] = GetXFromYID(
+            "SELECT vShortCode FROM property WHERE iPropertyID = " . intval($row['iPropertyID'])
+        );
         $users[] = $row;
     }
 
@@ -217,8 +228,7 @@ try {
         "data" => [
             "message"     => "Users Fetched Successfully",
             "users"       => $users,
-            "properties"  => $PROPERTY_ARR,
-            "propertyList" => $PROPERTY_LIST,
+            "properties" => $PROPERTY_LIST,
             "levels"      => $levels,
             "status"      => $Status,
             "staff"       => $staff,

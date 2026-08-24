@@ -175,7 +175,7 @@ try {
 				'cAction' => $txtaction,
 				'status_str' => $status_str,
 				'vRemark' => $txtreason,
-				'properties' => $cmbproperty2
+				'cmbproperty2' => $cmbproperty2
 			]
         ]);
         exit;
