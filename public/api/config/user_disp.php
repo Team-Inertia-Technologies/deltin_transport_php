@@ -193,9 +193,14 @@ try {
         $row['levelname'] = GetXFromYID(
             "SELECT vName FROM levels WHERE iLevelD = " . intval($row['iLevel'])
         );
-        $row['propertyName'] = GetXFromYID(
-            "SELECT vShortCode FROM property WHERE iPropertyID = " . intval($row['iPropertyID'])
-        );
+        // iPropertyID can be a single value or a comma-separated list of IDs
+        $propertyIds = array_values(array_filter(
+            array_map('intval', explode(',', (string)($row['iPropertyID'] ?? ''))),
+            function ($v) { return $v > 0; }
+        ));
+        $row['propertyName'] = !empty($propertyIds)
+            ? GetXFromYID("SELECT GROUP_CONCAT(vShortCode ORDER BY vShortCode SEPARATOR ', ') FROM property WHERE iPropertyID IN (" . implode(',', $propertyIds) . ")")
+            : '';
         $users[] = $row;
     }
 
