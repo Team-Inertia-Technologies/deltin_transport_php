@@ -65,6 +65,18 @@ try {
         $PROPERTY_ARR[$u_id][] = $p_code;
     }
 
+    $PROPERTY_LIST = [];
+    $propertyQuery = "
+        SELECT iPropertyID, vShortCode
+        FROM property
+        WHERE cStatus = 'A'
+        ORDER BY vShortCode
+    ";
+    $propertyRes = sql_query($propertyQuery);
+    while ($row = sql_fetch_assoc($propertyRes)) {
+        $PROPERTY_LIST[$row['iPropertyID']] = $row['vShortCode'];
+    }
+
     // ---------------------------------------------------
     // Base Conditions
     // ---------------------------------------------------
@@ -206,6 +218,7 @@ try {
             "message"     => "Users Fetched Successfully",
             "users"       => $users,
             "properties"  => $PROPERTY_ARR,
+            "propertyList" => $PROPERTY_LIST,
             "levels"      => $levels,
             "status"      => $Status,
             "staff"       => $staff,
