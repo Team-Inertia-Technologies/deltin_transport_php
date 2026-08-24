@@ -410,6 +410,11 @@ switch ($mode) {
                 fb.iVehicleID,
                 fb.iVendorID,
                 fb.iAdded_UserID,
+                fb.iFleet_BKCatID,
+                fb.iPropertyID,
+                fb.iVehicleCatID,
+                fb.iFleet_StationID,
+                fb.iFStaffID,
                 fb.cType as tripStatus,
                 fb.cStatus as bookingStatus,
                 s.vName as bookedByName,
@@ -420,9 +425,11 @@ switch ($mode) {
                 d.iType as driverType,
                 v.vRnum as vehicleRegNo,
                 vcat.vName as assignedVehicleCategoryName,
-                vend.vName as vendorName
+                vend.vName as vendorName,
+                fs.iDepartmentID as departmentId
             FROM fleet_booking fb
             LEFT JOIN fleet_staff s ON fb.iBookedBy = s.iFStaffID
+            LEFT JOIN fleet_staff fs ON fb.iFStaffID = fs.iFStaffID
             LEFT JOIN property p ON fb.iPropertyID = p.iPropertyID
             LEFT JOIN vehicle_category vc ON fb.iVehicleCatID = vc.iVCatID
             LEFT JOIN driver d ON fb.iDriverID = d.iDriverID AND d.cStatus = 'A'
@@ -557,7 +564,16 @@ switch ($mode) {
                 'vehicleType' => db_output2($row['vehicleCatName'] ?? ''),
                 'vendorName' => db_output2($row['vendorName'] ?? ''),
                 'isTrip' => $isTrip,
-                'canCancel' => $canCancel
+                'canCancel' => $canCancel,
+                'bookedById' => intval($row['iBookedBy'] ?? 0),
+                'bookedFor' => $row['cBookingFor'] ?? '',
+                'bookingCat' => intval($row['iFleet_BKCatID'] ?? 0),
+                'property' => intval($row['iPropertyID'] ?? 0),
+                'mob' => db_output2($row['vMobileNo'] ?? ''),
+                'vehiCat' => intval($row['iVehicleCatID'] ?? 0),
+                'vendorID' => intval($row['iVendorID'] ?? 0),
+                'stationID' => intval($row['iFleet_StationID'] ?? 0),
+                'department' => intval($row['departmentId'] ?? 0)
             ];
 
             // Apply tripType filter (since it's calculated, not in DB)
