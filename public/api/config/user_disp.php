@@ -67,6 +67,7 @@ try {
     }
 
     $PROPERTY_LIST = [];
+    $PROPERTY_IDS = [];
     $propertyQuery = "
         SELECT iPropertyID, vName
         FROM property
@@ -75,6 +76,7 @@ try {
     ";
     $propertyRes = sql_query($propertyQuery);
     while ($row = sql_fetch_assoc($propertyRes)) {
+       $PROPERTY_IDS[] = (int)$row['iPropertyID'];
        $PROPERTY_LIST[] = [
         "id" => (int)$row['iPropertyID'],
         "name" => $row['vName']
@@ -100,8 +102,30 @@ try {
         $cond .= " AND iLevel = " . intval($levelID);
     }
 
-    if (!is_null($propertyID) && $propertyID >= 0) {
-        $cond .= " AND iPropertyID = " . intval($propertyID);
+    // Property filter - handle multi-select (properties stored in user_temp_property_assoc)
+    $cmbproperty = is_array($propertyID) ? implode(',', $propertyID) : (string)($propertyID ?? '');
+    if (trim($cmbproperty) !== '') {
+        $propertyIds = explode(',', $cmbproperty);
+        $propertyIds = array_filter(array_map('intval', $propertyIds), function ($v) {
+            return $v > 0;
+        });
+
+        if (!empty($propertyIds)) {
+            $validPropertyIds = array_intersect($propertyIds, $PROPERTY_IDS);
+
+            if (!empty($validPropertyIds)) {
+                $uLIST = GetIDString2('SELECT iUserID FROM user_temp_property_assoc WHERE iPropertyID IN (' . implode(',', $validPropertyIds) . ')');
+                if (empty($uLIST) || $uLIST == '-1') $uLIST = 0;
+                $cond .= " AND iUserID IN (" . $uLIST . ")";
+            }
+        }
+    } else {
+        // No property selected - restrict to users having any available property
+        if (!empty($PROPERTY_IDS)) {
+            $uLIST = GetIDString2('SELECT iUserID FROM user_temp_property_assoc WHERE iPropertyID IN (' . implode(',', $PROPERTY_IDS) . ')');
+            if (empty($uLIST) || $uLIST == '-1') $uLIST = 0;
+            $cond .= " AND iUserID IN (" . $uLIST . ")";
+        }
     }
 
     if (!is_null($statusID) && $statusID !== "") {
