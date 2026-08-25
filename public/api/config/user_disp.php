@@ -193,11 +193,13 @@ try {
         $row['levelname'] = GetXFromYID(
             "SELECT vName FROM levels WHERE iLevelD = " . intval($row['iLevel'])
         );
-        // iPropertyID can be a single value or a comma-separated list of IDs
-        $propertyIds = array_values(array_filter(
-            array_map('intval', explode(',', (string)($row['iPropertyID'] ?? ''))),
-            function ($v) { return $v > 0; }
-        ));
+        // Properties are stored in the assoc table (multi-value)
+        $iUserID = intval($row['iUserID']);
+        $propertyIds = GetXArrFromYID("SELECT iPropertyID FROM user_temp_property_assoc WHERE iUserID = '$iUserID'");
+        $propertyIds = !empty($propertyIds) ? array_values(array_filter(array_map('intval', $propertyIds), function ($v) {
+            return $v > 0;
+        })) : [];
+        $row['iPropertyID'] = !empty($propertyIds) ? implode(',', $propertyIds) : '';
         $row['propertyName'] = !empty($propertyIds)
             ? GetXFromYID("SELECT GROUP_CONCAT(vShortCode ORDER BY vShortCode SEPARATOR ', ') FROM property WHERE iPropertyID IN (" . implode(',', $propertyIds) . ")")
             : '';
