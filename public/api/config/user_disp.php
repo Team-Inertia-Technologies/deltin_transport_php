@@ -119,13 +119,6 @@ try {
                 $cond .= " AND iUserID IN (" . $uLIST . ")";
             }
         }
-    } else {
-        // No property selected - restrict to users having any available property
-        if (!empty($PROPERTY_IDS)) {
-            $uLIST = GetIDString2('SELECT iUserID FROM user_temp_property_assoc WHERE iPropertyID IN (' . implode(',', $PROPERTY_IDS) . ')');
-            if (empty($uLIST) || $uLIST == '-1') $uLIST = 0;
-            $cond .= " AND iUserID IN (" . $uLIST . ")";
-        }
     }
 
     if (!is_null($statusID) && $statusID !== "") {
