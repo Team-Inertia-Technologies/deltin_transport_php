@@ -72,7 +72,14 @@ try {
 
         $dtCreated = NOW;
         $sess_user_id = $_SESSION[PROJ_SESSION_ID]->user_id ?? 0;
-		$cmbproperty = $_POST['cmbproperty2'] ?? [];
+		$cmbproperty_raw = $_POST['cmbproperty2'] ?? [];
+		if (!is_array($cmbproperty_raw)) {
+			// Accept comma-separated string like "1,2"
+			$cmbproperty_raw = (trim($cmbproperty_raw) !== '') ? explode(',', $cmbproperty_raw) : [];
+		}
+		$cmbproperty = array_values(array_unique(array_map('intval', array_filter($cmbproperty_raw, function ($v) {
+			return trim((string)$v) !== '';
+		}))));
 
         $sql = "INSERT INTO users_temp 
                 (iUserID, iDepartmentID, iReportingID, vName, vUName, vPassword, vEmail, vPhone, iLevel, cStatus, dtCreated, iCreated_UserID, cRefType, iRefID, cRefSrcType)
@@ -86,13 +93,9 @@ try {
 			sql_query("INSERT INTO user_temp_station_assoc (iUserID, iStationID) VALUES ($txtid, $stationID)");
 		}
 		
-		if (!is_array($cmbproperty)) {
-			$cmbproperty = [$cmbproperty];
-		}
-
 		if (!empty($cmbproperty)) {
 			foreach ($cmbproperty as $p) {
-				sql_query("INSERT INTO user_temp_property_assoc VALUES ($txtid, '$p')");
+				sql_query("INSERT INTO user_temp_property_assoc (iUserID, iPropertyID) VALUES ($txtid, $p)");
 			}
 		}
 
@@ -149,6 +152,7 @@ try {
 	$status_str = GetStatusImageString2('USERS', $rdstatus, $txtid, false);
 	$txtreason = db_output($dataArr[0]->vRemark);
 	$cmbproperty2 = GetXArrFromYID('select iPropertyID from user_temp_property_assoc where iUserID=' . $txtid);
+	$cmbproperty2 = !empty($cmbproperty2) ? array_values(array_map('intval', $cmbproperty2)) : [];
 
 	http_response_code(200);
         echo json_encode([
@@ -175,7 +179,7 @@ try {
 				'cAction' => $txtaction,
 				'status_str' => $status_str,
 				'vRemark' => $txtreason,
-				'properties' => $cmbproperty2
+				'cmbproperty2' => $cmbproperty2
 			]
         ]);
         exit;
@@ -297,8 +301,17 @@ try {
 			$update_fields[] = "iLevel = " . db_input($_POST['cmblevel']);
 		}
 	
-		$new_properties = $_POST['cmbproperty2'] ?? [];
+		$new_properties_raw = $_POST['cmbproperty2'] ?? [];
+		if (!is_array($new_properties_raw)) {
+			// Accept comma-separated string like "1,2"
+			$new_properties_raw = (trim($new_properties_raw) !== '') ? explode(',', $new_properties_raw) : [];
+		}
+		$new_properties = array_values(array_unique(array_map('intval', array_filter($new_properties_raw, function ($v) {
+			return trim((string)$v) !== '';
+		}))));
+
 		$current_properties = GetXArrFromYID("SELECT iPropertyID FROM user_temp_property_assoc WHERE iUserID = '$txtid'");
+		$current_properties = !empty($current_properties) ? array_values(array_map('intval', $current_properties)) : [];
 	
 		sort($new_properties);
 		sort($current_properties);

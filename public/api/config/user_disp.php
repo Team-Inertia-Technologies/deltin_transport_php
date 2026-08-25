@@ -18,6 +18,7 @@ if (!$token) {
     exit;
 }
 $levelID  = $_REQUEST['level'] ?? null;
+$propertyID = $_REQUEST['property'] ?? null;
 $statusID = $_REQUEST['status'] ?? null;
 $keywords = $_REQUEST['keywords'] ?? null;
 $sess_user_id = intval(DecodeParam($token));
@@ -65,6 +66,23 @@ try {
         $PROPERTY_ARR[$u_id][] = $p_code;
     }
 
+    $PROPERTY_LIST = [];
+    $PROPERTY_IDS = [];
+    $propertyQuery = "
+        SELECT iPropertyID, vName
+        FROM property
+        WHERE cStatus = 'A'
+        ORDER BY iPropertyID
+    ";
+    $propertyRes = sql_query($propertyQuery);
+    while ($row = sql_fetch_assoc($propertyRes)) {
+       $PROPERTY_IDS[] = (int)$row['iPropertyID'];
+       $PROPERTY_LIST[] = [
+        "id" => (int)$row['iPropertyID'],
+        "name" => $row['vName']
+       ];
+    }
+
     // ---------------------------------------------------
     // Base Conditions
     // ---------------------------------------------------
@@ -82,6 +100,25 @@ try {
     // ---------------------------------------------------
     if (!is_null($levelID) && $levelID >= 0) {
         $cond .= " AND iLevel = " . intval($levelID);
+    }
+
+    // Property filter - handle multi-select (properties stored in user_temp_property_assoc)
+    $cmbproperty = is_array($propertyID) ? implode(',', $propertyID) : (string)($propertyID ?? '');
+    if (trim($cmbproperty) !== '') {
+        $propertyIds = explode(',', $cmbproperty);
+        $propertyIds = array_filter(array_map('intval', $propertyIds), function ($v) {
+            return $v > 0;
+        });
+
+        if (!empty($propertyIds)) {
+            $validPropertyIds = array_intersect($propertyIds, $PROPERTY_IDS);
+
+            if (!empty($validPropertyIds)) {
+                $uLIST = GetIDString2('SELECT iUserID FROM user_temp_property_assoc WHERE iPropertyID IN (' . implode(',', $validPropertyIds) . ')');
+                if (empty($uLIST) || $uLIST == '-1') $uLIST = 0;
+                $cond .= " AND iUserID IN (" . $uLIST . ")";
+            }
+        }
     }
 
     if (!is_null($statusID) && $statusID !== "") {
@@ -173,6 +210,16 @@ try {
         $row['levelname'] = GetXFromYID(
             "SELECT vName FROM levels WHERE iLevelD = " . intval($row['iLevel'])
         );
+        // Properties are stored in the assoc table (multi-value)
+        $iUserID = intval($row['iUserID']);
+        $propertyIds = GetXArrFromYID("SELECT iPropertyID FROM user_temp_property_assoc WHERE iUserID = '$iUserID'");
+        $propertyIds = !empty($propertyIds) ? array_values(array_filter(array_map('intval', $propertyIds), function ($v) {
+            return $v > 0;
+        })) : [];
+        $row['iPropertyID'] = !empty($propertyIds) ? implode(',', $propertyIds) : '';
+        $row['propertyName'] = !empty($propertyIds)
+            ? GetXFromYID("SELECT GROUP_CONCAT(vShortCode ORDER BY vShortCode SEPARATOR ', ') FROM property WHERE iPropertyID IN (" . implode(',', $propertyIds) . ")")
+            : '';
         $users[] = $row;
     }
 
@@ -205,7 +252,7 @@ try {
         "data" => [
             "message"     => "Users Fetched Successfully",
             "users"       => $users,
-            "properties"  => $PROPERTY_ARR,
+            "properties" => $PROPERTY_LIST,
             "levels"      => $levels,
             "status"      => $Status,
             "staff"       => $staff,
