@@ -72,7 +72,14 @@ try {
 
         $dtCreated = NOW;
         $sess_user_id = $_SESSION[PROJ_SESSION_ID]->user_id ?? 0;
-		$cmbproperty = $_POST['cmbproperty2'] ?? [];
+		$cmbproperty_raw = $_POST['cmbproperty2'] ?? [];
+		if (!is_array($cmbproperty_raw)) {
+			// Accept comma-separated string like "1,2"
+			$cmbproperty_raw = (trim($cmbproperty_raw) !== '') ? explode(',', $cmbproperty_raw) : [];
+		}
+		$cmbproperty = array_values(array_unique(array_map('intval', array_filter($cmbproperty_raw, function ($v) {
+			return trim((string)$v) !== '';
+		}))));
 
         $sql = "INSERT INTO users_temp 
                 (iUserID, iDepartmentID, iReportingID, vName, vUName, vPassword, vEmail, vPhone, iLevel, cStatus, dtCreated, iCreated_UserID, cRefType, iRefID, cRefSrcType)
@@ -86,13 +93,9 @@ try {
 			sql_query("INSERT INTO user_temp_station_assoc (iUserID, iStationID) VALUES ($txtid, $stationID)");
 		}
 		
-		if (!is_array($cmbproperty)) {
-			$cmbproperty = [$cmbproperty];
-		}
-
 		if (!empty($cmbproperty)) {
 			foreach ($cmbproperty as $p) {
-				sql_query("INSERT INTO user_temp_property_assoc VALUES ($txtid, '$p')");
+				sql_query("INSERT INTO user_temp_property_assoc (iUserID, iPropertyID) VALUES ($txtid, $p)");
 			}
 		}
 
