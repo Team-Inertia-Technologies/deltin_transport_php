@@ -33,14 +33,22 @@ switch ($mode) {
         $vehicleId = isset($_REQUEST['vehicleId']) ? intval($_REQUEST['vehicleId'] ?? 0) : 0 ;
         $driverId =  isset($_REQUEST['driverId']) ?  intval($_REQUEST['driverId'] ?? 0) : 0 ;
 
+        $loggedInVendorID = getVendorIDForUser($user_id);
+        $vendorUserStations = [];
+        if ($loggedInVendorID > 0) {
+            $vendorUserStations = getVendorUserStations($user_id);
+        }
+
+        $vendorWhere = ($loggedInVendorID > 0) ? " AND iVendorID = $loggedInVendorID" : '';
+
         $vehicleOpt = [['id' => 0, 'name' => 'All']];
-        $res = sql_query("SELECT iVehicleID, vRnum FROM vehicle WHERE cStatus='A' ORDER BY vRnum");
+        $res = sql_query("SELECT iVehicleID, vRnum FROM vehicle WHERE cStatus='A'$vendorWhere ORDER BY vRnum");
         while ($r = sql_fetch_assoc($res)) {
             $vehicleOpt[] = ['id' => intval($r['iVehicleID']), 'name' => db_output2($r['vRnum'])];
         }
 
         $driverOpt = [['id' => 0, 'name' => 'All']];
-        $res = sql_query("SELECT iDriverID, vName FROM driver WHERE cStatus='A' ORDER BY vName");
+        $res = sql_query("SELECT iDriverID, vName FROM driver WHERE cStatus='A'$vendorWhere ORDER BY vName");
         while ($r = sql_fetch_assoc($res)) {
             $driverOpt[] = ['id' => intval($r['iDriverID']), 'name' => db_output2($r['vName'])];
         }
@@ -59,6 +67,13 @@ switch ($mode) {
         ];
 
         $where = "fb.cStatus NOT IN ('X', 'C') AND fb.cType != 'C'";
+
+        if ($loggedInVendorID > 0) {
+            $where .= " AND fb.iVendorID = $loggedInVendorID";
+            if (!empty($vendorUserStations)) {
+                $where .= " AND fb.iFleet_StationID IN (" . implode(',', array_map('intval', $vendorUserStations)) . ")";
+            }
+        }
 
         if (checkUserModuleAccess($user_id, 'AIRPORT_TRANSFER_REQ')) {
             $where .= " AND fb.iFleet_TrvPurID = 2";
