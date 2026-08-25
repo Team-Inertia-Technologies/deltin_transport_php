@@ -149,6 +149,7 @@ try {
 	$status_str = GetStatusImageString2('USERS', $rdstatus, $txtid, false);
 	$txtreason = db_output($dataArr[0]->vRemark);
 	$cmbproperty2 = GetXArrFromYID('select iPropertyID from user_temp_property_assoc where iUserID=' . $txtid);
+	$cmbproperty2 = !empty($cmbproperty2) ? array_values(array_map('intval', $cmbproperty2)) : [];
 
 	http_response_code(200);
         echo json_encode([
