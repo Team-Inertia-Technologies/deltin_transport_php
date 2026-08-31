@@ -33,6 +33,7 @@ switch ($mode) {
         $vendorId = intval($_REQUEST['vendorId'] ?? 0);
         $vehicleId = intval($_REQUEST['vehicleId'] ?? 0);
         $driverId = intval($_REQUEST['driverId'] ?? 0);
+        $sourceType = strtolower(trim($_REQUEST['sourceType'] ?? ''));
 
         $loggedInVendorID = getVendorIDForUser($user_id);
         $vendorUserStations = [];
@@ -82,12 +83,18 @@ switch ($mode) {
             $bookedByOpt[] = $name;
         }
 
+        $sourceTypeOpt = [
+            ['id' => 'all', 'name' => 'All'],
+            ['id' => 'self', 'name' => 'Self'],
+            ['id' => 'vendor', 'name' => 'Vendor'],
+        ];
         $optArr = [
             'vendorOpt' => $vendorOpt,
             'vehicleOpt' => $vehicleOpt,
             'driverOpt' => $driverOpt,
             'locationOpt' => $LOCATION_ARR,
-            'bookedByOpt' => $bookedByOpt
+            'bookedByOpt' => $bookedByOpt,
+            'sourceTypeOpt' => $sourceTypeOpt
         ];
 
 
@@ -112,8 +119,14 @@ switch ($mode) {
             $where .= " AND DATE(fb.vPickUpTime) <= '" . db_input($toDate) . "'";
         }
 
+        if ($sourceType === 'vendor') {
+            $where .= " AND IFNULL(fb.iVendorID, 0) > 0";
+        } elseif ($sourceType === 'self') {
+            $where .= " AND IFNULL(fb.iVendorID, 0) = 0";
+        }
+
         if ($loggedInVendorID <= 0 && $vendorId > 0) {
-            $where .= " AND v.iVendorID = $vendorId";
+            $where .= " AND fb.iVendorID = $vendorId";
         }
 
         if ($vehicleId > 0) {
@@ -152,7 +165,7 @@ switch ($mode) {
             fbc.vName as bookingCategoryName
         FROM fleet_booking fb
         LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID 
-        LEFT JOIN vendor ven ON v.iVendorID = ven.iVendorID
+        LEFT JOIN vendor ven ON fb.iVendorID = ven.iVendorID
         LEFT JOIN driver dr ON fb.iDriverID = dr.iDriverID
         LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID
         LEFT JOIN fleet_traveltype ftt ON fb.iFleet_TrvTypeID = ftt.iFleet_TrvTypeID
