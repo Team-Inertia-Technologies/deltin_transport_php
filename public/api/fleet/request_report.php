@@ -30,8 +30,10 @@ switch ($mode) {
 
         $fromDate = $_REQUEST['fromDateTime'] ?? '';
         $toDate = $_REQUEST['toDateTime'] ?? '';
+        $vendorId = intval($_REQUEST['vendorId'] ?? 0);
         $vehicleId = isset($_REQUEST['vehicleId']) ? intval($_REQUEST['vehicleId'] ?? 0) : 0 ;
         $driverId =  isset($_REQUEST['driverId']) ?  intval($_REQUEST['driverId'] ?? 0) : 0 ;
+        $sourceType = strtolower(trim($_REQUEST['sourceType'] ?? ''));
 
         $loggedInVendorID = getVendorIDForUser($user_id);
         $vendorUserStations = [];
@@ -40,6 +42,12 @@ switch ($mode) {
         }
 
         $vendorWhere = ($loggedInVendorID > 0) ? " AND iVendorID = $loggedInVendorID" : '';
+
+        $vendorOpt = [['id' => 0, 'name' => 'All']];
+        $res = sql_query("SELECT iVendorID, vName FROM vendor WHERE cStatus='A'$vendorWhere ORDER BY vName");
+        while ($r = sql_fetch_assoc($res)) {
+            $vendorOpt[] = ['id' => intval($r['iVendorID']), 'name' => db_output2($r['vName'])];
+        }
 
         $vehicleOpt = [['id' => 0, 'name' => 'All']];
         $res = sql_query("SELECT iVehicleID, vRnum FROM vehicle WHERE cStatus='A'$vendorWhere ORDER BY vRnum");
@@ -60,10 +68,17 @@ switch ($mode) {
                 $LOCATION_ARR[] = array("ID" => $lrow['iFleet_LocationID'], "NAME" => $lrow['vName']);
             }
         }
+        $sourceTypeOpt = [
+            ['id' => 'all', 'name' => 'All'],
+            ['id' => 'self', 'name' => 'Self'],
+            ['id' => 'vendor', 'name' => 'Vendor'],
+        ];
         $optArr = [
+            'vendorOpt' => $vendorOpt,
             'vehicleOpt' => $vehicleOpt,
             'driverOpt' => $driverOpt,
-            'locationOpt' => $LOCATION_ARR
+            'locationOpt' => $LOCATION_ARR,
+            'sourceTypeOpt' => $sourceTypeOpt
         ];
 
         $where = "fb.cStatus NOT IN ('X', 'C') AND fb.cType != 'C'";
@@ -94,6 +109,16 @@ switch ($mode) {
             $where .= " AND fb.iDriverID = $driverId";
         }
 
+        if ($sourceType === 'vendor') {
+            $where .= " AND IFNULL(fb.iVendorID, 0) > 0";
+        } elseif ($sourceType === 'self') {
+            $where .= " AND IFNULL(fb.iVendorID, 0) = 0";
+        }
+
+        if ($loggedInVendorID <= 0 && $vendorId > 0) {
+            $where .= " AND fb.iVendorID = $vendorId";
+        }
+
 
         $sql = "
         SELECT
@@ -105,19 +130,30 @@ switch ($mode) {
             fb.vPickUpTime,
             fb.cType AS tripStatus,
             fb.cBookingFor as bookedFor,
+            fb.vBookingCode,
+            fb.iBookedBy,
+            fb.vBookedBy,
+            ven.vName AS vendorName,
             dr.vName AS driverName,
             dr.vMobileNum AS driverMobile,
             dr.iType AS driverType,
             v.vRnum AS vehicleRegNo,
             vcat.vName AS vehicleCategory,
-             ftt.vName as travelTypeName,
-             usr.vName as createdBy
+            ftt.vName as travelTypeName,
+            usr.vName as createdBy,
+            s.vName as bookedByName,
+            p.vName as propertyName,
+            fbc.vName as bookingCategoryName
         FROM fleet_booking fb
-           LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus='A'
+        LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus='A'
+        LEFT JOIN vendor ven ON fb.iVendorID = ven.iVendorID
         LEFT JOIN driver dr ON fb.iDriverID = dr.iDriverID AND dr.cStatus='A'
         LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID
-         LEFT JOIN fleet_traveltype ftt ON fb.iFleet_TrvTypeID = ftt.iFleet_TrvTypeID
-           LEFT JOIN users usr ON usr.iUserID = fb.iAdded_UserID
+        LEFT JOIN fleet_traveltype ftt ON fb.iFleet_TrvTypeID = ftt.iFleet_TrvTypeID
+        LEFT JOIN users usr ON usr.iUserID = fb.iAdded_UserID
+        LEFT JOIN fleet_staff s ON fb.iBookedBy = s.iFStaffID
+        LEFT JOIN property p ON fb.iPropertyID = p.iPropertyID
+        LEFT JOIN fleet_bookingcategory fbc ON fb.iFleet_BKCatID = fbc.iFleet_BkCatID
         WHERE $where
         ORDER BY fb.vPickUpTime ASC
     ";
@@ -139,15 +175,22 @@ switch ($mode) {
 
             $driverType = $VEHICLE_DRIVER_TYPE[intval($row['driverType'] ?? 0)] ?? '';
 
+            $bookedByName = '';
+            if (intval($row['iBookedBy']) > 0) {
+                $bookedByName = db_output2($row['bookedByName'] ?? '');
+            }
+            $instructionsBy = db_output2($row['vBookedBy'] ?? '');
+
             $rowData[] = [
                 'id' => $bookingID,
+                'bookingCode' => (!empty($row['vBookingCode'])) ? db_output2($row['vBookingCode']) : 'N/A',
                 'fullName' => db_output2($row['vName']),
                 'phone' => maskMobileNumber($row['vMobileNo']),
                 'pickupDate' => date('d-m-Y', strtotime($row['vPickUpTime'])),
                 'pickupTime' => date('h:i a', strtotime($row['vPickUpTime'])),
                 'location' => db_output2($row['vPickUpLocation']),
                 'destination' => db_output2($row['vDropLocation']),
-
+                'vendor' => db_output2($row['vendorName'] ?? ''),
                 'vehicle' => $vehicle,
                 'driver' => [
                     'name' => db_output2($row['driverName'] ?? ''),
@@ -156,7 +199,12 @@ switch ($mode) {
                 ],
                 'tripStatus' => $row['tripStatus'],
                 'tripStatusText' => isset($FLEET_TRIP_STATUS[$row['tripStatus']]) ? $FLEET_TRIP_STATUS[$row['tripStatus']] : 'Unknown',
+                'tripType' => isset($FLEET_TRIP_STATUS[$row['tripStatus']]) ? $FLEET_TRIP_STATUS[$row['tripStatus']] : '',
                 'bookedFor' => $row['bookedFor'],
+                'bookedBy' => $bookedByName,
+                'instructionsBy' => $instructionsBy,
+                'property' => db_output2($row['propertyName'] ?? ''),
+                'bookingCategory' => db_output2($row['bookingCategoryName'] ?? ''),
                 'travelTypeName' => $row['travelTypeName'],
                 'createdBy' => $row['createdBy']
             ];

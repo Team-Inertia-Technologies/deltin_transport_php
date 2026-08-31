@@ -259,6 +259,7 @@ switch ($mode) {
         $filterToDateTime = $_REQUEST['toDateTime'] ?? '';
         $filterBookedBy = intval($_REQUEST['filterBookedBy'] ?? 0);
         $filterGuest = intval($_REQUEST['filterGuest'] ?? 0);
+        $sourceType = strtolower(trim($_REQUEST['sourceType'] ?? ''));
 
         // Create filter option arrays
         $tripStatusFilterOpt = [['id' => '0', 'name' => 'Select All']];
@@ -278,6 +279,12 @@ switch ($mode) {
              ['id' => 'VendorAssigned', 'name' => 'Vendor Assigned'],
             ['id' => 'Delayed', 'name' => 'Delayed'],
             ['id' => 'Cancelled', 'name' => 'Cancelled']
+        ];
+
+        $sourceTypeOpt = [
+            ['id' => 'all', 'name' => 'All'],
+            ['id' => 'self', 'name' => 'Self'],
+            ['id' => 'vendor', 'name' => 'Vendor'],
         ];
 
         $vehicleCategoryFilterOpt = [['id' => 0, 'name' => 'All']];
@@ -307,7 +314,8 @@ switch ($mode) {
             }, $staffOpt)),
             "guestFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function ($guest) {
                 return ['id' => $guest['id'], 'name' => $guest['name']];
-            }, $guestOpts))
+            }, $guestOpts)),
+            "sourceTypeOpt" => $sourceTypeOpt
         ];
 
 
@@ -327,6 +335,12 @@ switch ($mode) {
             if (!empty($userStations)) {
                 $whereClause .= " AND fb.iFleet_StationID IN (" . implode(',', $userStations) . ")";
             }
+        }
+
+        if ($sourceType === 'vendor') {
+            $whereClause .= " AND IFNULL(fb.iVendorID, 0) > 0";
+        } elseif ($sourceType === 'self') {
+            $whereClause .= " AND IFNULL(fb.iVendorID, 0) = 0";
         }
 
         $staffReqAccess = checkUserModuleAccess($user_id, 'FLEET_STAFF_REQ');
