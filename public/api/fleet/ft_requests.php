@@ -2313,24 +2313,26 @@ switch ($mode) {
             $pickup_time = !empty($bookingData['vPickUpTime']) ? date('H:i', strtotime($bookingData['vPickUpTime'])) : '';
             $dtAdded = NOW;
             $booking_code = $bookingData['vBookingCode'] ?? '';
+            $isAfterPickupTime = !empty($bookingData['vPickUpTime']) && strtotime($bookingData['vPickUpTime']) < strtotime($dtNow);
 
-            // Send WhatsApp
-            SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $vPickUpLocation, $pickup_time, $booking_code);
+            // Send WhatsApp and SMS to customer only if assignment is before pickup time
+            if (!$isAfterPickupTime) {
+                SendVehAllocationMessage($vMobileNo, db_input($vName), db_input($driverData['vName']), $vehicleData['vRnum'], $vPickUpLocation, $pickup_time, $booking_code);
 
-            // Send SMS
-            $message = urlencode('Hello ' . $vName . ', A driver has been assigned for your scheduled pickup. Driver Name: ' . db_output2($driverData['vName']) . ' Vehicle Number: ' . $vehicleData['vRnum'] . ' Driver Contact07314852425 Pickup Location: ' . $vPickUpLocation . ' Pickup Time: ' . $pickup_time . ' Verification code: ' . $booking_code . ' Please share the verification code with the driver. Thank you. Team Deltin');
-            $templateid = '1777178523553471982';
-            $to = $vMobileNo;
-            if (strlen($to) == 10)
-                $to = '91' . $to;
-            $sms_response = SendSmsCurl2($templateid, $to, $message);
+                $message = urlencode('Hello ' . $vName . ', A driver has been assigned for your scheduled pickup. Driver Name: ' . db_output2($driverData['vName']) . ' Vehicle Number: ' . $vehicleData['vRnum'] . ' Driver Contact07314852425 Pickup Location: ' . $vPickUpLocation . ' Pickup Time: ' . $pickup_time . ' Verification code: ' . $booking_code . ' Please share the verification code with the driver. Thank you. Team Deltin');
+                $templateid = '1777178523553471982';
+                $to = $vMobileNo;
+                if (strlen($to) == 10)
+                    $to = '91' . $to;
+                $sms_response = SendSmsCurl2($templateid, $to, $message);
 
-            sql_query("
+                sql_query("
         INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)VALUES ('C', '+91', '$vMobileNo', 'WA', '$dtAdded', $user_id)
 ");
-            sql_query("
+                sql_query("
         INSERT INTO fleet_communication (cType, vCode, vMobile, cMode, dtCreated, iUserAdded)VALUES ('C', '+91', '$vMobileNo', 'S', '$dtAdded', $user_id)
 ");
+            }
             LogVehicleAllocated($iFleet_BookingID, $iVehicleID, $iDriverID, $vName, $user_id);
             
             // Send FCM notification to driver
