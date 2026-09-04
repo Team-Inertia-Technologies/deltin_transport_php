@@ -767,10 +767,6 @@ switch ($mode) {
                 $iGuestID = $guest_id;
             }
         }
-        $last_char = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
-        //$vBookingCode = date('ym') . $last_char;
-         $vBookingCode = $last_char;
-
         $cols = "iFleet_BookingID,vBookingCode,iBookedBy,vBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
                  iFleet_BKCatID, vInstructions, vRemarks, vTravelNotes, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,iOriginal_Kms,
@@ -778,6 +774,12 @@ switch ($mode) {
                  iVendorID, iFleet_StationID, dtAdded,iAdded_UserID,cStatus,vVendorAssignedBy,dtVendorAssigned";
 
         $iFleet_BookingID1 = NextID('iFleet_BookingID', 'fleet_booking');
+        $last4Booking = str_pad(substr((string)$iFleet_BookingID1, -4), 4, '0', STR_PAD_LEFT);
+        $vBookingCode = $last4Booking . str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
+        $codeExistsRes = sql_query("SELECT 1 FROM fleet_booking WHERE vBookingCode = '" . db_input($vBookingCode) . "' LIMIT 1");
+        if ($codeExistsRes && sql_num_rows($codeExistsRes) > 0) {
+            $vBookingCode = $last4Booking . str_pad(rand(0, 99999), 5, '0', STR_PAD_LEFT);
+        }
         $dtAdded = NOW;
 
         $vReturnTimeVal = (!empty($vReturnTime)) ? "'$vReturnTime'" : "NULL";
