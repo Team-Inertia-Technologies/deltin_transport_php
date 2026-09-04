@@ -1,4 +1,19 @@
 <?php
+function GenerateFleetBookingCode($iFleet_BookingID)
+{
+	$last4Booking = str_pad(substr((string)$iFleet_BookingID, -4), 4, '0', STR_PAD_LEFT);
+
+	for ($i = 0; $i < 30; $i++) {
+		$vBookingCode = $last4Booking . str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
+		$codeExistsRes = sql_query("SELECT 1 FROM fleet_booking WHERE vBookingCode = '" . db_input($vBookingCode) . "' LIMIT 1");
+		if (!$codeExistsRes || sql_num_rows($codeExistsRes) == 0) {
+			return $vBookingCode;
+		}
+	}
+
+	return $last4Booking . str_pad(rand(0, 99999), 5, '0', STR_PAD_LEFT);
+}
+
 function IsUniqueEntry($id_fld, $id_val, $txt_fld, $txt_val, $tbl)
 {
 	$ret_val = '2';
