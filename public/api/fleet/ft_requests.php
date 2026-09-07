@@ -626,6 +626,7 @@ switch ($mode) {
                 fb.iVehicleCatID,
                 fb.iFleet_StationID,
                 fb.iFStaffID,
+                fb.iGuestID,
                 fb.cType as tripStatus,
                 fb.cStatus as bookingStatus,
                 s.vName as bookedByName,
@@ -784,7 +785,9 @@ switch ($mode) {
                 'vehiCat' => intval($row['iVehicleCatID'] ?? 0),
                 'vendorID' => intval($row['iVendorID'] ?? 0),
                 'stationID' => intval($row['iFleet_StationID'] ?? 0),
-                'department' => intval($row['departmentId'] ?? 0)
+                'department' => intval($row['departmentId'] ?? 0),
+                'staffID' => intval($row['iFStaffID'] ?? 0),
+                'guestID' => intval($row['iGuestID'] ?? 0)
             ];
 
             // Apply tripType filter (since it's calculated, not in DB)
