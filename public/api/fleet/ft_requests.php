@@ -161,6 +161,12 @@ function getAddBookingItems($requestBody)
     if (isset($_REQUEST['bookings']) && isListOfBookingItems($_REQUEST['bookings'])) {
         return array_values($_REQUEST['bookings']);
     }
+    if (isset($requestBody['data']) && isListOfBookingItems($requestBody['data'])) {
+        return array_values($requestBody['data']);
+    }
+    if (isset($_REQUEST['data']) && isListOfBookingItems($_REQUEST['data'])) {
+        return array_values($_REQUEST['data']);
+    }
     if (isListOfBookingItems($requestBody)) {
         return array_values($requestBody);
     }
@@ -879,7 +885,6 @@ switch ($mode) {
 
         break;
     // ===================== CASE: GET_PASSANGER_REQUESTS =====================
-    case 'GET_PASSANGER_REQUESTS':
     case 'GET_PASSENGER_REQUESTS':
         $iGuestID = intval($_REQUEST['guestID'] ?? 0);
 
