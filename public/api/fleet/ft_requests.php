@@ -906,6 +906,7 @@ switch ($mode) {
                 fb.vBookingCode,
                 fb.vPickUpLocation,
                 fb.vDropLocation,
+                fb.vPickUpTime,
                 fb.vBookedBy,
                 fb.iBookedBy,
                 fb.dtAdded,
@@ -926,13 +927,20 @@ switch ($mode) {
                     $bookedBy = db_output2($row['bookedByStaffName'] ?? '');
                 }
 
+                $pickupTime = $row['vPickUpTime'] ?? '';
+                $tripdt = '';
+                if (!empty($pickupTime) && strtotime($pickupTime) !== false) {
+                    $tripdt = date('d/m/Y', strtotime($pickupTime)) . ' at ' . date('H:i', strtotime($pickupTime));
+                }
+
                 $requests[] = [
                     'requestId' => intval($row['iFleet_BookingID']),
                     'code' => db_output2($row['vBookingCode'] ?? ''),
                     'from' => db_output2($row['vPickUpLocation'] ?? ''),
                     'to' => db_output2($row['vDropLocation'] ?? ''),
                     'bookedBy' => $bookedBy,
-                    'dtAdded' => $row['dtAdded'] ?? ''
+                    'dtAdded' => $row['dtAdded'] ?? '',
+                    'tripdt' => $tripdt
                 ];
             }
         }
