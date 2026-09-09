@@ -889,17 +889,19 @@ switch ($mode) {
         break;
     // ===================== CASE: GET_PASSANGER_REQUESTS =====================
     case 'GET_PASSENGER_REQUESTS':
-        $iGuestID = intval($_REQUEST['guestID'] ?? 0);
+        $vMobileNo = trim($_REQUEST['mobileNo'] ?? '');
 
-        if ($iGuestID <= 0) {
+        if ($vMobileNo === '') {
             echo json_encode([
                 "error" => [
-                    "message" => "guestID missing or invalid"
+                    "message" => "mobileNo missing or invalid"
                 ],
                 "statusCode" => 400
             ]);
             exit;
         }
+
+        $vMobileNoSafe = db_input($vMobileNo);
 
         $passengerSql = "SELECT
                 fb.iFleet_BookingID,
@@ -913,8 +915,12 @@ switch ($mode) {
                 s.vName AS bookedByStaffName
             FROM fleet_booking fb
             LEFT JOIN fleet_staff s ON fb.iBookedBy = s.iFStaffID
-            WHERE fb.iGuestID = $iGuestID
-              AND fb.cStatus != 'X'
+            LEFT JOIN guest g ON fb.iGuestID = g.iGuestID AND g.cStatus != 'X'
+            WHERE fb.cStatus != 'X'
+              AND (
+                fb.vMobileNo = '$vMobileNoSafe'
+                OR g.vMobileNo = '$vMobileNoSafe'
+              )
             ORDER BY fb.dtAdded DESC";
 
         $passengerRes = sql_query($passengerSql);
