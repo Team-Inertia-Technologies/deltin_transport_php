@@ -1806,9 +1806,9 @@ switch ($mode) {
             if (!empty($keyword)) {
                 $keywordMatch = false;
                 if (
-                    stripos($vehData['NUM'], $keyword) !== false ||
-                    stripos($vehData['NAME'], $keyword) !== false ||
-                    (!empty($vehData['DRIVER_NAME']) && stripos($vehData['DRIVER_NAME'], $keyword) !== false)
+                    stripos((string)($vehData['NUM'] ?? ''), $keyword) !== false ||
+                    stripos((string)($vehData['NAME'] ?? ''), $keyword) !== false ||
+                    (!empty($vehData['DRIVER_NAME']) && stripos((string)$vehData['DRIVER_NAME'], $keyword) !== false)
                 ) {
                     $keywordMatch = true;
                 }
