@@ -363,6 +363,7 @@ switch ($mode) {
         // Get trip details with route, vehicle, and driver information using association table
         $sql = "SELECT 
                     t.iTripID,
+                    t.iRouteID,
                     t.dtTrip,
                     t.iCapacity as tripCapacity,
                     r.vName as routeName,
@@ -417,6 +418,7 @@ switch ($mode) {
 
             if (empty($routeInfo)) {
                 $routeInfo = [
+                    "routeID" => (int) ($row['iRouteID'] ?? 0),
                     "routeName" => $row['routeName'] ?? '',
                     "destination" => $row['destination'] ?? '',
                     "tripDateTime" => date('d/m/Y H:i', strtotime($row['dtTrip']))
@@ -772,6 +774,7 @@ switch ($mode) {
         echo json_encode([
             "data" => [
                 "iTripID" => $iTripID,
+                "routeID" => (int) ($routeInfo['routeID'] ?? 0),
                 "routeInfo" => $routeInfo,
                 "trip_details" => $vehicles,
                 "vehicleCount" => count($vehicles),
@@ -1626,6 +1629,142 @@ switch ($mode) {
             ]);
         }
 
+        break;
+
+    // ===================== CASE CANCEL_TRIPS =====================
+    // type C = this trip (datetime + route) and its vehicles/requests
+    // type A = this trip and all future trips of the same route + time, with vehicles/requests
+    case 'CANCEL_TRIPS':
+        $datetime = trim($_REQUEST['datetime'] ?? $_REQUEST['dtTrip'] ?? '');
+        $routeID = intval($_REQUEST['routeID'] ?? $_REQUEST['routeid'] ?? 0);
+        $type = strtoupper(trim($_REQUEST['type'] ?? 'C'));
+
+        if ($routeID <= 0 || $datetime === '') {
+            echo json_encode([
+                "error" => ["message" => "datetime and routeID are required"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        if (!in_array($type, ['C', 'A'], true)) {
+            echo json_encode([
+                "error" => ["message" => "type must be C (current) or A (all future)"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $parsedDt = false;
+        $datetimeFormats = [
+            'Y-m-d H:i:s',
+            'Y-m-d H:i',
+            'd/m/Y H:i:s',
+            'd/m/Y H:i',
+            'd/m/Y g:i A',
+            'd/m/Y h:i A',
+            'd-m-Y H:i:s',
+            'd-m-Y H:i',
+            'Y-m-d\TH:i:s',
+            'Y-m-d\TH:i',
+        ];
+        foreach ($datetimeFormats as $fmt) {
+            $dtObj = DateTime::createFromFormat($fmt, $datetime);
+            if ($dtObj instanceof DateTime) {
+                $parseErrors = DateTime::getLastErrors();
+                if ($parseErrors === false || (($parseErrors['warning_count'] ?? 0) === 0 && ($parseErrors['error_count'] ?? 0) === 0)) {
+                    $parsedDt = $dtObj;
+                    break;
+                }
+            }
+        }
+        if ($parsedDt === false) {
+            $tripTs = strtotime(str_replace('/', '-', $datetime));
+            if ($tripTs !== false) {
+                $parsedDt = (new DateTime())->setTimestamp($tripTs);
+            }
+        }
+        if ($parsedDt === false) {
+            echo json_encode([
+                "error" => ["message" => "Invalid datetime format"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $tripDateTime = $parsedDt->format('Y-m-d H:i:s');
+        $tripTime = $parsedDt->format('H:i:s');
+        $tripDateTimeEsc = db_input($tripDateTime);
+        $tripTimeEsc = db_input($tripTime);
+
+        if ($type === 'C') {
+            $tripWhere = "iRouteID = $routeID
+                          AND dtTrip = '$tripDateTimeEsc'
+                          AND cStatus != 'X'";
+        } else {
+            $tripWhere = "iRouteID = $routeID
+                          AND TIME(dtTrip) = '$tripTimeEsc'
+                          AND dtTrip >= '$tripDateTimeEsc'
+                          AND cStatus != 'X'";
+        }
+
+        $tripIds = [];
+        $tripRes = sql_query("SELECT iTripID FROM st_trips WHERE $tripWhere");
+        while ($row = sql_fetch_assoc($tripRes)) {
+            $tripIds[] = intval($row['iTripID']);
+        }
+
+        if (empty($tripIds)) {
+            echo json_encode([
+                "error" => ["message" => "No matching trip found"],
+                "statusCode" => 404
+            ]);
+            exit;
+        }
+
+        $tripIdList = implode(',', $tripIds);
+
+        sql_query("START TRANSACTION");
+
+        try {
+            $updateTripsSql = "UPDATE st_trips SET cStatus = 'X' WHERE iTripID IN ($tripIdList) AND cStatus != 'X'";
+            if (!sql_query($updateTripsSql)) {
+                throw new Exception("Failed to cancel trip(s)");
+            }
+            $tripsMarked = sql_affected_rows();
+
+            $updateVehSql = "UPDATE st_trip_vehicle_assoc SET cStatus = 'X' WHERE iTripID IN ($tripIdList) AND cStatus != 'X'";
+            sql_query($updateVehSql);
+            $vehiclesMarked = sql_affected_rows();
+
+            $updateReqSql = "UPDATE st_request SET cStatus = 'X' WHERE iTripID IN ($tripIdList) AND cStatus != 'X'";
+            sql_query($updateReqSql);
+            $requestsMarked = sql_affected_rows();
+
+            sql_query("COMMIT");
+
+            echo json_encode([
+                "data" => [
+                    "message" => $type === 'C'
+                        ? "Trip cancelled successfully"
+                        : "Current and future trips cancelled successfully",
+                    "type" => $type,
+                    "routeID" => $routeID,
+                    "datetime" => $tripDateTime,
+                    "tripIDs" => $tripIds,
+                    "tripsMarked" => $tripsMarked,
+                    "vehiclesMarked" => $vehiclesMarked,
+                    "requestsMarked" => $requestsMarked
+                ],
+                "statusCode" => 200
+            ]);
+        } catch (Exception $e) {
+            sql_query("ROLLBACK");
+            echo json_encode([
+                "error" => ["message" => $e->getMessage()],
+                "statusCode" => 500
+            ]);
+        }
         break;
 
 
