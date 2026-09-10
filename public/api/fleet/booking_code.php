@@ -64,7 +64,7 @@ switch ($mode) {
         // }
 
         $vendorRow = sql_fetch_assoc($vendorRes);
-        $vendorID  = intval($vendorRow['iRefID']);
+        $vendorID  = intval($vendorRow['iRefID'] ?? 0);
 
         // -------------------- VERIFY BOOKING BELONGS TO VENDOR --------------------
         $bookingRes = sql_query(
@@ -202,7 +202,7 @@ switch ($mode) {
         // }
 
         $vendorRow = sql_fetch_assoc($vendorRes);
-        $vendorID  = intval($vendorRow['iRefID']);
+        $vendorID  = intval($vendorRow['iRefID'] ?? 0);
 
         $NOW      = NOW;
         $success  = [];

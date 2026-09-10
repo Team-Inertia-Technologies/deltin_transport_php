@@ -831,7 +831,7 @@ switch ($mode) {
         $to   = dashboardRequestTime('toTime', $toTimestamp, ':59');
         
         if (strtotime($to) < strtotime($from)) {
-            $to = date('Y-m-d H:i:s', strtotime($toTime . ' +1 day'));
+            $to = date('Y-m-d H:i:s', strtotime($to . ' +1 day'));
         }
 
         //$from = date("H:i:s", strtotime($_REQUEST['from'])) ?? '';
