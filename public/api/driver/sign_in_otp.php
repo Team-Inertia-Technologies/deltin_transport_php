@@ -439,30 +439,46 @@ if ($mode == 'LOGIN') {
         exit;
     }
 
-    $code_query = "SELECT vBookingCode FROM fleet_booking WHERE vBookingCode = '$code'AND iFleet_BookingID = $booking_id AND iDriverID = $userid AND cType = 'S' AND cStatus = 'A'";
-    $code_result = sql_query($code_query, "CHECK.CODE");
+    // Fetch the booking so we can verify against EITHER the booking code OR the last 4 digits of the guest's mobile number
+    $booking_query = "SELECT vBookingCode, vMobileNo FROM fleet_booking WHERE iFleet_BookingID = $booking_id AND iDriverID = $userid AND cType = 'S' AND cStatus = 'A'";
+    $booking_result = sql_query($booking_query, "CHECK.CODE");
 
-    if (sql_num_rows($code_result)) {
-        $query = "UPDATE fleet_booking SET cType = 'G' WHERE iFleet_BookingID = $booking_id AND iDriverID = $userid AND cType = 'S' AND cStatus = 'A' ";
-        $result = sql_query($query, 'TRIP.START');
-        if ($result) {
-            $log_id = NextID('iLogID', 'fleet_booking_log');
-            $NOW = NOW;
-            sql_query("INSERT INTO fleet_booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, $booking_id, 'G', 'Guest Picked Up', '$NOW', $userid, 'A')", 'TRIP.LOG');
-            http_response_code(200);
-            echo json_encode([
-                'statusCode' => 200,
-                'message' => 'Guest verification successful',
-                'data' => []
-            ]);
-            exit;
+    if (sql_num_rows($booking_result)) {
+        $bookingRow  = sql_fetch_assoc($booking_result);
+        $bookingCode = $bookingRow['vBookingCode'] ?? '';
+        $last4       = substr(preg_replace('/\D/', '', $bookingRow['vMobileNo'] ?? ''), -4);
 
+        if ($code === $bookingCode || $code === $last4) {
+            $query = "UPDATE fleet_booking SET cType = 'G' WHERE iFleet_BookingID = $booking_id AND iDriverID = $userid AND cType = 'S' AND cStatus = 'A' ";
+            $result = sql_query($query, 'TRIP.START');
+            if ($result) {
+                $log_id = NextID('iLogID', 'fleet_booking_log');
+                $NOW = NOW;
+                sql_query("INSERT INTO fleet_booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, $booking_id, 'G', 'Guest Picked Up', '$NOW', $userid, 'A')", 'TRIP.LOG');
+                http_response_code(200);
+                echo json_encode([
+                    'statusCode' => 200,
+                    'message' => 'Guest verification successful',
+                    'data' => []
+                ]);
+                exit;
+
+            } else {
+                http_response_code(400);
+                echo json_encode([
+                    "statusCode" => 400,
+                    "error" => [
+                        "message" => "Failed to update booking status. Please try again."
+                    ]
+                ]);
+                exit;
+            }
         } else {
             http_response_code(400);
             echo json_encode([
                 "statusCode" => 400,
                 "error" => [
-                    "message" => "Failed to update booking status. Please try again."
+                    "message" => "Invalid Code."
                 ]
             ]);
             exit;
