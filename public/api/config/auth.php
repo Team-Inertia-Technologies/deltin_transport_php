@@ -238,6 +238,7 @@ if (true) {
 
 					// Count staff pending approval
 					$pendingStaffCount = (int) GetXFromYID("SELECT COUNT(*) FROM staff WHERE cStatus = 'P'");
+					$ftReqEditThreshold = (int) GetXFromYID("SELECT vValue FROM sys_settings WHERE vCode = 'FT_REQ_EDIT_THRESHOLD' AND cStatus = 'A'");
 
 					$response = array(
 						"data" => array(
@@ -253,7 +254,8 @@ if (true) {
 							"modules" => $MODULE_ACCESS_ARR,
 							"menuIds" => $MENU_ACCESS_ARR,
 							"menu_details"=> $MENU_DETAILS,
-							"pendingStaffCount" => $pendingStaffCount
+							"pendingStaffCount" => $pendingStaffCount,
+							"FT_REQ_EDIT_THRESHOLD" => $ftReqEditThreshold
 						),
 						"statusCode" => 200,
 					);

@@ -31,6 +31,7 @@ $_REQUEST = array_merge($_REQUEST, $request ?? []);
 $mode = $_REQUEST['mode'] ?? '';
 $Token = $_REQUEST['token'] ?? '';
 $user_id = intval(DecodeParam($Token));
+$user_level = GetXFromYID("select iLevel from users where iUserID = $user_id");
 $userCheckSql = "SELECT iUserID FROM users WHERE iUserID = $user_id AND cStatus = 'A'";
 $userCheckRes = sql_query($userCheckSql);
 
@@ -618,6 +619,12 @@ switch ($mode) {
                 $allocationStatus = false;
             } else {
                 $allocationStatus = true;
+            }
+
+            if(!empty((int) $row['iVendorID'])){
+                if($user_level != '1'){
+                    continue;
+                }
             }
 
             $rowData[] = [
