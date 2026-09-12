@@ -99,7 +99,8 @@ switch ($mode) {
         }
 
         // -------------------- VERIFY BOOKING CODE FOR THIS TRIP --------------------
-        if ($code === '') {
+        $codeEntered = trim($_REQUEST['code'] ?? '');
+        if ($codeEntered === '') {
             http_response_code(400);
             echo json_encode([
                 "statusCode" => 400,
@@ -110,14 +111,8 @@ switch ($mode) {
             exit;
         }
 
-        $codeRes = sql_query(
-            "SELECT iFleet_BookingID FROM fleet_booking
-             WHERE iFleet_BookingID = $booking_id AND iDriverID = $driverID
-               AND vBookingCode = '$code' AND cStatus = 'A' LIMIT 1",
-            'CHECK.CODE'
-        );
-
-        if (!sql_num_rows($codeRes)) {
+        $storedCode = $booking['vBookingCode'] ?? '';
+        if (!FleetBookingCodeMatches($codeEntered, $storedCode)) {
             http_response_code(400);
             echo json_encode([
                 "statusCode" => 400,

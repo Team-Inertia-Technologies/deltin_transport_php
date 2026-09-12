@@ -576,6 +576,7 @@ function SendConfirmationMessage($to, $name, $from_palce, $date, $drop_location 
 
 function SendVehAllocationMessage($to, $name, $driver_name, $vehicle_num, $pickup_loc, $pickup_time, $booking_code)
 {
+    $booking_code = FleetBookingCodeWithoutPrefix($booking_code);
     $ch = curl_init();
 
     // Set the URL
