@@ -621,8 +621,9 @@ switch ($mode) {
                 $allocationStatus = true;
             }
 
-            if(!empty((int) $row['iVendorID'])){
-                if($user_level != '1'){
+            if (!empty((int) $row['iVendorID'])) {
+                // Allow admin OR users belonging to this vendor
+                if ($user_level != '1' && (int)$row['iVendorID'] !== (int)$is_vendor) {
                     continue;
                 }
             }
