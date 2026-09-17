@@ -447,8 +447,9 @@ if ($mode == 'LOGIN') {
         $bookingRow  = sql_fetch_assoc($booking_result);
         $bookingCode = $bookingRow['vBookingCode'] ?? '';
         $last4       = substr(preg_replace('/\D/', '', $bookingRow['vMobileNo'] ?? ''), -4);
+        $codeEntered = trim($_REQUEST['code'] ?? '');
 
-        if ($code === $bookingCode || $code === $last4) {
+        if (FleetBookingCodeMatches($codeEntered, $bookingCode) || $codeEntered === $last4) {
             $query = "UPDATE fleet_booking SET cType = 'G' WHERE iFleet_BookingID = $booking_id AND iDriverID = $userid AND cType = 'S' AND cStatus = 'A' ";
             $result = sql_query($query, 'TRIP.START');
             if ($result) {

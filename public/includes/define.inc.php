@@ -210,6 +210,15 @@ $GRAPH_COLOR_ARR = array('1' => 'red', '2' => 'orange', '3' => 'yellow', '4' => 
 
 $ENC_CHARARR = array('1' => 'r', '2' => 'j', '3' => 'e', '4' => 'a', '5' => 'c', '6' => 'y', '7' => 'p', '8' => 'o', '9' => 'z', '0' => 'x');
 
+// Jumbled A-Z map for fleet booking code first character: (last 2 digits of PK) % 26
+define('FLEET_BOOKING_CODE_ALPHA', array(
+	0 => 'G', 1 => 'S', 2 => 'K', 3 => 'P', 4 => 'A', 5 => 'W',
+	6 => 'M', 7 => 'Z', 8 => 'C', 9 => 'T', 10 => 'H', 11 => 'Q',
+	12 => 'B', 13 => 'X', 14 => 'F', 15 => 'R', 16 => 'N', 17 => 'D',
+	18 => 'Y', 19 => 'L', 20 => 'U', 21 => 'I', 22 => 'E', 23 => 'V',
+	24 => 'J', 25 => 'O'
+));
+
 $USER_REF_TYPE = array('A' => 'Admin', 'R' => 'Relationship Manager');
 
 $HEADER_CSS = array('A' => '  header-text-light');

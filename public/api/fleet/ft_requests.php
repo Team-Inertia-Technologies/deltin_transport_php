@@ -422,22 +422,36 @@ switch ($mode) {
             $staffDeptOpt[] = ['id' => intval($id), 'name' => $name];
         }
         $staffOpt = [];
+        $STAFF_MAP = [];
         while ($row = sql_fetch_assoc($STAFF_ARR)) {
-            // Check if staff member is logged in user
+            $staffId = intval($row['iFStaffID']);
             $staffUserID = intval($row['iUserID'] ?? 0);
-            $isLoggedin = false;
+            $isLoggedin = ($staffUserID > 0 && $staffUserID == $user_id);
 
-            if ($staffUserID > 0 && $staffUserID == $user_id) {
-                $isLoggedin = true;
-            }
+            $STAFF_MAP[$staffId] = [
+                'name' => $row['vName'],
+                'departmentId' => intval($row['iDepartmentID'])
+            ];
 
             $staffOpt[] = [
-                'id' => intval($row['iFStaffID']),
+                'id' => $staffId,
                 'name' => $row['vName'],
                 'mobile' => $row['vMobile'],
                 'departmentId' => intval($row['iDepartmentID']),
                 'isLoggedin' => $isLoggedin
             ];
+        }
+        $VENDOR_ARR = GetXArrFromYID("SELECT iVendorID, vName from vendor ORDER BY vName", "3");
+        $VEH_CAT_ALL = GetXArrFromYID("SELECT iVCatID, vName from vehicle_category where cStatus='A' ORDER BY iRank", "3");
+        $DRIVER_MAP = [];
+        $driverRes = sql_query("SELECT iDriverID, vName, vMobileNum, iType from driver where cStatus = 'A'");
+        while ($drow = sql_fetch_assoc($driverRes)) {
+            $DRIVER_MAP[intval($drow['iDriverID'])] = $drow;
+        }
+        $VEHICLE_MAP = [];
+        $vehicleRes = sql_query("SELECT iVehicleID, vRnum, iCatID from vehicle where cStatus = 'A'");
+        while ($vrow = sql_fetch_assoc($vehicleRes)) {
+            $VEHICLE_MAP[intval($vrow['iVehicleID'])] = $vrow;
         }
         $guestOpts = [];
         while ($row = sql_fetch_assoc($GUEST_ARR)) {
@@ -628,26 +642,8 @@ switch ($mode) {
                 fb.iFStaffID,
                 fb.iGuestID,
                 fb.cType as tripStatus,
-                fb.cStatus as bookingStatus,
-                s.vName as bookedByName,
-                p.vName as propertyName,
-                vc.vName as vehicleCatName,
-                d.vName as driverName,
-                d.vMobileNum as driverPhone,
-                d.iType as driverType,
-                v.vRnum as vehicleRegNo,
-                vcat.vName as assignedVehicleCategoryName,
-                vend.vName as vendorName,
-                fs.iDepartmentID as departmentId
+                fb.cStatus as bookingStatus
             FROM fleet_booking fb
-            LEFT JOIN fleet_staff s ON fb.iBookedBy = s.iFStaffID
-            LEFT JOIN fleet_staff fs ON fb.iFStaffID = fs.iFStaffID
-            LEFT JOIN property p ON fb.iPropertyID = p.iPropertyID
-            LEFT JOIN vehicle_category vc ON fb.iVehicleCatID = vc.iVCatID
-            LEFT JOIN driver d ON fb.iDriverID = d.iDriverID AND d.cStatus = 'A'
-            LEFT JOIN vehicle v ON fb.iVehicleID = v.iVehicleID AND v.cStatus = 'A'
-            LEFT JOIN vehicle_category vcat ON v.iCatID = vcat.iVCatID AND vcat.cStatus = 'A'
-            LEFT JOIN vendor vend ON fb.iVendorID = vend.iVendorID
             WHERE $whereClause
             ORDER BY 
                 CASE 
@@ -658,97 +654,120 @@ switch ($mode) {
         ";
 
         $bookingRes = sql_query($bookingSql);
-
-        $rowData = [];
-        $allRowData = []; // Store all data before tripType filtering
+        $bookingRows = [];
+        $bookingIds = [];
         while ($row = sql_fetch_assoc($bookingRes)) {
             $bookingID = intval($row['iFleet_BookingID']);
+            $bookingRows[] = $row;
+            $bookingIds[] = $bookingID;
+        }
 
-            // Get driver type name from VEHICLE_DRIVER_TYPE array
-            $driverTypeID = intval($row['driverType'] ?? 0);
+        $logTimes = [];
+        if (!empty($bookingIds)) {
+            $idList = implode(',', $bookingIds);
+            $logSql = "
+                SELECT iFleet_BookingID, cRefType, dtAdded
+                FROM fleet_booking_log
+                WHERE iFleet_BookingID IN ($idList)
+                  AND cRefType IN ('S', 'C')
+                ORDER BY dtAdded ASC
+            ";
+            $logRes = sql_query($logSql);
+            while ($logRow = sql_fetch_assoc($logRes)) {
+                $bid = intval($logRow['iFleet_BookingID']);
+                if (!isset($logTimes[$bid])) {
+                    $logTimes[$bid] = ['S' => '', 'C' => ''];
+                }
+                if ($logRow['cRefType'] === 'S' && $logTimes[$bid]['S'] === '') {
+                    $logTimes[$bid]['S'] = $logRow['dtAdded'];
+                }
+                if ($logRow['cRefType'] === 'C') {
+                    $logTimes[$bid]['C'] = $logRow['dtAdded'];
+                }
+            }
+        }
+
+        $rowData = [];
+        $cancelModule = checkUserModuleAccess($user_id, 'FLEET_REQUEST_CANCEL');
+        $currentTime = date('Y-m-d H:i:s');
+
+        foreach ($bookingRows as $row) {
+            $bookingID = intval($row['iFleet_BookingID']);
+            $driverId = intval($row['iDriverID'] ?? 0);
+            $vehicleId = intval($row['iVehicleID'] ?? 0);
+            $vendorId = intval($row['iVendorID'] ?? 0);
+            $propertyId = intval($row['iPropertyID'] ?? 0);
+            $vehicleCatId = intval($row['iVehicleCatID'] ?? 0);
+            $bookedById = intval($row['iBookedBy'] ?? 0);
+            $staffId = intval($row['iFStaffID'] ?? 0);
+
+            $driver = $DRIVER_MAP[$driverId] ?? [];
+            $driverTypeID = intval($driver['iType'] ?? 0);
             $driverTypeName = isset($VEHICLE_DRIVER_TYPE[$driverTypeID]) ? $VEHICLE_DRIVER_TYPE[$driverTypeID] : '';
 
-       
+            $vehicle = $VEHICLE_MAP[$vehicleId] ?? [];
+            $vehicleRegNo = $vehicle['vRnum'] ?? '';
+            $assignedVehicleCatId = intval($vehicle['iCatID'] ?? 0);
+            $assignedVehicleCategoryName = isset($VEH_CAT_ALL[$assignedVehicleCatId]) ? $VEH_CAT_ALL[$assignedVehicleCatId] : '';
+
             $vehicleDetails = '';
-            if (!empty($row['vehicleRegNo'])) {
-                $vehicleDetails = db_output2($row['vehicleRegNo']);
-                if (!empty($row['assignedVehicleCategoryName'])) {
-                    $vehicleDetails .= ' (' . db_output2($row['assignedVehicleCategoryName']) . ')';
+            if (!empty($vehicleRegNo)) {
+                $vehicleDetails = db_output2($vehicleRegNo);
+                if (!empty($assignedVehicleCategoryName)) {
+                    $vehicleDetails .= ' (' . db_output2($assignedVehicleCategoryName) . ')';
                 }
             }
 
-            // Get trip status name from FLEET_TRIP_STATUS array
             $tripStatusCode = $row['tripStatus'] ?? 'N';
             $tripStatusName = isset($FLEET_TRIP_STATUS[$tripStatusCode]) ? $FLEET_TRIP_STATUS[$tripStatusCode] : 'Not started';
 
-            // Get start time and end time from fleet_booking_log
-            $startTime = '';
-            $endTime = '';
+            $startRaw = $logTimes[$bookingID]['S'] ?? '';
+            $endRaw = $logTimes[$bookingID]['C'] ?? '';
+            $startTime = !empty($startRaw) ? date('d-m-Y H:i', strtotime($startRaw)) : '';
+            $endTime = !empty($endRaw) ? date('d-m-Y H:i', strtotime($endRaw)) : '';
 
-            // Get trip start time (when cRefType = 'S')
-            $startTimeSql = "SELECT dtAdded FROM fleet_booking_log WHERE iFleet_BookingID = $bookingID AND cRefType = 'S' ORDER BY dtAdded ASC LIMIT 1";
-            $startTimeRes = sql_query($startTimeSql);
-            if (sql_num_rows($startTimeRes) > 0) {
-                $startTimeRow = sql_fetch_assoc($startTimeRes);
-                $startTime = !empty($startTimeRow['dtAdded']) ? date('d-m-Y H:i', strtotime($startTimeRow['dtAdded']))
-                    : '';
-            }
-
-            // Get trip end time (when cRefType = 'C')
-            $endTimeSql = "SELECT dtAdded FROM fleet_booking_log WHERE iFleet_BookingID = $bookingID AND cRefType = 'C' ORDER BY dtAdded DESC LIMIT 1";
-            $endTimeRes = sql_query($endTimeSql);
-            if (sql_num_rows($endTimeRes) > 0) {
-                $endTimeRow = sql_fetch_assoc($endTimeRes);
-                $endTime = !empty($endTimeRow['dtAdded']) ? date('d-m-Y H:i', strtotime($endTimeRow['dtAdded'])) : '';
-            }
             if ($tripStatusCode == 'G' || $tripStatusCode == 'P' || $tripStatusCode == 'R' || $tripStatusCode == 'C' || $tripStatusCode == 'S') {
                 $isTrip = 'Y';
             } else {
                 $isTrip = 'N';
             }
 
-            // Determine tripType based on vehicle and driver assignment and pickup time
-            $tripType = 'Unassigned'; // Default
-            $hasVehicle = !empty($row['iVehicleID']) && intval($row['iVehicleID']) > 0;
-            $hasDriver = !empty($row['iDriverID']) && intval($row['iDriverID']) > 0;
-            $hasVendor = !empty($row['iVendorID']) && intval($row['iVendorID']) > 0;
+            $tripType = 'Unassigned';
+            $hasVehicle = $vehicleId > 0;
+            $hasDriver = $driverId > 0;
+            $hasVendor = $vendorId > 0;
             $pickupTime = $row['vPickUpTime'] ?? '';
-            $currentTime = date('Y-m-d H:i:s');
             $bookingStatus = $row['bookingStatus'] ?? '';
 
             if ($bookingStatus == 'C') {
                 $tripType = 'Cancelled';
             } else if ($hasVehicle && $hasDriver) {
-                // Only mark as Assigned if no vendor is involved, or vendor + driver + vehicle all set
                 $tripType = 'Assigned';
             } else if ($hasVendor && !$hasVehicle && !$hasDriver) {
-                // Vendor assigned but driver/vehicle not yet assigned
                 $tripType = 'VendorAssigned';
             } else if (!$hasVehicle && !$hasDriver) {
-                // No vendor, no vehicle, no driver — check if delayed
                 if (!empty($pickupTime) && strtotime($pickupTime) < strtotime($currentTime) && $tripStatusCode == 'N') {
                     $tripType = 'Delayed';
                 } else {
                     $tripType = 'Unassigned';
                 }
             } else {
-                // Partially assigned (either vehicle or driver but not both), no vendor
                 $tripType = 'Unassigned';
             }
-            $cancelModule = checkUserModuleAccess($user_id, 'FLEET_REQUEST_CANCEL');
 
-            // Check ownership
             $isOwner = intval($row['iAdded_UserID']) == $user_id;
             $notCancelled = $row['bookingStatus'] != 'C';
-
-            // Allow cancel only if module access or owner
             $canCancel = ($cancelModule || $isOwner || $notCancelled);
 
             $bookedByName = '';
-            if (intval($row['iBookedBy']) > 0) {
-                $bookedByName = db_output2($row['bookedByName'] ?? '');
+            if ($bookedById > 0) {
+                $bookedByName = db_output2($STAFF_MAP[$bookedById]['name'] ?? '');
             }
             $instructionsBy = db_output2($row['vBookedBy'] ?? '');
+            $vehicleCatName = isset($VEH_CAT[$vehicleCatId]) ? $VEH_CAT[$vehicleCatId] : (isset($VEH_CAT_ALL[$vehicleCatId]) ? $VEH_CAT_ALL[$vehicleCatId] : '');
+            $vendorName = isset($VENDOR_ARR[$vendorId]) ? $VENDOR_ARR[$vendorId] : '';
+            $departmentId = intval($STAFF_MAP[$staffId]['departmentId'] ?? 0);
+
             $rowDataItem = [
                 'id' => $bookingID,
                 'bookingCode' => (!empty($row['vBookingCode'])) ? db_output2($row['vBookingCode']) : 'N/A',
@@ -769,30 +788,29 @@ switch ($mode) {
                 'bags' => strval($row['iBaggage'] ?? '0'),
                 'bookedBy' => $bookedByName,
                 'instructionsBy' => $instructionsBy,
-                'pickupByName' => db_output2($row['driverName'] ?? ''),
-                'pickupByPhone' => db_output2($row['driverPhone'] ?? ''),
+                'pickupByName' => db_output2($driver['vName'] ?? ''),
+                'pickupByPhone' => db_output2($driver['vMobileNum'] ?? ''),
                 'pickupByType' => $driverTypeName,
                 'vehicleDetails' => $vehicleDetails,
-                'vehicleType' => db_output2($row['vehicleCatName'] ?? ''),
-                'vendorName' => db_output2($row['vendorName'] ?? ''),
+                'vehicleType' => db_output2($vehicleCatName),
+                'vendorName' => db_output2($vendorName),
                 'isTrip' => $isTrip,
                 'canCancel' => $canCancel,
-                'bookedById' => intval($row['iBookedBy'] ?? 0),
+                'bookedById' => $bookedById,
                 'bookedFor' => $row['cBookingFor'] ?? '',
                 'bookingCat' => intval($row['iFleet_BKCatID'] ?? 0),
-                'property' => intval($row['iPropertyID'] ?? 0),
+                'property' => $propertyId,
                 'mob' => db_output2($row['vMobileNo'] ?? ''),
-                'vehiCat' => intval($row['iVehicleCatID'] ?? 0),
-                'vendorID' => intval($row['iVendorID'] ?? 0),
+                'vehiCat' => $vehicleCatId,
+                'vendorID' => $vendorId,
                 'stationID' => intval($row['iFleet_StationID'] ?? 0),
-                'department' => intval($row['departmentId'] ?? 0),
-                'staffID' => intval($row['iFStaffID'] ?? 0),
+                'department' => $departmentId,
+                'staffID' => $staffId,
                 'guestID' => intval($row['iGuestID'] ?? 0)
             ];
 
-            // Apply tripType filter (since it's calculated, not in DB)
             if (!empty($filterTripType) && $tripType !== $filterTripType) {
-                continue; // Skip this record if it doesn't match the tripType filter
+                continue;
             }
 
             $rowData[] = $rowDataItem;
