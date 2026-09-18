@@ -175,7 +175,7 @@ switch ($mode) {
 
             $driverType = $VEHICLE_DRIVER_TYPE[intval($row['driverType'] ?? 0)] ?? '';
 
-            $bookedByName = 'others';
+            $bookedByName = 'other';
             if (intval($row['iBookedBy']) > 0) {
                 $bookedByName = db_output2($row['bookedByName'] ?? '');
             }
