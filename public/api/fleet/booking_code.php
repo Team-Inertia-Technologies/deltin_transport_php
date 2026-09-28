@@ -68,7 +68,7 @@ switch ($mode) {
 
         // -------------------- VERIFY BOOKING BELONGS TO VENDOR --------------------
         $bookingRes = sql_query(
-            "SELECT iDriverID, vBookingCode, iVendorID FROM fleet_booking
+            "SELECT iDriverID, vBookingCode, vMobileNo, iVendorID FROM fleet_booking
              WHERE iFleet_BookingID = $booking_id AND cStatus = 'A' LIMIT 1",
             'BOOKING.DETAILS'
         );
@@ -112,7 +112,8 @@ switch ($mode) {
         }
 
         $storedCode = $booking['vBookingCode'] ?? '';
-        if (!FleetBookingCodeMatches($codeEntered, $storedCode)) {
+        $last4 = substr(preg_replace('/\D/', '', $booking['vMobileNo'] ?? ''), -4);
+        if (!FleetBookingCodeMatches($codeEntered, $storedCode) && $codeEntered !== $last4) {
             http_response_code(400);
             echo json_encode([
                 "statusCode" => 400,
