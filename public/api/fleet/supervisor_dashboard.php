@@ -613,7 +613,7 @@ switch ($mode) {
                 $bookedByName = db_output2($row['vBookedBy']." by ".$FLEET_STAFF_ARR[$row['iBookedBy']] ?? '');
             }*/
 
-            $dateTime = dashboardFormatDateTime($row['vPickUpTime']);
+            $dateTime = date('d-m-Y H:i', strtotime($row['vPickUpTime'])); //dashboardFormatDateTime($row['vPickUpTime']);
 
             if($row['iDriverID'] == '0' || $row['iVehicleID'] == '0') {
                 $allocationStatus = false;
