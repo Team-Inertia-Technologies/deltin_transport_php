@@ -538,16 +538,21 @@ switch ($mode) {
             }
         }
 
-        if (!empty($is_vendor)) {
+        $hasAirportTransferAccess = checkUserModuleAccess(
+            $user_id,
+            'AIRPORT_TRANSFER_REQ'
+        );
+
+        if (!empty($is_vendor) && !$hasAirportTransferAccess) {
             $cond .= " and iVendorID = $is_vendor";
             if (!empty($STATIONS_ARR)) {
                 $cond .= " and iFleet_StationID IN (" . dashboardIntList($STATIONS_ARR) . ")";
-            }            
+            }
         }
 
-        if (checkUserModuleAccess($user_id, 'AIRPORT_TRANSFER_REQ')) {
+        if ($hasAirportTransferAccess) {
             $cond .= " and iFleet_TrvPurID = 2";
-        }       
+        }
 
         // Fetch booking data
         $bookingSql = "select iFleet_BookingID, vBookingCode, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments, iFleet_StationID, iFleet_RateID, iVendorID, vRemarks, vTravelNotes from fleet_booking where 1 $cond and cType NOT IN ('C','S','G','P','R') and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
@@ -613,7 +618,7 @@ switch ($mode) {
                 $bookedByName = db_output2($row['vBookedBy']." by ".$FLEET_STAFF_ARR[$row['iBookedBy']] ?? '');
             }*/
 
-            $dateTime = dashboardFormatDateTime($row['vPickUpTime']);
+            $dateTime = date('d-m-Y H:i', strtotime($row['vPickUpTime'])); //dashboardFormatDateTime($row['vPickUpTime']);
 
             if($row['iDriverID'] == '0' || $row['iVehicleID'] == '0') {
                 $allocationStatus = false;
@@ -621,7 +626,7 @@ switch ($mode) {
                 $allocationStatus = true;
             }
 
-            if (!empty((int) $row['iVendorID'])) {
+            if (!$hasAirportTransferAccess && !empty((int) $row['iVendorID'])) {
                 // Allow admin OR users belonging to this vendor
                 if ($user_level != '1' && (int)$row['iVendorID'] !== (int)$is_vendor) {
                     continue;
