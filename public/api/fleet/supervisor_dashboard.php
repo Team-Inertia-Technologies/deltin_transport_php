@@ -625,14 +625,14 @@ switch ($mode) {
             } else {
                 $allocationStatus = true;
             }
-			if($user_level == '4'){
+			//if($user_level == '4'){
 				if (!$hasAirportTransferAccess && !empty((int) $row['iVendorID'])) {
                 // Allow admin OR users belonging to this vendor
 					if ($user_level != '1' && (int)$row['iVendorID'] !== (int)$is_vendor) {
 						continue;
 					}
 				}
-			}
+			//}
 
             $rowData[] = [
                 'id' => intval($row['iFleet_BookingID']),
