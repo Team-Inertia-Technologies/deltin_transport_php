@@ -542,13 +542,13 @@ switch ($mode) {
             $user_id,
             'AIRPORT_TRANSFER_REQ'
         );
-
-        if (!empty($is_vendor) && !$hasAirportTransferAccess) {
-            $cond .= " and iVendorID = $is_vendor";
-            if (!empty($STATIONS_ARR)) {
-                $cond .= " and iFleet_StationID IN (" . dashboardIntList($STATIONS_ARR) . ")";
-            }
-        }
+		
+		if (!empty($is_vendor) && !$hasAirportTransferAccess) {
+			$cond .= " and iVendorID = $is_vendor";
+			if (!empty($STATIONS_ARR)) {
+				$cond .= " and iFleet_StationID IN (" . dashboardIntList($STATIONS_ARR) . ")";
+			}
+		}
 
         if ($hasAirportTransferAccess) {
             $cond .= " and iFleet_TrvPurID = 2";
@@ -625,13 +625,14 @@ switch ($mode) {
             } else {
                 $allocationStatus = true;
             }
-
-            if (!$hasAirportTransferAccess && !empty((int) $row['iVendorID'])) {
+			if($user_level == '4'){
+				if (!$hasAirportTransferAccess && !empty((int) $row['iVendorID'])) {
                 // Allow admin OR users belonging to this vendor
-                if ($user_level != '1' && (int)$row['iVendorID'] !== (int)$is_vendor) {
-                    continue;
-                }
-            }
+					if ($user_level != '1' && (int)$row['iVendorID'] !== (int)$is_vendor) {
+						continue;
+					}
+				}
+			}
 
             $rowData[] = [
                 'id' => intval($row['iFleet_BookingID']),
