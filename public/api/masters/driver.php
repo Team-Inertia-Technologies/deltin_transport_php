@@ -26,13 +26,14 @@ if (sql_num_rows($userCheckRes) == 0) {
     exit;
 }
 
-// Function to validate driver data and check duplicates
-function validateDriverData($vMobileNum, $vEmpCode, $excludeDriverID = 0)
+// Function to validate driver data and check duplicates.
+// Non-app users (cAppUser = N) may share a mobile number. App users must stay unique among themselves.
+function validateDriverData($vMobileNum, $vEmpCode, $excludeDriverID = 0, $cAppUser = 'Y')
 {
     $conditions = [];
 
-    if (!empty($vMobileNum)) {
-        $conditions[] = "vMobileNum = '$vMobileNum'";
+    if (!empty($vMobileNum) && $cAppUser !== 'N') {
+        $conditions[] = "(vMobileNum = '$vMobileNum' AND cAppUser = 'Y')";
     }
 
     if (!empty($vEmpCode)) {
@@ -43,7 +44,7 @@ function validateDriverData($vMobileNum, $vEmpCode, $excludeDriverID = 0)
         return ['valid' => true];
     }
 
-    $sql = "SELECT iDriverID, vName, vMobileNum, vEmpCode 
+    $sql = "SELECT iDriverID, vName, vMobileNum, vEmpCode, cAppUser 
             FROM driver 
             WHERE (" . implode(' OR ', $conditions) . ") 
             AND iDriverID != $excludeDriverID 
@@ -52,7 +53,7 @@ function validateDriverData($vMobileNum, $vEmpCode, $excludeDriverID = 0)
     $res = sql_query($sql);
 
     while ($row = sql_fetch_assoc($res)) {
-        if (!empty($vMobileNum) && $row['vMobileNum'] === $vMobileNum) {
+        if ($cAppUser !== 'N' && !empty($vMobileNum) && $row['vMobileNum'] === $vMobileNum && ($row['cAppUser'] ?? 'Y') !== 'N') {
             return [
                 'valid' => false,
                 'message' => "Mobile number already exists for driver: " . $row['vName']
@@ -204,7 +205,7 @@ switch ($mode) {
 
         // Optimized query with JOIN to get vendor data and all new fields
         $sql = "SELECT d.iDriverID, d.vName, d.vMobileNum, d.vEmpCode, d.iVendorID, 
-                       d.iType, d.vBatchNo, d.dExpiry, d.iRank, d.cStatus, d.cComViaVendor,
+                       d.iType, d.vBatchNo, d.dExpiry, d.iRank, d.cStatus, d.cComViaVendor, d.cAppUser,
                        v.vName as vendor_name
                 FROM driver d
                 LEFT JOIN vendor v ON d.iVendorID = v.iVendorID AND v.cStatus = 'A'
@@ -289,6 +290,7 @@ switch ($mode) {
             'dateOfExp' => $row['dExpiry'] ?? '',
             'cStatus' => $row['cStatus'],
             'cComViaVendor' => (($row['cComViaVendor'] ?? 'N') === 'Y') ? 'Y' : 'N',
+            'cAppUser' => (($row['cAppUser'] ?? 'Y') === 'N') ? 'N' : 'Y',
             'availability' => $selectedAvailOpt
         ];
 
@@ -318,6 +320,7 @@ switch ($mode) {
           
         $dateOfExp = db_input($_REQUEST['dateOfExp'] ?? ''); // Expiry date (dExpiry)
         $cComViaVendor = (($_REQUEST['cComViaVendor'] ?? 'N') === 'Y') ? 'Y' : 'N';
+        $cAppUser = (($_REQUEST['cAppUser'] ?? 'Y') === 'N') ? 'N' : 'Y';
 
         if ($id <= 0) {
             echo json_encode([
@@ -348,7 +351,7 @@ switch ($mode) {
             ]);
             exit;
         }
-        $validation = validateDriverData($mobNum, $empCode, $id);
+        $validation = validateDriverData($mobNum, $empCode, $id, $cAppUser);
         if (!$validation['valid']) {
             echo json_encode([
                 "error" => [
@@ -367,7 +370,8 @@ switch ($mode) {
                     iType = $type,
                     vBatchNo = '$batchNo',
                     dExpiry = " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ",
-                    cComViaVendor = '$cComViaVendor'
+                    cComViaVendor = '$cComViaVendor',
+                    cAppUser = '$cAppUser'
                 WHERE iDriverID = $id AND cStatus = 'A'";
 
         $result = sql_query($sql);
@@ -443,6 +447,7 @@ switch ($mode) {
         $batchNo = db_input($_REQUEST['batchNo'] ?? ''); // Batch number (vBatchNo)
         $dateOfExp = db_input($_REQUEST['dateOfExp'] ?? ''); // Expiry date (dExpiry)
         $cComViaVendor = (($_REQUEST['cComViaVendor'] ?? 'N') === 'Y') ? 'Y' : 'N';
+        $cAppUser = (($_REQUEST['cAppUser'] ?? 'Y') === 'N') ? 'N' : 'Y';
         $cStatus = 'A'; // Default active status
 
         // Basic validation
@@ -477,7 +482,7 @@ switch ($mode) {
         // }
 
         // Validate duplicates
-        $validation = validateDriverData($mobNum, $empCode, 0);
+        $validation = validateDriverData($mobNum, $empCode, 0, $cAppUser);
         if (!$validation['valid']) {
             echo json_encode([
                 "error" => [
@@ -491,9 +496,9 @@ switch ($mode) {
         $iDriverID = NextID('iDriverID', 'driver');
 
         // Insert driver with new fields including vBatchNo and dExpiry
-        $sql = "INSERT INTO driver (iDriverID, vName, vMobileNum, vEmpCode, iVendorID, iType, vBatchNo, dExpiry, iRank, cStatus, cComViaVendor) 
+        $sql = "INSERT INTO driver (iDriverID, vName, vMobileNum, vEmpCode, iVendorID, iType, vBatchNo, dExpiry, iRank, cStatus, cComViaVendor, cAppUser) 
                 VALUES ($iDriverID, '$name', '$mobNum', '$empCode', $vendorID, $type, '$batchNo', 
-                    " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ", $iDriverID, '$cStatus', '$cComViaVendor')";
+                    " . (!empty($dateOfExp) ? "'$dateOfExp'" : "NULL") . ", $iDriverID, '$cStatus', '$cComViaVendor', '$cAppUser')";
 
         if (sql_query($sql)) {
             // Handle availability areas array - insert multiple area associations
