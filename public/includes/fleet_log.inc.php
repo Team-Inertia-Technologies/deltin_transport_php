@@ -123,7 +123,6 @@ function &fleetBookingDatState()
 {
     static $state = [
         'rows' => [],
-        'armed' => false,
     ];
     return $state;
 }
@@ -201,7 +200,7 @@ function queueFleetBookingDatText($bookingId, $userId, $text)
         'type' => 'text',
         'text' => $text,
     ];
-    fleetBookingDatArm();
+    flushFleetBookingDatQueue();
 }
 
 function queueFleetBookingDatChanges($bookingId, $userId, $oldRow, $newRow, $fields)
@@ -231,18 +230,8 @@ function queueFleetBookingDatChanges($bookingId, $userId, $oldRow, $newRow, $fie
         ];
     }
     if (!empty($state['rows'])) {
-        fleetBookingDatArm();
+        flushFleetBookingDatQueue();
     }
-}
-
-function fleetBookingDatArm()
-{
-    $state = &fleetBookingDatState();
-    if ($state['armed']) {
-        return;
-    }
-    $state['armed'] = true;
-    register_shutdown_function('flushFleetBookingDatQueue');
 }
 
 function fleetBookingDatLookupSpec()
