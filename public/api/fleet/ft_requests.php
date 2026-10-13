@@ -2,7 +2,6 @@
 // ini_set('display_errors', 1);
 // error_reporting(E_ALL);
 
-ob_start();
 include "../../includes/common_api.php";
 include "../api_common.php";
 header('Content-Type: application/json');

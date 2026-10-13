@@ -245,35 +245,6 @@ function fleetBookingDatArm()
     register_shutdown_function('flushFleetBookingDatQueue');
 }
 
-function fleetBookingDatReleaseResponse()
-{
-    static $released = false;
-    if ($released) {
-        return;
-    }
-    $released = true;
-    ignore_user_abort(true);
-    if (function_exists('session_status') && session_status() === PHP_SESSION_ACTIVE) {
-        session_write_close();
-    }
-    if (function_exists('fastcgi_finish_request')) {
-        fastcgi_finish_request();
-        return;
-    }
-
-    $chunks = [];
-    while (ob_get_level() > 0) {
-        $chunks[] = ob_get_clean();
-    }
-    $body = implode('', array_reverse($chunks));
-    if (!headers_sent()) {
-        header('Connection: close');
-        header('Content-Length: ' . strlen($body));
-    }
-    echo $body;
-    flush();
-}
-
 function fleetBookingDatLookupSpec()
 {
     return [
@@ -330,10 +301,10 @@ function fleetBookingDatNames($rows)
             continue;
         }
         [$table, $idCol, $nameCol] = $specs[$lookup];
-        $sql = "SELECT $idCol AS id, $nameCol AS name FROM $table WHERE $idCol IN (" . implode(',', $idList) . ")";
+        $sql = "SELECT `$idCol` AS lookup_id, `$nameCol` AS lookup_name FROM `$table` WHERE `$idCol` IN (" . implode(',', $idList) . ")";
         $res = sql_query($sql, 'FLEET_DAT.NAME');
         while ($found = sql_fetch_assoc($res)) {
-            $names[$lookup . ':' . intval($found['id'])] = trim(stripslashes((string)($found['name'] ?? '')));
+            $names[$lookup . ':' . intval($found['lookup_id'])] = trim(stripslashes((string)($found['lookup_name'] ?? '')));
         }
     }
     return $names;
@@ -390,8 +361,15 @@ function flushFleetBookingDatQueue()
         return;
     }
 
-    fleetBookingDatReleaseResponse();
+    try {
+        fleetBookingDatWrite($rows);
+    } catch (Throwable $e) {
+        error_log('FLEET_DAT: ' . $e->getMessage());
+    }
+}
 
+function fleetBookingDatWrite($rows)
+{
     $names = fleetBookingDatNames($rows);
     $dtTime = defined('NOW') ? NOW : date('Y-m-d H:i:s');
     $values = [];
