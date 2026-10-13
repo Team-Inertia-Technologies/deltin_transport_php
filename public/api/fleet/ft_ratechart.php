@@ -45,7 +45,7 @@ switch ($mode) {
         }
 
         $vehiCatArr = [];
-        $catRes = sql_query("SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' ORDER BY iRank, vName");
+        $catRes = sql_query("SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' AND cRateChartApplicable = 'Y' ORDER BY iRank, vName");
         while ($row = sql_fetch_assoc($catRes)) {
             $catId = intval($row['iVCatID']);
             $catName = db_output2($row['vName']);
@@ -73,7 +73,7 @@ switch ($mode) {
         $rateRes = sql_query("SELECT d.iRateChartLocID, d.iVCatID, d.fRate, d.dEffectiveFrom, d.dEffectiveTo, vc.vName AS catName
                               FROM ft_ratechart_location_dat d
                               INNER JOIN ft_ratechart_location l ON l.iRateChartLocID = d.iRateChartLocID AND l.cStatus = 'A' AND TRIM(l.cVenChartType) = '$chartSql'
-                              LEFT JOIN vehicle_category vc ON vc.iVCatID = d.iVCatID
+                              LEFT JOIN vehicle_category vc ON vc.iVCatID = d.iVCatID AND vc.cStatus = 'A' AND vc.cRateChartApplicable = 'Y'
                               WHERE d.cStatus = 'A' AND TRIM(d.cVenChartType) = '$chartSql' AND d.iRateChartLocID > 0
                               ORDER BY d.dEffectiveFrom, d.dEffectiveTo, l.iRank, d.iVCatID");
         $groups = [];
@@ -122,11 +122,12 @@ switch ($mode) {
                 $groups[$groupKey] = [
                     'fromDate' => $fromDate,
                     'toDate' => $toDate,
-                    'vehiCatId' => intval($row['iVCatID']),
+                    'vehiCatId' => isset($knownCats[intval($row['iVCatID'])]) ? intval($row['iVCatID']) : null,
                     'cells' => []
                 ];
             } else {
-                $groups[$groupKey]['vehiCatId'] = intval($row['iVCatID']);
+                $markerCatId = intval($row['iVCatID']);
+                $groups[$groupKey]['vehiCatId'] = isset($knownCats[$markerCatId]) ? $markerCatId : null;
             }
         }
 
@@ -205,7 +206,7 @@ switch ($mode) {
         $vehiCatId = 0;
         if (array_key_exists('vehiCatId', $_REQUEST) && $_REQUEST['vehiCatId'] !== null && $_REQUEST['vehiCatId'] !== '') {
             $vehiCatId = intval($_REQUEST['vehiCatId']);
-            $catCheck = sql_query("SELECT iVCatID FROM vehicle_category WHERE iVCatID = $vehiCatId AND cStatus = 'A'");
+            $catCheck = sql_query("SELECT iVCatID FROM vehicle_category WHERE iVCatID = $vehiCatId AND cStatus = 'A' AND cRateChartApplicable = 'Y'");
             if ($vehiCatId <= 0 || sql_num_rows($catCheck) == 0) {
                 echo json_encode([
                     "error" => ["message" => "vehiCatId is invalid"],
@@ -216,7 +217,7 @@ switch ($mode) {
         }
 
         $catById = [];
-        $catRes = sql_query("SELECT iVCatID FROM vehicle_category WHERE cStatus = 'A'");
+        $catRes = sql_query("SELECT iVCatID FROM vehicle_category WHERE cStatus = 'A' AND cRateChartApplicable = 'Y'");
         while ($row = sql_fetch_assoc($catRes)) {
             $catId = intval($row['iVCatID']);
             if ($catId <= 0) {
@@ -423,7 +424,7 @@ switch ($mode) {
         }
 
         $vehiCatArr = [];
-        $catRes = sql_query("SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' ORDER BY iRank, vName");
+        $catRes = sql_query("SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' AND cRateChartApplicable = 'Y' ORDER BY iRank, vName");
         while ($row = sql_fetch_assoc($catRes)) {
             $catId = intval($row['iVCatID']);
             $catName = db_output2($row['vName']);
@@ -451,7 +452,7 @@ switch ($mode) {
         $rateRes = sql_query("SELECT d.iRateChartLocID, d.iVCatID, d.fRate, d.dEffectiveFrom, d.dEffectiveTo, vc.vName AS catName
                               FROM ft_ratechart_location_dat d
                               INNER JOIN ft_ratechart_location l ON l.iRateChartLocID = d.iRateChartLocID AND l.cStatus = 'A' AND TRIM(l.cVenChartType) = '$chartSql'
-                              LEFT JOIN vehicle_category vc ON vc.iVCatID = d.iVCatID
+                              LEFT JOIN vehicle_category vc ON vc.iVCatID = d.iVCatID AND vc.cStatus = 'A' AND vc.cRateChartApplicable = 'Y'
                               WHERE d.cStatus = 'A' AND TRIM(d.cVenChartType) = '$chartSql' AND d.iRateChartLocID > 0
                               ORDER BY d.dEffectiveFrom, d.dEffectiveTo, l.iRank, d.iVCatID");
         $groups = [];
@@ -500,11 +501,12 @@ switch ($mode) {
                 $groups[$groupKey] = [
                     'fromDate' => $fromDate,
                     'toDate' => $toDate,
-                    'vehiCatId' => intval($row['iVCatID']),
+                    'vehiCatId' => isset($knownCats[intval($row['iVCatID'])]) ? intval($row['iVCatID']) : null,
                     'cells' => []
                 ];
             } else {
-                $groups[$groupKey]['vehiCatId'] = intval($row['iVCatID']);
+                $markerCatId = intval($row['iVCatID']);
+                $groups[$groupKey]['vehiCatId'] = isset($knownCats[$markerCatId]) ? $markerCatId : null;
             }
         }
 
@@ -593,7 +595,7 @@ switch ($mode) {
             exit;
         }
 
-        $catRes = sql_query("SELECT iVCatID FROM vehicle_category WHERE iVCatID = $catId AND cStatus = 'A' LIMIT 1");
+        $catRes = sql_query("SELECT iVCatID FROM vehicle_category WHERE iVCatID = $catId AND cStatus = 'A' AND cRateChartApplicable = 'Y' LIMIT 1");
         if (sql_num_rows($catRes) == 0) {
             echo json_encode([
                 "error" => ["message" => "vehiCatId is invalid"],
@@ -705,7 +707,7 @@ switch ($mode) {
         }
 
         $vehiCatArr = [];
-        $catRes = sql_query("SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' ORDER BY iRank, vName");
+        $catRes = sql_query("SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' AND cRateChartApplicable = 'Y' ORDER BY iRank, vName");
         while ($row = sql_fetch_assoc($catRes)) {
             $catId = intval($row['iVCatID']);
             $catName = db_output2($row['vName']);
@@ -733,7 +735,7 @@ switch ($mode) {
         $rateRes = sql_query("SELECT d.iRateChartLocID, d.iVCatID, d.fRate, d.dEffectiveFrom, d.dEffectiveTo, vc.vName AS catName
                               FROM ft_ratechart_location_dat d
                               INNER JOIN ft_ratechart_location l ON l.iRateChartLocID = d.iRateChartLocID AND l.cStatus = 'A' AND TRIM(l.cVenChartType) = '$chartSql'
-                              LEFT JOIN vehicle_category vc ON vc.iVCatID = d.iVCatID
+                              LEFT JOIN vehicle_category vc ON vc.iVCatID = d.iVCatID AND vc.cStatus = 'A' AND vc.cRateChartApplicable = 'Y'
                               WHERE d.cStatus = 'A' AND TRIM(d.cVenChartType) = '$chartSql' AND d.iRateChartLocID > 0
                               ORDER BY d.dEffectiveFrom, d.dEffectiveTo, l.iRank, d.iVCatID");
         $groups = [];
@@ -782,11 +784,12 @@ switch ($mode) {
                 $groups[$groupKey] = [
                     'fromDate' => $fromDate,
                     'toDate' => $toDate,
-                    'vehiCatId' => intval($row['iVCatID']),
+                    'vehiCatId' => isset($knownCats[intval($row['iVCatID'])]) ? intval($row['iVCatID']) : null,
                     'cells' => []
                 ];
             } else {
-                $groups[$groupKey]['vehiCatId'] = intval($row['iVCatID']);
+                $markerCatId = intval($row['iVCatID']);
+                $groups[$groupKey]['vehiCatId'] = isset($knownCats[$markerCatId]) ? $markerCatId : null;
             }
         }
 
