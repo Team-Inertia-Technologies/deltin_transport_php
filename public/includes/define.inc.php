@@ -346,4 +346,5 @@ $FL_LOG_STATUS_ARR = array("S"=>"Trip Started", "G"=>"Guest Picked Up", "P"=>"Tr
 
 $REQUEST_TYPE_ARR = array("D"=>"Delayed", "U"=>"Unassigned", "A"=>"Assigned");
 $COMMUNICATION_TYPE_ARR = array("C"=>"Confimation", "A"=>"Driver Assignment");
+$FT_RATECHART_TYPE= array("A"=>"Chart A", "B"=>"Chart B");
 

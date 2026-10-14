@@ -118,4 +118,276 @@ function LogBookingDeleted($iBookingID, $vPassengerName = '', $iUserID = 0, $vUs
 {
     return LogFleetBooking($iBookingID, 'B', $vPassengerName, 'Booking deleted', 'D', $iUserID, $vUserName, $iLocID);
 }
+
+function &fleetBookingDatState()
+{
+    static $state = [
+        'rows' => [],
+    ];
+    return $state;
+}
+
+function fleetBookingDatTrackedFields()
+{
+    return [
+        ['col' => 'vBookedBy', 'label' => 'booked by'],
+        ['col' => 'cBookingFor', 'label' => 'booked for', 'map' => 'booking_for'],
+        ['col' => 'iFleet_TrvPurID', 'label' => 'travel purpose', 'lookup' => 'purpose'],
+        ['col' => 'iFleet_TrvTypeID', 'label' => 'travel type', 'lookup' => 'travel_type'],
+        ['col' => 'iPropertyID', 'label' => 'property', 'lookup' => 'property'],
+        ['col' => 'iFleet_BKCatID', 'label' => 'booking category', 'lookup' => 'booking_cat'],
+        ['col' => 'vInstructions', 'label' => 'instructions'],
+        ['col' => 'vRemarks', 'label' => 'remarks'],
+        ['col' => 'vTravelNotes', 'label' => 'travel notes'],
+        ['col' => 'vName', 'label' => 'passenger name'],
+        ['col' => 'vMobileNo', 'label' => 'mobile number'],
+        ['col' => 'iFStaffID', 'label' => 'staff', 'lookup' => 'staff'],
+        ['col' => 'iPax', 'label' => 'pax'],
+        ['col' => 'iBaggage', 'label' => 'baggage'],
+        ['col' => 'vPickUpLocation', 'label' => 'pickup location'],
+        ['col' => 'vPickUpTime', 'label' => 'pickup date time', 'kind' => 'datetime'],
+        ['col' => 'vDropLocation', 'label' => 'drop location'],
+        ['col' => 'vLandmark', 'label' => 'landmark'],
+        ['col' => 'iVehicleCatID', 'label' => 'vehicle category', 'lookup' => 'vehicle_cat'],
+        ['col' => 'cDisposal', 'label' => 'trip type', 'map' => 'trip_type'],
+        ['col' => 'tReturnTime', 'label' => 'return time', 'kind' => 'datetime'],
+        ['col' => 'iVendorID', 'label' => 'vendor', 'lookup' => 'vendor'],
+        ['col' => 'iFleet_StationID', 'label' => 'station', 'lookup' => 'station'],
+    ];
+}
+
+function fleetBookingDatScalar($value)
+{
+    if (is_array($value) || is_object($value)) {
+        return '';
+    }
+    return (string)($value ?? '');
+}
+
+function fleetBookingDatStamp($value)
+{
+    $value = trim(stripslashes(fleetBookingDatScalar($value)));
+    if ($value === '' || strpos($value, '0000-00-00') === 0) {
+        return '';
+    }
+    $ts = strtotime($value);
+    return $ts ? date('Y-m-d H:i', $ts) : $value;
+}
+
+function fleetBookingDatNormalize($value, $field)
+{
+    if (($field['kind'] ?? '') === 'datetime') {
+        return fleetBookingDatStamp($value);
+    }
+    if (!empty($field['lookup'])) {
+        $id = intval($value);
+        return $id > 0 ? (string)$id : '';
+    }
+    return trim(stripslashes(fleetBookingDatScalar($value)));
+}
+
+function queueFleetBookingDatText($bookingId, $userId, $text)
+{
+    $bookingId = intval($bookingId);
+    $text = trim((string)$text);
+    if ($bookingId <= 0 || $text === '') {
+        return;
+    }
+    $state = &fleetBookingDatState();
+    $state['rows'][] = [
+        'bookingId' => $bookingId,
+        'userId' => intval($userId),
+        'type' => 'text',
+        'text' => $text,
+    ];
+    flushFleetBookingDatQueue();
+}
+
+function queueFleetBookingDatChanges($bookingId, $userId, $oldRow, $newRow, $fields)
+{
+    $bookingId = intval($bookingId);
+    if ($bookingId <= 0 || !is_array($fields)) {
+        return;
+    }
+    $state = &fleetBookingDatState();
+    foreach ($fields as $field) {
+        $col = $field['col'] ?? '';
+        if ($col === '') {
+            continue;
+        }
+        $oldVal = is_array($oldRow) ? ($oldRow[$col] ?? '') : '';
+        $newVal = is_array($newRow) && array_key_exists($col, $newRow) ? $newRow[$col] : $oldVal;
+        if (fleetBookingDatNormalize($oldVal, $field) === fleetBookingDatNormalize($newVal, $field)) {
+            continue;
+        }
+        $state['rows'][] = [
+            'bookingId' => $bookingId,
+            'userId' => intval($userId),
+            'type' => 'change',
+            'field' => $field,
+            'old' => $oldVal,
+            'new' => $newVal,
+        ];
+    }
+    if (!empty($state['rows'])) {
+        flushFleetBookingDatQueue();
+    }
+}
+
+function fleetBookingDatLookupSpec()
+{
+    return [
+        'purpose' => ['fleet_travelpurpose', 'iFleet_TrvPurID', 'vName'],
+        'travel_type' => ['fleet_traveltype', 'iFleet_TrvTypeID', 'vName'],
+        'property' => ['property', 'iPropertyID', 'vName'],
+        'booking_cat' => ['fleet_bookingcategory', 'iFleet_BkCatID', 'vName'],
+        'vehicle_cat' => ['vehicle_category', 'iVCatID', 'vName'],
+        'vendor' => ['vendor', 'iVendorID', 'vName'],
+        'station' => ['fleet_station', 'iFlt_StationID', 'vName'],
+        'vehicle' => ['vehicle', 'iVehicleID', 'vRnum'],
+        'driver' => ['driver', 'iDriverID', 'vName'],
+        'staff' => ['fleet_staff', 'iFStaffID', 'vName'],
+        'user' => ['users', 'iUserID', 'vName'],
+    ];
+}
+
+function fleetBookingDatMaps()
+{
+    global $FLEET_BOOKING_FOR, $FLEET_TRAVEL_TYPE;
+    return [
+        'booking_for' => is_array($FLEET_BOOKING_FOR) ? $FLEET_BOOKING_FOR : [],
+        'trip_type' => is_array($FLEET_TRAVEL_TYPE) ? $FLEET_TRAVEL_TYPE : [],
+    ];
+}
+
+function fleetBookingDatNames($rows)
+{
+    $specs = fleetBookingDatLookupSpec();
+    $ids = [];
+    foreach ($rows as $row) {
+        $userId = intval($row['userId'] ?? 0);
+        if ($userId > 0) {
+            $ids['user'][$userId] = $userId;
+        }
+        if (($row['type'] ?? '') !== 'change') {
+            continue;
+        }
+        $lookup = $row['field']['lookup'] ?? '';
+        if ($lookup === '' || !isset($specs[$lookup])) {
+            continue;
+        }
+        foreach (['old', 'new'] as $side) {
+            $id = intval($row[$side] ?? 0);
+            if ($id > 0) {
+                $ids[$lookup][$id] = $id;
+            }
+        }
+    }
+
+    $names = [];
+    foreach ($ids as $lookup => $idList) {
+        if (!isset($specs[$lookup]) || empty($idList)) {
+            continue;
+        }
+        [$table, $idCol, $nameCol] = $specs[$lookup];
+        $sql = "SELECT `$idCol` AS lookup_id, `$nameCol` AS lookup_name FROM `$table` WHERE `$idCol` IN (" . implode(',', $idList) . ")";
+        $res = sql_query($sql, 'FLEET_DAT.NAME');
+        while ($found = sql_fetch_assoc($res)) {
+            $names[$lookup . ':' . intval($found['lookup_id'])] = trim(stripslashes((string)($found['lookup_name'] ?? '')));
+        }
+    }
+    return $names;
+}
+
+function fleetBookingDatDisplay($value, $field, $names)
+{
+    if (($field['kind'] ?? '') === 'datetime') {
+        $stamp = fleetBookingDatStamp($value);
+        return $stamp === '' ? '' : date('d-m-Y H:i', strtotime($stamp));
+    }
+    if (!empty($field['lookup'])) {
+        $id = intval($value);
+        if ($id <= 0) {
+            return '';
+        }
+        $found = $names[$field['lookup'] . ':' . $id] ?? '';
+        return $found !== '' ? $found : (string)$id;
+    }
+    $raw = trim(stripslashes(fleetBookingDatScalar($value)));
+    if ($raw === '') {
+        return '';
+    }
+    if (!empty($field['map'])) {
+        $map = fleetBookingDatMaps()[$field['map']] ?? [];
+        if (isset($map[$raw])) {
+            return $map[$raw];
+        }
+        $asInt = (string)intval($raw);
+        if (isset($map[$asInt])) {
+            return $map[$asInt];
+        }
+    }
+    return $raw;
+}
+
+function fleetBookingDatSentence($who, $label, $oldDisplay, $newDisplay)
+{
+    if ($oldDisplay === '' && $newDisplay !== '') {
+        return $who . ' assigned the ' . $label . ' ' . $newDisplay;
+    }
+    if ($oldDisplay !== '' && $newDisplay === '') {
+        return $who . ' removed the ' . $label . ' ' . $oldDisplay;
+    }
+    return $who . ' changed the ' . $label . ' from ' . $oldDisplay . ' to ' . $newDisplay;
+}
+
+function flushFleetBookingDatQueue()
+{
+    $state = &fleetBookingDatState();
+    $rows = $state['rows'];
+    $state['rows'] = [];
+    if (empty($rows)) {
+        return;
+    }
+
+    try {
+        fleetBookingDatWrite($rows);
+    } catch (Throwable $e) {
+        error_log('FLEET_DAT: ' . $e->getMessage());
+    }
+}
+
+function fleetBookingDatWrite($rows)
+{
+    $names = fleetBookingDatNames($rows);
+    $dtTime = defined('NOW') ? NOW : date('Y-m-d H:i:s');
+    $values = [];
+    foreach ($rows as $row) {
+        $who = $names['user:' . intval($row['userId'])] ?? '';
+        if ($who === '') {
+            $who = 'User';
+        }
+        if (($row['type'] ?? '') === 'text') {
+            $desc = $who . ' ' . $row['text'];
+        } else {
+            $field = $row['field'];
+            $oldDisplay = fleetBookingDatDisplay($row['old'], $field, $names);
+            $newDisplay = fleetBookingDatDisplay($row['new'], $field, $names);
+            if ($oldDisplay === $newDisplay) {
+                continue;
+            }
+            $desc = fleetBookingDatSentence($who, $field['label'], $oldDisplay, $newDisplay);
+        }
+        $desc = function_exists('mb_substr') ? mb_substr($desc, 0, 1000) : substr($desc, 0, 1000);
+        $whoStored = function_exists('mb_substr') ? mb_substr($who, 0, 150) : substr($who, 0, 150);
+        $values[] = "(" . intval($row['bookingId']) . ", '" . db_input($dtTime) . "', '" . db_input($whoStored) . "', '" . db_input($desc) . "', 'A')";
+    }
+    if (empty($values)) {
+        return;
+    }
+    sql_query(
+        "INSERT INTO fleet_booking_dat (iFleet_BookingID, dtTime, vByWhom, vDesc, cStatus) VALUES " . implode(',', $values),
+        'FLEET_DAT.INS'
+    );
+}
 ?>

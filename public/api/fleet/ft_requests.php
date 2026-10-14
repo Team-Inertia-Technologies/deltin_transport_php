@@ -328,6 +328,20 @@ function addFleetBookingItem($item, $user_id, &$guestIdByMobile)
     sql_query("insert fleet_communication(cType, vCode,vMobile, cMode, dtCreated, iUserAdded) VALUES('C', '+91', '$vMobileNo', 'WA','$dtAdded',$user_id)");
 
     LogBookingCreated($iFleet_BookingID1, $vName, $user_id);
+    queueFleetBookingDatText($iFleet_BookingID1, $user_id, 'created the booking');
+    $createFields = [];
+    $createNew = [];
+    if ($iVendorID > 0) {
+        $createFields[] = ['col' => 'iVendorID', 'label' => 'vendor', 'lookup' => 'vendor'];
+        $createNew['iVendorID'] = $iVendorID;
+    }
+    if ($iFleet_StationID > 0) {
+        $createFields[] = ['col' => 'iFleet_StationID', 'label' => 'station', 'lookup' => 'station'];
+        $createNew['iFleet_StationID'] = $iFleet_StationID;
+    }
+    if (!empty($createFields)) {
+        queueFleetBookingDatChanges($iFleet_BookingID1, $user_id, [], $createNew, $createFields);
+    }
 
     return [
         'ok' => true,
@@ -1406,6 +1420,33 @@ switch ($mode) {
             exit;
         }
         LogBookingUpdated($iFleet_BookingID, $vName, 'Booking details updated', $user_id);
+        $pickUpLocRaw = $_REQUEST['pickUpLoc'] ?? [];
+        $dropLocRaw = $_REQUEST['dropLoc'] ?? [];
+        queueFleetBookingDatChanges($iFleet_BookingID, $user_id, $existingBooking, [
+            'vBookedBy' => $_REQUEST['bookedByName'] ?? '',
+            'cBookingFor' => $_REQUEST['bookedFor'] ?? '',
+            'iFleet_TrvPurID' => $_REQUEST['travelPurpose'] ?? 0,
+            'iFleet_TrvTypeID' => $_REQUEST['travelType'] ?? 0,
+            'iPropertyID' => $_REQUEST['property'] ?? 0,
+            'iFleet_BKCatID' => $_REQUEST['bookingCat'] ?? 0,
+            'vInstructions' => $_REQUEST['intruc'] ?? '',
+            'vRemarks' => $_REQUEST['remarks'] ?? '',
+            'vTravelNotes' => $_REQUEST['travelNotes'] ?? '',
+            'vName' => $_REQUEST['name'] ?? '',
+            'vMobileNo' => $_REQUEST['mob'] ?? '',
+            'iFStaffID' => $_REQUEST['staffID'] ?? 0,
+            'iPax' => $_REQUEST['pax'] ?? 0,
+            'iBaggage' => $_REQUEST['baggage'] ?? 0,
+            'vPickUpLocation' => is_array($pickUpLocRaw) ? ($pickUpLocRaw['loc'] ?? '') : '',
+            'vPickUpTime' => $_REQUEST['pickUpDateTime'] ?? '',
+            'vDropLocation' => is_array($dropLocRaw) ? ($dropLocRaw['loc'] ?? '') : '',
+            'vLandmark' => $_REQUEST['landMark'] ?? '',
+            'iVehicleCatID' => $_REQUEST['vehiCat'] ?? 0,
+            'cDisposal' => isset($_REQUEST['disposal']) ? $_REQUEST['disposal'] : 'N',
+            'tReturnTime' => $_REQUEST['returnTime'] ?? '',
+            'iVendorID' => $_REQUEST['vendorID'] ?? 0,
+            'iFleet_StationID' => $_REQUEST['stationID'] ?? 0,
+        ], fleetBookingDatTrackedFields());
 
         echo json_encode([
             "data" => [
@@ -2078,7 +2119,7 @@ switch ($mode) {
         }
 
         $bookingRes = sql_query("
-            SELECT iFleet_BookingID, vName
+            SELECT iFleet_BookingID, vName, iVendorID, iFleet_StationID
             FROM fleet_booking
             WHERE iFleet_BookingID = $iFleet_BookingID
               AND cStatus = 'A'
@@ -2180,6 +2221,13 @@ switch ($mode) {
             'Station and vendor assigned',
             $user_id
         );
+        queueFleetBookingDatChanges($iFleet_BookingID, $user_id, $bookingData, [
+            'iVendorID' => $iVendorID,
+            'iFleet_StationID' => $iFleet_StationID,
+        ], [
+            ['col' => 'iVendorID', 'label' => 'vendor', 'lookup' => 'vendor'],
+            ['col' => 'iFleet_StationID', 'label' => 'station', 'lookup' => 'station'],
+        ]);
 
         echo json_encode([
             "data" => [
@@ -2290,7 +2338,7 @@ switch ($mode) {
         }
 
         // Check if booking exists and is active
-        $bookingCheckSql = "SELECT iFleet_BookingID, vName, vMobileNo, vPickUpTime, vPickUpLocation, vBookingCode, iFleet_StationID, iVendorID
+        $bookingCheckSql = "SELECT iFleet_BookingID, vName, vMobileNo, vPickUpTime, vPickUpLocation, vBookingCode, iFleet_StationID, iVendorID, iVehicleID, iDriverID, vComments
                            FROM fleet_booking 
                            WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
         $bookingCheckRes = sql_query($bookingCheckSql);
@@ -2454,6 +2502,25 @@ switch ($mode) {
             ]);
             exit;
         } else {
+            $assignNew = [
+                'iVehicleID' => $iVehicleID,
+                'iDriverID' => $iDriverID,
+                'vComments' => $_REQUEST['comment'] ?? '',
+            ];
+            $assignFields = [
+                ['col' => 'iVehicleID', 'label' => 'vehicle', 'lookup' => 'vehicle'],
+                ['col' => 'iDriverID', 'label' => 'driver', 'lookup' => 'driver'],
+                ['col' => 'vComments', 'label' => 'comment'],
+            ];
+            if ($iFleet_StationID > 0) {
+                $assignNew['iFleet_StationID'] = $iFleet_StationID;
+                $assignFields[] = ['col' => 'iFleet_StationID', 'label' => 'station', 'lookup' => 'station'];
+            }
+            if ($iVendorID > 0) {
+                $assignNew['iVendorID'] = $iVendorID;
+                $assignFields[] = ['col' => 'iVendorID', 'label' => 'vendor', 'lookup' => 'vendor'];
+            }
+            queueFleetBookingDatChanges($iFleet_BookingID, $user_id, $bookingData, $assignNew, $assignFields);
 
             $vMobileNo = $bookingData['vMobileNo'] ?? '';
             $vName = db_output2($bookingData['vName']) ?? '';
@@ -3143,10 +3210,12 @@ switch ($mode) {
             exit;
         }
 
+        $dtCancelled = NOW;
         $completeSql = "UPDATE fleet_booking SET 
                           cStatus = 'C',
                           iCancellationBy = $user_id,
-                          vCancellationReason = '$reason'
+                          vCancellationReason = '$reason',
+                          dtCancelled = '$dtCancelled'
                         WHERE iFleet_BookingID=$iFleet_BookingID";
 
         if (sql_query($completeSql)) {
@@ -3154,6 +3223,12 @@ switch ($mode) {
 
 
             if (sql_affected_rows() > 0) {
+                $reasonText = trim((string)($_REQUEST['reason'] ?? ''));
+                $cancelText = 'cancelled the booking';
+                if ($reasonText !== '') {
+                    $cancelText .= ' because ' . $reasonText;
+                }
+                queueFleetBookingDatText($iFleet_BookingID, $user_id, $cancelText);
                 echo json_encode([
                     "data" => [
                         "message" => "Request marked as canceled",
