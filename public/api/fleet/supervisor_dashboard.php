@@ -1846,6 +1846,8 @@ foreach ($vehicleData as $vehicleID => $vehData) {
             exit;
         }
 
+        queueFleetBookingDatText($iFleet_BookingID1, $user_id, 'created the booking');
+
         $responseIds = [$iFleet_BookingID1];
 
 
@@ -2060,6 +2062,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
             ]);
             exit;
         }
+        $existingBooking = sql_fetch_assoc($checkRes);
 
         $vReturnTimeVal = (!empty($vReturnTime)) ? "'" . $vReturnTime . "'" : "NULL";
         $dtNow = date('Y-m-d H:i:s');
@@ -2100,6 +2103,48 @@ foreach ($vehicleData as $vehicleID => $vehData) {
             ]);
             exit;
         }
+
+        $pickUpLocRaw = $_REQUEST['pickUpLoc'] ?? [];
+        $dropLocRaw = $_REQUEST['dropLoc'] ?? [];
+        queueFleetBookingDatChanges($iFleet_BookingID, $user_id, $existingBooking, [
+            'iBookedBy' => $_REQUEST['bookedBy'] ?? 0,
+            'cBookingFor' => $_REQUEST['bookedFor'] ?? '',
+            'iFleet_TrvPurID' => $_REQUEST['travelPurpose'] ?? 0,
+            'iFleet_TrvTypeID' => $_REQUEST['travelType'] ?? 0,
+            'iPropertyID' => $_REQUEST['property'] ?? 0,
+            'iFleet_BKCatID' => $_REQUEST['bookingCat'] ?? 0,
+            'vInstructions' => $_REQUEST['intruc'] ?? '',
+            'vName' => $_REQUEST['name'] ?? '',
+            'vMobileNo' => $_REQUEST['mob'] ?? '',
+            'iFStaffID' => $_REQUEST['staffID'] ?? 0,
+            'iPax' => $_REQUEST['pax'] ?? 0,
+            'iBaggage' => $_REQUEST['baggage'] ?? 0,
+            'vPickUpLocation' => is_array($pickUpLocRaw) ? ($pickUpLocRaw['loc'] ?? '') : '',
+            'vPickUpTime' => $_REQUEST['pickUpDateTime'] ?? '',
+            'vDropLocation' => is_array($dropLocRaw) ? ($dropLocRaw['loc'] ?? '') : '',
+            'iVehicleCatID' => $_REQUEST['vehiCat'] ?? 0,
+            'cDisposal' => isset($_REQUEST['disposal']) ? $_REQUEST['disposal'] : 'N',
+            'tReturnTime' => $_REQUEST['returnTime'] ?? '',
+        ], [
+            ['col' => 'iBookedBy', 'label' => 'booked by', 'lookup' => 'user'],
+            ['col' => 'cBookingFor', 'label' => 'booked for', 'map' => 'booking_for'],
+            ['col' => 'iFleet_TrvPurID', 'label' => 'travel purpose', 'lookup' => 'purpose'],
+            ['col' => 'iFleet_TrvTypeID', 'label' => 'travel type', 'lookup' => 'travel_type'],
+            ['col' => 'iPropertyID', 'label' => 'property', 'lookup' => 'property'],
+            ['col' => 'iFleet_BKCatID', 'label' => 'booking category', 'lookup' => 'booking_cat'],
+            ['col' => 'vInstructions', 'label' => 'instructions'],
+            ['col' => 'vName', 'label' => 'passenger name'],
+            ['col' => 'vMobileNo', 'label' => 'mobile number'],
+            ['col' => 'iFStaffID', 'label' => 'staff', 'lookup' => 'staff'],
+            ['col' => 'iPax', 'label' => 'pax'],
+            ['col' => 'iBaggage', 'label' => 'baggage'],
+            ['col' => 'vPickUpLocation', 'label' => 'pickup location'],
+            ['col' => 'vPickUpTime', 'label' => 'pickup date time', 'kind' => 'datetime'],
+            ['col' => 'vDropLocation', 'label' => 'drop location'],
+            ['col' => 'iVehicleCatID', 'label' => 'vehicle category', 'lookup' => 'vehicle_cat'],
+            ['col' => 'cDisposal', 'label' => 'trip type', 'map' => 'trip_type'],
+            ['col' => 'tReturnTime', 'label' => 'return time', 'kind' => 'datetime'],
+        ]);
 
         echo json_encode([
             "data" => [
@@ -2440,7 +2485,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
         }
 
         // Check if booking exists and is active
-        $bookingCheckSql = "SELECT iFleet_BookingID, vName, vPickUpTime FROM fleet_booking 
+        $bookingCheckSql = "SELECT iFleet_BookingID, vName, vPickUpTime, iVehicleID, iDriverID, vRemarks FROM fleet_booking 
                            WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
         $bookingCheckRes = sql_query($bookingCheckSql);
 
@@ -2552,26 +2597,15 @@ foreach ($vehicleData as $vehicleID => $vehData) {
             exit;
         }
 
-        // $assocCheckSql = "SELECT iDVAssocID FROM driver_vehicle_assoc 
-        //                  WHERE iDriverID = $iDriverID 
-        //                  AND iVehicleID = $iVehicleID 
-        //                  AND cStatus = 'A' 
-        //                  AND dtAssigned_To IS NULL";
-        // $assocCheckRes = sql_query($assocCheckSql);
-
-        // if (sql_num_rows($assocCheckRes) == 0) {
-        //     // Create new driver-vehicle association
-        //     $iDVAssocID = NextID('iDVAssocID', 'driver_vehicle_assoc');
-        //     $assocInsertSql = "INSERT INTO driver_vehicle_assoc 
-        //                       (iDVAssocID, iDriverID, iVehicleID, dtAssigned_From, dtAdded, iAdded_UserID, cStatus)
-        //                       VALUES 
-        //                       ($iDVAssocID, $iDriverID, $iVehicleID, '" . db_input($dtNow) . "', '" . db_input($dtNow) . "', $user_id, 'A')";
-
-        //     $assocResult = sql_query($assocInsertSql);
-        //     if (!$assocResult) {
-        //         error_log("Warning: Failed to create driver-vehicle association for Driver ID: $iDriverID, Vehicle ID: $iVehicleID");
-        //     }
-        // }
+        queueFleetBookingDatChanges($iFleet_BookingID, $user_id, $bookingData, [
+            'iVehicleID' => $iVehicleID,
+            'iDriverID' => $iDriverID,
+            'vRemarks' => $_REQUEST['remarks'] ?? '',
+        ], [
+            ['col' => 'iVehicleID', 'label' => 'vehicle', 'lookup' => 'vehicle'],
+            ['col' => 'iDriverID', 'label' => 'driver', 'lookup' => 'driver'],
+            ['col' => 'vRemarks', 'label' => 'remarks'],
+        ]);
 
         echo json_encode([
             "data" => [
