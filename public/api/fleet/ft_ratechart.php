@@ -25,141 +25,203 @@ if (sql_num_rows($userCheckRes) == 0) {
     exit;
 }
 
+function ft_rate_date($value) {
+    $raw = trim((string)($value ?? ''));
+    if ($raw === '' || substr($raw, 0, 10) === '0000-00-00') {
+        return null;
+    }
+    return substr($raw, 0, 10);
+}
+
+function ft_rate_number($rateVal) {
+    if ($rateVal === null || $rateVal === '') {
+        return null;
+    }
+    $rateNum = (float)$rateVal;
+    return (abs($rateNum - round($rateNum)) < 0.00001) ? (int)round($rateNum) : $rateNum;
+}
+
+function ft_rate_chart_sql() {
+    global $FT_RATECHART_TYPE;
+    $chart = strtoupper(trim((string)($_REQUEST['chart'] ?? '')));
+    if ($chart === '' || !isset($FT_RATECHART_TYPE[$chart])) {
+        echo json_encode([
+            "error" => ["message" => "chart must be one of: " . implode(', ', array_keys($FT_RATECHART_TYPE))],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+    return db_input($chart);
+}
+
+function ft_rate_entries($chartSql) {
+    $res = sql_query("SELECT dEffectiveFrom, dEffectiveTo
+                      FROM ft_ratechart_location_dat
+                      WHERE cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql'");
+    $ranges = [];
+    while ($row = sql_fetch_assoc($res)) {
+        $fromDate = ft_rate_date($row['dEffectiveFrom']);
+        $toDate = ft_rate_date($row['dEffectiveTo']);
+        $key = ($fromDate ?? '') . '|' . ($toDate ?? '');
+        if (!isset($ranges[$key])) {
+            $ranges[$key] = [
+                'fromDate' => $fromDate,
+                'toDate' => $toDate
+            ];
+        }
+    }
+    ksort($ranges);
+    $entries = [];
+    $entryId = 1;
+    foreach ($ranges as $range) {
+        $entries[] = [
+            'entryId' => $entryId,
+            'fromDate' => $range['fromDate'],
+            'toDate' => $range['toDate']
+        ];
+        $entryId++;
+    }
+    return array_reverse($entries);
+}
+
+function ft_rate_catalog($chartSql) {
+    $vehiCatArr = [];
+    $knownCats = [];
+    $catRes = sql_query("SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' AND cRateChartApplicable = 'Y' ORDER BY iRank, vName");
+    while ($row = sql_fetch_assoc($catRes)) {
+        $catId = intval($row['iVCatID']);
+        $catName = db_output2($row['vName']);
+        if ($catId <= 0 || $catName === '') {
+            continue;
+        }
+        $vehiCatArr[] = ['id' => $catId, 'name' => $catName];
+        $knownCats[$catId] = true;
+    }
+
+    $extraCatRes = sql_query("SELECT DISTINCT d.iVCatID, vc.vName AS catName
+                              FROM ft_ratechart_location_dat d
+                              LEFT JOIN vehicle_category vc ON vc.iVCatID = d.iVCatID AND vc.cStatus = 'A' AND vc.cRateChartApplicable = 'Y'
+                              WHERE d.cStatus = 'A' AND TRIM(d.cVenChartType) = '$chartSql' AND d.iRateChartLocID > 0 AND d.iVCatID > 0");
+    while ($row = sql_fetch_assoc($extraCatRes)) {
+        $catId = intval($row['iVCatID']);
+        if ($catId <= 0 || isset($knownCats[$catId])) {
+            continue;
+        }
+        $catName = db_output2($row['catName'] ?? '');
+        if ($catName === '') {
+            continue;
+        }
+        $vehiCatArr[] = ['id' => $catId, 'name' => $catName];
+        $knownCats[$catId] = true;
+    }
+
+    $locArr = [];
+    $locRes = sql_query("SELECT iRateChartLocID, vName FROM ft_ratechart_location WHERE cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql' ORDER BY iRank, vName");
+    while ($row = sql_fetch_assoc($locRes)) {
+        $locId = intval($row['iRateChartLocID']);
+        if ($locId <= 0) {
+            continue;
+        }
+        $locArr[] = ['id' => $locId, 'name' => db_output2($row['vName'])];
+    }
+
+    return [$vehiCatArr, $locArr];
+}
+
 switch ($mode) {
 
     // ===================== CASE: ONLOAD =====================
     case 'ONLOAD':
-        $chart = strtoupper(trim((string)($_REQUEST['chart'] ?? '')));
-        if ($chart === '' || !isset($FT_RATECHART_TYPE[$chart])) {
-            echo json_encode([
-                "error" => ["message" => "chart must be one of: " . implode(', ', array_keys($FT_RATECHART_TYPE))],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
-        $chartSql = db_input($chart);
+        $chartSql = ft_rate_chart_sql();
 
         $chartArr = [];
         foreach ($FT_RATECHART_TYPE as $id => $name) {
             $chartArr[] = ['id' => $id, 'name' => $name];
         }
+        list($vehiCatArr, $locArr) = ft_rate_catalog($chartSql);
 
-        $vehiCatArr = [];
-        $catRes = sql_query("SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' AND cRateChartApplicable = 'Y' ORDER BY iRank, vName");
-        while ($row = sql_fetch_assoc($catRes)) {
-            $catId = intval($row['iVCatID']);
-            $catName = db_output2($row['vName']);
-            if ($catId <= 0 || $catName === '') {
-                continue;
+        echo json_encode([
+            "data" => [
+                "chartArr" => $chartArr,
+                "vehiCatArr" => $vehiCatArr,
+                "locArr" => $locArr,
+                "entries" => ft_rate_entries($chartSql)
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
+    // ===================== CASE: VIEW =====================
+    case 'VIEW':
+        $chartSql = ft_rate_chart_sql();
+        $entryId = intval($_REQUEST['entryId'] ?? 0);
+        if ($entryId <= 0) {
+            echo json_encode([
+                "error" => ["message" => "entryId is required"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $entry = null;
+        foreach (ft_rate_entries($chartSql) as $row) {
+            if (intval($row['entryId']) === $entryId) {
+                $entry = $row;
+                break;
             }
-            $vehiCatArr[] = ['id' => $catId, 'name' => $catName];
+        }
+        if ($entry === null) {
+            echo json_encode([
+                "error" => ["message" => "Entry not found"],
+                "statusCode" => 404
+            ]);
+            exit;
         }
 
-        $locArr = [];
-        $locRes = sql_query("SELECT iRateChartLocID, vName FROM ft_ratechart_location WHERE cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql' ORDER BY iRank, vName");
-        while ($row = sql_fetch_assoc($locRes)) {
-            $locId = intval($row['iRateChartLocID']);
-            if ($locId <= 0) {
-                continue;
-            }
-            $locArr[] = ['id' => $locId, 'name' => db_output2($row['vName'])];
+        list($vehiCatArr, $locArr) = ft_rate_catalog($chartSql);
+        $fromDate = $entry['fromDate'];
+        $toDate = $entry['toDate'];
+        if ($fromDate === null) {
+            $fromCond = "(d.dEffectiveFrom IS NULL OR d.dEffectiveFrom = '' OR d.dEffectiveFrom = '0000-00-00')";
+        } else {
+            $fromCond = "DATE(d.dEffectiveFrom) = '" . db_input($fromDate) . "'";
+        }
+        if ($toDate === null) {
+            $toCond = "(d.dEffectiveTo IS NULL OR d.dEffectiveTo = '' OR d.dEffectiveTo = '0000-00-00')";
+        } else {
+            $toCond = "DATE(d.dEffectiveTo) = '" . db_input($toDate) . "'";
         }
 
-        $knownCats = [];
-        foreach ($vehiCatArr as $cat) {
-            $knownCats[$cat['id']] = true;
-        }
-
-        $rateRes = sql_query("SELECT d.iRateChartLocID, d.iVCatID, d.fRate, d.dEffectiveFrom, d.dEffectiveTo, vc.vName AS catName
+        $cells = [];
+        $rateRes = sql_query("SELECT d.iRateChartLocID, d.iVCatID, d.fRate
                               FROM ft_ratechart_location_dat d
                               INNER JOIN ft_ratechart_location l ON l.iRateChartLocID = d.iRateChartLocID AND l.cStatus = 'A' AND TRIM(l.cVenChartType) = '$chartSql'
-                              LEFT JOIN vehicle_category vc ON vc.iVCatID = d.iVCatID AND vc.cStatus = 'A' AND vc.cRateChartApplicable = 'Y'
                               WHERE d.cStatus = 'A' AND TRIM(d.cVenChartType) = '$chartSql' AND d.iRateChartLocID > 0
-                              ORDER BY d.dEffectiveFrom, d.dEffectiveTo, l.iRank, d.iVCatID");
-        $groups = [];
+                              AND $fromCond AND $toCond");
         while ($row = sql_fetch_assoc($rateRes)) {
-            $fromDate = substr(trim((string)$row['dEffectiveFrom']), 0, 10);
-            $toRaw = trim((string)($row['dEffectiveTo'] ?? ''));
-            $toDate = ($toRaw === '' || substr($toRaw, 0, 10) === '0000-00-00') ? null : substr($toRaw, 0, 10);
-            $groupKey = $fromDate . '|' . ($toDate ?? '');
-            if (!isset($groups[$groupKey])) {
-                $groups[$groupKey] = [
-                    'fromDate' => $fromDate,
-                    'toDate' => $toDate,
-                    'vehiCatId' => null,
-                    'cells' => []
-                ];
-            }
             $locId = intval($row['iRateChartLocID']);
             $catId = intval($row['iVCatID']);
             if ($locId <= 0 || $catId <= 0) {
                 continue;
             }
-            $rateVal = $row['fRate'];
-            if ($rateVal === null || $rateVal === '') {
-                $rateOut = null;
-            } else {
-                $rateNum = (float)$rateVal;
-                $rateOut = (abs($rateNum - round($rateNum)) < 0.00001) ? (int)round($rateNum) : $rateNum;
-            }
-            $groups[$groupKey]['cells'][$locId][$catId] = $rateOut;
-            if (!isset($knownCats[$catId])) {
-                $catName = db_output2($row['catName'] ?? '');
-                if ($catName !== '') {
-                    $vehiCatArr[] = ['id' => $catId, 'name' => $catName];
-                    $knownCats[$catId] = true;
-                }
-            }
+            $cells[$locId][$catId] = ft_rate_number($row['fRate']);
         }
 
-        $markerRes = sql_query("SELECT iVCatID, dEffectiveFrom, dEffectiveTo FROM ft_ratechart_location_dat WHERE cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql' AND iRateChartLocID = 0");
-        while ($row = sql_fetch_assoc($markerRes)) {
-            $fromDate = substr(trim((string)$row['dEffectiveFrom']), 0, 10);
-            $toRaw = trim((string)($row['dEffectiveTo'] ?? ''));
-            $toDate = ($toRaw === '' || substr($toRaw, 0, 10) === '0000-00-00') ? null : substr($toRaw, 0, 10);
-            $groupKey = $fromDate . '|' . ($toDate ?? '');
-            if (!isset($groups[$groupKey])) {
-                $groups[$groupKey] = [
-                    'fromDate' => $fromDate,
-                    'toDate' => $toDate,
-                    'vehiCatId' => isset($knownCats[intval($row['iVCatID'])]) ? intval($row['iVCatID']) : null,
-                    'cells' => []
-                ];
-            } else {
-                $markerCatId = intval($row['iVCatID']);
-                $groups[$groupKey]['vehiCatId'] = isset($knownCats[$markerCatId]) ? $markerCatId : null;
+        $rates = [];
+        foreach ($locArr as $loc) {
+            $rateRow = ['LOCATION' => $loc['id']];
+            foreach ($vehiCatArr as $cat) {
+                $rateRow[(string)$cat['id']] = $cells[$loc['id']][$cat['id']] ?? null;
             }
-        }
-
-        ksort($groups);
-        $entries = [];
-        $entryId = 1;
-        foreach ($groups as $group) {
-            $rates = [];
-            foreach ($locArr as $loc) {
-                $rateRow = ['LOCATION' => $loc['id']];
-                foreach ($vehiCatArr as $cat) {
-                    $rateRow[(string)$cat['id']] = $group['cells'][$loc['id']][$cat['id']] ?? null;
-                }
-                $rates[] = $rateRow;
-            }
-            $entries[] = [
-                'entryId' => $entryId,
-                'fromDate' => $group['fromDate'],
-                'toDate' => $group['toDate'],
-                'vehiCatId' => $group['vehiCatId'],
-                'rates' => $rates
-            ];
-            $entryId++;
+            $rates[] = $rateRow;
         }
 
         echo json_encode([
             "data" => [
-                "message" => "Rate chart loaded successfully",
-                "chartArr" => $chartArr,
-                "vehiCatArr" => $vehiCatArr,
-                "locArr" => $locArr,
-                "entries" => $entries
+                "entryId" => $entry['entryId'],
+                "fromDate" => $fromDate,
+                "toDate" => $toDate,
+                "rates" => $rates
             ],
             "statusCode" => 200
         ]);
@@ -374,19 +436,12 @@ switch ($mode) {
             }
         }
 
-        $rangeRes = sql_query("SELECT dEffectiveFrom, dEffectiveTo FROM ft_ratechart_location_dat
-                               WHERE cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql'
-                               GROUP BY dEffectiveFrom, dEffectiveTo
-                               ORDER BY dEffectiveFrom, dEffectiveTo");
         $newEntryId = 0;
-        $serial = 1;
-        while ($row = sql_fetch_assoc($rangeRes)) {
-            $rangeTo = ($row['dEffectiveTo'] === null || $row['dEffectiveTo'] === '' || $row['dEffectiveTo'] === '0000-00-00') ? null : $row['dEffectiveTo'];
-            if ($row['dEffectiveFrom'] === $fromDate && $rangeTo === $toDate) {
-                $newEntryId = $serial;
+        foreach (ft_rate_entries($chartSql) as $entry) {
+            if ($entry['fromDate'] === $fromDate && $entry['toDate'] === $toDate) {
+                $newEntryId = $entry['entryId'];
                 break;
             }
-            $serial++;
         }
 
         echo json_encode([
