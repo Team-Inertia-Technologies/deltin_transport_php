@@ -196,7 +196,7 @@ function disposal_chart_summary($row) {
 
 function disposal_categories() {
     $categories = [];
-    $res = sql_query("SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' ORDER BY iRank, vName");
+    $res = sql_query("SELECT iVCatID, vName FROM vehicle_category WHERE cStatus = 'A' AND cRateChartApplicable = 'Y' ORDER BY iRank, vName");
     while ($row = sql_fetch_assoc($res)) {
         $catId = intval($row['iVCatID']);
         $name = db_output2($row['vName']);
@@ -268,7 +268,7 @@ function disposal_chart($chartId) {
 
 function disposal_input($chartId) {
     $vehicleCategoryId = intval($_REQUEST['vehicleCategoryId'] ?? 0);
-    $catRes = sql_query("SELECT iVCatID FROM vehicle_category WHERE iVCatID = $vehicleCategoryId AND cStatus = 'A'");
+    $catRes = sql_query("SELECT iVCatID FROM vehicle_category WHERE iVCatID = $vehicleCategoryId AND cStatus = 'A' AND cRateChartApplicable = 'Y'");
     if ($vehicleCategoryId <= 0 || sql_num_rows($catRes) == 0) {
         disposal_fail("vehicleCategoryId is invalid", 400);
     }
