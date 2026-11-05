@@ -140,6 +140,21 @@ function ft_rate_catalog($chartSql) {
 
 switch ($mode) {
 
+    // ===================== CASE: LIST =====================
+    case 'LIST':
+        $chartArr = [];
+        foreach ($FT_RATECHART_TYPE as $id => $name) {
+            $chartArr[] = ['id' => $id, 'name' => $name];
+        }
+
+        echo json_encode([
+            "data" => [
+                "chartArr" => $chartArr
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
     // ===================== CASE: ONLOAD =====================
     case 'ONLOAD':
         $chartSql = ft_rate_chart_sql();
