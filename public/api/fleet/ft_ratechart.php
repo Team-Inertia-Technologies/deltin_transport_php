@@ -25,6 +25,16 @@ if (sql_num_rows($userCheckRes) == 0) {
     exit;
 }
 
+$FT_RATECHART_TYPE = [];
+$typeRes = sql_query("SELECT iVenChartType, vName FROM ft_ratechart_type WHERE cStatus = 'A' ORDER BY iRank, vName");
+while ($row = sql_fetch_assoc($typeRes)) {
+    $typeId = intval($row['iVenChartType']);
+    if ($typeId <= 0) {
+        continue;
+    }
+    $FT_RATECHART_TYPE[$typeId] = db_output2($row['vName']);
+}
+
 function ft_rate_date($value) {
     $raw = trim((string)($value ?? ''));
     if ($raw === '' || substr($raw, 0, 10) === '0000-00-00') {
@@ -43,7 +53,7 @@ function ft_rate_number($rateVal) {
 
 function ft_rate_chart_sql() {
     global $FT_RATECHART_TYPE;
-    $chart = strtoupper(trim((string)($_REQUEST['chart'] ?? '')));
+    $chart = trim((string)($_REQUEST['chart'] ?? ($_REQUEST['chartId'] ?? '')));
     if ($chart === '' || !isset($FT_RATECHART_TYPE[$chart])) {
         echo json_encode([
             "error" => ["message" => "chart must be one of: " . implode(', ', array_keys($FT_RATECHART_TYPE))],
@@ -51,13 +61,13 @@ function ft_rate_chart_sql() {
         ]);
         exit;
     }
-    return db_input($chart);
+    return intval($chart);
 }
 
 function ft_rate_entries($chartSql) {
     $res = sql_query("SELECT dEffectiveFrom, dEffectiveTo
                       FROM ft_ratechart_location_dat
-                      WHERE cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql'");
+                      WHERE cStatus = 'A' AND iVenChartType = $chartSql");
     $ranges = [];
     while ($row = sql_fetch_assoc($res)) {
         $fromDate = ft_rate_date($row['dEffectiveFrom']);
@@ -101,7 +111,7 @@ function ft_rate_catalog($chartSql) {
     $extraCatRes = sql_query("SELECT DISTINCT d.iVCatID, vc.vName AS catName
                               FROM ft_ratechart_location_dat d
                               LEFT JOIN vehicle_category vc ON vc.iVCatID = d.iVCatID AND vc.cStatus = 'A' AND vc.cRateChartApplicable = 'Y'
-                              WHERE d.cStatus = 'A' AND TRIM(d.cVenChartType) = '$chartSql' AND d.iRateChartLocID > 0 AND d.iVCatID > 0");
+                              WHERE d.cStatus = 'A' AND d.iVenChartType = $chartSql AND d.iRateChartLocID > 0 AND d.iVCatID > 0");
     while ($row = sql_fetch_assoc($extraCatRes)) {
         $catId = intval($row['iVCatID']);
         if ($catId <= 0 || isset($knownCats[$catId])) {
@@ -116,7 +126,7 @@ function ft_rate_catalog($chartSql) {
     }
 
     $locArr = [];
-    $locRes = sql_query("SELECT iRateChartLocID, vName FROM ft_ratechart_location WHERE cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql' ORDER BY iRank, vName");
+    $locRes = sql_query("SELECT iRateChartLocID, vName FROM ft_ratechart_location WHERE cStatus = 'A' AND iVenChartType = $chartSql ORDER BY iRank, vName");
     while ($row = sql_fetch_assoc($locRes)) {
         $locId = intval($row['iRateChartLocID']);
         if ($locId <= 0) {
@@ -195,8 +205,8 @@ switch ($mode) {
         $cells = [];
         $rateRes = sql_query("SELECT d.iRateChartLocID, d.iVCatID, d.fRate
                               FROM ft_ratechart_location_dat d
-                              INNER JOIN ft_ratechart_location l ON l.iRateChartLocID = d.iRateChartLocID AND l.cStatus = 'A' AND TRIM(l.cVenChartType) = '$chartSql'
-                              WHERE d.cStatus = 'A' AND TRIM(d.cVenChartType) = '$chartSql' AND d.iRateChartLocID > 0
+                              INNER JOIN ft_ratechart_location l ON l.iRateChartLocID = d.iRateChartLocID AND l.cStatus = 'A' AND l.iVenChartType = $chartSql
+                              WHERE d.cStatus = 'A' AND d.iVenChartType = $chartSql AND d.iRateChartLocID > 0
                               AND $fromCond AND $toCond");
         while ($row = sql_fetch_assoc($rateRes)) {
             $locId = intval($row['iRateChartLocID']);
@@ -229,14 +239,7 @@ switch ($mode) {
 
     // ===================== CASE: ADD =====================
     case 'ADD':
-        $chart = strtoupper(trim((string)($_REQUEST['chart'] ?? '')));
-        if ($chart === '' || !isset($FT_RATECHART_TYPE[$chart])) {
-            echo json_encode([
-                "error" => ["message" => "chart must be one of: " . implode(', ', array_keys($FT_RATECHART_TYPE))],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
+        $chartSql = ft_rate_chart_sql();
         $rawEntryId = $_REQUEST['entryId'] ?? null;
         if ($rawEntryId !== null && $rawEntryId !== '' && intval($rawEntryId) > 0) {
             echo json_encode([
@@ -288,9 +291,8 @@ switch ($mode) {
             $catById[$catId] = true;
         }
 
-        $chartSql = db_input($chart);
         $locIds = [];
-        $locRes = sql_query("SELECT iRateChartLocID FROM ft_ratechart_location WHERE cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql'");
+        $locRes = sql_query("SELECT iRateChartLocID FROM ft_ratechart_location WHERE cStatus = 'A' AND iVenChartType = $chartSql");
         while ($row = sql_fetch_assoc($locRes)) {
             $locIds[intval($row['iRateChartLocID'])] = true;
         }
@@ -380,7 +382,7 @@ switch ($mode) {
         $fromSql = db_input($fromDate);
         $toSql = db_input($toDate);
         $overlapRes = sql_query("SELECT iRCLDat_ID FROM ft_ratechart_location_dat
-                                 WHERE cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql'
+                                 WHERE cStatus = 'A' AND iVenChartType = $chartSql
                                  AND dEffectiveFrom <= '$toSql'
                                  AND (dEffectiveTo IS NULL OR dEffectiveTo = '0000-00-00' OR dEffectiveTo >= '$fromSql')
                                  LIMIT 1");
@@ -396,7 +398,7 @@ switch ($mode) {
             $locId = intval($write['locId']);
             $catId = intval($write['catId']);
             $existing = sql_query("SELECT iRCLDat_ID FROM ft_ratechart_location_dat
-                                   WHERE TRIM(cVenChartType) = '$chartSql' AND iRateChartLocID = $locId AND iVCatID = $catId
+                                   WHERE iVenChartType = $chartSql AND iRateChartLocID = $locId AND iVCatID = $catId
                                    AND dEffectiveFrom = '$fromSql' AND dEffectiveTo = '$toSql'
                                    ORDER BY (cStatus = 'A') DESC, iRCLDat_ID DESC LIMIT 1");
             if ($write['rate'] === null) {
@@ -415,13 +417,13 @@ switch ($mode) {
             }
             $datId = NextID('iRCLDat_ID', 'ft_ratechart_location_dat');
             sql_query("INSERT INTO ft_ratechart_location_dat
-                          (iRCLDat_ID, iRateChartLocID, cVenChartType, iVCatID, fRate, dEffectiveFrom, dEffectiveTo, cStatus)
-                       VALUES ($datId, $locId, '$chartSql', $catId, " . $write['rate'] . ", '$fromSql', '$toSql', 'A')");
+                          (iRCLDat_ID, iRateChartLocID, iVenChartType, iVCatID, fRate, dEffectiveFrom, dEffectiveTo, cStatus)
+                       VALUES ($datId, $locId, $chartSql, $catId, " . $write['rate'] . ", '$fromSql', '$toSql', 'A')");
         }
 
         if ($vehiCatId > 0) {
             $marker = sql_query("SELECT iRCLDat_ID FROM ft_ratechart_location_dat
-                                 WHERE TRIM(cVenChartType) = '$chartSql' AND iRateChartLocID = 0
+                                 WHERE iVenChartType = $chartSql AND iRateChartLocID = 0
                                  AND dEffectiveFrom = '$fromSql' AND dEffectiveTo = '$toSql'
                                  ORDER BY (cStatus = 'A') DESC, iRCLDat_ID DESC LIMIT 1");
             if (sql_num_rows($marker) > 0) {
@@ -431,8 +433,8 @@ switch ($mode) {
             } else {
                 $datId = NextID('iRCLDat_ID', 'ft_ratechart_location_dat');
                 sql_query("INSERT INTO ft_ratechart_location_dat
-                              (iRCLDat_ID, iRateChartLocID, cVenChartType, iVCatID, fRate, dEffectiveFrom, dEffectiveTo, cStatus)
-                           VALUES ($datId, 0, '$chartSql', $vehiCatId, NULL, '$fromSql', '$toSql', 'A')");
+                              (iRCLDat_ID, iRateChartLocID, iVenChartType, iVCatID, fRate, dEffectiveFrom, dEffectiveTo, cStatus)
+                           VALUES ($datId, 0, $chartSql, $vehiCatId, NULL, '$fromSql', '$toSql', 'A')");
             }
         }
 
@@ -455,14 +457,7 @@ switch ($mode) {
 
     // ===================== CASE: EDIT =====================
     case 'EDIT':
-        $chart = strtoupper(trim((string)($_REQUEST['chart'] ?? ($_REQUEST['chartId'] ?? ''))));
-        if ($chart === '' || !isset($FT_RATECHART_TYPE[$chart])) {
-            echo json_encode([
-                "error" => ["message" => "chart must be one of: " . implode(', ', array_keys($FT_RATECHART_TYPE))],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
+        $chartSql = ft_rate_chart_sql();
         $entryId = intval($_REQUEST['entryId'] ?? 0);
         if ($entryId <= 0) {
             echo json_encode([
@@ -471,7 +466,6 @@ switch ($mode) {
             ]);
             exit;
         }
-        $chartSql = db_input($chart);
 
         $chartArr = [];
         foreach ($FT_RATECHART_TYPE as $id => $name) {
@@ -490,7 +484,7 @@ switch ($mode) {
         }
 
         $locArr = [];
-        $locRes = sql_query("SELECT iRateChartLocID, vName FROM ft_ratechart_location WHERE cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql' ORDER BY iRank, vName");
+        $locRes = sql_query("SELECT iRateChartLocID, vName FROM ft_ratechart_location WHERE cStatus = 'A' AND iVenChartType = $chartSql ORDER BY iRank, vName");
         while ($row = sql_fetch_assoc($locRes)) {
             $locId = intval($row['iRateChartLocID']);
             if ($locId <= 0) {
@@ -506,9 +500,9 @@ switch ($mode) {
 
         $rateRes = sql_query("SELECT d.iRateChartLocID, d.iVCatID, d.fRate, d.dEffectiveFrom, d.dEffectiveTo, vc.vName AS catName
                               FROM ft_ratechart_location_dat d
-                              INNER JOIN ft_ratechart_location l ON l.iRateChartLocID = d.iRateChartLocID AND l.cStatus = 'A' AND TRIM(l.cVenChartType) = '$chartSql'
+                              INNER JOIN ft_ratechart_location l ON l.iRateChartLocID = d.iRateChartLocID AND l.cStatus = 'A' AND l.iVenChartType = $chartSql
                               LEFT JOIN vehicle_category vc ON vc.iVCatID = d.iVCatID AND vc.cStatus = 'A' AND vc.cRateChartApplicable = 'Y'
-                              WHERE d.cStatus = 'A' AND TRIM(d.cVenChartType) = '$chartSql' AND d.iRateChartLocID > 0
+                              WHERE d.cStatus = 'A' AND d.iVenChartType = $chartSql AND d.iRateChartLocID > 0
                               ORDER BY d.dEffectiveFrom, d.dEffectiveTo, l.iRank, d.iVCatID");
         $groups = [];
         while ($row = sql_fetch_assoc($rateRes)) {
@@ -546,7 +540,7 @@ switch ($mode) {
             }
         }
 
-        $markerRes = sql_query("SELECT iVCatID, dEffectiveFrom, dEffectiveTo FROM ft_ratechart_location_dat WHERE cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql' AND iRateChartLocID = 0");
+        $markerRes = sql_query("SELECT iVCatID, dEffectiveFrom, dEffectiveTo FROM ft_ratechart_location_dat WHERE cStatus = 'A' AND iVenChartType = $chartSql AND iRateChartLocID = 0");
         while ($row = sql_fetch_assoc($markerRes)) {
             $fromDate = substr(trim((string)$row['dEffectiveFrom']), 0, 10);
             $toRaw = trim((string)($row['dEffectiveTo'] ?? ''));
@@ -615,14 +609,7 @@ switch ($mode) {
 
     // ===================== CASE: UPDATE_RATE =====================
     case 'UPDATE_RATE':
-        $chart = strtoupper(trim((string)($_REQUEST['chart'] ?? ($_REQUEST['chartId'] ?? ''))));
-        if ($chart === '' || !isset($FT_RATECHART_TYPE[$chart])) {
-            echo json_encode([
-                "error" => ["message" => "chart must be one of: " . implode(', ', array_keys($FT_RATECHART_TYPE))],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
+        $chartSql = ft_rate_chart_sql();
         $locId = intval($_REQUEST['locId'] ?? 0);
         $catId = intval($_REQUEST['vehiCatId'] ?? 0);
         if ($locId <= 0) {
@@ -640,8 +627,7 @@ switch ($mode) {
             exit;
         }
 
-        $chartSql = db_input($chart);
-        $locCheck = sql_query("SELECT iRateChartLocID FROM ft_ratechart_location WHERE iRateChartLocID = $locId AND cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql'");
+        $locCheck = sql_query("SELECT iRateChartLocID FROM ft_ratechart_location WHERE iRateChartLocID = $locId AND cStatus = 'A' AND iVenChartType = $chartSql");
         if (sql_num_rows($locCheck) == 0) {
             echo json_encode([
                 "error" => ["message" => "locId is not on this chart"],
@@ -709,7 +695,7 @@ switch ($mode) {
         }
 
         $sql = "SELECT iRCLDat_ID, fRate, dEffectiveFrom, dEffectiveTo FROM ft_ratechart_location_dat
-                WHERE cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql'
+                WHERE cStatus = 'A' AND iVenChartType = $chartSql
                 AND iRateChartLocID = $locId AND iVCatID = $catId";
         if ($fromDate !== '') {
             $sql .= " AND dEffectiveFrom = '" . db_input($fromDate) . "'";
@@ -753,8 +739,8 @@ switch ($mode) {
         sql_query("UPDATE ft_ratechart_location_dat SET cStatus = 'X' WHERE iRCLDat_ID = $datId AND cStatus = 'A'");
         $newId = NextID('iRCLDat_ID', 'ft_ratechart_location_dat');
         sql_query("INSERT INTO ft_ratechart_location_dat
-                      (iRCLDat_ID, iRateChartLocID, cVenChartType, iVCatID, fRate, dEffectiveFrom, dEffectiveTo, cStatus)
-                   VALUES ($newId, $locId, '$chartSql', $catId, $updatedSql, '$fromSql', $toSql, 'A')");
+                      (iRCLDat_ID, iRateChartLocID, iVenChartType, iVCatID, fRate, dEffectiveFrom, dEffectiveTo, cStatus)
+                   VALUES ($newId, $locId, $chartSql, $catId, $updatedSql, '$fromSql', $toSql, 'A')");
 
         $chartArr = [];
         foreach ($FT_RATECHART_TYPE as $id => $name) {
@@ -773,7 +759,7 @@ switch ($mode) {
         }
 
         $locArr = [];
-        $locRes = sql_query("SELECT iRateChartLocID, vName FROM ft_ratechart_location WHERE cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql' ORDER BY iRank, vName");
+        $locRes = sql_query("SELECT iRateChartLocID, vName FROM ft_ratechart_location WHERE cStatus = 'A' AND iVenChartType = $chartSql ORDER BY iRank, vName");
         while ($row = sql_fetch_assoc($locRes)) {
             $locId = intval($row['iRateChartLocID']);
             if ($locId <= 0) {
@@ -789,9 +775,9 @@ switch ($mode) {
 
         $rateRes = sql_query("SELECT d.iRateChartLocID, d.iVCatID, d.fRate, d.dEffectiveFrom, d.dEffectiveTo, vc.vName AS catName
                               FROM ft_ratechart_location_dat d
-                              INNER JOIN ft_ratechart_location l ON l.iRateChartLocID = d.iRateChartLocID AND l.cStatus = 'A' AND TRIM(l.cVenChartType) = '$chartSql'
+                              INNER JOIN ft_ratechart_location l ON l.iRateChartLocID = d.iRateChartLocID AND l.cStatus = 'A' AND l.iVenChartType = $chartSql
                               LEFT JOIN vehicle_category vc ON vc.iVCatID = d.iVCatID AND vc.cStatus = 'A' AND vc.cRateChartApplicable = 'Y'
-                              WHERE d.cStatus = 'A' AND TRIM(d.cVenChartType) = '$chartSql' AND d.iRateChartLocID > 0
+                              WHERE d.cStatus = 'A' AND d.iVenChartType = $chartSql AND d.iRateChartLocID > 0
                               ORDER BY d.dEffectiveFrom, d.dEffectiveTo, l.iRank, d.iVCatID");
         $groups = [];
         while ($row = sql_fetch_assoc($rateRes)) {
@@ -829,7 +815,7 @@ switch ($mode) {
             }
         }
 
-        $markerRes = sql_query("SELECT iVCatID, dEffectiveFrom, dEffectiveTo FROM ft_ratechart_location_dat WHERE cStatus = 'A' AND TRIM(cVenChartType) = '$chartSql' AND iRateChartLocID = 0");
+        $markerRes = sql_query("SELECT iVCatID, dEffectiveFrom, dEffectiveTo FROM ft_ratechart_location_dat WHERE cStatus = 'A' AND iVenChartType = $chartSql AND iRateChartLocID = 0");
         while ($row = sql_fetch_assoc($markerRes)) {
             $fromDate = substr(trim((string)$row['dEffectiveFrom']), 0, 10);
             $toRaw = trim((string)($row['dEffectiveTo'] ?? ''));
