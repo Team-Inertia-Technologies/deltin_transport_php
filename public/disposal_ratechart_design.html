@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Disposal rate chart</title>
+<style>
+  :root {
+    --bg: #f3f4f6;
+    --panel: #fff;
+    --ink: #1b1d21;
+    --muted: #5e6772;
+    --line: #d7dbe2;
+    --accent: #1d4e89;
+    --accent-ink: #fff;
+    --soft: #eef3f8;
+    --danger: #8d2b2b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.45 "Segoe UI", sans-serif;
+  }
+  header, main { width: min(1100px, calc(100% - 32px)); margin: 0 auto; }
+  header { padding: 28px 0 8px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+  h1 { margin: 0; font-size: 24px; font-weight: 650; }
+  h2 { margin: 0; font-size: 16px; }
+  p.lead { margin: 6px 0 0; color: var(--muted); }
+  button, select, input {
+    font: inherit;
+    color: inherit;
+  }
+  button {
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.ghost { background: transparent; }
+  button:disabled { opacity: 0.55; cursor: default; }
+  .filters { display: flex; gap: 8px; align-items: center; margin: 18px 0; }
+  .pill { border-radius: 99px; padding: 4px 12px; }
+  .pill.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  section.block { background: var(--panel); border: 1px solid var(--line); margin-bottom: 16px; }
+  .block head, .block-h {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 14px; border-bottom: 1px solid var(--line);
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 14px; border-top: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); font-weight: 650; border-top: 0; }
+  td.num, th.num { text-align: right; }
+  .sub { display: block; color: var(--muted); font-size: 12px; }
+  .tag { display: inline-block; border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; font-size: 12px; }
+  .notice, .error {
+    padding: 10px 12px; margin-bottom: 12px; border: 1px solid var(--line); background: var(--soft);
+  }
+  .error { background: #f8ecec; border-color: #e4c8c8; color: var(--danger); }
+  form.sheet { background: var(--panel); border: 1px solid var(--line); padding: 16px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 650; }
+  input, select { border: 1px solid var(--line); border-radius: 4px; padding: 7px 8px; background: #fff; }
+  .rows { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .row4, .row5 { display: grid; gap: 8px; align-items: center; }
+  .row4 { grid-template-columns: 90px 90px 1fr auto; }
+  .row5 { grid-template-columns: 1.4fr 90px 90px 100px auto; }
+  .split { display: flex; justify-content: space-between; align-items: center; margin: 18px 0 8px; }
+  .actions { display: flex; gap: 8px; align-items: center; margin-top: 16px; }
+  .hint { color: var(--muted); font-size: 12px; font-weight: 400; }
+  .readonly input, .readonly select { background: var(--bg); }
+  @media (max-width: 800px) {
+    .grid, .row4, .row5 { grid-template-columns: 1fr; }
+    header { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1 id="title">Disposal rate chart</h1>
+    <p class="lead" id="lead">Open charts are the current rates. A chart with an end date keeps the old rates.</p>
+  </div>
+  <button class="primary" id="addBtn" type="button">Add chart</button>
+</header>
+<main id="app"></main>
+<script>
+const TYPES = [{ id: "1", name: "Chart type 1" }];
+const VEHICLES = [
+  { id: "5", name: "Ertiga" },
+  { id: "6", name: "Innova" },
+  { id: "7", name: "Crysta" }
+];
+const NIGHT = [
+  { name: "After 19:00", timeFrom: "19:00", timeTo: "22:00", amount: "200" },
+  { name: "After 22:00", timeFrom: "22:00", timeTo: "07:00", amount: "300" }
+];
+
+function hourly(id, vehicleId, name, first) {
+  return {
+    id, chartType: "1", vehicleCategoryId: vehicleId, chartName: name,
+    fromDate: "2025-10-04", toDate: "", status: "A",
+    includedKm: "15", additionalKmRate: "15",
+    hourlyRates: [
+      { hourFrom: "1", hourTo: "1", rate: first },
+      { hourFrom: "2", hourTo: "5", rate: "200" }
+    ],
+    surcharges: NIGHT.map((row) => ({ ...row }))
+  };
+}
+
+let charts = [
+  {
+    id: 5, chartType: "1", vehicleCategoryId: "5",
+    chartName: "Disposal hourly - Ertiga",
+    fromDate: "2024-04-01", toDate: "2025-10-03", status: "A",
+    includedKm: "15", additionalKmRate: "12",
+    hourlyRates: [
+      { hourFrom: "1", hourTo: "1", rate: "350" },
+      { hourFrom: "2", hourTo: "5", rate: "180" }
+    ],
+    surcharges: [
+      { name: "After 19:00", timeFrom: "19:00", timeTo: "22:00", amount: "150" },
+      { name: "After 22:00", timeFrom: "22:00", timeTo: "07:00", amount: "250" }
+    ]
+  },
+  hourly(1, "5", "Disposal hourly - Ertiga", "400"),
+  hourly(2, "6", "Disposal hourly - Innova", "500"),
+  hourly(3, "7", "Disposal hourly - Crysta", "600"),
+  {
+    id: 4, chartType: "1", vehicleCategoryId: "5",
+    chartName: "12 hour night disposal - Ertiga",
+    fromDate: "2025-10-04", toDate: "", status: "A",
+    includedKm: "80", additionalKmRate: "15",
+    hourlyRates: [{ hourFrom: "1", hourTo: "12", rate: "2268" }],
+    surcharges: []
+  }
+];
+
+let typeFilter = "1";
+let screen = "list";
+let mode = "ADD";
+let form = null;
+let closedId = 0;
+let notice = "";
+let error = "";
+
+function today() {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return d.getFullYear() + "-" + m + "-" + day;
+}
+function vehicleName(id) { return (VEHICLES.find((v) => v.id === id) || {}).name || ""; }
+function typeName(id) { return (TYPES.find((t) => t.id === id) || {}).name || ""; }
+function firstHour(chart) {
+  const row = chart.hourlyRates.find((h) => h.hourFrom === "1") || chart.hourlyRates[0];
+  return row ? row.rate : "";
+}
+function rupee(n) { return n === "" ? "" : "Rs " + n; }
+function isCurrent(chart) { return !chart.toDate; }
+function clone(chart) {
+  return {
+    ...chart,
+    hourlyRates: chart.hourlyRates.map((row) => ({ ...row })),
+    surcharges: chart.surcharges.map((row) => ({ ...row }))
+  };
+}
+function blank() {
+  return {
+    id: 0, chartType: "1", vehicleCategoryId: "5", chartName: "",
+    fromDate: "2025-10-04", toDate: "", status: "A",
+    includedKm: "15", additionalKmRate: "15",
+    hourlyRates: [{ hourFrom: "1", hourTo: "1", rate: "" }],
+    surcharges: NIGHT.map((row) => ({ ...row }))
+  };
+}
+
+const app = document.getElementById("app");
+const title = document.getElementById("title");
+const lead = document.getElementById("lead");
+const addBtn = document.getElementById("addBtn");
+
+addBtn.onclick = () => {
+  mode = "ADD";
+  closedId = 0;
+  form = blank();
+  error = "";
+  notice = "";
+  screen = "form";
+  draw();
+};
+
+function draw() {
+  if (screen === "form") drawForm();
+  else drawList();
+}
+
+function drawList() {
+  title.textContent = "Disposal rate chart";
+  lead.textContent = "Open charts are the current rates. A chart with an end date keeps the old rates.";
+  addBtn.hidden = false;
+  const visible = charts.filter((c) => typeFilter === "all" || c.chartType === typeFilter);
+  const current = visible.filter(isCurrent);
+  const old = visible.filter((c) => !isCurrent(c));
+  app.innerHTML = `
+    ${notice ? `<div class="notice">${escapeHtml(notice)}</div>` : ""}
+    <div class="filters">
+      <span class="hint">Chart type</span>
+      <button type="button" class="pill ${typeFilter === "all" ? "on" : ""}" data-type="all">All</button>
+      ${TYPES.map((t) => `<button type="button" class="pill ${typeFilter === t.id ? "on" : ""}" data-type="${t.id}">${escapeHtml(t.name)}</button>`).join("")}
+    </div>
+    ${tableBlock("Current rates", "No end date. Edit closes this chart today and adds a new one.", current, true)}
+    ${tableBlock("Old rates", "End date is filled. Open a row to see the rates that were in force then.", old, false)}
+  `;
+  app.querySelectorAll("[data-type]").forEach((btn) => {
+    btn.onclick = () => { typeFilter = btn.dataset.type; notice = ""; draw(); };
+  });
+  app.querySelectorAll("[data-edit]").forEach((btn) => {
+    btn.onclick = () => openEdit(Number(btn.dataset.edit));
+  });
+  app.querySelectorAll("[data-view]").forEach((btn) => {
+    btn.onclick = () => openView(Number(btn.dataset.view));
+  });
+}
+
+function tableBlock(heading, note, rows, current) {
+  const body = rows.map((chart) => `
+    <tr>
+      <td>${escapeHtml(chart.chartName)}<span class="sub">${escapeHtml(typeName(chart.chartType))} · id ${chart.id}</span></td>
+      <td>${escapeHtml(vehicleName(chart.vehicleCategoryId))}</td>
+      <td class="num">${rupee(firstHour(chart))}</td>
+      <td class="num">${escapeHtml(chart.includedKm)}</td>
+      <td class="num">${rupee(chart.additionalKmRate)}</td>
+      <td>${chart.toDate ? escapeHtml(chart.fromDate + " to " + chart.toDate) : escapeHtml(chart.fromDate + " onward")}</td>
+      <td><span class="tag">${chart.status === "A" ? "Active" : "Inactive"}</span></td>
+      <td>${current
+        ? `<button type="button" data-edit="${chart.id}">Edit</button>`
+        : `<button type="button" data-view="${chart.id}">View rates</button>`}</td>
+    </tr>`).join("");
+  return `
+    <section class="block">
+      <div class="block-h"><h2>${heading}</h2><span class="hint">${note}</span></div>
+      <table>
+        <thead><tr>
+          <th>Chart</th><th>Vehicle</th><th class="num">First hour</th><th class="num">Included km</th>
+          <th class="num">Extra / km</th><th>Effective</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody>${body || `<tr><td colspan="8">None for this chart type.</td></tr>`}</tbody>
+      </table>
+    </section>`;
+}
+
+function openEdit(id) {
+  const chart = charts.find((c) => c.id === id);
+  if (!chart) return;
+  mode = "UPDATE";
+  closedId = id;
+  form = clone(chart);
+  form.fromDate = today();
+  form.toDate = "";
+  error = "";
+  notice = "";
+  screen = "form";
+  draw();
+}
+
+function openView(id) {
+  const chart = charts.find((c) => c.id === id);
+  if (!chart) return;
+  mode = "VIEW";
+  closedId = id;
+  form = clone(chart);
+  error = "";
+  screen = "form";
+  draw();
+}
+
+function drawForm() {
+  const viewing = mode === "VIEW";
+  addBtn.hidden = true;
+  title.textContent = mode === "ADD" ? "Add disposal chart" : viewing ? "Old rates" : "Edit disposal chart";
+  lead.textContent = mode === "ADD"
+    ? "Saves with ADD."
+    : viewing
+      ? `Chart ${form.id} ended ${form.toDate}. These are the rates for that period. They are not edited.`
+      : `Chart ${closedId} keeps its rates and ends today (${today()}). This form becomes a new chart starting today.`;
+  const lock = viewing ? "disabled" : "";
+  app.innerHTML = `
+    ${error ? `<div class="error">${escapeHtml(error)}</div>` : ""}
+    <form class="sheet ${viewing ? "readonly" : ""}" id="sheet">
+      <div class="grid">
+        ${field("Chart type", `<select name="chartType" ${lock}>${TYPES.map((t) => `<option value="${t.id}" ${form.chartType === t.id ? "selected" : ""}>${escapeHtml(t.name)}</option>`).join("")}</select>`)}
+        ${field("Vehicle category", `<select name="vehicleCategoryId" ${lock}>${VEHICLES.map((v) => `<option value="${v.id}" ${form.vehicleCategoryId === v.id ? "selected" : ""}>${escapeHtml(v.name)}</option>`).join("")}</select>`)}
+        ${field("Chart name", `<input name="chartName" value="${escapeAttr(form.chartName)}" ${lock}>`)}
+        ${field("Status", `<select name="status" ${mode === "ADD" || viewing ? "disabled" : ""}><option value="A" ${form.status === "A" ? "selected" : ""}>Active</option><option value="I" ${form.status === "I" ? "selected" : ""}>Inactive</option></select>`)}
+        ${field("Effective from", `<input name="fromDate" value="${escapeAttr(form.fromDate)}" ${mode !== "ADD" ? "disabled" : ""}>`)}
+        ${field("Effective to", `<input name="toDate" value="${escapeAttr(form.toDate)}" placeholder="${viewing ? "" : "Open if blank"}" ${lock}>`)}
+        ${field("Included km", `<input name="includedKm" value="${escapeAttr(form.includedKm)}" ${lock}>`)}
+        ${field("Extra km rate (Rs)", `<input name="additionalKmRate" value="${escapeAttr(form.additionalKmRate)}" ${lock}>`)}
+      </div>
+      <p class="hint">Vehicle list is only categories with rate chart applicable.</p>
+      <div class="split"><h2>Hourly rates</h2>${viewing ? "" : `<button type="button" id="addHour">Add range</button>`}</div>
+      <div class="rows" id="hours">
+        ${form.hourlyRates.map((row, i) => `
+          <div class="row4">
+            <input data-hour="hourFrom" data-i="${i}" value="${escapeAttr(row.hourFrom)}" placeholder="From" ${lock}>
+            <input data-hour="hourTo" data-i="${i}" value="${escapeAttr(row.hourTo)}" placeholder="To" ${lock}>
+            <input data-hour="rate" data-i="${i}" value="${escapeAttr(row.rate)}" placeholder="Rate (Rs)" ${lock}>
+            ${viewing ? "<span></span>" : `<button type="button" data-remove-hour="${i}">Remove</button>`}
+          </div>`).join("")}
+      </div>
+      <div class="split"><h2>Night surcharges</h2>${viewing ? "" : `<button type="button" id="addSur">Add surcharge</button>`}</div>
+      <div class="rows" id="surs">
+        ${form.surcharges.map((row, i) => `
+          <div class="row5">
+            <input data-sur="name" data-i="${i}" value="${escapeAttr(row.name)}" placeholder="Name" ${lock}>
+            <input data-sur="timeFrom" data-i="${i}" value="${escapeAttr(row.timeFrom)}" placeholder="From" ${lock}>
+            <input data-sur="timeTo" data-i="${i}" value="${escapeAttr(row.timeTo)}" placeholder="To" ${lock}>
+            <input data-sur="amount" data-i="${i}" value="${escapeAttr(row.amount)}" placeholder="Rs" ${lock}>
+            ${viewing ? "<span></span>" : `<button type="button" data-remove-sur="${i}">Remove</button>`}
+          </div>`).join("")}
+      </div>
+      <div class="actions">
+        ${viewing ? "" : `<button class="primary" type="submit">${mode === "ADD" ? "Save chart" : "Save as new chart"}</button>`}
+        <button type="button" id="cancel" class="ghost">Back to list</button>
+        <span class="hint">${viewing ? "VIEW of the closed chart. Use the new open chart to change rates." : mode === "UPDATE" ? "UPDATE does not change the old hourly rates." : "ADD creates the chart and its hour, km, and surcharge rows."}</span>
+      </div>
+    </form>`;
+
+  document.getElementById("cancel").onclick = () => { screen = "list"; error = ""; draw(); };
+  if (viewing) return;
+  const sheet = document.getElementById("sheet");
+  sheet.onsubmit = (event) => { event.preventDefault(); save(new FormData(sheet)); };
+  const addHour = document.getElementById("addHour");
+  const addSur = document.getElementById("addSur");
+  if (addHour) addHour.onclick = () => { readForm(new FormData(sheet)); form.hourlyRates.push({ hourFrom: "", hourTo: "", rate: "" }); draw(); };
+  if (addSur) addSur.onclick = () => { readForm(new FormData(sheet)); form.surcharges.push({ name: "", timeFrom: "", timeTo: "", amount: "" }); draw(); };
+  app.querySelectorAll("[data-remove-hour]").forEach((btn) => {
+    btn.onclick = () => { readForm(new FormData(sheet)); form.hourlyRates.splice(Number(btn.dataset.removeHour), 1); draw(); };
+  });
+  app.querySelectorAll("[data-remove-sur]").forEach((btn) => {
+    btn.onclick = () => { readForm(new FormData(sheet)); form.surcharges.splice(Number(btn.dataset.removeSur), 1); draw(); };
+  });
+}
+
+function readForm(data) {
+  form.chartType = data.get("chartType") || form.chartType;
+  form.vehicleCategoryId = data.get("vehicleCategoryId") || form.vehicleCategoryId;
+  form.chartName = data.get("chartName") || "";
+  if (data.get("status")) form.status = data.get("status");
+  if (mode === "ADD") form.fromDate = data.get("fromDate") || "";
+  form.toDate = data.get("toDate") || "";
+  form.includedKm = data.get("includedKm") || "";
+  form.additionalKmRate = data.get("additionalKmRate") || "";
+  app.querySelectorAll("[data-hour]").forEach((input) => {
+    form.hourlyRates[Number(input.dataset.i)][input.dataset.hour] = input.value;
+  });
+  app.querySelectorAll("[data-sur]").forEach((input) => {
+    form.surcharges[Number(input.dataset.i)][input.dataset.sur] = input.value;
+  });
+}
+
+function save(data) {
+  readForm(data);
+  if (!form.chartName.trim()) { error = "Chart name is required."; draw(); return; }
+  if (!form.fromDate) { error = "Effective from is required."; draw(); return; }
+  if (!form.hourlyRates.length || form.hourlyRates.some((row) => row.rate.trim() === "")) {
+    error = "Each hour range needs a rate."; draw(); return;
+  }
+  if (form.includedKm.trim() === "" || form.additionalKmRate.trim() === "") {
+    error = "Included km and extra km rate are required."; draw(); return;
+  }
+  const nextId = Math.max(...charts.map((c) => c.id)) + 1;
+  const next = clone(form);
+  next.id = nextId;
+  next.chartName = form.chartName.trim();
+  if (mode === "UPDATE") {
+    next.fromDate = today();
+    charts = charts.map((chart) => chart.id === closedId ? { ...chart, toDate: today() } : chart);
+    charts.unshift(next);
+    notice = `Chart ${closedId} now ends ${today()} and stays under Old rates. New chart ${nextId} is the current rate.`;
+  } else {
+    charts.unshift(next);
+    notice = `Added “${next.chartName}”.`;
+  }
+  error = "";
+  screen = "list";
+  draw();
+}
+
+function field(label, control) {
+  return `<label>${label}${control}</label>`;
+}
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+function escapeAttr(value) { return escapeHtml(value); }
+
+draw();
+</script>
+</body>
+</html>
