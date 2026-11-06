@@ -78,14 +78,7 @@ switch ($mode) {
     case 'ADD':
         $parsed = disposal_input(0);
         sql_query("START TRANSACTION");
-        $chartId = NextID('iRateChartID', 'disposal_rate_chart');
-        $nameSql = db_input($parsed['chartName']);
-        $toSql = $parsed['toDate'] === null ? "NULL" : "'" . db_input($parsed['toDate']) . "'";
-        $nowSql = db_input(NOW);
-        sql_query("INSERT INTO disposal_rate_chart
-                      (iRateChartID, iVehicleCategoryID, vChartName, iVenChartType, dEffectiveFrom, dEffectiveTo, dtCreated, cStatus)
-                   VALUES ($chartId, {$parsed['vehicleCategoryId']}, '$nameSql', {$parsed['chartType']}, '{$parsed['fromDate']}', $toSql, '$nowSql', 'A')");
-        disposal_replace_children($chartId, $parsed);
+        $chartId = disposal_insert_chart($parsed);
         sql_query("COMMIT");
 
         echo json_encode([
@@ -102,33 +95,44 @@ switch ($mode) {
         if ($chartId <= 0) {
             disposal_fail("rateChartId is required", 400);
         }
-        $existing = sql_query("SELECT iRateChartID, cStatus FROM disposal_rate_chart WHERE iRateChartID = $chartId AND cStatus IN ('A', 'I')");
+        $existing = sql_query("SELECT iRateChartID, dEffectiveFrom, dEffectiveTo, cStatus
+                               FROM disposal_rate_chart
+                               WHERE iRateChartID = $chartId AND cStatus IN ('A', 'I')");
         if (sql_num_rows($existing) == 0) {
             disposal_fail("Rate chart not found", 404);
         }
+        $old = sql_fetch_assoc($existing);
+        $today = date('Y-m-d');
+        $oldFrom = disposal_date_out($old['dEffectiveFrom']);
+        $oldTo = disposal_date_out($old['dEffectiveTo']);
+        if ($oldFrom === null || $oldFrom > $today) {
+            disposal_fail("This chart has not started yet", 400);
+        }
+        if ($oldTo !== null && $oldTo < $today) {
+            disposal_fail("This chart has already ended. Add a new chart", 400);
+        }
+
+        $_REQUEST['fromDate'] = $today;
+        $requestedTo = trim((string)($_REQUEST['toDate'] ?? ''));
+        if ($requestedTo !== '' && $requestedTo <= $today) {
+            $_REQUEST['toDate'] = null;
+        }
         $parsed = disposal_input($chartId);
-        $nameSql = db_input($parsed['chartName']);
-        $toSql = $parsed['toDate'] === null ? "NULL" : "'" . db_input($parsed['toDate']) . "'";
-        $statusSql = db_input($parsed['status']);
         $nowSql = db_input(NOW);
 
         sql_query("START TRANSACTION");
         sql_query("UPDATE disposal_rate_chart
-                   SET iVehicleCategoryID = {$parsed['vehicleCategoryId']},
-                       vChartName = '$nameSql',
-                       iVenChartType = {$parsed['chartType']},
-                       dEffectiveFrom = '{$parsed['fromDate']}',
-                       dEffectiveTo = $toSql,
-                       cStatus = '$statusSql',
-                       dtUpdated = '$nowSql'
+                   SET dEffectiveTo = '$today', dtUpdated = '$nowSql'
                    WHERE iRateChartID = $chartId");
-        disposal_replace_children($chartId, $parsed);
+        $newId = disposal_insert_chart($parsed);
         sql_query("COMMIT");
 
         echo json_encode([
             "data" => [
-                "message" => "Disposal rate chart updated successfully",
-                "chart" => disposal_chart($chartId)
+                "message" => "Previous chart closed today and a new chart was added",
+                "closedChartId" => $chartId,
+                "closedToDate" => $today,
+                "chart" => disposal_chart($newId)
             ],
             "statusCode" => 200
         ]);
@@ -451,6 +455,19 @@ function disposal_money($value) {
         return null;
     }
     return number_format($number, 2, '.', '');
+}
+
+function disposal_insert_chart($parsed) {
+    $chartId = NextID('iRateChartID', 'disposal_rate_chart');
+    $nameSql = db_input($parsed['chartName']);
+    $toSql = $parsed['toDate'] === null ? "NULL" : "'" . db_input($parsed['toDate']) . "'";
+    $statusSql = db_input($parsed['status']);
+    $nowSql = db_input(NOW);
+    sql_query("INSERT INTO disposal_rate_chart
+                  (iRateChartID, iVehicleCategoryID, vChartName, iVenChartType, dEffectiveFrom, dEffectiveTo, dtCreated, cStatus)
+               VALUES ($chartId, {$parsed['vehicleCategoryId']}, '$nameSql', {$parsed['chartType']}, '{$parsed['fromDate']}', $toSql, '$nowSql', '$statusSql')");
+    disposal_replace_children($chartId, $parsed);
+    return $chartId;
 }
 
 function disposal_replace_children($chartId, $parsed) {
