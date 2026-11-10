@@ -68,7 +68,7 @@ switch ($mode) {
 
         // -------------------- VERIFY BOOKING BELONGS TO VENDOR --------------------
         $bookingRes = sql_query(
-            "SELECT iDriverID, vBookingCode, vMobileNo, iVendorID FROM fleet_booking
+            "SELECT iDriverID, vBookingCode, vMobileNo, iVendorID, cType FROM fleet_booking
              WHERE iFleet_BookingID = $booking_id AND cStatus = 'A' LIMIT 1",
             'BOOKING.DETAILS'
         );
@@ -86,6 +86,7 @@ switch ($mode) {
 
         $booking  = sql_fetch_assoc($bookingRes);
         $driverID = intval($booking['iDriverID']);
+        $alreadyComplete = strtoupper(trim((string)($booking['cType'] ?? ''))) === 'C';
 
         if ($vendorID > 0 && intval($booking['iVendorID']) !== $vendorID) {
             http_response_code(403);
@@ -138,14 +139,12 @@ switch ($mode) {
         sql_query("INSERT INTO fleet_booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, '$booking_id', 'C', 'Trip Compeleted', '$NOW', '$driverID', 'A')", 'TRIP.LOG');
         $result = sql_query($query, 'TRIP.COMPLETE');
 
-        if (sql_affected_rows() > 0) {
-            $rate = fleetCalculateDisposalRate($booking_id);
+        if (sql_affected_rows() > 0 || $alreadyComplete) {
+            $rate = fleetCalculateTripRate($booking_id);
             $data = [
-                "message" => "Trip completed successfully."
+                "message" => "Trip completed successfully.",
+                "rate" => $rate
             ];
-            if ($rate !== null) {
-                $data["rate"] = $rate;
-            }
             http_response_code(200);
             echo json_encode([
                 "statusCode" => 200,
@@ -213,7 +212,7 @@ switch ($mode) {
 
             // -------------------- VERIFY BOOKING BELONGS TO VENDOR --------------------
             $bookingRes = sql_query(
-                "SELECT iDriverID, iVendorID FROM fleet_booking
+                "SELECT iDriverID, iVendorID, cType FROM fleet_booking
                  WHERE iFleet_BookingID = $booking_id AND cStatus = 'A' LIMIT 1",
                 'BOOKING.DETAILS'
             );
@@ -243,9 +242,10 @@ switch ($mode) {
             sql_query("INSERT INTO fleet_booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, '$booking_id', 'C', 'Trip Compeleted', '$NOW', '$driverID', 'A')", 'TRIP.LOG');
             sql_query($query, 'TRIP.COMPLETE');
 
-            if (sql_affected_rows() > 0) {
+            $alreadyComplete = strtoupper(trim((string)($booking['cType'] ?? ''))) === 'C';
+            if (sql_affected_rows() > 0 || $alreadyComplete) {
                 $success[] = $booking_id;
-                $rates[$booking_id] = fleetCalculateDisposalRate($booking_id);
+                $rates[$booking_id] = fleetCalculateTripRate($booking_id);
             } else {
                 $failed[] = [
                     "id" => $booking_id,

@@ -1303,4 +1303,70 @@ function fleetCalculateDisposalRate($bookingId)
 	];
 }
 
+function fleetCalculateLocationRate($bookingId, $booking)
+{
+	$bookingId = intval($bookingId);
+	$typeId = intval($booking['iVenChartType'] ?? 0);
+	$locId = intval($booking['iRateChartLocID'] ?? 0);
+	$catId = intval($booking['iVehicleCatID'] ?? 0);
+	$tripDate = substr((string)($booking['vPickUpTime'] ?? ''), 0, 10);
+	if ($tripDate === '' || $tripDate === '0000-00-00') {
+		$tripDate = date('Y-m-d');
+	}
+
+	$amount = 0;
+	if ($typeId > 0 && $locId > 0 && $catId > 0) {
+		$dateSql = db_input($tripDate);
+		$res = sql_query("SELECT fRate FROM ft_ratechart_location_dat
+                          WHERE cStatus = 'A'
+                          AND iVenChartType = $typeId
+                          AND iRateChartLocID = $locId
+                          AND iVCatID = $catId
+                          AND (dEffectiveFrom IS NULL OR dEffectiveFrom = '0000-00-00' OR dEffectiveFrom <= '$dateSql')
+                          AND (dEffectiveTo IS NULL OR dEffectiveTo = '0000-00-00' OR dEffectiveTo >= '$dateSql')
+                          ORDER BY dEffectiveFrom DESC, iRCLDat_ID DESC
+                          LIMIT 1");
+		if ($res && sql_num_rows($res) > 0) {
+			$row = sql_fetch_assoc($res);
+			$amount = (float)$row['fRate'];
+		}
+	}
+	if ($amount <= 0) {
+		$amount = (float)($booking['fRate'] ?? 0);
+	}
+
+	$amountSql = number_format($amount, 2, '.', '');
+	$nowSql = db_input(NOW);
+	sql_query("UPDATE fleet_booking
+               SET fRate = $amountSql, fTotal = $amountSql, dtCaptured = '$nowSql'
+               WHERE iFleet_BookingID = $bookingId");
+	fleetSaveDisposalRateLine($bookingId, 1, $amountSql);
+
+	return [
+		'iRateKindID' => 1,
+		'iVenChartType' => $typeId,
+		'iRateChartLocID' => $locId,
+		'basicPay' => (float)$amountSql,
+		'total' => (float)$amountSql
+	];
+}
+
+function fleetCalculateTripRate($bookingId)
+{
+	$bookingId = intval($bookingId);
+	if ($bookingId <= 0) {
+		return null;
+	}
+	$res = sql_query("SELECT * FROM fleet_booking WHERE iFleet_BookingID = $bookingId LIMIT 1");
+	if (!$res || sql_num_rows($res) == 0) {
+		return null;
+	}
+	$booking = sql_fetch_assoc($res);
+	$disposal = strtoupper(trim((string)($booking['cDisposal'] ?? 'N')));
+	if ($disposal === 'Y' || $disposal === '1' || $disposal === 'YES' || $disposal === 'TRUE') {
+		return fleetCalculateDisposalRate($bookingId);
+	}
+	return fleetCalculateLocationRate($bookingId, $booking);
+}
+
 ?>
