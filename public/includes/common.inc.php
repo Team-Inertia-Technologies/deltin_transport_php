@@ -1021,6 +1021,16 @@ function fleetPointToPointTrip($source, $keepExisting = null)
 	];
 }
 
+function fleetSourceValue($source, $keys)
+{
+	foreach ($keys as $key) {
+		if (array_key_exists($key, $source)) {
+			return $source[$key];
+		}
+	}
+	return null;
+}
+
 function fleetDisposalTrip($source, $keepExisting = null)
 {
 	$source = is_array($source) ? $source : [];
@@ -1033,7 +1043,7 @@ function fleetDisposalTrip($source, $keepExisting = null)
 	$sent = false;
 	foreach ($names as $keys) {
 		foreach ($keys as $key) {
-			if (array_key_exists($key, $source)) {
+			if (array_key_exists($key, $source) && $source[$key] !== null && $source[$key] !== '') {
 				$sent = true;
 			}
 		}
@@ -1050,16 +1060,21 @@ function fleetDisposalTrip($source, $keepExisting = null)
 		];
 	}
 
-	$fromTime = fleetTripDateTime($source['fromTime'] ?? ($source['dtFromTime'] ?? ''));
-	$toTime = fleetTripDateTime($source['toTime'] ?? ($source['dtToTime'] ?? ''));
-	if ($fromTime === null || $fromTime === false || $toTime === null || $toTime === false) {
+	$fromTime = fleetTripDateTime(fleetSourceValue($source, $names['fromTime']));
+	$toTime = fleetTripDateTime(fleetSourceValue($source, $names['toTime']));
+	$fromBlank = ($fromTime === null);
+	$toBlank = ($toTime === null);
+	if ($fromTime === false || $toTime === false || ($fromBlank !== $toBlank)) {
 		return [
 			'ok' => false,
 			'message' => 'fromTime and toTime are required in YYYY-MM-DD HH:MM format',
 			'statusCode' => 400
 		];
 	}
-	if ($fromTime > $toTime) {
+	if ($fromBlank && $toBlank && is_array($keepExisting)) {
+		$fromTime = ($keptFrom = fleetTripDateTime($keepExisting['dtFromTime'] ?? '')) === false ? null : $keptFrom;
+		$toTime = ($keptTo = fleetTripDateTime($keepExisting['dtToTime'] ?? '')) === false ? null : $keptTo;
+	} elseif (!$fromBlank && $fromTime > $toTime) {
 		return [
 			'ok' => false,
 			'message' => 'fromTime cannot be after toTime',
@@ -1067,21 +1082,29 @@ function fleetDisposalTrip($source, $keepExisting = null)
 		];
 	}
 
-	$startKm = fleetTripKm($source['startKm'] ?? ($source['iStartKm'] ?? null));
-	$endKm = fleetTripKm($source['endKm'] ?? ($source['iEndKm'] ?? null));
-	if ($startKm === null || $endKm === null) {
-		return [
-			'ok' => false,
-			'message' => 'startKm and endKm are required and must be 0 or more',
-			'statusCode' => 400
-		];
-	}
-	if ($endKm < $startKm) {
-		return [
-			'ok' => false,
-			'message' => 'endKm cannot be less than startKm',
-			'statusCode' => 400
-		];
+	$startRaw = fleetSourceValue($source, $names['startKm']);
+	$endRaw = fleetSourceValue($source, $names['endKm']);
+	$kmBlank = ($startRaw === null || $startRaw === '') && ($endRaw === null || $endRaw === '');
+	if ($kmBlank && is_array($keepExisting)) {
+		$startKm = intval($keepExisting['iStartKm'] ?? 0);
+		$endKm = intval($keepExisting['iEndKm'] ?? 0);
+	} else {
+		$startKm = ($startRaw === null || $startRaw === '') ? 0 : fleetTripKm($startRaw);
+		$endKm = ($endRaw === null || $endRaw === '') ? 0 : fleetTripKm($endRaw);
+		if ($startKm === null || $endKm === null) {
+			return [
+				'ok' => false,
+				'message' => 'startKm and endKm are required and must be 0 or more',
+				'statusCode' => 400
+			];
+		}
+		if ($endKm < $startKm) {
+			return [
+				'ok' => false,
+				'message' => 'endKm cannot be less than startKm',
+				'statusCode' => 400
+			];
+		}
 	}
 
 	return [
