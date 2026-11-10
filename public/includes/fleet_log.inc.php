@@ -153,6 +153,8 @@ function fleetBookingDatTrackedFields()
         ['col' => 'tReturnTime', 'label' => 'return time', 'kind' => 'datetime'],
         ['col' => 'iVendorID', 'label' => 'vendor', 'lookup' => 'vendor'],
         ['col' => 'iFleet_StationID', 'label' => 'station', 'lookup' => 'station'],
+        ['col' => 'iVenChartType', 'label' => 'chart type'],
+        ['col' => 'iRateChartLocID', 'label' => 'rate chart location'],
     ];
 }
 

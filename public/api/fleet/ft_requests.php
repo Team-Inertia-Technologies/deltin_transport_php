@@ -186,6 +186,80 @@ function getAddBookingItems($requestBody)
     return [$_REQUEST];
 }
 
+function fleetRateChartLocations()
+{
+    $rateChartLocations = [];
+    $locRes = sql_query("SELECT l.iRateChartLocID, l.iVenChartType, l.vName AS locName, t.vName AS typeName
+                         FROM ft_ratechart_location l
+                         INNER JOIN ft_ratechart_type t ON t.iVenChartType = l.iVenChartType AND t.cStatus = 'A'
+                         WHERE l.cStatus = 'A' AND l.iRateChartLocID > 0
+                         ORDER BY t.iRank, t.vName, l.iRank, l.vName");
+    if (!$locRes) {
+        return $rateChartLocations;
+    }
+    while ($loc = sql_fetch_assoc($locRes)) {
+        $locName = db_output2($loc['locName'] ?? '');
+        $typeName = db_output2($loc['typeName'] ?? '');
+        if ($typeName !== '') {
+            $locName .= ' (' . $typeName . ')';
+        }
+        $rateChartLocations[] = [
+            'iVenChartType' => intval($loc['iVenChartType']),
+            'iRateChartLocID' => intval($loc['iRateChartLocID']),
+            'vLocationName' => $locName
+        ];
+    }
+    return $rateChartLocations;
+}
+
+function fleetChartLocationValues($source, $cDisposal, $keepExisting = null)
+{
+    $source = is_array($source) ? $source : [];
+    if (strtoupper(trim((string)$cDisposal)) === 'Y') {
+        return ['ok' => true, 'chartType' => 0, 'locId' => 0];
+    }
+
+    $hasChart = array_key_exists('iVenChartType', $source) || array_key_exists('chartType', $source);
+    $hasLoc = array_key_exists('iRateChartLocID', $source) || array_key_exists('rateChartLocID', $source);
+    if (!$hasChart && !$hasLoc && is_array($keepExisting)) {
+        return [
+            'ok' => true,
+            'chartType' => intval($keepExisting['iVenChartType'] ?? 0),
+            'locId' => intval($keepExisting['iRateChartLocID'] ?? 0)
+        ];
+    }
+
+    $chartType = intval($source['iVenChartType'] ?? ($source['chartType'] ?? 0));
+    $locId = intval($source['iRateChartLocID'] ?? ($source['rateChartLocID'] ?? 0));
+    if ($chartType <= 0 && $locId <= 0) {
+        return ['ok' => true, 'chartType' => 0, 'locId' => 0];
+    }
+    if ($chartType <= 0 || $locId <= 0) {
+        return [
+            'ok' => false,
+            'message' => 'iVenChartType and iRateChartLocID are required',
+            'statusCode' => 400
+        ];
+    }
+
+    $locRes = sql_query("SELECT l.iRateChartLocID
+                         FROM ft_ratechart_location l
+                         INNER JOIN ft_ratechart_type t ON t.iVenChartType = l.iVenChartType AND t.cStatus = 'A'
+                         WHERE l.iRateChartLocID = $locId
+                         AND l.iVenChartType = $chartType
+                         AND l.cStatus = 'A'
+                         LIMIT 1");
+    if (!$locRes || sql_num_rows($locRes) == 0) {
+        return [
+            'ok' => false,
+            'message' => 'Location is not on this chart type',
+            'statusCode' => 400
+        ];
+    }
+
+    return ['ok' => true, 'chartType' => $chartType, 'locId' => $locId];
+}
+
 function addFleetBookingItem($item, $user_id, &$guestIdByMobile)
 {
     $item = is_array($item) ? $item : [];
@@ -249,6 +323,16 @@ function addFleetBookingItem($item, $user_id, &$guestIdByMobile)
     $iFStaffID = intval($item['staffID'] ?? 0);
     $iVendorID = intval($item['vendorID'] ?? 0);
     $iFleet_StationID = intval($item['stationID'] ?? 0);
+    $chartLocation = fleetChartLocationValues($item, $cDisposal);
+    if (empty($chartLocation['ok'])) {
+        return [
+            'ok' => false,
+            'message' => $chartLocation['message'],
+            'statusCode' => intval($chartLocation['statusCode'] ?? 400)
+        ];
+    }
+    $iVenChartType = intval($chartLocation['chartType']);
+    $iRateChartLocID = intval($chartLocation['locId']);
 
     if (empty($vName) || empty($vMobileNo) || empty($vPickUpTime)) {
         return [
@@ -293,7 +377,7 @@ function addFleetBookingItem($item, $user_id, &$guestIdByMobile)
                  iFleet_BKCatID, vInstructions, vRemarks, vTravelNotes, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,iOriginal_Kms,
                  vDropLocation, vLatLong_From, vLatLong_To,vLandmark, iVehicleCatID, cDisposal, tReturnTime,
-                 iVendorID, iFleet_StationID, dtAdded,iAdded_UserID,cStatus,vVendorAssignedBy,dtVendorAssigned";
+                 iVendorID, iFleet_StationID, iVenChartType, iRateChartLocID, dtAdded,iAdded_UserID,cStatus,vVendorAssignedBy,dtVendorAssigned";
 
     $iFleet_BookingID1 = NextID('iFleet_BookingID', 'fleet_booking');
     $vBookingCode = GenerateFleetBookingCode($iFleet_BookingID1);
@@ -310,7 +394,7 @@ function addFleetBookingItem($item, $user_id, &$guestIdByMobile)
             $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "', '" . db_input($vTravelNotes) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
             $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $distance,
             '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal,
-            $iVendorID, $iFleet_StationID, '" . db_input($dtAdded) . "',$user_id,'A',$vVendorAssignedBy,$dtVendorAssignedVal
+            $iVendorID, $iFleet_StationID, $iVenChartType, $iRateChartLocID, '" . db_input($dtAdded) . "',$user_id,'A',$vVendorAssignedBy,$dtVendorAssignedVal
         )";
 
     $ok1 = sql_query($sql1);
@@ -890,14 +974,18 @@ switch ($mode) {
             } else {
                 $errors[] = [
                     'index' => intval($idx),
-                    'message' => $result['message'] ?? 'Failed to add booking'
+                    'message' => $result['message'] ?? 'Failed to add booking',
+                    'statusCode' => intval($result['statusCode'] ?? 0)
                 ];
             }
         }
 
         if (empty($createdBookingIds)) {
             $firstError = $errors[0]['message'] ?? 'Failed to add booking';
-            $statusCode = ($firstError === 'Required fields missing') ? 401 : 500;
+            $statusCode = intval($errors[0]['statusCode'] ?? 0);
+            if ($statusCode <= 0) {
+                $statusCode = ($firstError === 'Required fields missing') ? 401 : 500;
+            }
             echo json_encode([
                 "error" => [
                     "message" => $firstError,
@@ -1069,6 +1157,8 @@ switch ($mode) {
             "disposal" => $booking['cDisposal'] ?? 'N',
             "vendorID" => intval($booking['iVendorID'] ?? 0),
             "stationID" => intval($booking['iFleet_StationID'] ?? 0),
+            "iVenChartType" => intval($booking['iVenChartType'] ?? 0),
+            "iRateChartLocID" => intval($booking['iRateChartLocID'] ?? 0),
             "dtAdded" => $booking['dtAdded'],
             "addedUserId" => intval($booking['iAdded_UserID'])
         ];
@@ -1333,6 +1423,16 @@ switch ($mode) {
             exit;
         }
         $existingBooking = sql_fetch_assoc($checkRes);
+        $chartLocation = fleetChartLocationValues($_REQUEST, $cDisposal, $existingBooking);
+        if (empty($chartLocation['ok'])) {
+            echo json_encode([
+                "error" => ["message" => $chartLocation['message']],
+                "statusCode" => intval($chartLocation['statusCode'] ?? 400)
+            ]);
+            exit;
+        }
+        $iVenChartType = intval($chartLocation['chartType']);
+        $iRateChartLocID = intval($chartLocation['locId']);
         $prevVendorID = intval($existingBooking['iVendorID'] ?? 0);
         // Vendor assigned by = same person who added the request
         $addedByUserID = intval($existingBooking['iAdded_UserID'] ?? $user_id);
@@ -1405,6 +1505,8 @@ switch ($mode) {
                 iOriginal_Kms = " . intval($distance) . ",
                 iVendorID = " . intval($iVendorID) . ",
                 iFleet_StationID = " . intval($iFleet_StationID) . ",
+                iVenChartType = $iVenChartType,
+                iRateChartLocID = $iRateChartLocID,
                 dtUpdated = '" . db_input($dtNow) . "',
                 iUpdated_UserID = " . intval($user_id) . "
                 $vendorAssignSql
@@ -1446,6 +1548,8 @@ switch ($mode) {
             'tReturnTime' => $_REQUEST['returnTime'] ?? '',
             'iVendorID' => $_REQUEST['vendorID'] ?? 0,
             'iFleet_StationID' => $_REQUEST['stationID'] ?? 0,
+            'iVenChartType' => $iVenChartType,
+            'iRateChartLocID' => $iRateChartLocID,
         ], fleetBookingDatTrackedFields());
 
         echo json_encode([
@@ -1731,25 +1835,7 @@ switch ($mode) {
 
         $isDisposal = strtoupper(trim((string)($booking['cDisposal'] ?? 'N'))) === 'Y';
         if (!$isDisposal) {
-            $rateChartLocations = [];
-            $locRes = sql_query("SELECT l.iRateChartLocID, l.iVenChartType, l.vName AS locName, t.vName AS typeName
-                                 FROM ft_ratechart_location l
-                                 INNER JOIN ft_ratechart_type t ON t.iVenChartType = l.iVenChartType AND t.cStatus = 'A'
-                                 WHERE l.cStatus = 'A' AND l.iRateChartLocID > 0
-                                 ORDER BY t.iRank, t.vName, l.iRank, l.vName");
-            while ($loc = sql_fetch_assoc($locRes)) {
-                $locName = db_output2($loc['locName'] ?? '');
-                $typeName = db_output2($loc['typeName'] ?? '');
-                if ($typeName !== '') {
-                    $locName .= ' (' . $typeName . ')';
-                }
-                $rateChartLocations[] = [
-                    'iVenChartType' => intval($loc['iVenChartType']),
-                    'iRateChartLocID' => intval($loc['iRateChartLocID']),
-                    'vLocationName' => $locName
-                ];
-            }
-            $viewData['rateChartLocations'] = $rateChartLocations;
+            $viewData['rateChartLocations'] = fleetRateChartLocations();
         }
 
         echo json_encode([
@@ -3182,6 +3268,7 @@ switch ($mode) {
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
             "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
             "locOpts" => $locOpts,
+            "rateChartLocations" => fleetRateChartLocations(),
             "stationVendorOpt" => $vendorStationOpts['stationVendorOpt'],
             "vendorOpt" => $vendorStationOpts['vendorOpt']
             //  "staffFilterOpt" => array_merge([['id' => 0, 'name' => 'All']], array_map(function($staff) { return ['id' => $staff['id'], 'name' => $staff['name']]; }, $staffOpt)),
