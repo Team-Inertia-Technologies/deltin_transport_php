@@ -198,18 +198,20 @@ function fleetRateChartLocations()
         return $rateChartLocations;
     }
     while ($loc = sql_fetch_assoc($locRes)) {
-        $locName = db_output2($loc['locName'] ?? '');
-        $typeName = db_output2($loc['typeName'] ?? '');
-        if ($typeName !== '') {
-            $locName .= ' (' . $typeName . ')';
+        $typeId = intval($loc['iVenChartType']);
+        if (!isset($rateChartLocations[$typeId])) {
+            $rateChartLocations[$typeId] = [
+                'iVenChartType' => $typeId,
+                'typeName' => db_output2($loc['typeName'] ?? ''),
+                'locations' => []
+            ];
         }
-        $rateChartLocations[] = [
-            'iVenChartType' => intval($loc['iVenChartType']),
+        $rateChartLocations[$typeId]['locations'][] = [
             'iRateChartLocID' => intval($loc['iRateChartLocID']),
-            'vLocationName' => $locName
+            'vLocationName' => db_output2($loc['locName'] ?? '')
         ];
     }
-    return $rateChartLocations;
+    return array_values($rateChartLocations);
 }
 
 function fleetChartLocationValues($source, $cDisposal, $keepExisting = null)
