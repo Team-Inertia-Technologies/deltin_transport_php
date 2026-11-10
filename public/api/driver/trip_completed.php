@@ -56,6 +56,18 @@ if (!sql_num_rows($r)) {
 
 $driverID = intval($userid);
 
+$prepared = fleetPrepareTripRate($booking_id);
+if (!empty($prepared['error'])) {
+    http_response_code(400);
+    header('Content-Type: application/json');
+    echo json_encode([
+        "statusCode" => 400,
+        "error" => [
+            "message" => $prepared['error']
+        ]
+    ]);
+    exit;
+}
 
 // -------------------- UPDATE TRIP STATUS TO STARTED --------------------
 $log_id = NextID('iLogID', 'fleet_booking_log');
@@ -64,7 +76,7 @@ $query = "UPDATE fleet_booking SET cType='C', vDropTime = '$NOW' WHERE iFleet_Bo
 sql_query("INSERT INTO fleet_booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, '$booking_id', 'C', 'Trip Compeleted', '$NOW', '$driverID', 'A')", 'TRIP.LOG');
 $result = sql_query($query, 'TRIP.START');
 if (sql_affected_rows() > 0) {
-    $rate = fleetCalculateTripRate($booking_id);
+    $rate = fleetApplyPreparedRate($prepared);
     $payload = [
         "statusCode" => 200,
         "message" => "Trip completed successfully.",

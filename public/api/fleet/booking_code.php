@@ -125,6 +125,18 @@ switch ($mode) {
             exit;
         }
 
+        $prepared = fleetPrepareTripRate($booking_id);
+        if (!empty($prepared['error'])) {
+            http_response_code(400);
+            echo json_encode([
+                "statusCode" => 400,
+                "error" => [
+                    "message" => $prepared['error']
+                ]
+            ]);
+            exit;
+        }
+
         $NOW = NOW;
 
         // -------------------- MARK BOOKING CODE AS ENTERED BY VENDOR --------------------
@@ -140,7 +152,7 @@ switch ($mode) {
         $result = sql_query($query, 'TRIP.COMPLETE');
 
         if (sql_affected_rows() > 0 || $alreadyComplete) {
-            $rate = fleetCalculateTripRate($booking_id);
+            $rate = fleetApplyPreparedRate($prepared);
             $data = [
                 "message" => "Trip completed successfully.",
                 "rate" => $rate
@@ -236,6 +248,15 @@ switch ($mode) {
                 continue;
             }
 
+            $prepared = fleetPrepareTripRate($booking_id);
+            if (!empty($prepared['error'])) {
+                $failed[] = [
+                    "id" => $booking_id,
+                    "message" => $prepared['error']
+                ];
+                continue;
+            }
+
             // -------------------- COMPLETE THE TRIP --------------------
             $log_id = NextID('iLogID', 'fleet_booking_log');
             $query  = "UPDATE fleet_booking SET cType='C', vDropTime = '$NOW' WHERE iFleet_BookingID='$booking_id' AND iDriverID='$driverID'";
@@ -245,7 +266,7 @@ switch ($mode) {
             $alreadyComplete = strtoupper(trim((string)($booking['cType'] ?? ''))) === 'C';
             if (sql_affected_rows() > 0 || $alreadyComplete) {
                 $success[] = $booking_id;
-                $rates[$booking_id] = fleetCalculateTripRate($booking_id);
+                $rates[$booking_id] = fleetApplyPreparedRate($prepared);
             } else {
                 $failed[] = [
                     "id" => $booking_id,
@@ -275,6 +296,62 @@ switch ($mode) {
                 ]
             ]);
         }
+        break;
+
+    // ===================== CASE: GET_PAYMENT_DETAILS =====================
+    case 'GET_PAYMENT_DETAILS':
+
+        if (!$token || !$booking_id) {
+            http_response_code(400);
+            echo json_encode([
+                "statusCode" => 400,
+                "error" => [
+                    "message" => "Missing token or booking id."
+                ]
+            ]);
+            exit;
+        }
+
+        $user_id = intval(DecodeParam($token));
+        $vendorRes = sql_query(
+            "SELECT iRefID FROM users WHERE iUserID = $user_id AND cRefSrcType = 'V' AND cStatus = 'A' LIMIT 1",
+            'AUTH.VENDOR'
+        );
+        $vendorRow = sql_fetch_assoc($vendorRes);
+        $vendorID  = intval($vendorRow['iRefID'] ?? 0);
+
+        $ownerRes = sql_query(
+            "SELECT iVendorID FROM fleet_booking WHERE iFleet_BookingID = $booking_id AND cStatus = 'A' LIMIT 1",
+            'BOOKING.OWNER'
+        );
+        if (!sql_num_rows($ownerRes)) {
+            http_response_code(404);
+            echo json_encode([
+                "statusCode" => 404,
+                "error" => [
+                    "message" => "Booking not found."
+                ]
+            ]);
+            exit;
+        }
+        $owner = sql_fetch_assoc($ownerRes);
+        if ($vendorID > 0 && intval($owner['iVendorID']) !== $vendorID) {
+            http_response_code(403);
+            echo json_encode([
+                "statusCode" => 403,
+                "error" => [
+                    "message" => "This booking does not belong to your fleet."
+                ]
+            ]);
+            exit;
+        }
+
+        $payment = fleetTripPaymentDetails($booking_id);
+        http_response_code(200);
+        echo json_encode([
+            "statusCode" => 200,
+            "data" => $payment
+        ]);
         break;
 
     // ===================== DEFAULT =====================

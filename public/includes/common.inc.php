@@ -1185,21 +1185,45 @@ function fleetSaveDisposalRateLine($bookingId, $kindId, $amount)
                VALUES ($lineId, $bookingId, $kindId, $amountSql)");
 }
 
-function fleetCalculateDisposalRate($bookingId)
+function fleetRateMissingResult($booking)
+{
+	if (intval($booking['iVendorID'] ?? 0) > 0) {
+		return [
+			'error' => 'Rate is not available for the assigned vehicle category.'
+		];
+	}
+	return ['save' => false];
+}
+
+function fleetApplyPreparedRate($prepared)
+{
+	if (!is_array($prepared) || !empty($prepared['error']) || empty($prepared['save'])) {
+		return null;
+	}
+	$bookingId = intval($prepared['bookingId']);
+	sql_query("UPDATE fleet_booking SET " . $prepared['sets'] . " WHERE iFleet_BookingID = $bookingId");
+	foreach ($prepared['lines'] as $line) {
+		fleetSaveDisposalRateLine($bookingId, $line[0], $line[1]);
+	}
+	return $prepared['rate'];
+}
+
+function fleetCalculateDisposalRate($bookingId, $booking = null)
 {
 	$bookingId = intval($bookingId);
 	if ($bookingId <= 0) {
-		return null;
+		return ['error' => 'Booking not found.'];
 	}
-
-	$res = sql_query("SELECT * FROM fleet_booking WHERE iFleet_BookingID = $bookingId LIMIT 1");
-	if (!$res || sql_num_rows($res) == 0) {
-		return null;
+	if (!is_array($booking)) {
+		$res = sql_query("SELECT * FROM fleet_booking WHERE iFleet_BookingID = $bookingId LIMIT 1");
+		if (!$res || sql_num_rows($res) == 0) {
+			return ['error' => 'Booking not found.'];
+		}
+		$booking = sql_fetch_assoc($res);
 	}
-	$booking = sql_fetch_assoc($res);
 	$disposal = strtoupper(trim((string)($booking['cDisposal'] ?? 'N')));
 	if ($disposal !== 'Y' && $disposal !== '1' && $disposal !== 'YES' && $disposal !== 'TRUE') {
-		return null;
+		return ['save' => false];
 	}
 
 	$fromTime = fleetTripDateTime($booking['dtFromTime'] ?? '');
@@ -1226,6 +1250,9 @@ function fleetCalculateDisposalRate($bookingId)
 
 	$tripDate = $fromTime ? substr($fromTime, 0, 10) : substr((string)($booking['vPickUpTime'] ?? ''), 0, 10);
 	$chartId = fleetDisposalChartId($booking, $tripDate);
+	if ($chartId <= 0) {
+		return fleetRateMissingResult($booking);
+	}
 	$hourly = 0;
 	$extraKm = 0;
 	$surcharge = 0;
@@ -1279,27 +1306,25 @@ function fleetCalculateDisposalRate($bookingId)
 	$extraSql = number_format($extraKm, 2, '.', '');
 	$surchargeSql = number_format($surcharge, 2, '.', '');
 	$totalSql = number_format($total, 2, '.', '');
-	sql_query("UPDATE fleet_booking
-               SET iHours = $hours,
-                   iActual_Kms = $km,
-                   fRate = $totalSql,
-                   fTotal = $totalSql,
-                   iRateChartID = $chartId,
-                   dtCaptured = '$nowSql'
-               WHERE iFleet_BookingID = $bookingId");
-
-	fleetSaveDisposalRateLine($bookingId, 2, $hourlySql);
-	fleetSaveDisposalRateLine($bookingId, 3, $extraSql);
-	fleetSaveDisposalRateLine($bookingId, 4, $surchargeSql);
 
 	return [
-		'iRateChartID' => $chartId,
-		'hours' => $hours,
-		'kms' => $km,
-		'hourly' => (float)$hourlySql,
-		'extraKm' => (float)$extraSql,
-		'surcharge' => (float)$surchargeSql,
-		'total' => (float)$totalSql
+		'save' => true,
+		'bookingId' => $bookingId,
+		'sets' => "iHours = $hours, iActual_Kms = $km, fRate = $totalSql, fTotal = $totalSql, iRateChartID = $chartId, dtCaptured = '$nowSql'",
+		'lines' => [
+			[2, $hourlySql],
+			[3, $extraSql],
+			[4, $surchargeSql]
+		],
+		'rate' => [
+			'iRateChartID' => $chartId,
+			'hours' => $hours,
+			'kms' => $km,
+			'hourly' => (float)$hourlySql,
+			'extraKm' => (float)$extraSql,
+			'surcharge' => (float)$surchargeSql,
+			'total' => (float)$totalSql
+		]
 	];
 }
 
@@ -1314,6 +1339,7 @@ function fleetCalculateLocationRate($bookingId, $booking)
 		$tripDate = date('Y-m-d');
 	}
 
+	$found = false;
 	$amount = 0;
 	if ($typeId > 0 && $locId > 0 && $catId > 0) {
 		$dateSql = db_input($tripDate);
@@ -1328,45 +1354,99 @@ function fleetCalculateLocationRate($bookingId, $booking)
                           LIMIT 1");
 		if ($res && sql_num_rows($res) > 0) {
 			$row = sql_fetch_assoc($res);
-			$amount = (float)$row['fRate'];
+			if ($row['fRate'] !== null && $row['fRate'] !== '') {
+				$amount = (float)$row['fRate'];
+				$found = true;
+			}
 		}
 	}
-	if ($amount <= 0) {
-		$amount = (float)($booking['fRate'] ?? 0);
+	if (!$found) {
+		return fleetRateMissingResult($booking);
 	}
 
 	$amountSql = number_format($amount, 2, '.', '');
 	$nowSql = db_input(NOW);
-	sql_query("UPDATE fleet_booking
-               SET fRate = $amountSql, fTotal = $amountSql, dtCaptured = '$nowSql'
-               WHERE iFleet_BookingID = $bookingId");
-	fleetSaveDisposalRateLine($bookingId, 1, $amountSql);
-
 	return [
-		'iRateKindID' => 1,
-		'iVenChartType' => $typeId,
-		'iRateChartLocID' => $locId,
-		'basicPay' => (float)$amountSql,
-		'total' => (float)$amountSql
+		'save' => true,
+		'bookingId' => $bookingId,
+		'sets' => "fRate = $amountSql, fTotal = $amountSql, dtCaptured = '$nowSql'",
+		'lines' => [
+			[1, $amountSql]
+		],
+		'rate' => [
+			'iRateKindID' => 1,
+			'iVenChartType' => $typeId,
+			'iRateChartLocID' => $locId,
+			'basicPay' => (float)$amountSql,
+			'total' => (float)$amountSql
+		]
 	];
 }
 
-function fleetCalculateTripRate($bookingId)
+function fleetPrepareTripRate($bookingId)
 {
 	$bookingId = intval($bookingId);
 	if ($bookingId <= 0) {
-		return null;
+		return ['error' => 'Booking not found.'];
 	}
 	$res = sql_query("SELECT * FROM fleet_booking WHERE iFleet_BookingID = $bookingId LIMIT 1");
 	if (!$res || sql_num_rows($res) == 0) {
-		return null;
+		return ['error' => 'Booking not found.'];
 	}
 	$booking = sql_fetch_assoc($res);
 	$disposal = strtoupper(trim((string)($booking['cDisposal'] ?? 'N')));
 	if ($disposal === 'Y' || $disposal === '1' || $disposal === 'YES' || $disposal === 'TRUE') {
-		return fleetCalculateDisposalRate($bookingId);
+		return fleetCalculateDisposalRate($bookingId, $booking);
 	}
 	return fleetCalculateLocationRate($bookingId, $booking);
+}
+
+function fleetTripPaymentDetails($bookingId)
+{
+	$bookingId = intval($bookingId);
+	$res = sql_query("SELECT iFleet_BookingID, iVendorID, cDisposal, cType, fRate, fTotal, iHours, iActual_Kms, dtCaptured, iRateChartID
+                      FROM fleet_booking
+                      WHERE iFleet_BookingID = $bookingId AND cStatus = 'A'
+                      LIMIT 1");
+	if (!$res || sql_num_rows($res) == 0) {
+		return null;
+	}
+	$booking = sql_fetch_assoc($res);
+	$lineRes = sql_query("SELECT r.iBkRateID, r.iRateKindID, k.vName AS kindName, r.fAmount
+                          FROM fleet_booking_rate r
+                          LEFT JOIN fleet_rate_kind k ON k.iRateKindID = r.iRateKindID
+                          WHERE r.iFleet_BookingID = $bookingId
+                          ORDER BY r.iBkRateID");
+	$latest = [];
+	if ($lineRes) {
+		while ($line = sql_fetch_assoc($lineRes)) {
+			$latest[intval($line['iRateKindID'])] = [
+				'iBkRateID' => intval($line['iBkRateID']),
+				'iRateKindID' => intval($line['iRateKindID']),
+				'kindName' => $line['kindName'],
+				'fAmount' => (float)$line['fAmount']
+			];
+		}
+	}
+	$lines = array_values($latest);
+	$total = 0;
+	foreach ($lines as $line) {
+		$total += $line['fAmount'];
+	}
+	return [
+		'bookingId' => intval($booking['iFleet_BookingID']),
+		'iVendorID' => intval($booking['iVendorID']),
+		'cDisposal' => $booking['cDisposal'],
+		'cType' => $booking['cType'],
+		'fRate' => (float)$booking['fRate'],
+		'fTotal' => (float)$booking['fTotal'],
+		'iHours' => intval($booking['iHours']),
+		'kms' => intval($booking['iActual_Kms']),
+		'dtCaptured' => $booking['dtCaptured'],
+		'iRateChartID' => intval($booking['iRateChartID']),
+		'lines' => $lines,
+		'total' => (float)number_format($total, 2, '.', '')
+	];
 }
 
 ?>
