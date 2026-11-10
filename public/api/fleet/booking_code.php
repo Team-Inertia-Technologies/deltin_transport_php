@@ -139,13 +139,17 @@ switch ($mode) {
         $result = sql_query($query, 'TRIP.COMPLETE');
 
         if (sql_affected_rows() > 0) {
+            $rate = fleetCalculateDisposalRate($booking_id);
+            $data = [
+                "message" => "Trip completed successfully."
+            ];
+            if ($rate !== null) {
+                $data["rate"] = $rate;
+            }
             http_response_code(200);
             echo json_encode([
                 "statusCode" => 200,
-                "data" => [
-                     "message" => "Trip completed successfully."
-                ],
-               
+                "data" => $data
             ]);
         } else {
             http_response_code(400);
@@ -203,6 +207,7 @@ switch ($mode) {
         $NOW      = NOW;
         $success  = [];
         $failed   = [];
+        $rates    = [];
 
         foreach ($booking_ids as $booking_id) {
 
@@ -240,6 +245,7 @@ switch ($mode) {
 
             if (sql_affected_rows() > 0) {
                 $success[] = $booking_id;
+                $rates[$booking_id] = fleetCalculateDisposalRate($booking_id);
             } else {
                 $failed[] = [
                     "id" => $booking_id,
@@ -255,7 +261,8 @@ switch ($mode) {
                 "data" => [
                     "message" => "Trip(s) completed successfully.",
                     "completed" => $success,
-                    "failed" => $failed
+                    "failed" => $failed,
+                    "rates" => $rates
                 ]
             ]);
         } else {

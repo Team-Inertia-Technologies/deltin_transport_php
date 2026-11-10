@@ -64,12 +64,17 @@ $query = "UPDATE fleet_booking SET cType='C', vDropTime = '$NOW' WHERE iFleet_Bo
 sql_query("INSERT INTO fleet_booking_log (iLogID, iFleet_BookingID, cRefType, vRefName, dtAdded, iUserID, cStatus) VALUES ($log_id, '$booking_id', 'C', 'Trip Compeleted', '$NOW', '$driverID', 'A')", 'TRIP.LOG');
 $result = sql_query($query, 'TRIP.START');
 if (sql_affected_rows() > 0) {
+    $rate = fleetCalculateDisposalRate($booking_id);
+    $payload = [
+        "statusCode" => 200,
+        "message" => "Trip completed successfully."
+    ];
+    if ($rate !== null) {
+        $payload["rate"] = $rate;
+    }
     http_response_code(200);
     header('Content-Type: application/json');
-    echo json_encode([
-        "statusCode" => 200,
-        "message" => "Trip started successfully."
-    ]);
+    echo json_encode($payload);
 } else {
     http_response_code(400);
     header('Content-Type: application/json');

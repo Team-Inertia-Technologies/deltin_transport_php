@@ -1103,4 +1103,209 @@ function fleetTripValues($source, $cDisposal, $keepExisting = null)
 	return fleetPointToPointTrip($source, $keepExisting);
 }
 
+function fleetDisposalHours($fromTime, $toTime)
+{
+	$start = strtotime((string)$fromTime);
+	$end = strtotime((string)$toTime);
+	if (!$start || !$end || $end <= $start) {
+		return 0;
+	}
+	return (int)ceil(($end - $start) / 3600);
+}
+
+function fleetClockSeconds($time)
+{
+	$parts = explode(':', substr((string)$time, 0, 8));
+	return (intval($parts[0] ?? 0) * 3600) + (intval($parts[1] ?? 0) * 60) + intval($parts[2] ?? 0);
+}
+
+function fleetTripHitsSurcharge($fromTime, $toTime, $windowFrom, $windowTo)
+{
+	$start = strtotime((string)$fromTime);
+	$end = strtotime((string)$toTime);
+	if (!$start || !$end || $end <= $start) {
+		return false;
+	}
+	$windowStart = fleetClockSeconds($windowFrom);
+	$windowEnd = fleetClockSeconds($windowTo);
+	$cursor = $start;
+	$limit = min($end, $start + (48 * 3600));
+	while ($cursor <= $limit) {
+		$clock = fleetClockSeconds(date('H:i:s', $cursor));
+		$inside = ($windowStart <= $windowEnd)
+			? ($clock >= $windowStart && $clock <= $windowEnd)
+			: ($clock >= $windowStart || $clock <= $windowEnd);
+		if ($inside) {
+			return true;
+		}
+		$cursor += 15 * 60;
+	}
+	return false;
+}
+
+function fleetDisposalChartId($booking, $tripDate)
+{
+	$savedId = intval($booking['iRateChartID'] ?? 0);
+	if ($savedId > 0) {
+		$saved = sql_query("SELECT iRateChartID FROM disposal_rate_chart WHERE iRateChartID = $savedId AND cStatus = 'A' LIMIT 1");
+		if ($saved && sql_num_rows($saved) > 0) {
+			return $savedId;
+		}
+	}
+
+	$catId = intval($booking['iVehicleCatID'] ?? 0);
+	$typeId = intval($booking['iVenChartType'] ?? 0);
+	if ($catId <= 0 || $tripDate === '') {
+		return 0;
+	}
+	$typeSql = $typeId > 0 ? " AND iVenChartType = $typeId" : "";
+	$dateSql = db_input($tripDate);
+	$res = sql_query("SELECT iRateChartID FROM disposal_rate_chart
+                      WHERE cStatus = 'A'
+                      AND iVehicleCategoryID = $catId
+                      $typeSql
+                      AND dEffectiveFrom <= '$dateSql'
+                      AND (dEffectiveTo IS NULL OR dEffectiveTo = '0000-00-00' OR dEffectiveTo >= '$dateSql')
+                      ORDER BY dEffectiveFrom DESC, iRateChartID DESC
+                      LIMIT 1");
+	if (!$res || sql_num_rows($res) == 0) {
+		return 0;
+	}
+	$row = sql_fetch_assoc($res);
+	return intval($row['iRateChartID']);
+}
+
+function fleetSaveDisposalRateLine($bookingId, $kindId, $amount)
+{
+	$bookingId = intval($bookingId);
+	$kindId = intval($kindId);
+	$amountSql = number_format((float)$amount, 2, '.', '');
+	$lineId = NextID('iBkRateID', 'fleet_booking_rate');
+	sql_query("INSERT INTO fleet_booking_rate (iBkRateID, iFleet_BookingID, iRateKindID, fAmount)
+               VALUES ($lineId, $bookingId, $kindId, $amountSql)");
+}
+
+function fleetCalculateDisposalRate($bookingId)
+{
+	$bookingId = intval($bookingId);
+	if ($bookingId <= 0) {
+		return null;
+	}
+
+	$res = sql_query("SELECT iFleet_BookingID, cDisposal, iVehicleCatID, iVenChartType, iRateChartID,
+                             vPickUpTime, vDropTime, dtFromTime, dtToTime, iStartKm, iEndKm, iOriginal_Kms, iActual_Kms
+                      FROM fleet_booking
+                      WHERE iFleet_BookingID = $bookingId
+                      LIMIT 1");
+	if (!$res || sql_num_rows($res) == 0) {
+		return null;
+	}
+	$booking = sql_fetch_assoc($res);
+	if (strtoupper(trim((string)($booking['cDisposal'] ?? 'N'))) !== 'Y') {
+		return null;
+	}
+
+	$fromTime = fleetTripDateTime($booking['dtFromTime'] ?? '');
+	$toTime = fleetTripDateTime($booking['dtToTime'] ?? '');
+	if ($fromTime === null || $fromTime === false) {
+		$fromTime = fleetTripDateTime($booking['vPickUpTime'] ?? '');
+	}
+	if ($toTime === null || $toTime === false) {
+		$toTime = fleetTripDateTime($booking['vDropTime'] ?? '');
+	}
+	$fromTime = ($fromTime === false) ? null : $fromTime;
+	$toTime = ($toTime === false) ? null : $toTime;
+
+	$hours = ($fromTime && $toTime) ? fleetDisposalHours($fromTime, $toTime) : 0;
+	$startKm = intval($booking['iStartKm'] ?? 0);
+	$endKm = intval($booking['iEndKm'] ?? 0);
+	if ($endKm > $startKm) {
+		$km = $endKm - $startKm;
+	} elseif (intval($booking['iActual_Kms'] ?? 0) > 0) {
+		$km = intval($booking['iActual_Kms']);
+	} else {
+		$km = intval($booking['iOriginal_Kms'] ?? 0);
+	}
+
+	$tripDate = $fromTime ? substr($fromTime, 0, 10) : substr((string)($booking['vPickUpTime'] ?? ''), 0, 10);
+	$chartId = fleetDisposalChartId($booking, $tripDate);
+	$hourly = 0;
+	$extraKm = 0;
+	$surcharge = 0;
+	if ($chartId > 0) {
+		if ($hours > 0) {
+			$hourRes = sql_query("SELECT fRate FROM disposal_hourly_rate
+                                  WHERE iRateChartID = $chartId
+                                  AND iHourFrom <= $hours AND iHourTo >= $hours
+                                  ORDER BY iHourFrom
+                                  LIMIT 1");
+			if (!$hourRes || sql_num_rows($hourRes) == 0) {
+				$hourRes = sql_query("SELECT fRate FROM disposal_hourly_rate
+                                      WHERE iRateChartID = $chartId
+                                      ORDER BY iHourTo DESC
+                                      LIMIT 1");
+			}
+			if ($hourRes && sql_num_rows($hourRes) > 0) {
+				$hourRow = sql_fetch_assoc($hourRes);
+				$hourly = (float)$hourRow['fRate'];
+			}
+		}
+
+		$kmRes = sql_query("SELECT fIncludedKM, fAdditionalKMRate FROM disposal_km_rate WHERE iRateChartID = $chartId LIMIT 1");
+		if ($kmRes && sql_num_rows($kmRes) > 0) {
+			$kmRow = sql_fetch_assoc($kmRes);
+			$included = (float)$kmRow['fIncludedKM'];
+			$extraRate = (float)$kmRow['fAdditionalKMRate'];
+			$over = $km - $included;
+			if ($over > 0) {
+				$extraKm = $over * $extraRate;
+			}
+		}
+
+		if ($fromTime && $toTime) {
+			$surRes = sql_query("SELECT tTimeFrom, tTimeTo, fSurchargeAmount
+                                 FROM disposal_time_surcharge
+                                 WHERE iRateChartID = $chartId AND cStatus = 'A'");
+			if ($surRes) {
+				while ($sur = sql_fetch_assoc($surRes)) {
+					if (fleetTripHitsSurcharge($fromTime, $toTime, $sur['tTimeFrom'], $sur['tTimeTo'])) {
+						$surcharge += (float)$sur['fSurchargeAmount'];
+					}
+				}
+			}
+		}
+	}
+
+	$total = $hourly + $extraKm + $surcharge;
+	$nowSql = db_input(NOW);
+	$hourlySql = number_format($hourly, 2, '.', '');
+	$extraSql = number_format($extraKm, 2, '.', '');
+	$surchargeSql = number_format($surcharge, 2, '.', '');
+	$totalSql = number_format($total, 2, '.', '');
+	sql_query("UPDATE fleet_booking
+               SET iHours = $hours,
+                   iActual_Kms = $km,
+                   fRate = $totalSql,
+                   fTotal = $totalSql,
+                   iRateChartID = $chartId,
+                   dtCaptured = '$nowSql'
+               WHERE iFleet_BookingID = $bookingId");
+
+	if ($chartId > 0) {
+		fleetSaveDisposalRateLine($bookingId, 2, $hourlySql);
+		fleetSaveDisposalRateLine($bookingId, 3, $extraSql);
+		fleetSaveDisposalRateLine($bookingId, 4, $surchargeSql);
+	}
+
+	return [
+		'iRateChartID' => $chartId,
+		'hours' => $hours,
+		'kms' => $km,
+		'hourly' => (float)$hourlySql,
+		'extraKm' => (float)$extraSql,
+		'surcharge' => (float)$surchargeSql,
+		'total' => (float)$totalSql
+	];
+}
+
 ?>
