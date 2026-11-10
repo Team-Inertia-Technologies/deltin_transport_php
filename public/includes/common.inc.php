@@ -1240,6 +1240,183 @@ function fleetApplyPreparedRate($prepared)
 	return $prepared['rate'];
 }
 
+function fleetDisposalStandardPackages($categoryId, $rows)
+{
+	$cards = [
+		5 => ['band' => 1836, 'night' => 2268, 'day' => 2484, 'extra' => 15],
+		6 => ['band' => 1944, 'night' => 2376, 'day' => 2592, 'extra' => 15],
+		7 => ['band' => 2052, 'night' => 2808, 'day' => 3024, 'extra' => 16]
+	];
+	$card = $cards[intval($categoryId)] ?? null;
+	if ($card === null) {
+		$first = fleetDisposalRateForHour($rows, 1);
+		$byFirstHour = [400 => 5, 500 => 6, 600 => 7];
+		$mapped = $byFirstHour[(int)round((float)$first)] ?? 0;
+		$card = $cards[$mapped] ?? null;
+	}
+	if ($card === null) {
+		return [];
+	}
+	$extra = $card['extra'];
+	return [
+		['hourFrom' => 6, 'hourTo' => 11, 'rate' => $card['band'], 'calc' => 'P', 'includedKm' => 80, 'extraRate' => $extra],
+		['hourFrom' => 12, 'hourTo' => 23, 'rate' => $card['night'], 'calc' => 'N', 'includedKm' => 80, 'extraRate' => $extra],
+		['hourFrom' => 24, 'hourTo' => 48, 'rate' => $card['day'], 'calc' => 'N', 'includedKm' => 80, 'extraRate' => $extra]
+	];
+}
+
+function fleetDisposalNormalizeRows($rows)
+{
+	$normalized = [];
+	foreach ($rows as $row) {
+		$calc = strtoupper(trim((string)($row['calc'] ?? 'H')));
+		if ($calc !== 'P' && $calc !== 'N') {
+			$calc = 'H';
+		}
+		$from = intval($row['hourFrom'] ?? 0);
+		$to = intval($row['hourTo'] ?? 0);
+		$rate = (float)($row['rate'] ?? 0);
+		if ($calc === 'H' && $from >= 6 && $to > $from) {
+			$calc = 'P';
+		}
+		if ($calc === 'H' && $from >= 12 && $rate >= 1000) {
+			$calc = 'N';
+		}
+		$row['calc'] = $calc;
+		$row['hourFrom'] = $from;
+		$row['hourTo'] = $to;
+		$row['rate'] = $rate;
+		$normalized[] = $row;
+	}
+	return $normalized;
+}
+
+function fleetDisposalRateForHour($rows, $hour)
+{
+	foreach ($rows as $row) {
+		if (($row['calc'] ?? 'H') !== 'H') {
+			continue;
+		}
+		if (intval($row['hourFrom']) <= $hour && intval($row['hourTo']) >= $hour) {
+			return (float)$row['rate'];
+		}
+	}
+	return null;
+}
+
+function fleetDisposalPackageAt($packages, $hours, $calc)
+{
+	$found = null;
+	foreach ($packages as $row) {
+		if (($row['calc'] ?? '') !== $calc) {
+			continue;
+		}
+		if (intval($row['hourFrom']) <= $hours && intval($row['hourTo']) >= $hours) {
+			$found = $row;
+		}
+	}
+	return $found;
+}
+
+function fleetDisposalNightStay($fromTime, $hours)
+{
+	if ($hours < 12 || $hours >= 24) {
+		return false;
+	}
+	$start = strtotime((string)$fromTime);
+	if (!$start) {
+		return false;
+	}
+	return fleetClockSeconds(date('H:i:s', $start)) >= fleetClockSeconds('19:00:00');
+}
+
+function fleetDisposalPickBand($hours, $rows, $fromTime)
+{
+	$hours = intval($hours);
+	$packages = [];
+	$perHour = [];
+	foreach ($rows as $row) {
+		if (($row['calc'] ?? 'H') === 'H') {
+			$perHour[] = $row;
+		} else {
+			$packages[] = $row;
+		}
+	}
+
+	$chosen = null;
+	if ($hours >= 24) {
+		$chosen = fleetDisposalPackageAt($packages, $hours, 'N');
+		if ($chosen === null) {
+			$chosen = fleetDisposalPackageAt($packages, 24, 'N');
+		}
+	}
+	if ($chosen === null && fleetDisposalNightStay($fromTime, $hours)) {
+		$chosen = fleetDisposalPackageAt($packages, $hours, 'N');
+		if ($chosen === null) {
+			$chosen = fleetDisposalPackageAt($packages, 12, 'N');
+		}
+	}
+	if ($chosen === null && $hours >= 6) {
+		$chosen = fleetDisposalPackageAt($packages, $hours, 'P');
+		if ($chosen === null && $hours > 11) {
+			$chosen = fleetDisposalPackageAt($packages, 11, 'P');
+		}
+	}
+	if ($chosen !== null) {
+		return $chosen;
+	}
+
+	$sum = 0.0;
+	for ($hour = 1; $hour <= $hours; $hour++) {
+		$rate = fleetDisposalRateForHour($perHour, $hour);
+		if ($rate === null) {
+			break;
+		}
+		$sum += $rate;
+	}
+	return [
+		'calc' => 'H',
+		'rate' => $sum,
+		'includedKm' => null,
+		'extraRate' => null
+	];
+}
+
+function fleetDisposalQuote($hours, $km, $fromTime, $toTime, $rows, $includedKm, $extraRate, $surcharges, $categoryId)
+{
+	$rows = fleetDisposalNormalizeRows($rows);
+	$hasLaterBand = false;
+	foreach ($rows as $row) {
+		if (intval($row['hourFrom']) >= 6) {
+			$hasLaterBand = true;
+			break;
+		}
+	}
+	if (!$hasLaterBand) {
+		$rows = fleetDisposalNormalizeRows(array_merge($rows, fleetDisposalStandardPackages($categoryId, $rows)));
+	}
+
+	$band = fleetDisposalPickBand($hours, $rows, $fromTime);
+	$hourly = (float)$band['rate'];
+	$included = ($band['includedKm'] === null || $band['includedKm'] === '') ? (float)$includedKm : (float)$band['includedKm'];
+	$ratePerKm = ($band['extraRate'] === null || $band['extraRate'] === '') ? (float)$extraRate : (float)$band['extraRate'];
+	$over = (float)$km - $included;
+	$extraKm = $over > 0 ? $over * $ratePerKm : 0;
+	$surcharge = 0;
+	if (($band['calc'] ?? 'H') !== 'N' && $fromTime && $toTime) {
+		foreach ($surcharges as $sur) {
+			if (fleetTripHitsSurcharge($fromTime, $toTime, $sur['tTimeFrom'], $sur['tTimeTo'])) {
+				$surcharge += (float)$sur['fSurchargeAmount'];
+			}
+		}
+	}
+	return [
+		'hourly' => $hourly,
+		'extraKm' => $extraKm,
+		'surcharge' => $surcharge
+	];
+}
+
 function fleetCalculateDisposalRate($bookingId, $booking = null)
 {
 	$bookingId = intval($bookingId);
@@ -1285,52 +1462,51 @@ function fleetCalculateDisposalRate($bookingId, $booking = null)
 	if ($chartId <= 0) {
 		return fleetRateMissingResult($booking);
 	}
-	$hourly = 0;
-	$extraKm = 0;
-	$surcharge = 0;
-	if ($chartId > 0) {
-		if ($hours > 0) {
-			$hourRes = sql_query("SELECT fRate FROM disposal_hourly_rate
-                                  WHERE iRateChartID = $chartId
-                                  AND iHourFrom <= $hours AND iHourTo >= $hours
-                                  ORDER BY iHourFrom
-                                  LIMIT 1");
-			if (!$hourRes || sql_num_rows($hourRes) == 0) {
-				$hourRes = sql_query("SELECT fRate FROM disposal_hourly_rate
-                                      WHERE iRateChartID = $chartId
-                                      ORDER BY iHourTo DESC
-                                      LIMIT 1");
-			}
-			if ($hourRes && sql_num_rows($hourRes) > 0) {
-				$hourRow = sql_fetch_assoc($hourRes);
-				$hourly = (float)$hourRow['fRate'];
-			}
-		}
-
-		$kmRes = sql_query("SELECT fIncludedKM, fAdditionalKMRate FROM disposal_km_rate WHERE iRateChartID = $chartId LIMIT 1");
-		if ($kmRes && sql_num_rows($kmRes) > 0) {
-			$kmRow = sql_fetch_assoc($kmRes);
-			$included = (float)$kmRow['fIncludedKM'];
-			$extraRate = (float)$kmRow['fAdditionalKMRate'];
-			$over = $km - $included;
-			if ($over > 0) {
-				$extraKm = $over * $extraRate;
-			}
-		}
-
-		if ($fromTime && $toTime) {
-			$surRes = sql_query("SELECT tTimeFrom, tTimeTo, fSurchargeAmount
-                                 FROM disposal_time_surcharge
-                                 WHERE iRateChartID = $chartId AND cStatus = 'A'");
-			if ($surRes) {
-				while ($sur = sql_fetch_assoc($surRes)) {
-					if (fleetTripHitsSurcharge($fromTime, $toTime, $sur['tTimeFrom'], $sur['tTimeTo'])) {
-						$surcharge += (float)$sur['fSurchargeAmount'];
-					}
-				}
-			}
+	$hourlyRows = [];
+	$hourRes = sql_query("SELECT iHourFrom, iHourTo, fRate FROM disposal_hourly_rate
+                          WHERE iRateChartID = $chartId
+                          ORDER BY iHourFrom, iHourTo");
+	if ($hourRes) {
+		while ($hourRow = sql_fetch_assoc($hourRes)) {
+			$hourlyRows[] = [
+				'hourFrom' => intval($hourRow['iHourFrom']),
+				'hourTo' => intval($hourRow['iHourTo']),
+				'rate' => (float)$hourRow['fRate'],
+				'calc' => 'H',
+				'includedKm' => null,
+				'extraRate' => null
+			];
 		}
 	}
+	$includedKm = 0;
+	$extraRate = 0;
+	$kmRes = sql_query("SELECT fIncludedKM, fAdditionalKMRate FROM disposal_km_rate WHERE iRateChartID = $chartId LIMIT 1");
+	if ($kmRes && sql_num_rows($kmRes) > 0) {
+		$kmRow = sql_fetch_assoc($kmRes);
+		$includedKm = (float)$kmRow['fIncludedKM'];
+		$extraRate = (float)$kmRow['fAdditionalKMRate'];
+	}
+	$surcharges = [];
+	$surRes = sql_query("SELECT tTimeFrom, tTimeTo, fSurchargeAmount
+                         FROM disposal_time_surcharge
+                         WHERE iRateChartID = $chartId AND cStatus = 'A'");
+	if ($surRes) {
+		while ($sur = sql_fetch_assoc($surRes)) {
+			$surcharges[] = $sur;
+		}
+	}
+	$categoryId = intval($booking['iVehicleCatID'] ?? 0);
+	$catRes = sql_query("SELECT iVehicleCategoryID FROM disposal_rate_chart WHERE iRateChartID = $chartId LIMIT 1");
+	if ($catRes && sql_num_rows($catRes) > 0) {
+		$catRow = sql_fetch_assoc($catRes);
+		if (intval($catRow['iVehicleCategoryID']) > 0) {
+			$categoryId = intval($catRow['iVehicleCategoryID']);
+		}
+	}
+	$quote = fleetDisposalQuote($hours, $km, $fromTime, $toTime, $hourlyRows, $includedKm, $extraRate, $surcharges, $categoryId);
+	$hourly = $quote['hourly'];
+	$extraKm = $quote['extraKm'];
+	$surcharge = $quote['surcharge'];
 
 	$total = $hourly + $extraKm + $surcharge;
 	$nowSql = db_input(NOW);
