@@ -1203,6 +1203,15 @@ function fleetSaveDisposalRateLine($bookingId, $kindId, $amount)
 	$bookingId = intval($bookingId);
 	$kindId = intval($kindId);
 	$amountSql = number_format((float)$amount, 2, '.', '');
+	$existing = sql_query("SELECT iBkRateID FROM fleet_booking_rate
+                           WHERE iFleet_BookingID = $bookingId AND iRateKindID = $kindId
+                           ORDER BY iBkRateID DESC LIMIT 1");
+	if ($existing && sql_num_rows($existing) > 0) {
+		$row = sql_fetch_assoc($existing);
+		$lineId = intval($row['iBkRateID']);
+		sql_query("UPDATE fleet_booking_rate SET fAmount = $amountSql WHERE iBkRateID = $lineId");
+		return;
+	}
 	$lineId = NextID('iBkRateID', 'fleet_booking_rate');
 	sql_query("INSERT INTO fleet_booking_rate (iBkRateID, iFleet_BookingID, iRateKindID, fAmount)
                VALUES ($lineId, $bookingId, $kindId, $amountSql)");
@@ -1404,6 +1413,50 @@ function fleetCalculateLocationRate($bookingId, $booking)
 			'total' => (float)$amountSql
 		]
 	];
+}
+
+function fleetApplyDisposalReading($bookingId, $source)
+{
+	$bookingId = intval($bookingId);
+	$source = is_array($source) ? $source : [];
+	if ($bookingId <= 0) {
+		return ['error' => 'Booking not found.', 'statusCode' => 404];
+	}
+	$res = sql_query("SELECT * FROM fleet_booking WHERE iFleet_BookingID = $bookingId LIMIT 1");
+	if (!$res || sql_num_rows($res) == 0) {
+		return ['error' => 'Booking not found.', 'statusCode' => 404];
+	}
+	$booking = sql_fetch_assoc($res);
+	$disposal = strtoupper(trim((string)($booking['cDisposal'] ?? 'N')));
+	if ($disposal !== 'Y' && $disposal !== '1' && $disposal !== 'YES' && $disposal !== 'TRUE') {
+		return ['ok' => true];
+	}
+
+	$fromRaw = fleetSourceValue($source, ['fromTime', 'dtFromTime']);
+	$toRaw = fleetSourceValue($source, ['toTime', 'dtToTime']);
+	if (($fromRaw === null || $fromRaw === '') && ($toRaw === null || $toRaw === '')) {
+		return ['ok' => true];
+	}
+
+	$trip = fleetDisposalTrip($source, $booking);
+	if (empty($trip['ok'])) {
+		return [
+			'error' => $trip['message'] ?? 'Invalid trip reading.',
+			'statusCode' => intval($trip['statusCode'] ?? 400)
+		];
+	}
+	if ($trip['fromTime'] === null || $trip['toTime'] === null) {
+		return ['ok' => true];
+	}
+
+	$fromSql = fleetSqlDateTime($trip['fromTime']);
+	$toSql = fleetSqlDateTime($trip['toTime']);
+	$startKm = intval($trip['startKm']);
+	$endKm = intval($trip['endKm']);
+	sql_query("UPDATE fleet_booking
+               SET dtFromTime = $fromSql, dtToTime = $toSql, iStartKm = $startKm, iEndKm = $endKm
+               WHERE iFleet_BookingID = $bookingId");
+	return ['ok' => true];
 }
 
 function fleetPrepareTripRate($bookingId)

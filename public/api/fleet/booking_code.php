@@ -125,6 +125,18 @@ switch ($mode) {
             exit;
         }
 
+        $reading = fleetApplyDisposalReading($booking_id, $_REQUEST);
+        if (!empty($reading['error'])) {
+            http_response_code(intval($reading['statusCode'] ?? 400));
+            echo json_encode([
+                "statusCode" => intval($reading['statusCode'] ?? 400),
+                "error" => [
+                    "message" => $reading['error']
+                ]
+            ]);
+            exit;
+        }
+
         $prepared = fleetPrepareTripRate($booking_id);
         if (!empty($prepared['error'])) {
             http_response_code(400);
@@ -246,6 +258,17 @@ switch ($mode) {
                     "message" => "This booking does not belong to your fleet."
                 ];
                 continue;
+            }
+
+            if (count($booking_ids) === 1) {
+                $reading = fleetApplyDisposalReading($booking_id, $_REQUEST);
+                if (!empty($reading['error'])) {
+                    $failed[] = [
+                        "id" => $booking_id,
+                        "message" => $reading['error']
+                    ];
+                    continue;
+                }
             }
 
             $prepared = fleetPrepareTripRate($booking_id);
