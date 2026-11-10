@@ -155,6 +155,10 @@ function fleetBookingDatTrackedFields()
         ['col' => 'iFleet_StationID', 'label' => 'station', 'lookup' => 'station'],
         ['col' => 'iVenChartType', 'label' => 'chart type'],
         ['col' => 'iRateChartLocID', 'label' => 'rate chart location'],
+        ['col' => 'dtFromTime', 'label' => 'from time', 'kind' => 'datetime'],
+        ['col' => 'dtToTime', 'label' => 'to time', 'kind' => 'datetime'],
+        ['col' => 'iStartKm', 'label' => 'start km'],
+        ['col' => 'iEndKm', 'label' => 'end km'],
     ];
 }
 

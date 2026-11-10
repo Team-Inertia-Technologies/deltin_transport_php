@@ -918,6 +918,189 @@ function GetCMBookings($cond='', $user_id = ''){
 }
 //CM Functions
 
+function fleetChartLocationValues($source, $cDisposal, $keepExisting = null)
+{
+	$source = is_array($source) ? $source : [];
+	if (strtoupper(trim((string)$cDisposal)) === 'Y') {
+		return ['ok' => true, 'chartType' => 0, 'locId' => 0];
+	}
 
+	$hasChart = array_key_exists('iVenChartType', $source) || array_key_exists('chartType', $source);
+	$hasLoc = array_key_exists('iRateChartLocID', $source) || array_key_exists('rateChartLocID', $source);
+	if (!$hasChart && !$hasLoc && is_array($keepExisting)) {
+		return [
+			'ok' => true,
+			'chartType' => intval($keepExisting['iVenChartType'] ?? 0),
+			'locId' => intval($keepExisting['iRateChartLocID'] ?? 0)
+		];
+	}
+
+	$chartType = intval($source['iVenChartType'] ?? ($source['chartType'] ?? 0));
+	$locId = intval($source['iRateChartLocID'] ?? ($source['rateChartLocID'] ?? 0));
+	if ($chartType <= 0 && $locId <= 0) {
+		return ['ok' => true, 'chartType' => 0, 'locId' => 0];
+	}
+	if ($chartType <= 0 || $locId <= 0) {
+		return [
+			'ok' => false,
+			'message' => 'iVenChartType and iRateChartLocID are required',
+			'statusCode' => 400
+		];
+	}
+
+	$locRes = sql_query("SELECT l.iRateChartLocID
+                         FROM ft_ratechart_location l
+                         INNER JOIN ft_ratechart_type t ON t.iVenChartType = l.iVenChartType AND t.cStatus = 'A'
+                         WHERE l.iRateChartLocID = $locId
+                         AND l.iVenChartType = $chartType
+                         AND l.cStatus = 'A'
+                         LIMIT 1");
+	if (!$locRes || sql_num_rows($locRes) == 0) {
+		return [
+			'ok' => false,
+			'message' => 'Location is not on this chart type',
+			'statusCode' => 400
+		];
+	}
+
+	return ['ok' => true, 'chartType' => $chartType, 'locId' => $locId];
+}
+
+function fleetTripDateTime($value)
+{
+	$raw = trim((string)$value);
+	if ($raw === '' || substr($raw, 0, 10) === '0000-00-00') {
+		return null;
+	}
+	$formats = ['Y-m-d H:i:s', 'Y-m-d H:i', 'Y-m-d\TH:i:s', 'Y-m-d\TH:i', 'd-m-Y H:i:s', 'd-m-Y H:i'];
+	foreach ($formats as $format) {
+		$dt = DateTime::createFromFormat('!' . $format, $raw);
+		$errors = DateTime::getLastErrors();
+		$clean = $dt && ($errors === false || (($errors['warning_count'] ?? 0) === 0 && ($errors['error_count'] ?? 0) === 0));
+		if ($clean) {
+			return $dt->format('Y-m-d H:i:s');
+		}
+	}
+	return false;
+}
+
+function fleetTripKm($value)
+{
+	if ($value === null || $value === '' || !is_numeric($value)) {
+		return null;
+	}
+	$number = (float)$value;
+	if ($number < 0) {
+		return null;
+	}
+	return (int)round($number);
+}
+
+function fleetSqlDateTime($value)
+{
+	if ($value === null || $value === '' || $value === false) {
+		return 'NULL';
+	}
+	return "'" . db_input($value) . "'";
+}
+
+function fleetPointToPointTrip($source, $keepExisting = null)
+{
+	$chart = fleetChartLocationValues($source, 'N', $keepExisting);
+	if (empty($chart['ok'])) {
+		return $chart;
+	}
+	return [
+		'ok' => true,
+		'chartType' => intval($chart['chartType']),
+		'locId' => intval($chart['locId']),
+		'fromTime' => null,
+		'toTime' => null,
+		'startKm' => 0,
+		'endKm' => 0
+	];
+}
+
+function fleetDisposalTrip($source, $keepExisting = null)
+{
+	$source = is_array($source) ? $source : [];
+	$names = [
+		'fromTime' => ['fromTime', 'dtFromTime'],
+		'toTime' => ['toTime', 'dtToTime'],
+		'startKm' => ['startKm', 'iStartKm'],
+		'endKm' => ['endKm', 'iEndKm']
+	];
+	$sent = false;
+	foreach ($names as $keys) {
+		foreach ($keys as $key) {
+			if (array_key_exists($key, $source)) {
+				$sent = true;
+			}
+		}
+	}
+	if (!$sent && is_array($keepExisting)) {
+		return [
+			'ok' => true,
+			'chartType' => 0,
+			'locId' => 0,
+			'fromTime' => ($keptFrom = fleetTripDateTime($keepExisting['dtFromTime'] ?? '')) === false ? null : $keptFrom,
+			'toTime' => ($keptTo = fleetTripDateTime($keepExisting['dtToTime'] ?? '')) === false ? null : $keptTo,
+			'startKm' => intval($keepExisting['iStartKm'] ?? 0),
+			'endKm' => intval($keepExisting['iEndKm'] ?? 0)
+		];
+	}
+
+	$fromTime = fleetTripDateTime($source['fromTime'] ?? ($source['dtFromTime'] ?? ''));
+	$toTime = fleetTripDateTime($source['toTime'] ?? ($source['dtToTime'] ?? ''));
+	if ($fromTime === null || $fromTime === false || $toTime === null || $toTime === false) {
+		return [
+			'ok' => false,
+			'message' => 'fromTime and toTime are required in YYYY-MM-DD HH:MM format',
+			'statusCode' => 400
+		];
+	}
+	if ($fromTime > $toTime) {
+		return [
+			'ok' => false,
+			'message' => 'fromTime cannot be after toTime',
+			'statusCode' => 400
+		];
+	}
+
+	$startKm = fleetTripKm($source['startKm'] ?? ($source['iStartKm'] ?? null));
+	$endKm = fleetTripKm($source['endKm'] ?? ($source['iEndKm'] ?? null));
+	if ($startKm === null || $endKm === null) {
+		return [
+			'ok' => false,
+			'message' => 'startKm and endKm are required and must be 0 or more',
+			'statusCode' => 400
+		];
+	}
+	if ($endKm < $startKm) {
+		return [
+			'ok' => false,
+			'message' => 'endKm cannot be less than startKm',
+			'statusCode' => 400
+		];
+	}
+
+	return [
+		'ok' => true,
+		'chartType' => 0,
+		'locId' => 0,
+		'fromTime' => $fromTime,
+		'toTime' => $toTime,
+		'startKm' => $startKm,
+		'endKm' => $endKm
+	];
+}
+
+function fleetTripValues($source, $cDisposal, $keepExisting = null)
+{
+	if (strtoupper(trim((string)$cDisposal)) === 'Y') {
+		return fleetDisposalTrip($source, $keepExisting);
+	}
+	return fleetPointToPointTrip($source, $keepExisting);
+}
 
 ?>
