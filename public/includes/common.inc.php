@@ -1398,7 +1398,11 @@ function fleetDisposalQuote($hours, $km, $fromTime, $toTime, $rows, $includedKm,
 
 	$band = fleetDisposalPickBand($hours, $rows, $fromTime);
 	$hourly = (float)$band['rate'];
-	$included = ($band['includedKm'] === null || $band['includedKm'] === '') ? (float)$includedKm : (float)$band['includedKm'];
+	if (($band['calc'] ?? 'H') === 'H') {
+		$included = (float)$includedKm * max(0, intval($hours));
+	} else {
+		$included = ($band['includedKm'] === null || $band['includedKm'] === '') ? (float)$includedKm : (float)$band['includedKm'];
+	}
 	$ratePerKm = ($band['extraRate'] === null || $band['extraRate'] === '') ? (float)$extraRate : (float)$band['extraRate'];
 	$over = (float)$km - $included;
 	$extraKm = $over > 0 ? $over * $ratePerKm : 0;
