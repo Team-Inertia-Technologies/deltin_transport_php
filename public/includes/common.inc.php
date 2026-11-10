@@ -1192,16 +1192,13 @@ function fleetCalculateDisposalRate($bookingId)
 		return null;
 	}
 
-	$res = sql_query("SELECT iFleet_BookingID, cDisposal, iVehicleCatID, iVenChartType, iRateChartID,
-                             vPickUpTime, vDropTime, dtFromTime, dtToTime, iStartKm, iEndKm, iOriginal_Kms, iActual_Kms
-                      FROM fleet_booking
-                      WHERE iFleet_BookingID = $bookingId
-                      LIMIT 1");
+	$res = sql_query("SELECT * FROM fleet_booking WHERE iFleet_BookingID = $bookingId LIMIT 1");
 	if (!$res || sql_num_rows($res) == 0) {
 		return null;
 	}
 	$booking = sql_fetch_assoc($res);
-	if (strtoupper(trim((string)($booking['cDisposal'] ?? 'N'))) !== 'Y') {
+	$disposal = strtoupper(trim((string)($booking['cDisposal'] ?? 'N')));
+	if ($disposal !== 'Y' && $disposal !== '1' && $disposal !== 'YES' && $disposal !== 'TRUE') {
 		return null;
 	}
 
@@ -1291,11 +1288,9 @@ function fleetCalculateDisposalRate($bookingId)
                    dtCaptured = '$nowSql'
                WHERE iFleet_BookingID = $bookingId");
 
-	if ($chartId > 0) {
-		fleetSaveDisposalRateLine($bookingId, 2, $hourlySql);
-		fleetSaveDisposalRateLine($bookingId, 3, $extraSql);
-		fleetSaveDisposalRateLine($bookingId, 4, $surchargeSql);
-	}
+	fleetSaveDisposalRateLine($bookingId, 2, $hourlySql);
+	fleetSaveDisposalRateLine($bookingId, 3, $extraSql);
+	fleetSaveDisposalRateLine($bookingId, 4, $surchargeSql);
 
 	return [
 		'iRateChartID' => $chartId,
