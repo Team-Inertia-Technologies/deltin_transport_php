@@ -1437,6 +1437,59 @@ function fleetDisposalQuote($hours, $km, $fromTime, $toTime, $rows, $includedKm,
 	];
 }
 
+function fleetCloseTripFacts($booking)
+{
+	$from = fleetTripDateTime($booking['dtFromTime'] ?? '');
+	if ($from === null || $from === false) {
+		$from = fleetTripDateTime($booking['vPickUpTime'] ?? '');
+	}
+	$from = ($from === false) ? null : $from;
+
+	$to = fleetTripDateTime($booking['dtToTime'] ?? '');
+	if ($to === null || $to === false) {
+		$to = fleetTripDateTime($booking['vDropTime'] ?? '');
+	}
+	if ($to === null || $to === false) {
+		$to = NOW;
+	}
+	$to = ($to === false) ? null : $to;
+	if ($from && $to && $to < $from) {
+		$to = NOW;
+		if ($to < $from) {
+			$to = $from;
+		}
+	}
+
+	$startKm = intval($booking['iStartKm'] ?? 0);
+	$endKm = intval($booking['iEndKm'] ?? 0);
+	if ($endKm > $startKm) {
+		$km = $endKm - $startKm;
+	} elseif (intval($booking['iActual_Kms'] ?? 0) > 0) {
+		$km = intval($booking['iActual_Kms']);
+	} else {
+		$km = intval($booking['iOriginal_Kms'] ?? 0);
+	}
+	if ($endKm <= $startKm) {
+		$endKm = $startKm + $km;
+	}
+	$hours = ($from && $to) ? fleetDisposalHours($from, $to) : intval($booking['iHours'] ?? 0);
+
+	return [
+		'fromTime' => $from,
+		'toTime' => $to,
+		'startKm' => $startKm,
+		'endKm' => $endKm,
+		'km' => $km,
+		'hours' => $hours,
+		'sql' => 'dtFromTime = ' . fleetSqlDateTime($from)
+			. ', dtToTime = ' . fleetSqlDateTime($to)
+			. ', iStartKm = ' . $startKm
+			. ', iEndKm = ' . $endKm
+			. ', iActual_Kms = ' . $km
+			. ', iHours = ' . $hours
+	];
+}
+
 function fleetCalculateDisposalRate($bookingId, $booking = null)
 {
 	$bookingId = intval($bookingId);
@@ -1455,27 +1508,11 @@ function fleetCalculateDisposalRate($bookingId, $booking = null)
 		return ['save' => false];
 	}
 
-	$fromTime = fleetTripDateTime($booking['dtFromTime'] ?? '');
-	$toTime = fleetTripDateTime($booking['dtToTime'] ?? '');
-	if ($fromTime === null || $fromTime === false) {
-		$fromTime = fleetTripDateTime($booking['vPickUpTime'] ?? '');
-	}
-	if ($toTime === null || $toTime === false) {
-		$toTime = fleetTripDateTime($booking['vDropTime'] ?? '');
-	}
-	$fromTime = ($fromTime === false) ? null : $fromTime;
-	$toTime = ($toTime === false) ? null : $toTime;
-
-	$hours = ($fromTime && $toTime) ? fleetDisposalHours($fromTime, $toTime) : 0;
-	$startKm = intval($booking['iStartKm'] ?? 0);
-	$endKm = intval($booking['iEndKm'] ?? 0);
-	if ($endKm > $startKm) {
-		$km = $endKm - $startKm;
-	} elseif (intval($booking['iActual_Kms'] ?? 0) > 0) {
-		$km = intval($booking['iActual_Kms']);
-	} else {
-		$km = intval($booking['iOriginal_Kms'] ?? 0);
-	}
+	$facts = fleetCloseTripFacts($booking);
+	$fromTime = $facts['fromTime'];
+	$toTime = $facts['toTime'];
+	$hours = $facts['hours'];
+	$km = $facts['km'];
 
 	$tripDate = $fromTime ? substr($fromTime, 0, 10) : substr((string)($booking['vPickUpTime'] ?? ''), 0, 10);
 	$chartId = fleetDisposalChartId($booking, $tripDate);
@@ -1538,7 +1575,7 @@ function fleetCalculateDisposalRate($bookingId, $booking = null)
 	return [
 		'save' => true,
 		'bookingId' => $bookingId,
-		'sets' => "iHours = $hours, iActual_Kms = $km, fRate = $totalSql, fTotal = $totalSql, iRateChartID = $chartId, dtCaptured = '$nowSql'",
+		'sets' => $facts['sql'] . ", fRate = $totalSql, fTotal = $totalSql, iRateChartID = $chartId, dtCaptured = '$nowSql'",
 		'lines' => [
 			[2, $hourlySql],
 			[3, $extraSql],
@@ -1598,11 +1635,12 @@ function fleetCalculateLocationRate($bookingId, $booking)
 		$amount = $amount / 2;
 	}
 	$amountSql = number_format($amount, 2, '.', '');
+	$facts = fleetCloseTripFacts($booking);
 	$nowSql = db_input(NOW);
 	return [
 		'save' => true,
 		'bookingId' => $bookingId,
-		'sets' => "fRate = $amountSql, fTotal = $amountSql, dtCaptured = '$nowSql'",
+		'sets' => $facts['sql'] . ", fRate = $chartSql, fTotal = $amountSql, dtCaptured = '$nowSql'",
 		'lines' => [
 			[1, $amountSql]
 		],
