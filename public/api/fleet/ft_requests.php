@@ -271,6 +271,10 @@ function addFleetBookingItem($item, $user_id, &$guestIdByMobile)
     $vTravelNotes = db_input($item['travelNotes'] ?? '');
     $vLandmark = db_input($item['landMark'] ?? '');
     $cDisposal = isset($item['disposal']) ? $item['disposal'] : 'N';
+    $disposalFlag = strtoupper(trim((string)$cDisposal));
+    $cReturnTrip = ($disposalFlag === 'Y' || $disposalFlag === '1' || $disposalFlag === 'YES' || $disposalFlag === 'TRUE')
+        ? 'N'
+        : ((strtoupper(trim((string)($item['returnTrip'] ?? 'N'))) === 'Y') ? 'Y' : 'N');
     $vReturnTime = !empty($item['returnTime']) ? db_input($item['returnTime']) : null;
 
     $iGuestID = intval($item['guestID'] ?? 0);
@@ -332,7 +336,7 @@ function addFleetBookingItem($item, $user_id, &$guestIdByMobile)
     }
 
     $cols = "iFleet_BookingID,vBookingCode,iBookedBy,vBookedBy, cBookingFor, iFleet_TrvPurID, iFleet_TrvTypeID, iPropertyID,
-                 iFleet_BKCatID, vInstructions, vRemarks, vTravelNotes, vName, vMobileNo, iGuestID, iFStaffID,
+                 iFleet_BKCatID, vInstructions, vRemarks, vTravelNotes, cReturnTrip, vName, vMobileNo, iGuestID, iFStaffID,
                  iPax, iBaggage, vPickUpLocation, vPickUpTime,iOriginal_Kms,
                  vDropLocation, vLatLong_From, vLatLong_To,vLandmark, iVehicleCatID, cDisposal, tReturnTime,
                  iVendorID, iFleet_StationID, iVenChartType, iRateChartLocID, dtFromTime, dtToTime, iStartKm, iEndKm, dtAdded,iAdded_UserID,cStatus,vVendorAssignedBy,dtVendorAssigned";
@@ -349,7 +353,7 @@ function addFleetBookingItem($item, $user_id, &$guestIdByMobile)
         INSERT INTO fleet_booking ($cols)
         VALUES (
             $iFleet_BookingID1,'$vBookingCode',$iBookedBy, '" . db_input($bookedByName) . "','" . db_input($cBookingFor) . "', $iFleet_TrvPurID, $iFleet_TrvTypeID, $iPropertyID,
-            $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "', '" . db_input($vTravelNotes) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
+            $iFleet_BKCatID, '" . db_input($vInstructions) . "', '" . db_input($vRemarks) . "', '" . db_input($vTravelNotes) . "', '" . db_input($cReturnTrip) . "','" . db_input($vName) . "', '" . db_input($vMobileNo) . "', $iGuestID, $iFStaffID,
             $iPax, $iBaggage, '" . db_input($vPickUpLocation) . "', '" . db_input($vPickUpTime) . "', $distance,
             '" . db_input($vDropLocation) . "', '" . db_input($vLatLong_From) . "', '" . db_input($vLatLong_To) . "', '" . db_input($vLandmark) . "', $iVehicleCatID, '" . db_input($cDisposal) . "', $vReturnTimeVal,
             $iVendorID, $iFleet_StationID, $iVenChartType, $iRateChartLocID, $fromSql, $toSql, $iStartKm, $iEndKm, '" . db_input($dtAdded) . "',$user_id,'A',$vVendorAssignedBy,$dtVendorAssignedVal
@@ -1107,6 +1111,7 @@ switch ($mode) {
             "intruc" => db_output2($booking['vInstructions']),
             "remarks" => db_output2($booking['vRemarks']),
             "travelNotes" => db_output2($booking['vTravelNotes'] ?? ''),
+            "returnTrip" => (strtoupper(trim((string)($booking['cReturnTrip'] ?? 'N'))) === 'Y') ? 'Y' : 'N',
             "guestID" => intval($booking['iGuestID']),
             "staffID" => intval($booking['iFStaffID']),
             "staff_dept" => isset($STAFF_DEPT_ARR[intval($booking['iFStaffID'])])
@@ -1354,6 +1359,10 @@ switch ($mode) {
         $vInstructions = db_input($_REQUEST['intruc']) ?? '';
         $vRemarks = db_input($_REQUEST['remarks']) ?? '';
         $vTravelNotes = db_input($_REQUEST['travelNotes'] ?? '');
+        $disposalFlag = strtoupper(trim((string)(isset($_REQUEST['disposal']) ? $_REQUEST['disposal'] : 'N')));
+        $cReturnTrip = ($disposalFlag === 'Y' || $disposalFlag === '1' || $disposalFlag === 'YES' || $disposalFlag === 'TRUE')
+            ? 'N'
+            : ((strtoupper(trim((string)($_REQUEST['returnTrip'] ?? 'N'))) === 'Y') ? 'Y' : 'N');
 
         // $tripType = intval($_REQUEST['tripType'] ?? 0);
         // $cDisposal = ($tripType == 3) ? 'Y' : 'N';
@@ -1453,6 +1462,7 @@ switch ($mode) {
                 vInstructions = '" . $vInstructions . "',
                 vRemarks = '" . $vRemarks . "',
                 vTravelNotes = '" . $vTravelNotes . "',
+                cReturnTrip = '" . db_input($cReturnTrip) . "',
                 vName = '" . $vName . "',
                 vMobileNo = '" . db_input($vMobileNo) . "',
                 iGuestID = " . intval($iGuestID) . ",
@@ -1504,6 +1514,7 @@ switch ($mode) {
             'vInstructions' => $_REQUEST['intruc'] ?? '',
             'vRemarks' => $_REQUEST['remarks'] ?? '',
             'vTravelNotes' => $_REQUEST['travelNotes'] ?? '',
+            'cReturnTrip' => $cReturnTrip,
             'vName' => $_REQUEST['name'] ?? '',
             'vMobileNo' => $_REQUEST['mob'] ?? '',
             'iFStaffID' => $_REQUEST['staffID'] ?? 0,
@@ -1600,6 +1611,7 @@ switch ($mode) {
                 fb.vInstructions,
                 fb.vRemarks,
                 fb.vTravelNotes,
+                fb.cReturnTrip,
                 fb.iVehicleCatID,
                 fb.iPax,
                 fb.iBaggage,
@@ -1768,6 +1780,7 @@ switch ($mode) {
             'instructions' => db_output2($booking['vInstructions']) ?? '',
             'remarks' => db_output2($booking['vRemarks']) ?? '',
             'travelNotes' => db_output2($booking['vTravelNotes'] ?? ''),
+            'returnTrip' => (strtoupper(trim((string)($booking['cReturnTrip'] ?? 'N'))) === 'Y') ? 'Y' : 'N',
             'vehiCat' => intval($booking['iVehicleCatID'] ?? 0),
             'passengers' => intval($booking['iPax'] ?? 0),
             'baggage' => intval($booking['iBaggage'] ?? 0),

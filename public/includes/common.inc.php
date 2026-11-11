@@ -1576,6 +1576,11 @@ function fleetCalculateLocationRate($bookingId, $booking)
 		return fleetRateMissingResult($booking);
 	}
 
+	$chartSql = number_format($amount, 2, '.', '');
+	$returnTrip = strtoupper(trim((string)($booking['cReturnTrip'] ?? 'N'))) === 'Y';
+	if ($returnTrip) {
+		$amount = $amount / 2;
+	}
 	$amountSql = number_format($amount, 2, '.', '');
 	$nowSql = db_input(NOW);
 	return [
@@ -1589,6 +1594,8 @@ function fleetCalculateLocationRate($bookingId, $booking)
 			'iRateKindID' => 1,
 			'iVenChartType' => $typeId,
 			'iRateChartLocID' => $locId,
+			'cReturnTrip' => $returnTrip ? 'Y' : 'N',
+			'chartRate' => (float)$chartSql,
 			'basicPay' => (float)$amountSql,
 			'total' => (float)$amountSql
 		]
@@ -1660,7 +1667,7 @@ function fleetPrepareTripRate($bookingId)
 function fleetTripPaymentDetails($bookingId)
 {
 	$bookingId = intval($bookingId);
-	$res = sql_query("SELECT iFleet_BookingID, iVendorID, cDisposal, cType, fRate, fTotal, iHours, iActual_Kms, dtCaptured, iRateChartID
+	$res = sql_query("SELECT iFleet_BookingID, iVendorID, cDisposal, cReturnTrip, cType, fRate, fTotal, iHours, iActual_Kms, dtCaptured, iRateChartID
                       FROM fleet_booking
                       WHERE iFleet_BookingID = $bookingId AND cStatus = 'A'
                       LIMIT 1");
@@ -1693,6 +1700,7 @@ function fleetTripPaymentDetails($bookingId)
 		'bookingId' => intval($booking['iFleet_BookingID']),
 		'iVendorID' => intval($booking['iVendorID']),
 		'cDisposal' => $booking['cDisposal'],
+		'cReturnTrip' => (strtoupper(trim((string)($booking['cReturnTrip'] ?? 'N'))) === 'Y') ? 'Y' : 'N',
 		'cType' => $booking['cType'],
 		'fRate' => (float)$booking['fRate'],
 		'fTotal' => (float)$booking['fTotal'],

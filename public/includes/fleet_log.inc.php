@@ -139,6 +139,7 @@ function fleetBookingDatTrackedFields()
         ['col' => 'vInstructions', 'label' => 'instructions'],
         ['col' => 'vRemarks', 'label' => 'remarks'],
         ['col' => 'vTravelNotes', 'label' => 'travel notes'],
+        ['col' => 'cReturnTrip', 'label' => 'return trip'],
         ['col' => 'vName', 'label' => 'passenger name'],
         ['col' => 'vMobileNo', 'label' => 'mobile number'],
         ['col' => 'iFStaffID', 'label' => 'staff', 'lookup' => 'staff'],
