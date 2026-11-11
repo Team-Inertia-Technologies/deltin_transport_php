@@ -1166,17 +1166,33 @@ function fleetTripHitsSurcharge($fromTime, $toTime, $windowFrom, $windowTo)
 	return false;
 }
 
+function fleetAssignedVehicleCategory($booking)
+{
+	$vehicleId = intval($booking['iVehicleID'] ?? 0);
+	if ($vehicleId <= 0) {
+		return 0;
+	}
+	$res = sql_query("SELECT iCatID FROM vehicle WHERE iVehicleID = $vehicleId LIMIT 1");
+	if (!$res || sql_num_rows($res) == 0) {
+		return 0;
+	}
+	$row = sql_fetch_assoc($res);
+	return intval($row['iCatID'] ?? 0);
+}
+
 function fleetDisposalChartId($booking, $tripDate)
 {
+	$catId = fleetAssignedVehicleCategory($booking);
 	$savedId = intval($booking['iRateChartID'] ?? 0);
-	if ($savedId > 0) {
-		$saved = sql_query("SELECT iRateChartID FROM disposal_rate_chart WHERE iRateChartID = $savedId AND cStatus = 'A' LIMIT 1");
+	if ($savedId > 0 && $catId > 0) {
+		$saved = sql_query("SELECT iRateChartID FROM disposal_rate_chart
+                            WHERE iRateChartID = $savedId AND cStatus = 'A' AND iVehicleCategoryID = $catId
+                            LIMIT 1");
 		if ($saved && sql_num_rows($saved) > 0) {
 			return $savedId;
 		}
 	}
 
-	$catId = intval($booking['iVehicleCatID'] ?? 0);
 	$typeId = intval($booking['iVenChartType'] ?? 0);
 	if ($catId <= 0 || $tripDate === '') {
 		return 0;
@@ -1499,7 +1515,7 @@ function fleetCalculateDisposalRate($bookingId, $booking = null)
 			$surcharges[] = $sur;
 		}
 	}
-	$categoryId = intval($booking['iVehicleCatID'] ?? 0);
+	$categoryId = fleetAssignedVehicleCategory($booking);
 	$catRes = sql_query("SELECT iVehicleCategoryID FROM disposal_rate_chart WHERE iRateChartID = $chartId LIMIT 1");
 	if ($catRes && sql_num_rows($catRes) > 0) {
 		$catRow = sql_fetch_assoc($catRes);
@@ -1545,7 +1561,7 @@ function fleetCalculateLocationRate($bookingId, $booking)
 	$bookingId = intval($bookingId);
 	$typeId = intval($booking['iVenChartType'] ?? 0);
 	$locId = intval($booking['iRateChartLocID'] ?? 0);
-	$catId = intval($booking['iVehicleCatID'] ?? 0);
+	$catId = fleetAssignedVehicleCategory($booking);
 	$tripDate = substr((string)($booking['vPickUpTime'] ?? ''), 0, 10);
 	if ($tripDate === '' || $tripDate === '0000-00-00') {
 		$tripDate = date('Y-m-d');
@@ -1594,6 +1610,7 @@ function fleetCalculateLocationRate($bookingId, $booking)
 			'iRateKindID' => 1,
 			'iVenChartType' => $typeId,
 			'iRateChartLocID' => $locId,
+			'iVehicleCatID' => $catId,
 			'cReturnTrip' => $returnTrip ? 'Y' : 'N',
 			'chartRate' => (float)$chartSql,
 			'basicPay' => (float)$amountSql,
