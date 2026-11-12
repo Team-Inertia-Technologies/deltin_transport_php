@@ -289,35 +289,35 @@ switch ($mode) {
                 $stationCond = " AND iFlt_StationID IN (" . implode(',', array_map('intval', $STATIONS_ARR)) . ")";
             }
         }  
-        $fleetRateStationCond = "";
-
-        if (!empty($stationCond)) {
-            $fleetRateStationCond = " AND fr.iFleet_StationID IN (" . implode(',', array_map('intval', $STATIONS_ARR)) . ")";
-        }              
-
-        $fleetRate = sql_query("
-        SELECT fr.iFleet_RateID,
-               fr.iFleet_StationID,
-               CONCAT(lf.vName, ' to ', lt.vName) AS vRouteName
-        FROM fleet_ratechart fr
-        LEFT JOIN fleet_location lf
-            ON lf.iFleet_LocationID = fr.iFleet_LocationID_From
-        LEFT JOIN fleet_location lt
-            ON lt.iFleet_LocationID = fr.iFleet_LocationID_To
-        WHERE fr.cStatus = 'A'
-          AND '$NOW' BETWEEN fr.dtApplicable_From AND fr.dtApplicable_To
-          $fleetRateStationCond
-        ORDER BY fr.iFleet_StationID, fr.iRank
-        ");
+        // $fleetRateStationCond = "";
+        //
+        // if (!empty($stationCond)) {
+        //     $fleetRateStationCond = " AND fr.iFleet_StationID IN (" . implode(',', array_map('intval', $STATIONS_ARR)) . ")";
+        // }
+        //
+        // $fleetRate = sql_query("
+        // SELECT fr.iFleet_RateID,
+        //        fr.iFleet_StationID,
+        //        CONCAT(lf.vName, ' to ', lt.vName) AS vRouteName
+        // FROM fleet_ratechart fr
+        // LEFT JOIN fleet_location lf
+        //     ON lf.iFleet_LocationID = fr.iFleet_LocationID_From
+        // LEFT JOIN fleet_location lt
+        //     ON lt.iFleet_LocationID = fr.iFleet_LocationID_To
+        // WHERE fr.cStatus = 'A'
+        //   AND '$NOW' BETWEEN fr.dtApplicable_From AND fr.dtApplicable_To
+        //   $fleetRateStationCond
+        // ORDER BY fr.iFleet_StationID, fr.iRank
+        // ");
 
         $fleetRateArr = [];
 
-        while ($row = sql_fetch_assoc($fleetRate)) {
-            $fleetRateArr[$row['iFleet_StationID']][] = [
-                'fleet_RateID' => $row['iFleet_RateID'],
-                'routeName'     => $row['vRouteName']
-            ];
-        }
+        // while ($row = sql_fetch_assoc($fleetRate)) {
+        //     $fleetRateArr[$row['iFleet_StationID']][] = [
+        //         'fleet_RateID' => $row['iFleet_RateID'],
+        //         'routeName'     => $row['vRouteName']
+        //     ];
+        // }
 
         $fleetVendorArr = [];
 

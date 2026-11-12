@@ -1563,26 +1563,26 @@ switch ($mode) {
         }
 
 
-        $fleetRate = sql_query("
-    SELECT fr.iFleet_RateID,
-        fr.iFleet_StationID, CONCAT(lf.vName, ' to ', lt.vName) AS vRouteName
-    FROM fleet_ratechart fr
-    LEFT JOIN fleet_location lf 
-        ON lf.iFleet_LocationID = fr.iFleet_LocationID_From
-    LEFT JOIN fleet_location lt 
-        ON lt.iFleet_LocationID = fr.iFleet_LocationID_To
-    WHERE fr.cStatus = 'A'
-    AND '$NOW' BETWEEN fr.dtApplicable_From AND fr.dtApplicable_To
-    ORDER BY fr.iFleet_StationID, fr.iRank
-");
+        // $fleetRate = sql_query("
+        //     SELECT fr.iFleet_RateID,
+        //         fr.iFleet_StationID, CONCAT(lf.vName, ' to ', lt.vName) AS vRouteName
+        //     FROM fleet_ratechart fr
+        //     LEFT JOIN fleet_location lf
+        //         ON lf.iFleet_LocationID = fr.iFleet_LocationID_From
+        //     LEFT JOIN fleet_location lt
+        //         ON lt.iFleet_LocationID = fr.iFleet_LocationID_To
+        //     WHERE fr.cStatus = 'A'
+        //     AND '$NOW' BETWEEN fr.dtApplicable_From AND fr.dtApplicable_To
+        //     ORDER BY fr.iFleet_StationID, fr.iRank
+        // ");
         $fleetRateArr = [];
 
-        while ($row = sql_fetch_assoc($fleetRate)) {
-            $fleetRateArr[$row['iFleet_StationID']][] = [
-                'fleet_RateID' => $row['iFleet_RateID'],
-                'routeName'     => $row['vRouteName']
-            ];
-        }
+        // while ($row = sql_fetch_assoc($fleetRate)) {
+        //     $fleetRateArr[$row['iFleet_StationID']][] = [
+        //         'fleet_RateID' => $row['iFleet_RateID'],
+        //         'routeName'     => $row['vRouteName']
+        //     ];
+        // }
         $stationArr = [['id' => 0, 'name' => 'Choose', 'routes' => []]];
 
         $FLEET_STATION = GetXArrFromYID(
@@ -1780,6 +1780,7 @@ switch ($mode) {
             'instructions' => db_output2($booking['vInstructions']) ?? '',
             'remarks' => db_output2($booking['vRemarks']) ?? '',
             'travelNotes' => db_output2($booking['vTravelNotes'] ?? ''),
+            'disposal' => in_array(strtoupper(trim((string)($booking['cDisposal'] ?? 'N'))), ['Y', '1', 'YES', 'TRUE'], true) ? 'Y' : 'N',
             'returnTrip' => (strtoupper(trim((string)($booking['cReturnTrip'] ?? 'N'))) === 'Y') ? 'Y' : 'N',
             'vehiCat' => intval($booking['iVehicleCatID'] ?? 0),
             'passengers' => intval($booking['iPax'] ?? 0),
@@ -3456,7 +3457,8 @@ switch ($mode) {
             ]);
             exit;
         }
-        $kms = GetXFromYID("SELECT iKms FROM fleet_ratechart WHERE iFleet_StationID = $stationID AND iFleet_RateID = $fleet_RateID AND cStatus='A' AND '$NOW' BETWEEN dtApplicable_From AND dtApplicable_To LIMIT 1");
+        // $kms = GetXFromYID("SELECT iKms FROM fleet_ratechart WHERE iFleet_StationID = $stationID AND iFleet_RateID = $fleet_RateID AND cStatus='A' AND '$NOW' BETWEEN dtApplicable_From AND dtApplicable_To LIMIT 1");
+        $kms = 0;
         $completeSql = "UPDATE fleet_booking SET iFleet_StationID = $stationID, iFleet_RateID = $fleet_RateID,iActual_Kms='$kms' WHERE iFleet_BookingID=$iFleet_BookingID";
 
         if (sql_query($completeSql)) {
