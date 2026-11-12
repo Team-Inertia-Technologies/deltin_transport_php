@@ -2485,7 +2485,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
         }
 
         // Check if booking exists and is active
-        $bookingCheckSql = "SELECT iFleet_BookingID, vName, vPickUpTime, iVehicleID, iDriverID, vRemarks FROM fleet_booking 
+        $bookingCheckSql = "SELECT iFleet_BookingID, vName, vPickUpTime, iVehicleID, iDriverID, vRemarks, iVenChartType, cDisposal FROM fleet_booking 
                            WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
         $bookingCheckRes = sql_query($bookingCheckSql);
 
@@ -2498,6 +2498,15 @@ foreach ($vehicleData as $vehicleID => $vehData) {
         }
 
         $bookingData = sql_fetch_assoc($bookingCheckRes);
+        $disposalFlag = strtoupper(trim((string)($bookingData['cDisposal'] ?? 'N')));
+        $isDisposal = ($disposalFlag === 'Y' || $disposalFlag === '1' || $disposalFlag === 'YES' || $disposalFlag === 'TRUE');
+        if (!$isDisposal && intval($bookingData['iVenChartType'] ?? 0) === 0) {
+            echo json_encode([
+                "error" => ["message" => "Chart type is required before assigning a vehicle"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
 
         // Check if vehicle exists and is active
         $vehicleCheckSql = "SELECT v.iVehicleID, v.vRnum, vc.vName as categoryName 

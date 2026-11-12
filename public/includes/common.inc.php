@@ -1145,25 +1145,16 @@ function fleetClockSeconds($time)
 function fleetTripHitsSurcharge($fromTime, $toTime, $windowFrom, $windowTo)
 {
 	$start = strtotime((string)$fromTime);
-	$end = strtotime((string)$toTime);
-	if (!$start || !$end || $end <= $start) {
+	if (!$start) {
 		return false;
 	}
+	$clock = fleetClockSeconds(date('H:i:s', $start));
 	$windowStart = fleetClockSeconds($windowFrom);
 	$windowEnd = fleetClockSeconds($windowTo);
-	$cursor = $start;
-	$limit = min($end, $start + (48 * 3600));
-	while ($cursor <= $limit) {
-		$clock = fleetClockSeconds(date('H:i:s', $cursor));
-		$inside = ($windowStart <= $windowEnd)
-			? ($clock >= $windowStart && $clock <= $windowEnd)
-			: ($clock >= $windowStart || $clock <= $windowEnd);
-		if ($inside) {
-			return true;
-		}
-		$cursor += 15 * 60;
+	if ($windowStart <= $windowEnd) {
+		return $clock >= $windowStart && $clock <= $windowEnd;
 	}
-	return false;
+	return $clock >= $windowStart || $clock <= $windowEnd;
 }
 
 function fleetAssignedVehicleCategory($booking)
@@ -1231,16 +1222,6 @@ function fleetSaveDisposalRateLine($bookingId, $kindId, $amount)
 	$lineId = NextID('iBkRateID', 'fleet_booking_rate');
 	sql_query("INSERT INTO fleet_booking_rate (iBkRateID, iFleet_BookingID, iRateKindID, fAmount)
                VALUES ($lineId, $bookingId, $kindId, $amountSql)");
-}
-
-function fleetRateMissingResult($booking)
-{
-	if (intval($booking['iVendorID'] ?? 0) > 0) {
-		return [
-			'error' => 'Rate is not available for the assigned vehicle category.'
-		];
-	}
-	return ['save' => false];
 }
 
 function fleetApplyPreparedRate($prepared)
@@ -1517,7 +1498,26 @@ function fleetCalculateDisposalRate($bookingId, $booking = null)
 	$tripDate = $fromTime ? substr($fromTime, 0, 10) : substr((string)($booking['vPickUpTime'] ?? ''), 0, 10);
 	$chartId = fleetDisposalChartId($booking, $tripDate);
 	if ($chartId <= 0) {
-		return fleetRateMissingResult($booking);
+		$nowSql = db_input(NOW);
+		return [
+			'save' => true,
+			'bookingId' => $bookingId,
+			'sets' => $facts['sql'] . ", fRate = 0.00, fTotal = 0.00, iRateChartID = 0, dtCaptured = '$nowSql'",
+			'lines' => [
+				[2, '0.00'],
+				[3, '0.00'],
+				[4, '0.00']
+			],
+			'rate' => [
+				'iRateChartID' => 0,
+				'hours' => $hours,
+				'kms' => $km,
+				'hourly' => 0,
+				'extraKm' => 0,
+				'surcharge' => 0,
+				'total' => 0
+			]
+		];
 	}
 	$hourlyRows = [];
 	$hourRes = sql_query("SELECT iHourFrom, iHourTo, fRate FROM disposal_hourly_rate
@@ -1604,7 +1604,6 @@ function fleetCalculateLocationRate($bookingId, $booking)
 		$tripDate = date('Y-m-d');
 	}
 
-	$found = false;
 	$amount = 0;
 	if ($typeId > 0 && $locId > 0 && $catId > 0) {
 		$dateSql = db_input($tripDate);
@@ -1621,12 +1620,8 @@ function fleetCalculateLocationRate($bookingId, $booking)
 			$row = sql_fetch_assoc($res);
 			if ($row['fRate'] !== null && $row['fRate'] !== '') {
 				$amount = (float)$row['fRate'];
-				$found = true;
 			}
 		}
-	}
-	if (!$found) {
-		return fleetRateMissingResult($booking);
 	}
 
 	$chartSql = number_format($amount, 2, '.', '');

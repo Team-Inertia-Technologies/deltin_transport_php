@@ -2449,7 +2449,7 @@ switch ($mode) {
         }
 
         // Check if booking exists and is active
-        $bookingCheckSql = "SELECT iFleet_BookingID, vName, vMobileNo, vPickUpTime, vPickUpLocation, vBookingCode, iFleet_StationID, iVendorID, iVehicleID, iDriverID, vComments
+        $bookingCheckSql = "SELECT iFleet_BookingID, vName, vMobileNo, vPickUpTime, vPickUpLocation, vBookingCode, iFleet_StationID, iVendorID, iVehicleID, iDriverID, vComments, iVenChartType, cDisposal
                            FROM fleet_booking 
                            WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus = 'A' LIMIT 1";
         $bookingCheckRes = sql_query($bookingCheckSql);
@@ -2463,6 +2463,15 @@ switch ($mode) {
         }
 
         $bookingData = sql_fetch_assoc($bookingCheckRes);
+        $disposalFlag = strtoupper(trim((string)($bookingData['cDisposal'] ?? 'N')));
+        $isDisposal = ($disposalFlag === 'Y' || $disposalFlag === '1' || $disposalFlag === 'YES' || $disposalFlag === 'TRUE');
+        if (!$isDisposal && intval($bookingData['iVenChartType'] ?? 0) === 0) {
+            echo json_encode([
+                "error" => ["message" => "Chart type is required before assigning a vehicle"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
 
         // Check if vehicle exists and is active
         $vehicleCheckSql = "SELECT v.iVehicleID, v.vRnum, v.iVendorID, vc.vName as categoryName 
@@ -3497,7 +3506,7 @@ switch ($mode) {
             exit;
         }
 
-        $checkRes = sql_query("SELECT iFleet_BookingID, cDisposal
+        $checkRes = sql_query("SELECT iFleet_BookingID, cDisposal, cReturnTrip
                                FROM fleet_booking
                                WHERE iFleet_BookingID = $iFleet_BookingID AND cStatus != 'X'
                                LIMIT 1");
@@ -3532,8 +3541,18 @@ switch ($mode) {
             exit;
         }
 
+        $hasReturnTrip = array_key_exists('returnTrip', $_REQUEST) || array_key_exists('cReturnTrip', $_REQUEST);
+        if ($hasReturnTrip) {
+            $returnRaw = array_key_exists('returnTrip', $_REQUEST) ? $_REQUEST['returnTrip'] : $_REQUEST['cReturnTrip'];
+            $returnFlag = strtoupper(trim((string)$returnRaw));
+            $cReturnTrip = ($returnFlag === 'Y' || $returnFlag === 'YES' || $returnFlag === '1' || $returnFlag === 'TRUE') ? 'Y' : 'N';
+        } else {
+            $cReturnTrip = (strtoupper(trim((string)($bookingRow['cReturnTrip'] ?? 'N'))) === 'Y') ? 'Y' : 'N';
+        }
+        $returnSql = $hasReturnTrip ? ", cReturnTrip = '" . db_input($cReturnTrip) . "'" : '';
+
         $saveSql = "UPDATE fleet_booking
-                    SET iVenChartType = $chartType, iRateChartLocID = $locId
+                    SET iVenChartType = $chartType, iRateChartLocID = $locId $returnSql
                     WHERE iFleet_BookingID = $iFleet_BookingID";
         if (!sql_query($saveSql)) {
             echo json_encode([
@@ -3548,7 +3567,8 @@ switch ($mode) {
                 "message" => "Chart type and location saved",
                 "iFleet_BookingID" => $iFleet_BookingID,
                 "iVenChartType" => $chartType,
-                "iRateChartLocID" => $locId
+                "iRateChartLocID" => $locId,
+                "returnTrip" => $cReturnTrip
             ],
             "statusCode" => 200
         ]);
