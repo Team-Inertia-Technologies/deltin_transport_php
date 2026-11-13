@@ -336,6 +336,7 @@ $FLEET_TRAVEL_TYPE= array("1" => "One Way Trip", "2" => "Return Trip",  "3" => "
 $VEHICLE_SERVICE_TYPE= array("F" => "Fleet", "S" => "Staff", "B" => "Both");
 
 $FLEET_TRIP_STATUS= array("N" => "Not started", "S" => "Enroute", "G"=>"Picked Up", "P" => "Paused","R"=>"Resumed", "C" => "Completed");
+define('POINT_NIGHT_CHARGE_FROM', '21:00:00');
 
  $VEHICLE_STATUS_ARR = array("A"=>"Available", "R"=>"Returning", "E"=>"Enroute", "U"=>"Unavailable");
 $VEHICLE_STATUS_ARR2 = array("A"=>"Available", "U"=>"Unavailable", "I"=>"Idle");

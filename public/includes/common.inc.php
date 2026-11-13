@@ -1164,8 +1164,9 @@ function fleetPointNightStart($fromTime)
 	if (!$start) {
 		return false;
 	}
+	$cutoff = defined('POINT_NIGHT_CHARGE_FROM') ? POINT_NIGHT_CHARGE_FROM : '21:00:00';
 	$clock = fleetClockSeconds(date('H:i:s', $start));
-	return $clock >= fleetClockSeconds('19:00:00') || $clock < fleetClockSeconds('07:00:00');
+	return $clock >= fleetClockSeconds($cutoff);
 }
 
 function fleetAssignedVehicleCategory($booking)

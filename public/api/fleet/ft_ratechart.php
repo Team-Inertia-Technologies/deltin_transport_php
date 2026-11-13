@@ -138,6 +138,18 @@ function ft_rate_catalog($chartSql) {
     return [$vehiCatArr, $locArr];
 }
 
+function ft_rate_night_row($vehiCatArr, $nightCharges) {
+    $byCat = [];
+    foreach ($nightCharges as $night) {
+        $byCat[intval($night['vehiCatId'])] = $night['nightCharge'];
+    }
+    $row = ['LOCATION' => 0];
+    foreach ($vehiCatArr as $cat) {
+        $row[(string)$cat['id']] = $byCat[intval($cat['id'])] ?? null;
+    }
+    return $row;
+}
+
 function ft_rate_group_key($fromRaw, $toRaw) {
     $fromDate = ft_rate_date($fromRaw);
     $toDate = ft_rate_date($toRaw);
@@ -406,6 +418,9 @@ switch ($mode) {
         }
 
         $rates = [];
+        $headerKey = ($fromDate ?? '') . '|' . ($toDate ?? '');
+        $headers = ft_rate_headers($chartSql);
+        $rates[] = ft_rate_night_row($vehiCatArr, $headers[$headerKey]['nightCharges'] ?? []);
         foreach ($locArr as $loc) {
             $rateRow = ['LOCATION' => $loc['id']];
             foreach ($vehiCatArr as $cat) {
@@ -413,9 +428,6 @@ switch ($mode) {
             }
             $rates[] = $rateRow;
         }
-
-        $headerKey = ($fromDate ?? '') . '|' . ($toDate ?? '');
-        $headers = ft_rate_headers($chartSql);
 
         echo json_encode([
             "data" => [
@@ -502,6 +514,10 @@ switch ($mode) {
 
         $writes = [];
         $seenLoc = [];
+        $seenNight = [];
+        foreach ($nightCharges as $night) {
+            $seenNight[intval($night['catId'])] = $night['charge'];
+        }
         foreach (($hasRates ? $rates : []) as $rateRow) {
             if (!is_array($rateRow)) {
                 echo json_encode([
@@ -510,8 +526,8 @@ switch ($mode) {
                 ]);
                 exit;
             }
-            $locId = intval($rateRow['LOCATION'] ?? ($rateRow['location'] ?? 0));
-            if ($locId <= 0 || !isset($locIds[$locId])) {
+            $locId = intval($rateRow['LOCATION'] ?? ($rateRow['location'] ?? -1));
+            if ($locId < 0 || ($locId > 0 && !isset($locIds[$locId]))) {
                 echo json_encode([
                     "error" => ["message" => "LOCATION $locId is not on this chart"],
                     "statusCode" => 400
@@ -550,6 +566,20 @@ switch ($mode) {
                 } else {
                     $rateNum = (float)$value;
                     $parsed = (abs($rateNum - round($rateNum)) < 0.00001) ? (int)round($rateNum) : $rateNum;
+                }
+                if ($locId === 0) {
+                    if (array_key_exists($catId, $seenNight) && $seenNight[$catId] !== $parsed) {
+                        echo json_encode([
+                            "error" => ["message" => "Night charge for vehicle category $catId is repeated"],
+                            "statusCode" => 400
+                        ]);
+                        exit;
+                    }
+                    if (!array_key_exists($catId, $seenNight)) {
+                        $nightCharges[] = ['catId' => $catId, 'charge' => $parsed];
+                        $seenNight[$catId] = $parsed;
+                    }
+                    continue;
                 }
                 $writes[] = [
                     'locId' => $locId,
@@ -767,6 +797,7 @@ switch ($mode) {
         $serial = 1;
         foreach ($groups as $group) {
             $rates = [];
+            $rates[] = ft_rate_night_row($vehiCatArr, $group['nightCharges'] ?? []);
             foreach ($locArr as $loc) {
                 $rateRow = ['LOCATION' => $loc['id']];
                 foreach ($vehiCatArr as $cat) {
@@ -1027,6 +1058,7 @@ switch ($mode) {
         $entryId = 1;
         foreach ($groups as $group) {
             $rates = [];
+            $rates[] = ft_rate_night_row($vehiCatArr, $group['nightCharges'] ?? []);
             foreach ($locArr as $loc) {
                 $rateRow = ['LOCATION' => $loc['id']];
                 foreach ($vehiCatArr as $cat) {
