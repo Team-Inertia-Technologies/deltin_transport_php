@@ -1157,6 +1157,16 @@ function fleetTripHitsSurcharge($fromTime, $toTime, $windowFrom, $windowTo)
 	return $clock >= $windowStart || $clock <= $windowEnd;
 }
 
+function fleetPointNightStart($fromTime)
+{
+	$start = strtotime((string)$fromTime);
+	if (!$start) {
+		return false;
+	}
+	$clock = fleetClockSeconds(date('H:i:s', $start));
+	return $clock >= fleetClockSeconds('19:00:00') || $clock < fleetClockSeconds('07:00:00');
+}
+
 function fleetAssignedVehicleCategory($booking)
 {
 	$vehicleId = intval($booking['iVehicleID'] ?? 0);
@@ -1631,14 +1641,43 @@ function fleetCalculateLocationRate($bookingId, $booking)
 	}
 	$amountSql = number_format($amount, 2, '.', '');
 	$facts = fleetCloseTripFacts($booking);
+	$nightAmount = 0.0;
+	if ($typeId > 0 && $catId > 0) {
+		$dateSql = db_input($tripDate);
+		$nightRes = sql_query("SELECT fRate FROM ft_ratechart_location_dat
+                               WHERE cStatus = 'A'
+                               AND iVenChartType = $typeId
+                               AND iRateChartLocID = 0
+                               AND iVCatID = $catId
+                               AND fRate IS NOT NULL
+                               AND (dEffectiveFrom IS NULL OR dEffectiveFrom = '0000-00-00' OR dEffectiveFrom <= '$dateSql')
+                               AND (dEffectiveTo IS NULL OR dEffectiveTo = '0000-00-00' OR dEffectiveTo >= '$dateSql')
+                               ORDER BY dEffectiveFrom DESC, iRCLDat_ID DESC
+                               LIMIT 1");
+		if ($nightRes && sql_num_rows($nightRes) > 0) {
+			$nightRow = sql_fetch_assoc($nightRes);
+			$nightAmount = (float)$nightRow['fRate'];
+		}
+	}
+	$appliedNight = 0.0;
+	if ($nightAmount > 0 && !empty($facts['fromTime']) && fleetPointNightStart($facts['fromTime'])) {
+		$appliedNight = $nightAmount;
+	}
+	$nightSql = number_format($appliedNight, 2, '.', '');
+	$totalSql = number_format((float)$amountSql + (float)$nightSql, 2, '.', '');
+	$lines = [[1, $amountSql]];
+	$existingNight = sql_query("SELECT iBkRateID FROM fleet_booking_rate
+                                WHERE iFleet_BookingID = $bookingId AND iRateKindID = 4
+                                LIMIT 1");
+	if ($appliedNight > 0 || ($existingNight && sql_num_rows($existingNight) > 0)) {
+		$lines[] = [4, $nightSql];
+	}
 	$nowSql = db_input(NOW);
 	return [
 		'save' => true,
 		'bookingId' => $bookingId,
-		'sets' => $facts['sql'] . ", fRate = $chartSql, fTotal = $amountSql, dtCaptured = '$nowSql'",
-		'lines' => [
-			[1, $amountSql]
-		],
+		'sets' => $facts['sql'] . ", fRate = $chartSql, fTotal = $totalSql, dtCaptured = '$nowSql'",
+		'lines' => $lines,
 		'rate' => [
 			'iRateKindID' => 1,
 			'iVenChartType' => $typeId,
@@ -1647,7 +1686,8 @@ function fleetCalculateLocationRate($bookingId, $booking)
 			'cReturnTrip' => $returnTrip ? 'Y' : 'N',
 			'chartRate' => (float)$chartSql,
 			'basicPay' => (float)$amountSql,
-			'total' => (float)$amountSql
+			'nightCharge' => (float)$nightSql,
+			'total' => (float)$totalSql
 		]
 	];
 }

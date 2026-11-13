@@ -1,6 +1,6 @@
 # Version 2.0 Dated 28 April 2025
 # Use the PHP-Apache from Ryel AWS ECR -
-FROM public.ecr.aws/x3p0u5t8/ryeldigital/php82:latest
+FROM public.ecr.aws/x3p0u5t8/ryeldigital/php83:beta
 
 # Update and install necessary packages
 #RUN apt-get update && apt-get upgrade -y && \

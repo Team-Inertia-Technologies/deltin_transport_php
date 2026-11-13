@@ -138,6 +138,179 @@ function ft_rate_catalog($chartSql) {
     return [$vehiCatArr, $locArr];
 }
 
+function ft_rate_group_key($fromRaw, $toRaw) {
+    $fromDate = ft_rate_date($fromRaw);
+    $toDate = ft_rate_date($toRaw);
+    return [($fromDate ?? '') . '|' . ($toDate ?? ''), $fromDate, $toDate];
+}
+
+function ft_rate_headers($chartSql) {
+    $chartSql = intval($chartSql);
+    $res = sql_query("SELECT iVCatID, fRate, dEffectiveFrom, dEffectiveTo
+                      FROM ft_ratechart_location_dat
+                      WHERE cStatus = 'A' AND iVenChartType = $chartSql AND iRateChartLocID = 0
+                      ORDER BY iRCLDat_ID");
+    $buckets = [];
+    while ($row = sql_fetch_assoc($res)) {
+        list($key, $fromDate, $toDate) = ft_rate_group_key($row['dEffectiveFrom'], $row['dEffectiveTo']);
+        if (!isset($buckets[$key])) {
+            $buckets[$key] = ['fromDate' => $fromDate, 'toDate' => $toDate, 'rows' => []];
+        }
+        $buckets[$key]['rows'][] = $row;
+    }
+
+    $headers = [];
+    foreach ($buckets as $key => $bucket) {
+        $night = [];
+        $blankCat = null;
+        $blankCount = 0;
+        foreach ($bucket['rows'] as $row) {
+            $catId = intval($row['iVCatID']);
+            if ($catId <= 0) {
+                continue;
+            }
+            $charge = $row['fRate'];
+            if ($charge !== null && $charge !== '') {
+                $night[$catId] = ft_rate_number($charge);
+            } else {
+                $blankCat = $catId;
+                $blankCount++;
+            }
+        }
+        $vehiCatId = null;
+        if ($blankCount > 0 && $night === []) {
+            $vehiCatId = $blankCat;
+        } elseif ($blankCount === 1) {
+            $vehiCatId = $blankCat;
+        } elseif (count($bucket['rows']) === 1) {
+            $vehiCatId = intval($bucket['rows'][0]['iVCatID']);
+        }
+        ksort($night);
+        $nightCharges = [];
+        foreach ($night as $catId => $amount) {
+            $nightCharges[] = ['vehiCatId' => $catId, 'nightCharge' => $amount];
+        }
+        $headers[$key] = [
+            'fromDate' => $bucket['fromDate'],
+            'toDate' => $bucket['toDate'],
+            'vehiCatId' => $vehiCatId,
+            'nightCharges' => $nightCharges
+        ];
+    }
+    return $headers;
+}
+
+function ft_rate_merge_headers(&$groups, $chartSql, $knownCats) {
+    foreach (ft_rate_headers($chartSql) as $groupKey => $header) {
+        $vehiCatId = $header['vehiCatId'];
+        if ($vehiCatId !== null && !isset($knownCats[$vehiCatId])) {
+            $vehiCatId = null;
+        }
+        if (!isset($groups[$groupKey])) {
+            $groups[$groupKey] = [
+                'fromDate' => $header['fromDate'],
+                'toDate' => $header['toDate'],
+                'vehiCatId' => $vehiCatId,
+                'nightCharges' => $header['nightCharges'],
+                'cells' => []
+            ];
+            continue;
+        }
+        $groups[$groupKey]['vehiCatId'] = $vehiCatId;
+        $groups[$groupKey]['nightCharges'] = $header['nightCharges'];
+    }
+}
+
+function ft_rate_parse_nights($catById) {
+    if (!array_key_exists('nightCharges', $_REQUEST) || $_REQUEST['nightCharges'] === null) {
+        return [];
+    }
+    $raw = $_REQUEST['nightCharges'];
+    if (!is_array($raw)) {
+        echo json_encode([
+            "error" => ["message" => "nightCharges must be a list"],
+            "statusCode" => 400
+        ]);
+        exit;
+    }
+    $nightCharges = [];
+    $seenCat = [];
+    foreach ($raw as $row) {
+        if (!is_array($row)) {
+            echo json_encode([
+                "error" => ["message" => "Each night charge must be an object"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+        $catId = intval($row['vehiCatId'] ?? 0);
+        if ($catId <= 0 || !isset($catById[$catId])) {
+            echo json_encode([
+                "error" => ["message" => "Night charge vehiCatId is invalid"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+        if (isset($seenCat[$catId])) {
+            echo json_encode([
+                "error" => ["message" => "Night charge for vehicle category $catId is repeated"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+        $seenCat[$catId] = true;
+        $value = $row['nightCharge'] ?? null;
+        if ($value === null || (is_string($value) && trim($value) === '')) {
+            $parsed = null;
+        } elseif (!is_numeric($value) || (float)$value < 0) {
+            echo json_encode([
+                "error" => ["message" => "Night charge for vehicle category $catId must be 0 or more"],
+                "statusCode" => 400
+            ]);
+            exit;
+        } else {
+            $parsed = ft_rate_number($value);
+        }
+        $nightCharges[] = ['catId' => $catId, 'charge' => $parsed];
+    }
+    return $nightCharges;
+}
+
+function ft_rate_save_nights($chartSql, $fromSql, $toSql, $nightCharges, $vehiCatId) {
+    foreach ($nightCharges as $night) {
+        $catId = intval($night['catId']);
+        $existing = sql_query("SELECT iRCLDat_ID FROM ft_ratechart_location_dat
+                               WHERE iVenChartType = $chartSql AND iRateChartLocID = 0 AND iVCatID = $catId
+                               AND dEffectiveFrom = '$fromSql' AND dEffectiveTo = '$toSql'
+                               ORDER BY (cStatus = 'A') DESC, iRCLDat_ID DESC LIMIT 1");
+        if ($night['charge'] === null) {
+            if (sql_num_rows($existing) > 0) {
+                $existingRow = sql_fetch_assoc($existing);
+                $datId = intval($existingRow['iRCLDat_ID']);
+                if (intval($vehiCatId) === $catId) {
+                    sql_query("UPDATE ft_ratechart_location_dat SET fRate = NULL, cStatus = 'A' WHERE iRCLDat_ID = $datId");
+                } else {
+                    sql_query("UPDATE ft_ratechart_location_dat SET cStatus = 'X', fRate = NULL WHERE iRCLDat_ID = $datId");
+                }
+            }
+            continue;
+        }
+        $chargeSql = $night['charge'];
+        if (sql_num_rows($existing) > 0) {
+            $existingRow = sql_fetch_assoc($existing);
+            $datId = intval($existingRow['iRCLDat_ID']);
+            sql_query("UPDATE ft_ratechart_location_dat
+                       SET fRate = $chargeSql, cStatus = 'A'
+                       WHERE iRCLDat_ID = $datId");
+            continue;
+        }
+        $datId = NextID('iRCLDat_ID', 'ft_ratechart_location_dat');
+        sql_query("INSERT INTO ft_ratechart_location_dat
+                      (iRCLDat_ID, iRateChartLocID, iVenChartType, iVCatID, fRate, dEffectiveFrom, dEffectiveTo, cStatus)
+                   VALUES ($datId, 0, $chartSql, $catId, $chargeSql, '$fromSql', '$toSql', 'A')");
+    }
+}
+
 switch ($mode) {
 
     // ===================== CASE: LIST =====================
@@ -241,11 +414,15 @@ switch ($mode) {
             $rates[] = $rateRow;
         }
 
+        $headerKey = ($fromDate ?? '') . '|' . ($toDate ?? '');
+        $headers = ft_rate_headers($chartSql);
+
         echo json_encode([
             "data" => [
                 "entryId" => $entry['entryId'],
                 "fromDate" => $fromDate,
                 "toDate" => $toDate,
+                "nightCharges" => $headers[$headerKey]['nightCharges'] ?? [],
                 "rates" => $rates
             ],
             "statusCode" => 200
@@ -312,8 +489,10 @@ switch ($mode) {
             $locIds[intval($row['iRateChartLocID'])] = true;
         }
 
+        $nightCharges = ft_rate_parse_nights($catById);
         $rates = $_REQUEST['rates'] ?? null;
-        if (!is_array($rates) || $rates === []) {
+        $hasRates = is_array($rates) && $rates !== [];
+        if (!$hasRates && $nightCharges === []) {
             echo json_encode([
                 "error" => ["message" => "rates are required"],
                 "statusCode" => 400
@@ -323,7 +502,7 @@ switch ($mode) {
 
         $writes = [];
         $seenLoc = [];
-        foreach ($rates as $rateRow) {
+        foreach (($hasRates ? $rates : []) as $rateRow) {
             if (!is_array($rateRow)) {
                 echo json_encode([
                     "error" => ["message" => "Each rate row must be an object"],
@@ -386,7 +565,7 @@ switch ($mode) {
                 break;
             }
         }
-        if (!$hasRate) {
+        if ($hasRates && !$hasRate) {
             echo json_encode([
                 "error" => ["message" => "At least one vehicle rate is required"],
                 "statusCode" => 400
@@ -396,19 +575,34 @@ switch ($mode) {
 
         $fromSql = db_input($fromDate);
         $toSql = db_input($toDate);
-        $overlapRes = sql_query("SELECT iRCLDat_ID FROM ft_ratechart_location_dat
-                                 WHERE cStatus = 'A' AND iVenChartType = $chartSql
-                                 AND dEffectiveFrom <= '$toSql'
-                                 AND (dEffectiveTo IS NULL OR dEffectiveTo = '0000-00-00' OR dEffectiveTo >= '$fromSql')
-                                 LIMIT 1");
-        if (sql_num_rows($overlapRes) > 0) {
+        $exactRes = sql_query("SELECT iRCLDat_ID FROM ft_ratechart_location_dat
+                               WHERE cStatus = 'A' AND iVenChartType = $chartSql
+                               AND dEffectiveFrom = '$fromSql' AND dEffectiveTo = '$toSql'
+                               LIMIT 1");
+        $exactEntry = sql_num_rows($exactRes) > 0;
+        if ($exactEntry && ($nightCharges === [] || $hasRates)) {
             echo json_encode([
                 "error" => ["message" => "Date range overlaps an existing rate chart entry"],
                 "statusCode" => 400
             ]);
             exit;
         }
+        if (!$exactEntry) {
+            $overlapRes = sql_query("SELECT iRCLDat_ID FROM ft_ratechart_location_dat
+                                     WHERE cStatus = 'A' AND iVenChartType = $chartSql
+                                     AND dEffectiveFrom <= '$toSql'
+                                     AND (dEffectiveTo IS NULL OR dEffectiveTo = '0000-00-00' OR dEffectiveTo >= '$fromSql')
+                                     LIMIT 1");
+            if (sql_num_rows($overlapRes) > 0) {
+                echo json_encode([
+                    "error" => ["message" => "Date range overlaps an existing rate chart entry"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+        }
 
+        if (!$exactEntry) {
         foreach ($writes as $write) {
             $locId = intval($write['locId']);
             $catId = intval($write['catId']);
@@ -438,9 +632,16 @@ switch ($mode) {
 
         if ($vehiCatId > 0) {
             $marker = sql_query("SELECT iRCLDat_ID FROM ft_ratechart_location_dat
-                                 WHERE iVenChartType = $chartSql AND iRateChartLocID = 0
+                                 WHERE iVenChartType = $chartSql AND iRateChartLocID = 0 AND iVCatID = $vehiCatId
                                  AND dEffectiveFrom = '$fromSql' AND dEffectiveTo = '$toSql'
                                  ORDER BY (cStatus = 'A') DESC, iRCLDat_ID DESC LIMIT 1");
+            if (sql_num_rows($marker) == 0) {
+                $marker = sql_query("SELECT iRCLDat_ID FROM ft_ratechart_location_dat
+                                     WHERE iVenChartType = $chartSql AND iRateChartLocID = 0
+                                     AND (fRate IS NULL)
+                                     AND dEffectiveFrom = '$fromSql' AND dEffectiveTo = '$toSql'
+                                     ORDER BY (cStatus = 'A') DESC, iRCLDat_ID DESC LIMIT 1");
+            }
             if (sql_num_rows($marker) > 0) {
                 $markerRow = sql_fetch_assoc($marker);
                 $datId = intval($markerRow['iRCLDat_ID']);
@@ -452,6 +653,9 @@ switch ($mode) {
                            VALUES ($datId, 0, $chartSql, $vehiCatId, NULL, '$fromSql', '$toSql', 'A')");
             }
         }
+        }
+
+        ft_rate_save_nights($chartSql, $fromSql, $toSql, $nightCharges, $vehiCatId);
 
         $newEntryId = 0;
         foreach (ft_rate_entries($chartSql) as $entry) {
@@ -463,7 +667,7 @@ switch ($mode) {
 
         echo json_encode([
             "data" => [
-                "message" => "Rate chart entry added successfully",
+                "message" => $exactEntry ? "Night charges saved" : "Rate chart entry added successfully",
                 "entryId" => $newEntryId
             ],
             "statusCode" => 200
@@ -530,6 +734,7 @@ switch ($mode) {
                     'fromDate' => $fromDate,
                     'toDate' => $toDate,
                     'vehiCatId' => null,
+                    'nightCharges' => [],
                     'cells' => []
                 ];
             }
@@ -555,24 +760,7 @@ switch ($mode) {
             }
         }
 
-        $markerRes = sql_query("SELECT iVCatID, dEffectiveFrom, dEffectiveTo FROM ft_ratechart_location_dat WHERE cStatus = 'A' AND iVenChartType = $chartSql AND iRateChartLocID = 0");
-        while ($row = sql_fetch_assoc($markerRes)) {
-            $fromDate = substr(trim((string)$row['dEffectiveFrom']), 0, 10);
-            $toRaw = trim((string)($row['dEffectiveTo'] ?? ''));
-            $toDate = ($toRaw === '' || substr($toRaw, 0, 10) === '0000-00-00') ? null : substr($toRaw, 0, 10);
-            $groupKey = $fromDate . '|' . ($toDate ?? '');
-            if (!isset($groups[$groupKey])) {
-                $groups[$groupKey] = [
-                    'fromDate' => $fromDate,
-                    'toDate' => $toDate,
-                    'vehiCatId' => isset($knownCats[intval($row['iVCatID'])]) ? intval($row['iVCatID']) : null,
-                    'cells' => []
-                ];
-            } else {
-                $markerCatId = intval($row['iVCatID']);
-                $groups[$groupKey]['vehiCatId'] = isset($knownCats[$markerCatId]) ? $markerCatId : null;
-            }
-        }
+        ft_rate_merge_headers($groups, $chartSql, $knownCats);
 
         ksort($groups);
         $entries = [];
@@ -591,6 +779,7 @@ switch ($mode) {
                 'fromDate' => $group['fromDate'],
                 'toDate' => $group['toDate'],
                 'vehiCatId' => $group['vehiCatId'],
+                'nightCharges' => $group['nightCharges'] ?? [],
                 'rates' => $rates
             ];
             $serial++;
@@ -805,6 +994,7 @@ switch ($mode) {
                     'fromDate' => $fromDate,
                     'toDate' => $toDate,
                     'vehiCatId' => null,
+                    'nightCharges' => [],
                     'cells' => []
                 ];
             }
@@ -830,24 +1020,7 @@ switch ($mode) {
             }
         }
 
-        $markerRes = sql_query("SELECT iVCatID, dEffectiveFrom, dEffectiveTo FROM ft_ratechart_location_dat WHERE cStatus = 'A' AND iVenChartType = $chartSql AND iRateChartLocID = 0");
-        while ($row = sql_fetch_assoc($markerRes)) {
-            $fromDate = substr(trim((string)$row['dEffectiveFrom']), 0, 10);
-            $toRaw = trim((string)($row['dEffectiveTo'] ?? ''));
-            $toDate = ($toRaw === '' || substr($toRaw, 0, 10) === '0000-00-00') ? null : substr($toRaw, 0, 10);
-            $groupKey = $fromDate . '|' . ($toDate ?? '');
-            if (!isset($groups[$groupKey])) {
-                $groups[$groupKey] = [
-                    'fromDate' => $fromDate,
-                    'toDate' => $toDate,
-                    'vehiCatId' => isset($knownCats[intval($row['iVCatID'])]) ? intval($row['iVCatID']) : null,
-                    'cells' => []
-                ];
-            } else {
-                $markerCatId = intval($row['iVCatID']);
-                $groups[$groupKey]['vehiCatId'] = isset($knownCats[$markerCatId]) ? $markerCatId : null;
-            }
-        }
+        ft_rate_merge_headers($groups, $chartSql, $knownCats);
 
         ksort($groups);
         $entries = [];
@@ -866,6 +1039,7 @@ switch ($mode) {
                 'fromDate' => $group['fromDate'],
                 'toDate' => $group['toDate'],
                 'vehiCatId' => $group['vehiCatId'],
+                'nightCharges' => $group['nightCharges'] ?? [],
                 'rates' => $rates
             ];
             $entryId++;
