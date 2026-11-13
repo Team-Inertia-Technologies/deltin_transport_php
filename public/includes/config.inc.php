@@ -1,12 +1,33 @@
 <?php
 if (empty($_ENV["DOCROOT"]))
 {
+	// Production php.ini uses variables_order=GPCS, so container env vars
+	// are visible to getenv() but not copied into $_ENV.
+	$processEnv = getenv();
+	if (is_array($processEnv))
+	{
+		foreach ($processEnv as $envKey => $envValue)
+		{
+			if (!isset($_ENV[$envKey]) || $_ENV[$envKey] === '')
+			{
+				$_ENV[$envKey] = $envValue;
+			}
+		}
+	}
+}
+
+if (empty($_ENV["DOCROOT"]))
+{
 	/**
 	 * Please Quotes(") around the values
 	 * Eg: APP_NAME="Site Name"
-	**/ 
-	$_ENV = parse_ini_file(realpath(dirname(__FILE__)."/../../credentials.env"));
-	$_ENV = !empty($_ENV)?$_ENV:array();
+	**/
+	$credentialsFile = dirname(__FILE__) . "/../../credentials.env";
+	if (is_file($credentialsFile))
+	{
+		$parsedEnv = parse_ini_file($credentialsFile);
+		$_ENV = !empty($parsedEnv) ? $parsedEnv : array();
+	}
 
 	if (!empty($_ENV["APP_URL"])) $_ENV["APP_URL"] = str_replace('localhost', $_SERVER['SERVER_NAME'], $_ENV["APP_URL"]);
 	if (!empty($_ENV["DOCROOT"])) $_ENV["DOCROOT"] = (realpath(dirname(__FILE__) . "/../") . "/");

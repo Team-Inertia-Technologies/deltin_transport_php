@@ -14,6 +14,7 @@
     
     # Configure PHP
     RUN echo "date.timezone = Asia/Kolkata" >> /usr/local/etc/php/php.ini && \
+        echo "variables_order = \"EGPCS\"" >> /usr/local/etc/php/php.ini && \
         echo "display_errors = off" >> /usr/local/etc/php/php.ini && \
         echo "log_errors = On" >> /usr/local/etc/php/php.ini && \
         echo "error_log = /var/log/php/error.log" >> /usr/local/etc/php/php.ini && \
