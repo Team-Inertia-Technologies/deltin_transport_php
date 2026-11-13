@@ -1287,6 +1287,7 @@ switch ($mode) {
             "tripTypeFilterOpt" => $tripTypeFilterOpt,
             "vehicleCategoryFilterOpt" => $vehicleCategoryFilterOpt,
             "locOpts" => $locOpts,
+            "rateChartLocations" => fleetRateChartLocations(),
             "stationVendorOpt" => $vendorStationOpts['stationVendorOpt'],
             "vendorOpt" => $vendorStationOpts['vendorOpt']
         ];
