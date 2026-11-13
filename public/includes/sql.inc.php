@@ -30,7 +30,7 @@ function sql_query($q, $err_code='ERR')
 	$r = mysqli_query($CON,$q) or die($err_str.mysqli_error($CON));
 
 	if(!empty($IS_LOG_SQL))
-		UpdateLog('sql.txt', TAB_SPACE.'affected row(s): '.mysql_affected_rows().', error(s): '.TAB_SPACE.mysqli_error($CON).NEWLINE);
+		UpdateLog('sql.txt', TAB_SPACE.'affected row(s): '.mysqli_affected_rows($CON).', error(s): '.TAB_SPACE.mysqli_error($CON).NEWLINE);
 	else
 	{
 		$q = strtolower(trim($q));

@@ -60,16 +60,17 @@ function IsUniqueEntry($id_fld, $id_val, $txt_fld, $txt_val, $tbl)
 
 function SetMinRank($tb1,$cond="")
 {
+	global $CON;
 	$cond = (strtoupper(trim($cond)) != "")? " where " . $cond: "";	
 	$min = GetXFromYID("select min(iRank) from $tb1 $cond");
 	
 	if($min == 0)
 	{
-		mysql_query("update $tb1 set iRank=iRank+2 $cond")or die("<strong>ERROR CODE :</strong> COM-68");
+		mysqli_query($CON, "update $tb1 set iRank=iRank+2 $cond") or die("<strong>ERROR CODE :</strong> COM-68");
 	}
 	else
 	{
-		mysql_query("update $tb1 set iRank=iRank+1 $cond")or die("<strong>ERROR CODE :</strong> COM-72");
+		mysqli_query($CON, "update $tb1 set iRank=iRank+1 $cond") or die("<strong>ERROR CODE :</strong> COM-72");
 	}
 	
 	return 1;

@@ -1,7 +1,7 @@
 <?php
 function GetConnected()
 {
-	$CON = mysqli_connect(DB_HOST, DB_USERNAME, DB_PASSWORD) or die(mysqli_error() . "<strong>ERROR CODE : </strong> COM - 66");
+	$CON = mysqli_connect(DB_HOST, DB_USERNAME, DB_PASSWORD) or die(mysqli_connect_error() . "<strong>ERROR CODE : </strong> COM - 66");
 	mysqli_select_db($CON, DB_NAME) or die("<strong>ERROR CODE : </strong> NEW_COM - 67");
 
 	return $CON;
@@ -1363,7 +1363,7 @@ function CheckSqlTables(&$msg, $fast = true, $return_text = true)
 		}
 
 		# Seek to last row
-		mysql_data_seek($r1, sql_num_rows($r1) - 1);
+		mysqli_data_seek($r1, sql_num_rows($r1) - 1);
 		$a = sql_fetch_assoc($r1);
 
 		$chk_str = '&nbsp;';

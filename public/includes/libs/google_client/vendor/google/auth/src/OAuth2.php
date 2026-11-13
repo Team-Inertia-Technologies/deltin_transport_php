@@ -586,7 +586,7 @@ class OAuth2 implements FetchAuthTokenInterface
      *        the token endpoint request.
      * @return RequestInterface the authorization Url.
      */
-    public function generateCredentialsRequest(callable $httpHandler = null, $headers = [])
+    public function generateCredentialsRequest(?callable $httpHandler = null, $headers = [])
     {
         $uri = $this->getTokenCredentialUri();
         if (is_null($uri)) {
@@ -666,7 +666,7 @@ class OAuth2 implements FetchAuthTokenInterface
      *        endpoint request.
      * @return array<mixed> the response
      */
-    public function fetchAuthToken(callable $httpHandler = null, $headers = [])
+    public function fetchAuthToken(?callable $httpHandler = null, $headers = [])
     {
         if (is_null($httpHandler)) {
             $httpHandler = HttpHandlerFactory::build(HttpClientCache::getHttpClient());
@@ -1687,7 +1687,7 @@ class OAuth2 implements FetchAuthTokenInterface
      * @return string
      * @access private
      */
-    public function getClientName(callable $httpHandler = null)
+    public function getClientName(?callable $httpHandler = null)
     {
         return $this->getClientId();
     }

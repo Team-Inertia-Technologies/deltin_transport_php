@@ -93,7 +93,7 @@ class ExecutableSource implements ExternalAccountCredentialSourceInterface
     public function __construct(
         string $command,
         ?string $outputFile,
-        ExecutableHandler $executableHandler = null,
+        ?ExecutableHandler $executableHandler = null,
     ) {
         $this->command = $command;
         $this->outputFile = $outputFile;
@@ -118,7 +118,7 @@ class ExecutableSource implements ExternalAccountCredentialSourceInterface
      * @throws RuntimeException if the executable is not allowed to run.
      * @throws ExecutableResponseError if the executable response is invalid.
      */
-    public function fetchSubjectToken(callable $httpHandler = null): string
+    public function fetchSubjectToken(?callable $httpHandler = null): string
     {
         // Check if the executable is allowed to run.
         if (getenv(self::GOOGLE_EXTERNAL_ACCOUNT_ALLOW_EXECUTABLES) !== '1') {

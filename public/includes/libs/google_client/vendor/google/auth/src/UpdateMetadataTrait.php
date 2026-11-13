@@ -50,7 +50,7 @@ trait UpdateMetadataTrait
     public function updateMetadata(
         $metadata,
         $authUri = null,
-        callable $httpHandler = null
+        ?callable $httpHandler = null
     ) {
         $metadata_copy = $metadata;
 
