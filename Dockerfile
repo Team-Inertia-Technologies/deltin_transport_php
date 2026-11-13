@@ -1,27 +1,32 @@
 # Version 2.0 Dated 28 April 2025
-# Use the PHP-Apache from Ryel AWS ECR -
-FROM public.ecr.aws/x3p0u5t8/ryeldigital/php84:beta
+# Official PHP 8.4 Apache. The Ryel php84 ECR tag does not exist.
+FROM php:8.4-apache
 
-# Update and install necessary packages
-#RUN apt-get update && apt-get upgrade -y && \
-#    apt-get install -y zip libzip-dev && \
-#    ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        tzdata \
+        libfreetype6-dev \
+        libjpeg62-turbo-dev \
+        libpng-dev \
+        libwebp-dev \
+        libzip-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-install -j"$(nproc)" gd mysqli zip bcmath \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
-
-# Set timezone
 RUN ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
 
 # Configure PHP
-RUN echo "date.timezone = Asia/Kolkata" >> /usr/local/etc/php/php.ini && \
-    echo "display_errors = off" >> /usr/local/etc/php/php.ini && \
-    echo "log_errors = On" >> /usr/local/etc/php/php.ini && \
-    echo "error_log = /var/log/php/error.log" >> /usr/local/etc/php/php.ini && \
-    echo "memory_limit = 512M" >> /usr/local/etc/php/php.ini && \
-    echo "max_execution_time = 300" >> /usr/local/etc/php/php.ini && \
-    echo "max_input_vars = 10000" >> /usr/local/etc/php/php.ini && \
-    echo "post_max_size = 128M" >> /usr/local/etc/php/php.ini && \
-    echo "upload_max_filesize = 128M" >> /usr/local/etc/php/php.ini
+RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" && \
+    echo "date.timezone = Asia/Kolkata" >> "$PHP_INI_DIR/php.ini" && \
+    echo "display_errors = off" >> "$PHP_INI_DIR/php.ini" && \
+    echo "log_errors = On" >> "$PHP_INI_DIR/php.ini" && \
+    echo "error_log = /var/log/php/error.log" >> "$PHP_INI_DIR/php.ini" && \
+    echo "memory_limit = 512M" >> "$PHP_INI_DIR/php.ini" && \
+    echo "max_execution_time = 300" >> "$PHP_INI_DIR/php.ini" && \
+    echo "max_input_vars = 10000" >> "$PHP_INI_DIR/php.ini" && \
+    echo "post_max_size = 128M" >> "$PHP_INI_DIR/php.ini" && \
+    echo "upload_max_filesize = 128M" >> "$PHP_INI_DIR/php.ini"
 
 # Set up logging directory
 RUN mkdir -p /var/log/php && \
@@ -57,4 +62,3 @@ EXPOSE 80
 
 # Run Apache in the foreground
 CMD ["apache2-foreground"]
-
