@@ -704,7 +704,8 @@ switch ($mode) {
                 fb.iFStaffID,
                 fb.iGuestID,
                 fb.cType as tripStatus,
-                fb.cStatus as bookingStatus
+                fb.cStatus as bookingStatus,
+                fb.cDisposal
             FROM fleet_booking fb
             WHERE $whereClause
             ORDER BY 
@@ -788,10 +789,13 @@ switch ($mode) {
             $startTime = !empty($startRaw) ? date('d-m-Y H:i', strtotime($startRaw)) : '';
             $endTime = !empty($endRaw) ? date('d-m-Y H:i', strtotime($endRaw)) : '';
 
-            if ($tripStatusCode == 'G' || $tripStatusCode == 'P' || $tripStatusCode == 'R' || $tripStatusCode == 'C' || $tripStatusCode == 'S') {
-                $isTrip = 'Y';
+            $disposalFlag = strtoupper(trim((string)($row['cDisposal'] ?? 'N')));
+            $isDisposal = in_array($disposalFlag, ['Y', '1', 'YES', 'TRUE'], true);
+            $hasStarted = in_array($tripStatusCode, ['S', 'G', 'P', 'R', 'C'], true);
+            if ($isDisposal) {
+                $isTrip = ($tripStatusCode === 'C') ? 'T' : 'D';
             } else {
-                $isTrip = 'N';
+                $isTrip = $hasStarted ? 'T' : 'R';
             }
 
             $tripType = 'Unassigned';
