@@ -926,8 +926,8 @@ function fleetChartLocationValues($source, $cDisposal, $keepExisting = null)
 		return ['ok' => true, 'chartType' => 0, 'locId' => 0];
 	}
 
-	$hasChart = array_key_exists('iVenChartType', $source) || array_key_exists('chartType', $source);
-	$hasLoc = array_key_exists('iRateChartLocID', $source) || array_key_exists('rateChartLocID', $source);
+	$hasChart = array_key_exists('chartType', $source) || array_key_exists('iVenChartType', $source);
+	$hasLoc = array_key_exists('rateChartLocID', $source) || array_key_exists('iRateChartLocID', $source);
 	if (!$hasChart && !$hasLoc && is_array($keepExisting)) {
 		return [
 			'ok' => true,
@@ -936,15 +936,15 @@ function fleetChartLocationValues($source, $cDisposal, $keepExisting = null)
 		];
 	}
 
-	$chartType = intval($source['iVenChartType'] ?? ($source['chartType'] ?? 0));
-	$locId = intval($source['iRateChartLocID'] ?? ($source['rateChartLocID'] ?? 0));
+	$chartType = intval($source['chartType'] ?? ($source['iVenChartType'] ?? 0));
+	$locId = intval($source['rateChartLocID'] ?? ($source['iRateChartLocID'] ?? 0));
 	if ($chartType <= 0 && $locId <= 0) {
 		return ['ok' => true, 'chartType' => 0, 'locId' => 0];
 	}
 	if ($chartType <= 0 || $locId <= 0) {
 		return [
 			'ok' => false,
-			'message' => 'iVenChartType and iRateChartLocID are required',
+			'message' => 'chartType and rateChartLocID are required',
 			'statusCode' => 400
 		];
 	}

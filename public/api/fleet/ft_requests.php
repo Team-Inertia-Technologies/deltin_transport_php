@@ -201,13 +201,13 @@ function fleetRateChartLocations()
         $typeId = intval($loc['iVenChartType']);
         if (!isset($rateChartLocations[$typeId])) {
             $rateChartLocations[$typeId] = [
-                'iVenChartType' => $typeId,
+                'chartType' => $typeId,
                 'typeName' => db_output2($loc['typeName'] ?? ''),
                 'locations' => []
             ];
         }
         $rateChartLocations[$typeId]['locations'][] = [
-            'iRateChartLocID' => intval($loc['iRateChartLocID']),
+            'rateChartLocID' => intval($loc['iRateChartLocID']),
             'vLocationName' => db_output2($loc['locName'] ?? '')
         ];
     }
@@ -391,7 +391,9 @@ function addFleetBookingItem($item, $user_id, &$guestIdByMobile)
 
     return [
         'ok' => true,
-        'bookingId' => $iFleet_BookingID1
+        'bookingId' => $iFleet_BookingID1,
+        'chartType' => $iVenChartType,
+        'rateChartLocID' => $iRateChartLocID
     ];
 }
 
@@ -926,13 +928,17 @@ switch ($mode) {
     case 'ADD_BOOKING':
         $bookingItems = getAddBookingItems($request);
         $guestIdByMobile = [];
-        $createdBookingIds = [];
+        $createdBookings = [];
         $errors = [];
 
         foreach ($bookingItems as $idx => $bookingItem) {
             $result = addFleetBookingItem($bookingItem, $user_id, $guestIdByMobile);
             if (!empty($result['ok'])) {
-                $createdBookingIds[] = intval($result['bookingId']);
+                $createdBookings[] = [
+                    'bookingId' => intval($result['bookingId']),
+                    'chartType' => intval($result['chartType'] ?? 0),
+                    'rateChartLocID' => intval($result['rateChartLocID'] ?? 0)
+                ];
             } else {
                 $errors[] = [
                     'index' => intval($idx),
@@ -942,7 +948,7 @@ switch ($mode) {
             }
         }
 
-        if (empty($createdBookingIds)) {
+        if (empty($createdBookings)) {
             $firstError = $errors[0]['message'] ?? 'Failed to add booking';
             $statusCode = intval($errors[0]['statusCode'] ?? 0);
             if ($statusCode <= 0) {
@@ -958,12 +964,16 @@ switch ($mode) {
             exit;
         }
 
-        $count = count($createdBookingIds);
+        $count = count($createdBookings);
+        $createdBookingIds = array_column($createdBookings, 'bookingId');
         echo json_encode([
             "data" => [
                 "message" => $count > 1 ? "Bookings added successfully" : "Booking added successfully",
-                "bookingId" => $createdBookingIds[0],
-                "bookingIds" => $createdBookingIds
+                "bookingId" => $createdBookings[0]['bookingId'],
+                "bookingIds" => $createdBookingIds,
+                "chartType" => $createdBookings[0]['chartType'],
+                "rateChartLocID" => $createdBookings[0]['rateChartLocID'],
+                "bookings" => $createdBookings
             ],
             "statusCode" => 200
         ]);
@@ -1120,8 +1130,8 @@ switch ($mode) {
             "disposal" => $booking['cDisposal'] ?? 'N',
             "vendorID" => intval($booking['iVendorID'] ?? 0),
             "stationID" => intval($booking['iFleet_StationID'] ?? 0),
-            "iVenChartType" => intval($booking['iVenChartType'] ?? 0),
-            "iRateChartLocID" => intval($booking['iRateChartLocID'] ?? 0),
+            "chartType" => intval($booking['iVenChartType'] ?? 0),
+            "rateChartLocID" => intval($booking['iRateChartLocID'] ?? 0),
             "fromTime" => fleetTripDateTime($booking['dtFromTime'] ?? ''),
             "toTime" => fleetTripDateTime($booking['dtToTime'] ?? ''),
             "startKm" => intval($booking['iStartKm'] ?? 0),
@@ -1541,7 +1551,9 @@ switch ($mode) {
         echo json_encode([
             "data" => [
                 "message" => "Booking updated successfully",
-                "bookingId" => $iFleet_BookingID
+                "bookingId" => $iFleet_BookingID,
+                "chartType" => $iVenChartType,
+                "rateChartLocID" => $iRateChartLocID
             ],
             "statusCode" => 200
         ]);
@@ -1808,8 +1820,8 @@ switch ($mode) {
             'bookingStatus' => isset($booking['bookingStatus']) ? $booking['bookingStatus'] : 'C',
             'canCancel' => $canCancel,
             'rateID' => intval($booking['iFleet_RateID']),
-            'iVenChartType' => intval($booking['iVenChartType'] ?? 0),
-            'iRateChartLocID' => intval($booking['iRateChartLocID'] ?? 0),
+            'chartType' => intval($booking['iVenChartType'] ?? 0),
+            'rateChartLocID' => intval($booking['iRateChartLocID'] ?? 0),
             'fromTime' => fleetTripDateTime($booking['dtFromTime'] ?? ''),
             'toTime' => fleetTripDateTime($booking['dtToTime'] ?? ''),
             'startKm' => intval($booking['iStartKm'] ?? 0),
@@ -3491,8 +3503,8 @@ switch ($mode) {
 
     case 'SAVE_CHART_LOCATION':
         $iFleet_BookingID = intval($_REQUEST['bookingId'] ?? 0);
-        $chartType = intval($_REQUEST['iVenChartType'] ?? ($_REQUEST['chartType'] ?? 0));
-        $locId = intval($_REQUEST['iRateChartLocID'] ?? ($_REQUEST['rateChartLocID'] ?? 0));
+        $chartType = intval($_REQUEST['chartType'] ?? ($_REQUEST['iVenChartType'] ?? 0));
+        $locId = intval($_REQUEST['rateChartLocID'] ?? ($_REQUEST['iRateChartLocID'] ?? 0));
 
         if ($iFleet_BookingID <= 0) {
             echo json_encode([
@@ -3503,7 +3515,7 @@ switch ($mode) {
         }
         if ($chartType <= 0 || $locId <= 0) {
             echo json_encode([
-                "error" => ["message" => "iVenChartType and iRateChartLocID are required"],
+                "error" => ["message" => "chartType and rateChartLocID are required"],
                 "statusCode" => 400
             ]);
             exit;
@@ -3569,8 +3581,8 @@ switch ($mode) {
             "data" => [
                 "message" => "Chart type and location saved",
                 "iFleet_BookingID" => $iFleet_BookingID,
-                "iVenChartType" => $chartType,
-                "iRateChartLocID" => $locId,
+                "chartType" => $chartType,
+                "rateChartLocID" => $locId,
                 "returnTrip" => $cReturnTrip
             ],
             "statusCode" => 200
