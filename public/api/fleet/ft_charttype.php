@@ -106,6 +106,35 @@ switch ($mode) {
         charttype_fail("mode must be VIEW, EDIT, ADD, or UPDATE", 400);
 }
 
+function charttype_parking_number($value) {
+    if ($value === null || $value === '') {
+        return 0;
+    }
+    $rateNum = (float)$value;
+    return (abs($rateNum - round($rateNum)) < 0.00001) ? (int)round($rateNum) : $rateNum;
+}
+
+function charttype_parking_input($row) {
+    $value = null;
+    if (array_key_exists('parkingRate', $row)) {
+        $value = $row['parkingRate'];
+    } elseif (array_key_exists('fParkingRate', $row)) {
+        $value = $row['fParkingRate'];
+    }
+    if ($value === null || (is_string($value) && trim($value) === '')) {
+        return 0;
+    }
+    if (!is_numeric($value) || (float)$value < 0) {
+        charttype_fail("Location parking rate must be 0 or more", 400);
+    }
+    return (float)$value;
+}
+
+function charttype_parking_sql($value) {
+    $formatted = rtrim(rtrim(number_format((float)$value, 4, '.', ''), '0'), '.');
+    return $formatted === '' ? '0' : $formatted;
+}
+
 function charttype_fail($message, $code) {
     echo json_encode([
         "error" => ["message" => $message],
@@ -127,7 +156,7 @@ function charttype_row($row) {
 function charttype_locations($typeId) {
     $typeId = intval($typeId);
     $locations = [];
-    $res = sql_query("SELECT iRateChartLocID, vName, cStatus
+    $res = sql_query("SELECT iRateChartLocID, vName, fParkingRate, cStatus
                       FROM ft_ratechart_location
                       WHERE iVenChartType = $typeId AND cStatus IN ('A', 'I')
                       ORDER BY vName");
@@ -135,6 +164,7 @@ function charttype_locations($typeId) {
         $locations[] = [
             'locationId' => intval($row['iRateChartLocID']),
             'name' => db_output2($row['vName']),
+            'parkingRate' => charttype_parking_number($row['fParkingRate']),
             'status' => $row['cStatus']
         ];
     }
@@ -217,6 +247,7 @@ function charttype_input($typeId) {
         $locations[] = [
             'locationId' => $locationId,
             'name' => $locName,
+            'parkingRate' => charttype_parking_input($row),
             'status' => $locStatus
         ];
     }
@@ -234,16 +265,17 @@ function charttype_save_locations($typeId, $locations) {
     foreach ($locations as $row) {
         $nameSql = db_input($row['name']);
         $statusSql = db_input($row['status']);
+        $parkingSql = charttype_parking_sql($row['parkingRate']);
         $locationId = intval($row['locationId']);
         if ($locationId > 0) {
             sql_query("UPDATE ft_ratechart_location
-                       SET vName = '$nameSql', iRank = 1, cStatus = '$statusSql'
+                       SET vName = '$nameSql', fParkingRate = $parkingSql, iRank = 1, cStatus = '$statusSql'
                        WHERE iRateChartLocID = $locationId AND iVenChartType = $typeId");
         } else {
             $locationId = NextID('iRateChartLocID', 'ft_ratechart_location');
             sql_query("INSERT INTO ft_ratechart_location
-                          (iRateChartLocID, vName, iVenChartType, iRank, cStatus)
-                       VALUES ($locationId, '$nameSql', $typeId, 1, '$statusSql')");
+                          (iRateChartLocID, vName, iVenChartType, fParkingRate, iRank, cStatus)
+                       VALUES ($locationId, '$nameSql', $typeId, $parkingSql, 1, '$statusSql')");
         }
         $kept[] = $locationId;
     }

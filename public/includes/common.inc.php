@@ -1666,13 +1666,19 @@ function fleetCalculateLocationRate($bookingId, $booking)
 		$appliedNight = $nightAmount;
 	}
 	$nightSql = number_format($appliedNight, 2, '.', '');
-	$totalSql = number_format((float)$amountSql + (float)$nightSql, 2, '.', '');
+	$parkingAmount = fleetLocationParkingAmount($booking);
+	$parkingSql = number_format($parkingAmount, 2, '.', '');
+	$totalSql = number_format((float)$amountSql + (float)$nightSql + (float)$parkingSql, 2, '.', '');
 	$lines = [[1, $amountSql]];
 	$existingNight = sql_query("SELECT iBkRateID FROM fleet_booking_rate
                                 WHERE iFleet_BookingID = $bookingId AND iRateKindID = 4
                                 LIMIT 1");
 	if ($appliedNight > 0 || ($existingNight && sql_num_rows($existingNight) > 0)) {
 		$lines[] = [4, $nightSql];
+	}
+	$parkingLine = fleetParkingRateLine($bookingId, $parkingAmount);
+	if ($parkingLine !== null) {
+		$lines[] = $parkingLine;
 	}
 	$nowSql = db_input(NOW);
 	return [
@@ -1689,9 +1695,46 @@ function fleetCalculateLocationRate($bookingId, $booking)
 			'chartRate' => (float)$chartSql,
 			'basicPay' => (float)$amountSql,
 			'nightCharge' => (float)$nightSql,
+			'parkingCharge' => (float)$parkingSql,
 			'total' => (float)$totalSql
 		]
 	];
+}
+
+function fleetLocationParkingAmount($booking)
+{
+	$locId = intval($booking['iRateChartLocID'] ?? 0);
+	$typeId = intval($booking['iVenChartType'] ?? 0);
+	if ($locId <= 0) {
+		return 0.0;
+	}
+	$typeSql = $typeId > 0 ? " AND iVenChartType = $typeId" : "";
+	$res = sql_query("SELECT fParkingRate FROM ft_ratechart_location
+                      WHERE iRateChartLocID = $locId
+                      $typeSql
+                      LIMIT 1");
+	if (!$res || sql_num_rows($res) == 0) {
+		return 0.0;
+	}
+	$row = sql_fetch_assoc($res);
+	if ($row['fParkingRate'] === null || $row['fParkingRate'] === '') {
+		return 0.0;
+	}
+	$amount = (float)$row['fParkingRate'];
+	return $amount > 0 ? $amount : 0.0;
+}
+
+function fleetParkingRateLine($bookingId, $parkingAmount)
+{
+	$bookingId = intval($bookingId);
+	$parkingSql = number_format((float)$parkingAmount, 2, '.', '');
+	$existing = sql_query("SELECT iBkRateID FROM fleet_booking_rate
+                           WHERE iFleet_BookingID = $bookingId AND iRateKindID = 5
+                           LIMIT 1");
+	if ((float)$parkingAmount > 0 || ($existing && sql_num_rows($existing) > 0)) {
+		return [5, $parkingSql];
+	}
+	return null;
 }
 
 function fleetApplyDisposalReading($bookingId, $source)
