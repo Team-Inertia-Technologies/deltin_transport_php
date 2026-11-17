@@ -151,8 +151,9 @@ switch ($mode) {
             fb.vBookingCode,
             fb.iBookedBy,
             fb.vBookedBy,
-             fb.iOriginal_Kms as calculatedKms,
+            fb.iOriginal_Kms as calculatedKms,
             fb.iActual_Kms as ratechartKms,
+            fb.cRateFinalised,
             ven.vName AS vendorName,
             dr.vName AS driverName,
             dr.vMobileNum AS driverMobile,
@@ -255,7 +256,8 @@ switch ($mode) {
                 'bookingCategory' => db_output2($row['bookingCategoryName'] ?? ''),
                 'travelTypeName' => $row['travelTypeName'],
                 "calculatedKms" =>$row['calculatedKms'],
-                "ratechartKms" => $row['ratechartKms']
+                "ratechartKms" => $row['ratechartKms'],
+                "rateFinalised" => (strtoupper(trim((string)($row['cRateFinalised'] ?? 'N'))) === 'Y') ? 'Y' : 'N'
 
             ];
         }
@@ -269,6 +271,134 @@ switch ($mode) {
         ]);
         break;
 
+    case 'RATE_DETAILS':
+        $bookingIds = trip_report_booking_ids();
+        if ($bookingIds === []) {
+            echo json_encode([
+                "error" => ["message" => "bookingIds are required"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $trips = [];
+        $failed = [];
+        foreach ($bookingIds as $bookingId) {
+            $booking = trip_report_booking($bookingId, $user_id);
+            if ($booking === null) {
+                $failed[] = ["id" => $bookingId, "message" => "Booking not found"];
+                continue;
+            }
+            $trips[] = trip_report_rate_payload($booking);
+        }
+
+        echo json_encode([
+            "data" => [
+                "trips" => $trips,
+                "failed" => $failed
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
+    case 'SAVE_RATES':
+        $rawTrips = $_REQUEST['trips'] ?? null;
+        if (!is_array($rawTrips)) {
+            $oneId = intval($_REQUEST['bookingId'] ?? ($_REQUEST['id'] ?? 0));
+            $rawTrips = $oneId > 0 ? [[
+                'bookingId' => $oneId,
+                'lines' => $_REQUEST['lines'] ?? [],
+                'rateFinalised' => $_REQUEST['rateFinalised'] ?? null
+            ]] : null;
+        }
+        if (!is_array($rawTrips) || $rawTrips === []) {
+            echo json_encode([
+                "error" => ["message" => "trips are required"],
+                "statusCode" => 400
+            ]);
+            exit;
+        }
+
+        $trips = [];
+        $failed = [];
+        foreach ($rawTrips as $rawTrip) {
+            if (!is_array($rawTrip)) {
+                $failed[] = ["id" => 0, "message" => "Each trip must be an object"];
+                continue;
+            }
+            $bookingId = intval($rawTrip['bookingId'] ?? ($rawTrip['id'] ?? 0));
+            $booking = trip_report_booking($bookingId, $user_id);
+            if ($booking === null) {
+                $failed[] = ["id" => $bookingId, "message" => "Booking not found"];
+                continue;
+            }
+
+            $rawLines = $rawTrip['lines'] ?? [];
+            if (!is_array($rawLines)) {
+                $failed[] = ["id" => $bookingId, "message" => "lines must be a list"];
+                continue;
+            }
+
+            $rateFinalised = null;
+            if (array_key_exists('rateFinalised', $rawTrip) && $rawTrip['rateFinalised'] !== null && $rawTrip['rateFinalised'] !== '') {
+                $rateFinalised = strtoupper(trim((string)$rawTrip['rateFinalised']));
+                if ($rateFinalised !== 'Y' && $rateFinalised !== 'N') {
+                    $failed[] = ["id" => $bookingId, "message" => "rateFinalised must be Y or N"];
+                    continue;
+                }
+            }
+
+            sql_query("START TRANSACTION");
+            $lineError = '';
+            $changed = false;
+            foreach ($rawLines as $rawLine) {
+                if (!is_array($rawLine)) {
+                    $lineError = "Each rate line must be an object";
+                    break;
+                }
+                $kindId = intval($rawLine['rateKindId'] ?? ($rawLine['iRateKindID'] ?? 0));
+                $amount = $rawLine['amount'] ?? ($rawLine['fAmount'] ?? null);
+                $revised = fleetReviseBookingRate($bookingId, $kindId, $amount, $user_id);
+                if (!empty($revised['error'])) {
+                    $lineError = $revised['error'];
+                    break;
+                }
+                if (!empty($revised['changed'])) {
+                    $changed = true;
+                }
+            }
+            if ($lineError !== '') {
+                sql_query("ROLLBACK");
+                $failed[] = ["id" => $bookingId, "message" => $lineError];
+                continue;
+            }
+
+            if ($changed) {
+                fleetSyncBookingRateTotal($bookingId);
+            }
+            if ($rateFinalised === null && $changed) {
+                $rateFinalised = 'Y';
+            }
+            if ($rateFinalised !== null) {
+                sql_query("UPDATE fleet_booking SET cRateFinalised = '$rateFinalised' WHERE iFleet_BookingID = $bookingId");
+                $booking['cRateFinalised'] = $rateFinalised;
+            }
+            sql_query("COMMIT");
+
+            $saved = trip_report_booking($bookingId, $user_id);
+            $trips[] = trip_report_rate_payload($saved ?: $booking);
+        }
+
+        echo json_encode([
+            "data" => [
+                "message" => "Rates saved",
+                "trips" => $trips,
+                "failed" => $failed
+            ],
+            "statusCode" => 200
+        ]);
+        break;
+
     // ===================== DEFAULT =====================
     default:
         echo json_encode([
@@ -278,4 +408,70 @@ switch ($mode) {
             "statusCode" => 400
         ]);
         break;
+}
+
+function trip_report_booking_ids()
+{
+    $raw = $_REQUEST['bookingIds'] ?? ($_REQUEST['ids'] ?? ($_REQUEST['bookingId'] ?? []));
+    if (!is_array($raw)) {
+        $raw = [$raw];
+    }
+    $ids = [];
+    foreach ($raw as $id) {
+        $id = intval($id);
+        if ($id > 0 && !in_array($id, $ids, true)) {
+            $ids[] = $id;
+        }
+    }
+    return $ids;
+}
+
+function trip_report_booking($bookingId, $userId)
+{
+    $bookingId = intval($bookingId);
+    $userId = intval($userId);
+    if ($bookingId <= 0) {
+        return null;
+    }
+    $res = sql_query("SELECT iFleet_BookingID, vBookingCode, vName, iVendorID, iFleet_StationID, cRateFinalised
+                      FROM fleet_booking
+                      WHERE iFleet_BookingID = $bookingId AND cStatus NOT IN ('X', 'C') AND cType = 'C'
+                      LIMIT 1");
+    if (!$res || sql_num_rows($res) == 0) {
+        return null;
+    }
+    $booking = sql_fetch_assoc($res);
+    $vendorId = getVendorIDForUser($userId);
+    if ($vendorId > 0) {
+        if (intval($booking['iVendorID']) !== $vendorId) {
+            return null;
+        }
+        $stations = getVendorUserStations($userId);
+        if (!empty($stations) && !in_array(intval($booking['iFleet_StationID']), array_map('intval', $stations), true)) {
+            return null;
+        }
+    }
+    return $booking;
+}
+
+function trip_report_rate_payload($booking)
+{
+    $bookingId = intval($booking['iFleet_BookingID']);
+    $active = fleetActiveBookingRates($bookingId);
+    $lines = [];
+    foreach ($active['lines'] as $line) {
+        $lines[] = [
+            'rateKindId' => intval($line['iRateKindID']),
+            'kindName' => $line['kindName'],
+            'amount' => (float)$line['fAmount']
+        ];
+    }
+    return [
+        'bookingId' => $bookingId,
+        'bookingCode' => (!empty($booking['vBookingCode'])) ? db_output2($booking['vBookingCode']) : 'N/A',
+        'fullName' => db_output2($booking['vName'] ?? ''),
+        'rateFinalised' => (strtoupper(trim((string)($booking['cRateFinalised'] ?? 'N'))) === 'Y') ? 'Y' : 'N',
+        'lines' => $lines,
+        'total' => $active['total']
+    ];
 }

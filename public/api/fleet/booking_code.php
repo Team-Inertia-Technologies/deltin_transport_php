@@ -164,7 +164,7 @@ switch ($mode) {
         $result = sql_query($query, 'TRIP.COMPLETE');
 
         if (sql_affected_rows() > 0 || $alreadyComplete) {
-            $rate = fleetApplyPreparedRate($prepared);
+            $rate = fleetApplyPreparedRate($prepared, $user_id);
             $data = [
                 "message" => "Trip completed successfully.",
                 "rate" => $rate
@@ -289,7 +289,7 @@ switch ($mode) {
             $alreadyComplete = strtoupper(trim((string)($booking['cType'] ?? ''))) === 'C';
             if (sql_affected_rows() > 0 || $alreadyComplete) {
                 $success[] = $booking_id;
-                $rates[$booking_id] = fleetApplyPreparedRate($prepared);
+                $rates[$booking_id] = fleetApplyPreparedRate($prepared, $user_id);
             } else {
                 $failed[] = [
                     "id" => $booking_id,
