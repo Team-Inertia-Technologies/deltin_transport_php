@@ -939,14 +939,18 @@ switch ($mode) {
             $sql .= " AND dEffectiveTo = '" . db_input($toDate) . "'";
         }
         $res = sql_query($sql);
-        $matches = [];
+        $candidates = [];
         while ($row = sql_fetch_assoc($res)) {
+            $candidates[] = $row;
+        }
+        $matches = [];
+        foreach ($candidates as $row) {
             if ($filterByRate && abs((float)$row['fRate'] - $oldRate) >= 0.001) {
                 continue;
             }
             $matches[] = $row;
         }
-        if (count($matches) === 0) {
+        if (count($matches) === 0 && count($candidates) > 0) {
             echo json_encode([
                 "error" => ["message" => "Rate not found"],
                 "statusCode" => 404
@@ -961,17 +965,36 @@ switch ($mode) {
             exit;
         }
 
-        $oldRow = $matches[0];
-        $datId = intval($oldRow['iRCLDat_ID']);
-        $fromSql = db_input($oldRow['dEffectiveFrom']);
-        $toRaw = $oldRow['dEffectiveTo'];
-        if ($toRaw === null || $toRaw === '' || $toRaw === '0000-00-00') {
-            $toSql = "NULL";
+        if (count($matches) === 0) {
+            if ($fromDate === '') {
+                echo json_encode([
+                    "error" => ["message" => "fromDate is required"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+            if ($toDate !== '' && $fromDate > $toDate) {
+                echo json_encode([
+                    "error" => ["message" => "fromDate cannot be after toDate"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+            $fromSql = db_input($fromDate);
+            $toSql = ($toDate === '') ? "NULL" : "'" . db_input($toDate) . "'";
         } else {
-            $toSql = "'" . db_input($toRaw) . "'";
+            $oldRow = $matches[0];
+            $datId = intval($oldRow['iRCLDat_ID']);
+            $fromSql = db_input($oldRow['dEffectiveFrom']);
+            $toRaw = $oldRow['dEffectiveTo'];
+            if ($toRaw === null || $toRaw === '' || $toRaw === '0000-00-00') {
+                $toSql = "NULL";
+            } else {
+                $toSql = "'" . db_input($toRaw) . "'";
+            }
+            sql_query("UPDATE ft_ratechart_location_dat SET cStatus = 'X' WHERE iRCLDat_ID = $datId AND cStatus = 'A'");
         }
 
-        sql_query("UPDATE ft_ratechart_location_dat SET cStatus = 'X' WHERE iRCLDat_ID = $datId AND cStatus = 'A'");
         $newId = NextID('iRCLDat_ID', 'ft_ratechart_location_dat');
         sql_query("INSERT INTO ft_ratechart_location_dat
                       (iRCLDat_ID, iRateChartLocID, iVenChartType, iVCatID, fRate, dEffectiveFrom, dEffectiveTo, cStatus)

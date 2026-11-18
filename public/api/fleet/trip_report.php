@@ -34,6 +34,7 @@ switch ($mode) {
         $vehicleId = intval($_REQUEST['vehicleId'] ?? 0);
         $driverId = intval($_REQUEST['driverId'] ?? 0);
         $sourceType = strtolower(trim($_REQUEST['sourceType'] ?? ''));
+        $rateFinalised = strtoupper(trim((string)($_REQUEST['rateFinalised'] ?? '')));
 
         $loggedInVendorID = getVendorIDForUser($user_id);
         $vendorUserStations = [];
@@ -88,13 +89,19 @@ switch ($mode) {
             ['id' => 'self', 'name' => 'Self'],
             ['id' => 'vendor', 'name' => 'Vendor'],
         ];
+        $rateFinalisedOpt = [
+            ['id' => 'all', 'name' => 'All'],
+            ['id' => 'Y', 'name' => 'Y'],
+            ['id' => 'N', 'name' => 'N'],
+        ];
         $optArr = [
             'vendorOpt' => $vendorOpt,
             'vehicleOpt' => $vehicleOpt,
             'driverOpt' => $driverOpt,
             'locationOpt' => $LOCATION_ARR,
             'bookedByOpt' => $bookedByOpt,
-            'sourceTypeOpt' => $sourceTypeOpt
+            'sourceTypeOpt' => $sourceTypeOpt,
+            'rateFinalisedOpt' => $rateFinalisedOpt
         ];
 
 
@@ -135,6 +142,12 @@ switch ($mode) {
 
         if ($driverId > 0) {
             $where .= " AND fb.iDriverID = $driverId";
+        }
+
+        if ($rateFinalised === 'Y') {
+            $where .= " AND fb.cRateFinalised = 'Y'";
+        } elseif ($rateFinalised === 'N') {
+            $where .= " AND IFNULL(fb.cRateFinalised, 'N') <> 'Y'";
         }
 
 
