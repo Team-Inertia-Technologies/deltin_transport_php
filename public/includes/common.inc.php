@@ -1036,8 +1036,8 @@ function fleetDisposalTrip($source, $keepExisting = null)
 {
 	$source = is_array($source) ? $source : [];
 	$names = [
-		'fromTime' => ['fromTime', 'dtFromTime'],
-		'toTime' => ['toTime', 'dtToTime'],
+		'fromTime' => ['fromTime', 'dtFromTime', 'fromDateTime'],
+		'toTime' => ['toTime', 'dtToTime', 'toDateTime'],
 		'startKm' => ['startKm', 'iStartKm'],
 		'endKm' => ['endKm', 'iEndKm']
 	];
@@ -1782,8 +1782,8 @@ function fleetApplyDisposalReading($bookingId, $source)
 		return ['ok' => true];
 	}
 
-	$fromRaw = fleetSourceValue($source, ['fromTime', 'dtFromTime']);
-	$toRaw = fleetSourceValue($source, ['toTime', 'dtToTime']);
+	$fromRaw = fleetSourceValue($source, ['fromTime', 'dtFromTime', 'fromDateTime']);
+	$toRaw = fleetSourceValue($source, ['toTime', 'dtToTime', 'toDateTime']);
 	if (($fromRaw === null || $fromRaw === '') && ($toRaw === null || $toRaw === '')) {
 		return ['ok' => true];
 	}
