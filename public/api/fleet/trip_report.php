@@ -156,6 +156,11 @@ switch ($mode) {
             fb.cRateFinalised,
             fb.fRate,
             fb.fTotal,
+            fb.cDisposal,
+            fb.iVenChartType,
+            fb.iRateChartLocID,
+            fb.dtFromTime,
+            fb.dtToTime,
             fb.iStartKm,
             fb.iEndKm,
             ven.vName AS vendorName,
@@ -182,31 +187,23 @@ switch ($mode) {
     ";
 
         $res = sql_query($sql);
+        $rows = [];
+        $bookingIds = [];
+        while ($row = sql_fetch_assoc($res)) {
+            $rows[] = $row;
+            $bookingIds[] = intval($row['iFleet_BookingID']);
+        }
+        $logTimes = trip_report_log_times($bookingIds);
+        $ratesByBooking = trip_report_rates_by_booking($bookingIds);
+        $kindNames = trip_report_kind_names(array_keys(trip_report_optional_kinds()));
         $rowData = [];
 
-        while ($row = sql_fetch_assoc($res)) {
+        foreach ($rows as $row) {
 
             $bookingID = intval($row['iFleet_BookingID']);
-
-            /* ===== Duration: S → C ===== */
-
-            $start = '';
-            $end = '';
+            $start = $logTimes[$bookingID]['start'] ?? '';
+            $end = $logTimes[$bookingID]['end'] ?? '';
             $duration = '';
-
-            $r = sql_query("SELECT dtAdded FROM fleet_booking_log
-                         WHERE iFleet_BookingID=$bookingID AND cRefType='S'
-                         ORDER BY dtAdded ASC LIMIT 1");
-            if (sql_num_rows($r)) {
-                $start = sql_fetch_assoc($r)['dtAdded'];
-            }
-
-            $r = sql_query("SELECT dtAdded FROM fleet_booking_log
-                         WHERE iFleet_BookingID=$bookingID AND cRefType='C'
-                         ORDER BY dtAdded DESC LIMIT 1");
-            if (sql_num_rows($r)) {
-                $end = sql_fetch_assoc($r)['dtAdded'];
-            }
 
             if ($start && $end) {
                 $diff = strtotime($end) - strtotime($start);
@@ -233,6 +230,12 @@ switch ($mode) {
                 $bookedByName = db_output2($row['bookedByName'] ?? '');
             }
             $instructionsBy = db_output2($row['vBookedBy'] ?? '');
+            $active = $ratesByBooking[$bookingID] ?? ['lines' => [], 'total' => 0];
+            $charges = trip_report_charge_lines($active['lines'], $kindNames);
+            $finalRate = $active['lines'] === [] ? trip_report_final_rate($row) : $active['total'];
+            $isDisposal = trip_report_is_disposal($row['cDisposal'] ?? 'N');
+            $startTime = $isDisposal ? ($row['dtFromTime'] ?? '') : ($row['vPickUpTime'] ?? '');
+            $endTime = $isDisposal ? ($row['dtToTime'] ?? '') : '';
 
             $rowData[] = [
                 'id' => $bookingID,
@@ -243,6 +246,8 @@ switch ($mode) {
                 'pickupTime' => date('h:i a', strtotime($row['vPickUpTime'])),
                 'location' => db_output2($row['vPickUpLocation']),
                 'destination' => db_output2($row['vDropLocation']),
+                'startTime' => trip_report_display_time($startTime),
+                'endTime' => trip_report_display_time($endTime),
                 'totalDuration' => $duration,
                 'vendor' => db_output2($row['vendorName'] ?? ''),
                 'vehicle' => $vehicle,
@@ -261,8 +266,13 @@ switch ($mode) {
                 'travelTypeName' => $row['travelTypeName'],
                 "calculatedKms" =>$row['calculatedKms'],
                 "ratechartKms" => $row['ratechartKms'],
+                "disposal" => $isDisposal ? 'Y' : 'N',
+                "chartType" => intval($row['iVenChartType'] ?? 0),
+                "rateChartLocID" => intval($row['iRateChartLocID'] ?? 0),
                 "rateFinalised" => (strtoupper(trim((string)($row['cRateFinalised'] ?? 'N'))) === 'Y') ? 'Y' : 'N',
-                "finalRate" => trip_report_final_rate($row),
+                "finalRate" => $finalRate,
+                "total" => $active['total'],
+                "charges" => $charges,
                 "startKm" => intval($row['iStartKm'] ?? 0),
                 "endKm" => intval($row['iEndKm'] ?? 0)
 
@@ -275,31 +285,6 @@ switch ($mode) {
                 'optArr' => $optArr
             ],
             'statusCode' => 200
-        ]);
-        break;
-
-    case 'RATE_DETAILS':
-        $bookingId = trip_report_one_booking_id();
-        if ($bookingId <= 0) {
-            echo json_encode([
-                "error" => ["message" => "bookingId is required"],
-                "statusCode" => 400
-            ]);
-            exit;
-        }
-
-        $booking = trip_report_booking($bookingId, $user_id);
-        if ($booking === null) {
-            echo json_encode([
-                "error" => ["message" => "Booking not found"],
-                "statusCode" => 404
-            ]);
-            exit;
-        }
-
-        echo json_encode([
-            "data" => trip_report_rate_payload($booking),
-            "statusCode" => 200
         ]);
         break;
 
@@ -533,7 +518,85 @@ function trip_report_kind_names($kindIds)
     return $names;
 }
 
-function trip_report_charge_lines($lines)
+function trip_report_display_time($value)
+{
+    $parsed = fleetTripDateTime($value);
+    if ($parsed === null || $parsed === false) {
+        return '';
+    }
+    return date('d-m-Y H:i', strtotime($parsed));
+}
+
+function trip_report_log_times($bookingIds)
+{
+    $times = [];
+    $bookingIds = array_values(array_filter(array_map('intval', $bookingIds)));
+    if ($bookingIds === []) {
+        return $times;
+    }
+    $res = sql_query("SELECT iFleet_BookingID, cRefType, dtAdded
+                      FROM fleet_booking_log
+                      WHERE iFleet_BookingID IN (" . implode(',', $bookingIds) . ")
+                        AND cRefType IN ('S', 'C')
+                      ORDER BY dtAdded ASC");
+    if (!$res) {
+        return $times;
+    }
+    while ($row = sql_fetch_assoc($res)) {
+        $bookingId = intval($row['iFleet_BookingID']);
+        if (!isset($times[$bookingId])) {
+            $times[$bookingId] = ['start' => '', 'end' => ''];
+        }
+        if ($row['cRefType'] === 'S' && $times[$bookingId]['start'] === '') {
+            $times[$bookingId]['start'] = $row['dtAdded'];
+        }
+        if ($row['cRefType'] === 'C') {
+            $times[$bookingId]['end'] = $row['dtAdded'];
+        }
+    }
+    return $times;
+}
+
+function trip_report_rates_by_booking($bookingIds)
+{
+    $byBooking = [];
+    $bookingIds = array_values(array_filter(array_map('intval', $bookingIds)));
+    if ($bookingIds === []) {
+        return $byBooking;
+    }
+    $res = sql_query("SELECT r.iBkRateID, r.iFleet_BookingID, r.iRateKindID, k.vName AS kindName, r.fAmount
+                      FROM fleet_booking_rate r
+                      LEFT JOIN fleet_rate_kind k ON k.iRateKindID = r.iRateKindID
+                      WHERE r.iFleet_BookingID IN (" . implode(',', $bookingIds) . ")
+                        AND r.cStatus = 'A'
+                      ORDER BY r.iBkRateID");
+    $latest = [];
+    if ($res) {
+        while ($line = sql_fetch_assoc($res)) {
+            $bookingId = intval($line['iFleet_BookingID']);
+            $kindId = intval($line['iRateKindID']);
+            $latest[$bookingId][$kindId] = [
+                'iRateKindID' => $kindId,
+                'kindName' => $line['kindName'],
+                'fAmount' => (float)$line['fAmount']
+            ];
+        }
+    }
+    foreach ($latest as $bookingId => $kinds) {
+        $lines = array_values($kinds);
+        $total = 0;
+        foreach ($lines as $line) {
+            $total += $line['fAmount'];
+        }
+        $byBooking[$bookingId] = [
+            'lines' => $lines,
+            'total' => (float)number_format($total, 2, '.', '')
+        ];
+    }
+    return $byBooking;
+}
+
+function trip_report_charge_lines($lines, $kindNames = null)
 {
     $charges = [];
     $seen = [];
@@ -547,7 +610,7 @@ function trip_report_charge_lines($lines)
         ];
     }
     $optional = trip_report_optional_kinds();
-    $names = trip_report_kind_names(array_keys($optional));
+    $names = is_array($kindNames) ? $kindNames : trip_report_kind_names(array_keys($optional));
     foreach ($optional as $kindId => $fallback) {
         if (isset($seen[$kindId])) {
             continue;
