@@ -1889,7 +1889,7 @@ function fleetReviseBookingRate($bookingId, $kindId, $amount, $userId)
 			return ['changed' => false, 'amount' => (float)$amountSql];
 		}
 		$idSql = implode(',', $ids);
-		sql_query("UPDATE fleet_booking_rate SET cStatus = 'C' WHERE iBkRateID IN ($idSql) AND cStatus = 'A'");
+		sql_query("UPDATE fleet_booking_rate SET cStatus = 'X' WHERE iBkRateID IN ($idSql) AND cStatus = 'A'");
 	} elseif ((float)$amountSql == 0.0) {
 		return ['changed' => false, 'amount' => 0.0];
 	}
