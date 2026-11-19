@@ -100,6 +100,34 @@ function dashboardIntList($values)
     return implode(',', $values);
 }
 
+function dashboardRateChartLocations()
+{
+    $rateChartLocations = [];
+    $locRes = sql_query("SELECT l.iRateChartLocID, l.iVenChartType, l.vName AS locName, t.vName AS typeName
+                         FROM ft_ratechart_location l
+                         INNER JOIN ft_ratechart_type t ON t.iVenChartType = l.iVenChartType AND t.cStatus = 'A'
+                         WHERE l.cStatus = 'A' AND l.iRateChartLocID > 0
+                         ORDER BY t.iRank, t.vName, l.iRank, l.vName");
+    if (!$locRes) {
+        return $rateChartLocations;
+    }
+    while ($loc = sql_fetch_assoc($locRes)) {
+        $typeId = intval($loc['iVenChartType']);
+        if (!isset($rateChartLocations[$typeId])) {
+            $rateChartLocations[$typeId] = [
+                'chartType' => $typeId,
+                'typeName' => db_output2($loc['typeName'] ?? ''),
+                'locations' => []
+            ];
+        }
+        $rateChartLocations[$typeId]['locations'][] = [
+            'rateChartLocID' => intval($loc['iRateChartLocID']),
+            'vLocationName' => db_output2($loc['locName'] ?? '')
+        ];
+    }
+    return array_values($rateChartLocations);
+}
+
 function getFleetVendorStationOpts()
 {
  
@@ -555,7 +583,7 @@ switch ($mode) {
         }
 
         // Fetch booking data
-        $bookingSql = "select iFleet_BookingID, vBookingCode, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments, iFleet_StationID, iFleet_RateID, iVendorID, vRemarks, vTravelNotes from fleet_booking where 1 $cond and cType NOT IN ('C','S','G','P','R') and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
+        $bookingSql = "select iFleet_BookingID, vBookingCode, vName, vMobileNo, cBookingFor, vPickUpLocation, vDropLocation, vPickUpTime, iPax, iBaggage, iBookedBy, vBookedBy, iPropertyID, iVehicleCatID, iFleet_TrvPurID, iFleet_TrvTypeID, cDisposal, iVenChartType, iRateChartLocID, iVehicleID, iDriverID, vInstructions, iFleet_BKCatID, cType, vComments, iFleet_StationID, iFleet_RateID, iVendorID, vRemarks, vTravelNotes from fleet_booking where 1 $cond and cType NOT IN ('C','S','G','P','R') and cStatus <> 'C' order by (iDriverID IS NULL OR iDriverID = 0) DESC, (iVehicleID IS NULL OR iVehicleID = 0) DESC, vPickupTime ASC";
         //echo $bookingSql."<br>";
         $bookingRes = sql_query($bookingSql);
 
@@ -606,6 +634,8 @@ switch ($mode) {
             if ($row['cDisposal'] == 'Y') {
                 $is_disposal = true;
             }
+            $disposalFlag = strtoupper(trim((string)($row['cDisposal'] ?? 'N')));
+            $disposal = in_array($disposalFlag, ['Y', '1', 'YES', 'TRUE'], true) ? 'Y' : 'N';
             if (!empty($row['vPickUpTime']) && strtotime($row['vPickUpTime']) < time() && $row['cType'] == 'N') {
                 $type_status = 'D';
             }
@@ -657,6 +687,9 @@ switch ($mode) {
                 'travelPurpose' => db_output2($TRAVEL_PURPOSE_ARR[$row['iFleet_TrvPurID']] ?? ''),
                 'travelType' => db_output2($TRAVEL_TYPE_ARR[$row['iFleet_TrvTypeID']] ?? ''),
                 'isDisposal' => $is_disposal,
+                'disposal' => $disposal,
+                'chartType' => intval($row['iVenChartType'] ?? 0),
+                'rateChartLocID' => intval($row['iRateChartLocID'] ?? 0),
                 'instruction' => db_output2($row['vInstructions'] ?? ''),
                 'comment' => db_output2($row['vComments'] ?? ''),
                 'driverAssigned' => (isset($row['iDriverID']) && !empty($row['iDriverID'])) ? true : false,
@@ -676,7 +709,8 @@ switch ($mode) {
         }
         echo json_encode([
             "data" => [
-                "requestsArr" => $rowData
+                "requestsArr" => $rowData,
+                "rateChartLocations" => dashboardRateChartLocations()
             ],
             "statusCode" => 200
         ]);

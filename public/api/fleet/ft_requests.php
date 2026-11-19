@@ -2248,7 +2248,7 @@ switch ($mode) {
         }
 
         $bookingRes = sql_query("
-            SELECT iFleet_BookingID, vName, iVendorID, iFleet_StationID
+            SELECT iFleet_BookingID, vName, iVendorID, iFleet_StationID, iVenChartType, iRateChartLocID, cDisposal
             FROM fleet_booking
             WHERE iFleet_BookingID = $iFleet_BookingID
               AND cStatus = 'A'
@@ -2325,6 +2325,47 @@ switch ($mode) {
             }
         }
 
+        $chartType = intval($_REQUEST['chartType'] ?? ($_REQUEST['iVenChartType'] ?? 0));
+        $locId = intval($_REQUEST['rateChartLocID'] ?? ($_REQUEST['iRateChartLocID'] ?? 0));
+        $chartSql = '';
+        if ($chartType > 0 || $locId > 0) {
+            if ($chartType <= 0 || $locId <= 0) {
+                echo json_encode([
+                    "error" => ["message" => "chartType and rateChartLocID must both be sent"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+            $disposalFlag = strtoupper(trim((string)($bookingData['cDisposal'] ?? 'N')));
+            if ($disposalFlag === 'Y' || $disposalFlag === '1' || $disposalFlag === 'YES' || $disposalFlag === 'TRUE') {
+                echo json_encode([
+                    "error" => ["message" => "Disposal bookings do not use a rate chart location"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+            $locRes = sql_query("SELECT l.iRateChartLocID
+                                 FROM ft_ratechart_location l
+                                 INNER JOIN ft_ratechart_type t ON t.iVenChartType = l.iVenChartType AND t.cStatus = 'A'
+                                 WHERE l.iRateChartLocID = $locId
+                                 AND l.iVenChartType = $chartType
+                                 AND l.cStatus = 'A'
+                                 LIMIT 1");
+            if (sql_num_rows($locRes) == 0) {
+                echo json_encode([
+                    "error" => ["message" => "Location is not on this chart type"],
+                    "statusCode" => 400
+                ]);
+                exit;
+            }
+            $chartSql = ",
+                iVenChartType = $chartType,
+                iRateChartLocID = $locId";
+        } else {
+            $chartType = intval($bookingData['iVenChartType'] ?? 0);
+            $locId = intval($bookingData['iRateChartLocID'] ?? 0);
+        }
+
         $dtVendorAssigned = NOW;
         $updateResult = sql_query("
             UPDATE fleet_booking
@@ -2332,6 +2373,7 @@ switch ($mode) {
                 iVendorID = $iVendorID,
                 vVendorAssignedBy = $user_id,
                 dtVendorAssigned = '$dtVendorAssigned'
+                $chartSql
             WHERE iFleet_BookingID = $iFleet_BookingID
               AND cStatus = 'A'
         ");
@@ -2350,20 +2392,30 @@ switch ($mode) {
             'Station and vendor assigned',
             $user_id
         );
-        queueFleetBookingDatChanges($iFleet_BookingID, $user_id, $bookingData, [
+        $assignNew = [
             'iVendorID' => $iVendorID,
             'iFleet_StationID' => $iFleet_StationID,
-        ], [
+        ];
+        $assignFields = [
             ['col' => 'iVendorID', 'label' => 'vendor', 'lookup' => 'vendor'],
             ['col' => 'iFleet_StationID', 'label' => 'station', 'lookup' => 'station'],
-        ]);
+        ];
+        if ($chartSql !== '') {
+            $assignNew['iVenChartType'] = $chartType;
+            $assignNew['iRateChartLocID'] = $locId;
+            $assignFields[] = ['col' => 'iVenChartType', 'label' => 'chart type', 'lookup' => 'chart_type'];
+            $assignFields[] = ['col' => 'iRateChartLocID', 'label' => 'chart location', 'lookup' => 'chart_location'];
+        }
+        queueFleetBookingDatChanges($iFleet_BookingID, $user_id, $bookingData, $assignNew, $assignFields);
 
         echo json_encode([
             "data" => [
                 "message" => "Station and vendor assigned successfully",
                 "bookingId" => $iFleet_BookingID,
                 "stationID" => $iFleet_StationID,
-                "vendorID" => $iVendorID
+                "vendorID" => $iVendorID,
+                "chartType" => $chartType,
+                "rateChartLocID" => $locId
             ],
             "statusCode" => 200
         ]);

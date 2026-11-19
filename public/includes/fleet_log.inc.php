@@ -251,6 +251,8 @@ function fleetBookingDatLookupSpec()
         'vehicle_cat' => ['vehicle_category', 'iVCatID', 'vName'],
         'vendor' => ['vendor', 'iVendorID', 'vName'],
         'station' => ['fleet_station', 'iFlt_StationID', 'vName'],
+        'chart_type' => ['ft_ratechart_type', 'iVenChartType', 'vName'],
+        'chart_location' => ['ft_ratechart_location', 'iRateChartLocID', 'vName'],
         'vehicle' => ['vehicle', 'iVehicleID', 'vRnum'],
         'driver' => ['driver', 'iDriverID', 'vName'],
         'staff' => ['fleet_staff', 'iFStaffID', 'vName'],
