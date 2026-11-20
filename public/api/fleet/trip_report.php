@@ -214,17 +214,16 @@ switch ($mode) {
         foreach ($rows as $row) {
 
             $bookingID = intval($row['iFleet_BookingID']);
-            $start = $logTimes[$bookingID]['start'] ?? '';
-            $end = $logTimes[$bookingID]['end'] ?? '';
-            $duration = '';
-
-            if ($start && $end) {
-                $diff = strtotime($end) - strtotime($start);
-                if ($diff > 0) {
-                    $h = floor($diff / 3600);
-                    $m = floor(($diff % 3600) / 60);
-                    $duration = sprintf('%02dh %02dm', $h, $m);
-                }
+            $isDisposal = trip_report_is_disposal($row['cDisposal'] ?? 'N');
+            $startTime = $isDisposal ? ($row['dtFromTime'] ?? '') : ($row['vPickUpTime'] ?? '');
+            $endTime = $isDisposal ? ($row['dtToTime'] ?? '') : '';
+            if ($startTime !== '' && $endTime !== '') {
+                $duration = trip_report_duration($startTime, $endTime);
+            } else {
+                $duration = trip_report_duration(
+                    $logTimes[$bookingID]['start'] ?? '',
+                    $logTimes[$bookingID]['end'] ?? ''
+                );
             }
 
             $vehicle = '';
@@ -246,10 +245,6 @@ switch ($mode) {
             $active = $ratesByBooking[$bookingID] ?? ['lines' => [], 'total' => 0];
             $charges = trip_report_charge_lines($active['lines'], $kindNames);
             $finalRate = $active['lines'] === [] ? trip_report_final_rate($row) : $active['total'];
-            $isDisposal = trip_report_is_disposal($row['cDisposal'] ?? 'N');
-            $startTime = $isDisposal ? ($row['dtFromTime'] ?? '') : ($row['vPickUpTime'] ?? '');
-            $endTime = $isDisposal ? ($row['dtToTime'] ?? '') : '';
-
             $rowData[] = [
                 'id' => $bookingID,
                 'bookingCode' => (!empty($row['vBookingCode'])) ? db_output2($row['vBookingCode']) : 'N/A',
@@ -538,6 +533,22 @@ function trip_report_display_time($value)
         return '';
     }
     return date('d-m-Y H:i', strtotime($parsed));
+}
+
+function trip_report_duration($start, $end)
+{
+    $startParsed = fleetTripDateTime($start);
+    $endParsed = fleetTripDateTime($end);
+    if ($startParsed === null || $startParsed === false || $endParsed === null || $endParsed === false) {
+        return '';
+    }
+    $diff = strtotime($endParsed) - strtotime($startParsed);
+    if ($diff <= 0) {
+        return '';
+    }
+    $hours = floor($diff / 3600);
+    $minutes = floor(($diff % 3600) / 60);
+    return sprintf('%02dh %02dm', $hours, $minutes);
 }
 
 function trip_report_log_times($bookingIds)
