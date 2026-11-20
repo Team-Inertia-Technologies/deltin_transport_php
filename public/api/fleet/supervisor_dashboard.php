@@ -1247,7 +1247,8 @@ foreach ($vehicleData as $vehicleID => $vehData) {
         }*/
         echo json_encode([
             "data" => [
-                "requestsArr" => $rowData
+                "requestsArr" => $rowData,
+                "rateChartLocations" => dashboardRateChartLocations()
             ],
             "statusCode" => 200
         ]);
