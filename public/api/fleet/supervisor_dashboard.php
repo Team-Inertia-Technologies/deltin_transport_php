@@ -431,7 +431,8 @@ switch ($mode) {
                 "totalVehi" => $TOTAL_VEHICLE_COUNT,
                 "avaiVehi" => $AVAILABLE_VEHICLE_COUNT,
                 "optArrs" => $optArr,
-                "overtimelimit" => intval($overtimelimit)
+                "overtimelimit" => intval($overtimelimit),
+                "rateChartLocations" => dashboardRateChartLocations()
             ],
             "statusCode" => 200
         ]);
@@ -1247,8 +1248,7 @@ foreach ($vehicleData as $vehicleID => $vehData) {
         }*/
         echo json_encode([
             "data" => [
-                "requestsArr" => $rowData,
-                "rateChartLocations" => dashboardRateChartLocations()
+                "requestsArr" => $rowData
             ],
             "statusCode" => 200
         ]);
