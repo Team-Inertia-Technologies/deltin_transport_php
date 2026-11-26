@@ -1070,7 +1070,9 @@ switch ($mode) {
             "vendorID" => intval($booking['iVendorID'] ?? 0),
             "stationID" => intval($booking['iFleet_StationID'] ?? 0),
             "dtAdded" => $booking['dtAdded'],
-            "addedUserId" => intval($booking['iAdded_UserID'])
+            "addedUserId" => intval($booking['iAdded_UserID']),
+            "appReqID" => intval($booking['iAppReqID'] ?? 0),
+            "lockNameMobile" => intval($booking['iAppReqID'] ?? 0) > 0
         ];
 
 
@@ -1314,7 +1316,7 @@ switch ($mode) {
         $iVendorID = intval($_REQUEST['vendorID'] ?? 0);
         $iFleet_StationID = intval($_REQUEST['stationID'] ?? 0);
 
-        if (empty($vName) || empty($vMobileNo) || empty($vPickUpTime)) {
+        if (empty($vPickUpTime)) {
             echo json_encode([
                 "error" => ["message" => "Required fields missing"],
                 "statusCode" => 401
@@ -1333,6 +1335,18 @@ switch ($mode) {
             exit;
         }
         $existingBooking = sql_fetch_assoc($checkRes);
+        $iAppReqID = intval($existingBooking['iAppReqID'] ?? 0);
+        if ($iAppReqID > 0) {
+            $vName = db_input($existingBooking['vName'] ?? '');
+            $vMobileNo = db_input($existingBooking['vMobileNo'] ?? '');
+            $iGuestID = intval($existingBooking['iGuestID'] ?? 0);
+        } elseif (empty($vName) || empty($vMobileNo)) {
+            echo json_encode([
+                "error" => ["message" => "Required fields missing"],
+                "statusCode" => 401
+            ]);
+            exit;
+        }
         $prevVendorID = intval($existingBooking['iVendorID'] ?? 0);
         // Vendor assigned by = same person who added the request
         $addedByUserID = intval($existingBooking['iAdded_UserID'] ?? $user_id);
@@ -1387,8 +1401,7 @@ switch ($mode) {
                 vInstructions = '" . $vInstructions . "',
                 vRemarks = '" . $vRemarks . "',
                 vTravelNotes = '" . $vTravelNotes . "',
-                vName = '" . $vName . "',
-                vMobileNo = '" . db_input($vMobileNo) . "',
+                " . ($iAppReqID > 0 ? "" : "vName = '" . $vName . "', vMobileNo = '" . db_input($vMobileNo) . "',") . "
                 iGuestID = " . intval($iGuestID) . ",
                 iFStaffID = " . intval($iFStaffID) . ",
                 iPax = " . intval($iPax) . ",
@@ -1419,7 +1432,8 @@ switch ($mode) {
             ]);
             exit;
         }
-        LogBookingUpdated($iFleet_BookingID, $vName, 'Booking details updated', $user_id);
+        $logName = $iAppReqID > 0 ? ($existingBooking['vName'] ?? '') : ($_REQUEST['name'] ?? '');
+        LogBookingUpdated($iFleet_BookingID, $logName, 'Booking details updated', $user_id);
         $pickUpLocRaw = $_REQUEST['pickUpLoc'] ?? [];
         $dropLocRaw = $_REQUEST['dropLoc'] ?? [];
         queueFleetBookingDatChanges($iFleet_BookingID, $user_id, $existingBooking, [
@@ -1432,8 +1446,8 @@ switch ($mode) {
             'vInstructions' => $_REQUEST['intruc'] ?? '',
             'vRemarks' => $_REQUEST['remarks'] ?? '',
             'vTravelNotes' => $_REQUEST['travelNotes'] ?? '',
-            'vName' => $_REQUEST['name'] ?? '',
-            'vMobileNo' => $_REQUEST['mob'] ?? '',
+            'vName' => $iAppReqID > 0 ? ($existingBooking['vName'] ?? '') : ($_REQUEST['name'] ?? ''),
+            'vMobileNo' => $iAppReqID > 0 ? ($existingBooking['vMobileNo'] ?? '') : ($_REQUEST['mob'] ?? ''),
             'iFStaffID' => $_REQUEST['staffID'] ?? 0,
             'iPax' => $_REQUEST['pax'] ?? 0,
             'iBaggage' => $_REQUEST['baggage'] ?? 0,
@@ -1448,11 +1462,18 @@ switch ($mode) {
             'iFleet_StationID' => $_REQUEST['stationID'] ?? 0,
         ], fleetBookingDatTrackedFields());
 
+        $responseData = [
+            "message" => "Booking updated successfully",
+            "bookingId" => $iFleet_BookingID
+        ];
+        if ($iAppReqID > 0) {
+            require_once __DIR__ . '/ft_app_booking.php';
+            $appSync = pushFleetBookingToApp($iFleet_BookingID);
+            $responseData['appReqID'] = $iAppReqID;
+            $responseData['appSync'] = !empty($appSync['ok']) ? 'updated' : ($appSync['message'] ?? 'App update failed');
+        }
         echo json_encode([
-            "data" => [
-                "message" => "Booking updated successfully",
-                "bookingId" => $iFleet_BookingID
-            ],
+            "data" => $responseData,
             "statusCode" => 200
         ]);
         break;

@@ -142,6 +142,9 @@ if (isset($_ENV["HEIGIT_DISTACE_API_KEY"]) && !empty($_ENV["HEIGIT_DISTACE_API_K
 if (isset($_ENV["STAFF_APP_URL"]) && !empty($_ENV["STAFF_APP_URL"])) {
     define('STAFF_APP_URL', $_ENV["STAFF_APP_URL"]);
 }
+if (isset($_ENV["DELTIN_APP_URL"]) && !empty($_ENV["DELTIN_APP_URL"])) {
+    define('DELTIN_APP_URL', rtrim($_ENV["DELTIN_APP_URL"], '/') . '/');
+}
 
 
 ?>
