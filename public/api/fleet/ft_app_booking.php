@@ -36,7 +36,15 @@ $vInstructions = trim((string)($item['intruc'] ?? ''));
 $vRemarks = trim((string)($item['remarks'] ?? ''));
 $vLandmark = trim((string)($item['landMark'] ?? ''));
 $cDisposal = strtoupper(trim((string)($item['disposal'] ?? 'N'))) === 'Y' ? 'Y' : 'N';
-$vPickUpTime = trim((string)($item['pickUpDateTime'] ?? ''));
+$dPickUpDate = trim((string)($item['dPickUpDate'] ?? ''));
+$tPickUpTime = trim((string)($item['tPickUpTime'] ?? ''));
+if (strlen($tPickUpTime) === 5) {
+    $tPickUpTime .= ':00';
+}
+$vPickUpTime = trim($dPickUpDate . ' ' . $tPickUpTime);
+if ($vPickUpTime === '' || $dPickUpDate === '') {
+    $vPickUpTime = trim((string)($item['pickUpDateTime'] ?? ''));
+}
 $vReturnTime = trim((string)($item['returnTime'] ?? ''));
 if ($vReturnTime === '0000-00-00 00:00:00') {
     $vReturnTime = '';
@@ -53,6 +61,12 @@ if (($pickUpLocData['lat'] ?? '') !== '' && ($pickUpLocData['lng'] ?? '') !== ''
 $vLatLong_To = '';
 if (($dropLocData['lat'] ?? '') !== '' && ($dropLocData['lng'] ?? '') !== '') {
     $vLatLong_To = $dropLocData['lat'] . ',' . $dropLocData['lng'];
+}
+if (array_key_exists('latlong_from', $item)) {
+    $vLatLong_From = trim((string)$item['latlong_from']);
+}
+if (array_key_exists('latlong_to', $item)) {
+    $vLatLong_To = trim((string)$item['latlong_to']);
 }
 
 if ($iAppReqID < 1 || $vName === '' || $vMobileNo === '' || $vPickUpTime === '') {
