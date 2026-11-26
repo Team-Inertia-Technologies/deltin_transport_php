@@ -28,6 +28,27 @@ function pushFleetBookingToApp($iFleet_BookingID)
         $pickupTime = date('H:i:s', $pickupTs);
     }
 
+    $vehicleId = intval($row['iVehicleID'] ?? 0);
+    $driverId = intval($row['iDriverID'] ?? 0);
+    $vehicleNo = '';
+    $driverName = '';
+    $driverMobile = '';
+    if ($vehicleId > 0) {
+        $vehicleRes = sql_query("SELECT vRnum FROM vehicle WHERE iVehicleID = $vehicleId LIMIT 1");
+        if ($vehicleRes && sql_num_rows($vehicleRes) > 0) {
+            $vehicleRow = sql_fetch_assoc($vehicleRes);
+            $vehicleNo = (string)($vehicleRow['vRnum'] ?? '');
+        }
+    }
+    if ($driverId > 0) {
+        $driverRes = sql_query("SELECT vName, vMobileNum FROM driver WHERE iDriverID = $driverId LIMIT 1");
+        if ($driverRes && sql_num_rows($driverRes) > 0) {
+            $driverRow = sql_fetch_assoc($driverRes);
+            $driverName = (string)($driverRow['vName'] ?? '');
+            $driverMobile = (string)($driverRow['vMobileNum'] ?? '');
+        }
+    }
+
     $payload = array(
         'mode' => 'UPDATE_FROM_VIP',
         'appReqID' => $appReqID,
@@ -49,6 +70,9 @@ function pushFleetBookingToApp($iFleet_BookingID)
         'returnTime' => (string)($row['tReturnTime'] ?? ''),
         'landMark' => (string)($row['vLandmark'] ?? ''),
         'intruc' => (string)($row['vInstructions'] ?? ''),
+        'vVehicleNum' => $vehicleNo,
+        'vDriverName' => $driverName,
+        'vDriverNum' => $driverMobile,
     );
     $raw = callAPI('POST', DELTIN_APP_URL . 'api/rm/cab_request.php', json_encode($payload), array('Content-Type: application/json'));
     $decoded = json_decode((string)$raw, true);

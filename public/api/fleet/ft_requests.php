@@ -2611,26 +2611,18 @@ switch ($mode) {
         //     }
         // }
 
+        $assignResponse = [
+            "message" => "Vehicle and driver assigned successfully"
+        ];
+        require_once __DIR__ . '/ft_app_booking.php';
+        $appSync = pushFleetBookingToApp($iFleet_BookingID);
+        if (empty($appSync['ok']) && ($appSync['message'] ?? '') !== 'Not an app request') {
+            $assignResponse['appSync'] = $appSync['message'] ?? 'App update failed';
+        } elseif (($appSync['message'] ?? '') === 'App request updated') {
+            $assignResponse['appSync'] = 'updated';
+        }
         echo json_encode([
-            "data" => [
-                "message" => "Vehicle and driver assigned successfully",
-                // "assignment" => [
-                //     "bookingId" => $iFleet_BookingID,
-                //     "passengerName" => db_output2($bookingData['vName']),
-                //     "vehicle" => [
-                //         "id" => $iVehicleID,
-                //         "regNo" => db_output2($vehicleData['vRnum']),
-                //         "category" => db_output2($vehicleData['categoryName'])
-                //     ],
-                //     "driver" => [
-                //         "id" => $iDriverID,
-                //         "name" => db_output2($driverData['vName']),
-                //         "mobile" => db_output2($driverData['vMobileNum'])
-                //     ],
-                //     "remarks" => db_output2($vRemarks),
-                //     "assignedAt" => $dtNow
-                // ]
-            ],
+            "data" => $assignResponse,
             "statusCode" => 200
         ]);
         break;
