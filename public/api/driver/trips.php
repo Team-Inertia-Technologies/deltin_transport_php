@@ -54,6 +54,7 @@ SELECT
     fb.vPickUpLocation AS fromLocation,
     fb.vDropLocation AS toLocation,
     fb.vLandmark,
+    fb.cDisposal,
     v.iVehicleID,
     v.vRnum AS vehicleNo,
     vc.vName AS vehicleName,
@@ -139,6 +140,7 @@ while ($row = sql_fetch_assoc($res)) {
         "to"   => $row["toLocation"],
         "landmark" => $row["vLandmark"],
         "type" => $row["cBookingFor"] == 'G' ? 'Guest' : 'Staff',
+        "disposal" => $row["cDisposal"] == 'Y' ? 'Yes' : 'No',
         "active" => true,
         "buttonStatus" => $buttonStatus
 
