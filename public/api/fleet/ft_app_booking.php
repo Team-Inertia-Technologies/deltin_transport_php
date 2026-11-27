@@ -1,4 +1,79 @@
 <?php
+function fleetSqlDateTime($value)
+{
+    $value = trim((string)$value);
+    if ($value === '' || $value === '0000-00-00 00:00:00') {
+        return 'NULL';
+    }
+    $ts = strtotime($value);
+    if (!$ts) {
+        return 'NULL';
+    }
+    return "'" . date('Y-m-d H:i:s', $ts) . "'";
+}
+
+function fleetTripValues($item, $cDisposal)
+{
+    $item = is_array($item) ? $item : array();
+    $pickup = trim((string)($item['pickUpDateTime'] ?? ''));
+    if ($pickup === '') {
+        $date = trim((string)($item['dPickUpDate'] ?? ''));
+        $time = trim((string)($item['tPickUpTime'] ?? ''));
+        if (strlen($time) === 5) {
+            $time .= ':00';
+        }
+        $pickup = trim($date . ' ' . $time);
+    }
+    $pickupTs = $pickup !== '' ? strtotime($pickup) : false;
+    if (!$pickupTs) {
+        return array(
+            'ok' => false,
+            'message' => 'Enter a valid pickup date and time.',
+            'statusCode' => 400,
+        );
+    }
+
+    $toTime = '';
+    $returnRaw = trim((string)($item['returnTime'] ?? ''));
+    if ($returnRaw === '0000-00-00 00:00:00') {
+        $returnRaw = '';
+    }
+    if (strtoupper((string)$cDisposal) === 'Y') {
+        if ($returnRaw === '') {
+            return array(
+                'ok' => false,
+                'message' => 'Enter a return time for a disposal booking.',
+                'statusCode' => 400,
+            );
+        }
+        if (preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $returnRaw)) {
+            if (strlen($returnRaw) === 5) {
+                $returnRaw .= ':00';
+            }
+            $returnRaw = date('Y-m-d', $pickupTs) . ' ' . $returnRaw;
+        }
+        $returnTs = strtotime($returnRaw);
+        if (!$returnTs) {
+            return array(
+                'ok' => false,
+                'message' => 'Enter a valid return time.',
+                'statusCode' => 400,
+            );
+        }
+        $toTime = date('Y-m-d H:i:s', $returnTs);
+    }
+
+    return array(
+        'ok' => true,
+        'fromTime' => date('Y-m-d H:i:s', $pickupTs),
+        'toTime' => $toTime,
+        'chartType' => 0,
+        'locId' => 0,
+        'startKm' => 0,
+        'endKm' => 0,
+    );
+}
+
 function pushFleetBookingToApp($iFleet_BookingID)
 {
     $iFleet_BookingID = intval($iFleet_BookingID);
